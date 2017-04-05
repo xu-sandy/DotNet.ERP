@@ -1,0 +1,127 @@
+﻿using Microsoft.Synchronization;
+using System;
+using System.ServiceModel;
+
+namespace Pharos.SyncService
+{
+    // 注意: 使用“重构”菜单上的“重命名”命令，可以同时更改代码、svc 和配置文件中的类名“PosServerDbSyncService”。
+    // 注意: 为了启动 WCF 测试客户端以测试此服务，请在解决方案资源管理器中选择 PosServerDbSyncService.svc 或 PosServerDbSyncService.svc.cs，然后开始调试。
+    [ServiceBehavior(
+       ConcurrencyMode = ConcurrencyMode.Single,
+       InstanceContextMode = InstanceContextMode.PerSession,
+       IncludeExceptionDetailInFaults = true)]
+    public class PosServerDbSyncService : IPosServerDbSyncService
+    {
+
+        dynamic _serverSyncProvider;
+        private IPosServerDbEntity TypeEntity { get; set; }
+        private void InitSyncProvider<T>(T entity, int companyId, string storeId, string assemblyName, string dbStoreType)
+        where T : IPosServerDbEntity
+        {
+            var store = AppDomain.CurrentDomain.CreateInstance(assemblyName, dbStoreType).Unwrap() as IPosServerDbStore<T>;
+            _serverSyncProvider = new PosServerDbSyncProvider<T>(companyId, storeId, store);
+        }
+        public SyncIdFormatGroup GetIdFormats()
+        {
+            return _serverSyncProvider.IdFormats;
+        }
+
+        public void CreateProviderForSyncSession(int companyId, string storeId, string assemblyName, string entityType, string dbStoreType)
+        {
+            TypeEntity = AppDomain.CurrentDomain.CreateInstance(assemblyName, entityType).Unwrap() as IPosServerDbEntity;
+            InitSyncProvider(TypeEntity, companyId, storeId, assemblyName, dbStoreType);
+        }
+
+        public void BeginSession()
+        {
+            _serverSyncProvider.BeginSession();
+        }
+
+        public void EndSession()
+        {
+            _serverSyncProvider.EndSession();
+        }
+
+        public ChangeBatch GetChangeBatch(
+            uint batchSize,
+            SyncKnowledge destinationKnowledge,
+            out CachedChangeDataRetriever changeDataRetriever)
+        {
+            object dataRetriever;
+
+            ChangeBatch changeBatch = _serverSyncProvider.GetChangeBatch(
+                batchSize,
+                destinationKnowledge,
+                out dataRetriever);
+
+            changeDataRetriever = new CachedChangeDataRetriever(
+                dataRetriever as IChangeDataRetriever,
+                changeBatch);
+
+            return changeBatch;
+        }
+
+        public FullEnumerationChangeBatch GetFullEnumerationChangeBatch(
+            uint batchSize,
+            SyncId lowerEnumerationBound,
+            SyncKnowledge knowledgeForDataRetrieval,
+            out CachedChangeDataRetriever changeDataRetriever)
+        {
+            object dataRetriever;
+
+            FullEnumerationChangeBatch changeBatch = _serverSyncProvider.GetFullEnumerationChangeBatch(
+                batchSize,
+                lowerEnumerationBound,
+                knowledgeForDataRetrieval,
+                out dataRetriever);
+
+            changeDataRetriever = new CachedChangeDataRetriever(
+                dataRetriever as IChangeDataRetriever,
+                changeBatch);
+
+            return changeBatch;
+        }
+
+        public void GetSyncBatchParameters(
+            out uint batchSize,
+            out SyncKnowledge knowledge)
+        {
+            _serverSyncProvider.GetSyncBatchParameters(
+                out batchSize,
+                out knowledge);
+        }
+
+        public byte[] ProcessChangeBatch(
+            ConflictResolutionPolicy resolutionPolicy,
+            ChangeBatch sourceChanges,
+            CachedChangeDataRetriever changeDataRetriever,
+            byte[] changeApplierInfo)
+        {
+            return _serverSyncProvider.ProcessRemoteChangeBatch(
+                resolutionPolicy,
+                sourceChanges,
+                changeDataRetriever,
+                changeApplierInfo);
+        }
+
+        public byte[] ProcessFullEnumerationChangeBatch(
+            ConflictResolutionPolicy resolutionPolicy,
+            FullEnumerationChangeBatch sourceChanges,
+            CachedChangeDataRetriever changeDataRetriever,
+            byte[] changeApplierInfo)
+        {
+            return _serverSyncProvider.ProcessRemoteFullEnumerationChangeBatch(
+                resolutionPolicy,
+                sourceChanges,
+                changeDataRetriever,
+                changeApplierInfo);
+        }
+
+        #region For demo purpose, not required for RCA pattern
+        public void CleanupTombstones(TimeSpan timespan)
+        {
+            _serverSyncProvider.CleanupTombstones(timespan);
+        }
+        #endregion
+    }
+}

@@ -1,0 +1,115 @@
+﻿@model Supplier
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style>
+    body {
+        text-align: center;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.Title)
+        @Html.HiddenFor(o => o.FullTitle)
+        @Html.HiddenFor(o => o.Designee)
+        @Html.HiddenFor(o => o.ClassifyId)
+        @Html.HiddenFor(o => o.MasterAccount)
+        @Html.HiddenFor(o => o.BusinessType)
+        
+        <div class="MerchantInfoBox">
+            <div class="MerchantInItem">
+                <div class="MerchantInfoLeft">
+                    <div class="MerchantInfo_itemname">供应商简称：</div>
+                    <div class="merchantinfo_littlebox"><label>@Model.Title</label></div>
+                </div>
+                <div class="MerchantInfoRight">
+                    <div class="MerchantInfo_itemname">供应商全称：</div>
+                    <div class="merchantinfo_bigbox"><label>@Model.FullTitle</label></div>
+                </div>
+            </div>
+            <div class="MerchantInItem">
+                <div class="MerchantInfoLeft">
+                    <div class="MerchantInfo_itemname">联系人：</div>
+                    <div class="merchantinfo_littlebox">
+                        @Html.TextBoxFor(o => o.Linkman, new { @class = "easyui-textbox datacontrol" })
+                        @*<input type="text" name="Linkman" class="datacontrol" value="@Model.Linkman" />*@
+                    </div>
+                </div>
+                <div class="MerchantInfoLeft" id="mobile">
+                    <div class="MerchantInfo_itemname">手机：</div>
+                    <div class="merchantinfo_littlebox">
+                        @Html.TextBoxFor(o => o.MobilePhone, new { @class = "easyui-textbox datacontrol", data_options = "validType:'mobile'" })
+                        @*<input type="text" name="MobilePhone" class="easyui-validatebox datacontrol" value="@Model.MobilePhone" />*@
+                    </div>
+                </div>
+                <div class="MerchantInfoLeft" id="tel">
+                    <div class="MerchantInfo_itemname">电话：</div>
+                    <div class="merchantinfo_littlebox">
+                        @Html.TextBoxFor(o => o.Tel, new { @class = "easyui-textbox datacontrol", data_options = "validType:'phone'" })
+                        @*<input type="text" name="Tel" class="easyui-validatebox datacontrol" value="@Model.Tel" />*@
+                    </div>
+                </div>
+            </div>
+            <div class="MerchantInItem">
+                <div class="MerchantInfoLeft">
+                    <div class="MerchantInfo_itemname">E-mail：</div>
+                    <div class="merchantinfo_littlebox">
+                        @Html.TextBoxFor(o => o.Email, new { @class = "easyui-validatebox datacontrol", data_options = "validType:'email'" })
+                        @*<input type="text" name="Email" class="easyui-validatebox datacontrol" value="@Model.Email" validtype="email" />*@
+                    </div>
+                </div>
+                <div class="MerchantInfoRight">
+                    <div class="MerchantInfo_itemname">地址：</div>
+                    <div class="merchantinfo_bigbox">
+                        @Html.TextBoxFor(o => o.Address, new { @class = "easyui-textbox datacontrol" })
+                        @*<input type="text" name="Address" class="datacontrol" style="width:450px;" value="@Model.Address" />*@
+                    </div>
+                </div>
+            </div>
+            <div class="MerchantInItem">
+                <div class="MerchantInfoLeft">
+                    <div class="MerchantInfo_itemname">供应商主账号：</div>
+                    <div class="merchantinfo_littlebox"><label>@Model.MasterAccount</label></div>
+                </div>
+                <div class="MerchantInfoLeft">
+                    <div class="MerchantInfo_itemname">密码：</div>
+                    <div class="merchantinfo_littlebox">
+                        <input class="easyui-validatebox datacontrol" name="MasterPwd" id="MasterPwd" validtype="length[4,20]"  title="为空则不修改密码" type="password" data_options="required:true"  />                      
+                     </div>
+                </div>
+                <div class="MerchantInfoLeft">
+                    <div class="MerchantInfo_itemname">确认密码：</div>
+                    <div class="merchantinfo_littlebox">
+                        <input class="easyui-validatebox datacontrol" name="ReMasterPwd" id="ReMasterPwd"  validtype="equalTo['#MasterPwd']"  invalidmessage="两次输入密码不一致" type="password" />                       
+                     </div>
+                </div>
+            </div>
+            <div class="MerchantInItem" style="margin-top:30px;">
+                <a class="easyui-linkbutton cus4 linkbtn" onclick="$('form').submit(); ">保存</a>
+            </div>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    function getTitle(Id) {
+        title = string.IsNullOrEmpty(Id) ? "" : "为空则不修改";
+        return title;
+    }   
+       
+    function SaveBefore() 
+    {       
+        if ($("#MasterPwd").val() != "" && $("#ReMasterPwd").val() == "") {
+            alert("请输入确认密码");
+            return false;
+        }
+        else {           
+            return true;
+        }
+    }
+
+</script>

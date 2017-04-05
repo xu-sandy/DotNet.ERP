@@ -1,0 +1,118 @@
+﻿@model Pharos.Logic.OMS.Entity.ImportSet
+@{
+    ViewBag.Title = "Import";
+    Layout = "~/Views/Shared/_ImportLayout.cshtml";
+    var cols = Form.GetExcelCol();
+    var datas = Model.FieldCols;
+}
+
+<style type="text/css">
+    #tab th {
+      text-align:right;
+      width:140px;
+    }
+</style>
+
+<div class="default-form" style="width:870px">
+    @using (Html.BeginForm("Import", "Member", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <table style="margin:10px;">
+            <tr>
+                <th>导入文件：</th>
+                <td><input type="text" class="easyui-filebox" name="file1" data-options="buttonText:'选择文件',prompt:'请选择Excel文件...',required:true,missingMessage:'请选择导入文件'" style="width:300px;" /></td>
+            </tr>
+        </table>
+        
+        <div style="margin-bottom:10px; line-height:20px;">
+            <p>说明：</p>
+            <p>1、经营类别、支付方式填写内容必须是新增商户下经营类别、支付方式的内容，多个请"|"隔开，如果没有，请联系相关人员添加。</p>
+            <p>2、所在区域格式如：福建省-厦门市-湖里区。</p>
+            <p>3、现有门店数量、每门店收银电脑台数、每门店人均数、近2年计划扩张门店数量填写的内容必须是新增商户下对应下拉框内容，如果没有，请联系相关人员添加。</p>
+        </div>
+        
+        <fieldset style="margin:0px;margin-bottom:5px;">
+            <legend>导入基本配置</legend>
+            <table style="margin:10px 5px 0px 10px;width:100%" id="tab">
+                <tr>
+                    <th>@Html.Hidden("FieldName", "AssignerUID") 业务员：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo',width:65,editable:false,value:'" + datas.GetValue("AssignerUID") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Title") 客户简称：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,validType:'requiredForCombo',editable:false,value:'" + datas.GetValue("Title") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "FullTitle") 客户全称：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,validType:'requiredForCombo',editable:false,value:'" + datas.GetValue("FullTitle") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "BusinessModeId") 客户类型：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,validType:'requiredForCombo',editable:false,value:'" + datas.GetValue("BusinessModeId") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Source") 客户来源：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,validType:'requiredForCombo',editable:false,value:'" + datas.GetValue("Source") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "TrackStautsId") 更进状态：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,validType:'requiredForCombo',editable:false,value:'" + datas.GetValue("TrackStautsId") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "LinkMan") 联系人：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,validType:'requiredForCombo',editable:false,value:'" + datas.GetValue("LinkMan") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "MobilePhone") 电话/手机：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("MobilePhone") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "BusinessScopeId") 经营类别：</th>
+                    <td>
+                        @Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("BusinessScopeId") + "'" })
+                    </td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "Pay") 支付方式：</th>
+                    <td>
+                        @Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("Pay") + "'" })
+                    </td>
+                    <th>@Html.Hidden("FieldName", "Area") 所在区域：</th>
+                    <td>
+                        @Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,validType:'requiredForCombo',editable:false,value:'" + datas.GetValue("Area") + "'" })
+                    </td>
+                    <th>@Html.Hidden("FieldName", "Address") 街道地址：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("Address") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "ExistsystemName") 现有系统名称/品牌：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("ExistsystemName") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "ExistDeviceName") 现有设备名称/品牌：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("ExistDeviceName") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "ExistStoreNum") 现有门店数量：</th>
+                    <td>
+                        @Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("ExistStoreNum") + "'" })
+                    </td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "EachStorePosNum") 每门店收银电脑台数：</th>
+                    <td>
+                        @Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("EachStorePosNum") + "'" })
+                    </td>
+                    <th>@Html.Hidden("FieldName", "EachStorePersonNum") 每门店人均数：</th>
+                    <td>
+                        @Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("EachStorePersonNum") + "'" })
+                    </td>
+                    <th>@Html.Hidden("FieldName", "PlanExpandStoreNum") 近2年计划扩张门店数量：</th>
+                    <td>
+                        @Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("PlanExpandStoreNum") + "'" })
+                    </td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "Rival") 竞争对手：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("Rival") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Marketing") 竞争对手营销模式：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("Marketing") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Memo") 备注说明：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "width:65,editable:false,value:'" + datas.GetValue("Memo") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>起始行：</th>
+                    <td>@Html.TextBoxFor(o => o.MinRow, new { @class = "easyui-numberbox", style = "width:85px" })</td>
+                    <th>终止行：</th>
+                    <td>@Html.TextBoxFor(o => o.MaxRow, new { @class = "easyui-numberbox", style = "width:85px" })</td>
+                    <th></th>
+                    <td></td>
+                </tr>
+            </table>
+        </fieldset>
+    }
+</div>

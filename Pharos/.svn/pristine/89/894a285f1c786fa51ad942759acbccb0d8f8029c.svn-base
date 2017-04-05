@@ -1,0 +1,42 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using System.Web.Http.Filters;
+using Pharos.Utility.Helpers;
+namespace Pharos.OMS.Retailing
+{
+    public class ResponseFilterAttribute : ActionFilterAttribute
+    {
+        public override void OnActionExecuted(HttpActionExecutedContext actionExecutedContext)
+        {
+            if (actionExecutedContext.Response == null) return;
+            var content = actionExecutedContext.Response.Content;
+            var x = content == null ? null : content.ReadAsAsync<object>().Result;
+            var result = new ApiRetrunResult<object>()
+            {
+                Code = "200",
+                Result = x
+            };
+            var code = (System.Net.HttpStatusCode)Enum.Parse(typeof(System.Net.HttpStatusCode), result.Code, true);
+            var response = actionExecutedContext.Request.CreateResponse<ApiRetrunResult<object>>(code, result, "application/json");
+            response.Headers.Add("Access-Control-Allow-Origin", "*");
+            actionExecutedContext.Response = response;
+        }
+        public override void OnActionExecuting(System.Web.Http.Controllers.HttpActionContext actionContext)
+        {
+            base.OnActionExecuting(actionContext);
+        }
+    }
+    public class ApiRetrunResult<T>
+        where T : class
+    {
+        public string Code { get; set; }
+
+        public string Message { get; set; }
+        public object ErrorInfo { get; set; }
+        public T Result { get; set; }
+    }
+}

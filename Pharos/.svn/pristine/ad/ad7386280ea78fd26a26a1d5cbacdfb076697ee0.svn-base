@@ -1,0 +1,34 @@
+﻿using Pharos.Infrastructure.Data.Redis;
+using Pharos.Logic.MemberDomain.QuanChengTaoProviders.Extensions;
+using System.Collections.Generic;
+using Newtonsoft.Json;
+using Pharos.ObjectModels.Events;
+
+namespace Pharos.Logic.MemberDomain.QuanChengTaoProviders
+{
+    public class QuanChengTaoIntegralRuleContext
+    {
+        public static IDictionary<int, string> GetRuleProvidersIdAndTitle()
+        {
+            return EnumExtensions.GetIntegralProviderTypeTitleAndValue();
+        }
+        public static IDictionary<int, string> GetMeteringModesTitleAndValue(int integralProviderType)
+        {
+            return EnumExtensions.GetMeteringModeDescriptionAttributeTitleAndValue((IntegralProviderType)integralProviderType);
+        }
+        public void RegisterChannel()
+        {
+            RedisManager.Subscribe("OrderCompleted", (channel, msg) =>
+            {
+                var orderCompleteEvent = JsonConvert.DeserializeObject<OrderCompletedEvent>(msg);
+                var ruleProviders = new QuanChengTaoIntegralRuleFactory(orderCompleteEvent.CompanyId).CreateRuleProviders(new DefaultIntegralRuleProviderLoader());
+                var flower = new QuanChengTaoIntegralRuleFlowProvider(orderCompleteEvent.CompanyId);
+                foreach (var ruleProvider in ruleProviders)
+                {
+                    flower.DoFlow(orderCompleteEvent, ruleProvider);
+                }
+            });
+        }
+
+    }
+}

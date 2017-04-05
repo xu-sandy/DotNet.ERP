@@ -1,0 +1,308 @@
+﻿using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using Pharos.ObjectModels.DTOs;
+namespace Pharos.Logic.BLL
+{
+    public class ProductCategoryService : BaseService<ProductCategory>
+    {
+        public static List<ProductCategory> GetParentTypes(bool isAll = false)
+        {
+            if (isAll)
+            {
+                var all = FindList(o => o.CategoryPSN == 0 && o.CompanyId == CommonService.CompanyId);
+                all.ForEach(a => { if (a.State == 0) a.Title = "*" + a.Title; });
+                return all.OrderByDescending(a => a.State).ThenBy(o => o.OrderNum).ToList();
+            }
+            var list = ProductCategoryService.FindList(o => o.CategoryPSN == 0 && o.State == 1 && o.CompanyId == CommonService.CompanyId).OrderBy(o => o.OrderNum).ToList();
+            return list;
+        }
+        public static List<ProductCategory> FindPageList(NameValueCollection nvl, out int recordCount, bool showAll = true)
+        {
+            var query = CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            //var qy = from x in query
+            //            join y in query.DefaultIfEmpty() on x.CategoryPSN equals y.CategorySN
+            //            where x.State==1
+            //            select new { 
+            //                x.Id,
+            //                x.CategorySN,
+            //                x.CategoryPSN,
+            //                x.Grade,
+            //                x.OrderNum,
+            //                x.State,
+            //                CategoryPSNTitle = y.Title
+            //            };
+            //var qy = from x in query
+            //         from y in query
+            //         where x.CategoryPSN == y.CategorySN && x.State == 1
+            //         select new
+            //         {
+            //             x.Id,
+            //             x.CategorySN,
+            //             x.CategoryPSN,
+            //             x.Grade,
+            //             x.OrderNum,
+            //             x.State,
+            //             CategoryPSNTitle = y.Title
+            //         };
+            //var qy = from x in query
+            //         join y in query on x.CategoryPSN equals y.CategorySN into temp    //left join
+            //         from z in temp.DefaultIfEmpty()
+            //         select new
+            //         {
+            //             x.Id,
+            //             x.CategorySN,
+            //             x.CategoryPSN,
+            //             x.Grade,
+            //             x.Title,
+            //             x.OrderNum,
+            //             StateTitle = x.State==0?"禁用":"可用",
+            //             CategoryPSNTitle = z.Title
+            //         };
+            var qd = BaseService<ProductRecord>.CurrentRepository.QueryEntity;
+            var qys = from x in query
+                      let z = from y in qd.DefaultIfEmpty()
+                              where x.CategorySN == y.CategorySN
+                              select y
+                      select new
+                      {
+                          x.Id,
+                          x.Title,
+                          x.CategoryPSN,
+                          x.CategorySN,
+                          x.State,
+                          x.OrderNum,
+                          x.CategoryCode,
+                          x.Grade,
+                          count = z.Count()
+                      };
+
+            var parentType = nvl["parentType"];
+            var state = nvl["state"];
+            var searchText = nvl["searchText"];
+            if (!state.IsNullOrEmpty())
+            {
+                var st = short.Parse(state);
+                qys = qys.Where(o => o.State == st);
+            }
+            var alls = qys.OrderBy(o => o.OrderNum).AsEnumerable().Select(x => new ProductCategory()
+            {
+                Id = x.Id,
+                Title = x.Title,
+                CategoryPSN = x.CategoryPSN,
+                CategorySN = x.CategorySN,
+                State = x.State,
+                OrderNum = x.OrderNum,
+                CategoryCode = x.CategoryCode,
+                Grade=x.Grade,
+                Count = x.count
+            }).ToList();
+            var rs = new List<ProductCategory>();
+            foreach (var item in alls.Where(o => o.CategoryPSN == 0))
+            {
+                if (!parentType.IsNullOrEmpty() && item.CategorySN != int.Parse(parentType))
+                    continue;
+                if (!showAll && item.State == 0)
+                    continue;
+                SetChild(alls, item, showAll);
+                rs.Add(item);
+            }
+            recordCount = rs.Count();
+            return rs.AsQueryable().ToPageList();
+        }
+        static void SetChild(List<ProductCategory> alls, ProductCategory category, bool showAll)
+        {
+            var childs = alls.Where(o => o.CategoryPSN == category.CategorySN);
+            if (!showAll) childs = childs.Where(o => o.State == 1);
+            if (childs.Any())
+            {
+                if (category.Childrens == null) category.Childrens = new List<ProductCategory>();
+                category.Childrens.AddRange(childs);
+            }
+            category.CategoryPSNTitle = category.Title;
+            foreach (var item in childs)
+                SetChild(alls, item, showAll);
+        }
+        private static string GetStateTitle(int state)
+        {
+            var name = Enum.GetName(typeof(EnableState), state);
+            return name;
+        }
+        public static int MaxSn
+        {
+            get
+            {
+                int sn = 0;
+                try
+                {
+                    sn = CurrentRepository.QueryEntity.Where(o=>o.CompanyId==CommonService.CompanyId).Max(o => o.CategorySN);
+                }
+                catch { sn = 0; }
+                return sn + 1;
+            }
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="grade">父类</param>
+        /// <returns></returns>
+        public static short MaxCode(int psn)
+        {
+            int max = 0;
+            try
+            {
+                max = CurrentRepository.QueryEntity.Where(o => o.CategoryPSN == psn && o.CompanyId == CommonService.CompanyId).Max(o => o.CategoryCode);
+            }
+            catch { max = 0; }
+            if (max >= 99) throw new Exception("类别号超过99");
+            return Convert.ToInt16(max + 1);
+        }
+        public static List<ProductCategory> GetParentCategorys(bool showAll)
+        {
+            var query = CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            if (!showAll) query = query.Where(o => o.State == 1);
+            return query.Where(o => o.CategoryPSN == 0).OrderBy(o => o.OrderNum).ToList();
+        }
+        public static List<ProductCategory> GetChildCategorys(int psn)
+        {
+            var query = CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            return query.Where(o => o.CategoryPSN == psn && o.State == 1).OrderBy(o => o.OrderNum).ToList();
+        }
+
+        public static ProductCategory GetObj(int id)
+        {
+            var obj = CurrentRepository.FindById(id);
+            if (obj.CategoryPSN > 0)
+            {
+                obj.CategoryPSNTitle = LoopCategory(obj.CategoryPSN).TrimStart('/');
+            }
+            return obj;
+        }
+
+        public static IEnumerable<ProductCategory> GetAllProductCategory(short? state = 1)
+        {
+            var list = Pharos.Utility.DataCache.Get<List<ProductCategory>>("allcategorys" + CommonService.CompanyId);
+            if (list == null)
+            {
+                if (state.HasValue)
+                    list = CurrentRepository.FindList(o => o.State == state && o.CompanyId == CommonService.CompanyId).OrderBy(o => o.OrderNum).ToList();
+                else
+                    list = CurrentRepository.FindList(o => o.CompanyId == CommonService.CompanyId).ToList();
+                Pharos.Utility.DataCache.Set("allcategorys" + CommonService.CompanyId, list, 3);
+            }
+            return list;
+        }
+        /// <summary>
+        /// 获取所有子节点
+        /// </summary>
+        /// <param name="bigSNs">父节点</param>
+        /// <param name="containSelf">包含自身</param>
+        /// <returns></returns>
+        public static List<int> GetChildSNs(List<int> bigSNs, bool containSelf = false)
+        {
+            var childs = new List<ProductCategory>();
+            var list = GetAllProductCategory().Where(o => bigSNs.Contains(o.CategoryPSN) && o.State == 1);
+            var mids = list.Select(o => o.CategorySN).ToList();
+            childs.AddRange(list);
+            list = GetAllProductCategory().Where(o => mids.Contains(o.CategoryPSN) && o.State == 1);
+            if (list.Any()) childs.AddRange(list);
+            var chs = childs.Select(o => o.CategorySN).ToList();
+            if (containSelf) chs.AddRange(bigSNs);
+            return chs;
+        }
+        /// <summary>
+        /// 获取当前父类别列表
+        /// </summary>
+        /// <param name="categorySNs"></param>
+        /// <param name="containSelf"></param>
+        /// <returns></returns>
+        public static List<int> GetParentSNs(List<int> categorySNs, bool containSelf = true)
+        {
+            var list = GetAllProductCategory().Where(o => categorySNs.Contains(o.CategorySN) && o.State == 1);
+            var mids = list.Select(o => o.CategoryPSN).ToList();
+            list = GetAllProductCategory().Where(o => mids.Contains(o.CategorySN) && o.State == 1);
+            if (containSelf) categorySNs.AddRange(list.Select(o => o.CategorySN));
+            else categorySNs = list.Select(o => o.CategorySN).ToList();
+            return categorySNs;
+        }
+        /// <summary>
+        /// 获取根类别列表
+        /// </summary>
+        /// <param name="categorySNs">当前节点</param>
+        /// <returns></returns>
+        public static List<ProductCategory> GetRootSNs(List<int> categorySNs)
+        {
+            var roots = new List<ProductCategory>();
+            if (categorySNs.Any())
+            {
+                var all = GetAllProductCategory();
+                categorySNs.Each(o =>
+                {
+                    LoopCategory(o, all, ref roots);
+                });
+            }
+            return roots;
+        }
+        static void LoopCategory(int sn, IEnumerable<ProductCategory> all, ref List<ProductCategory> roots)
+        {
+            var obj = all.FirstOrDefault(o => sn == o.CategorySN && o.State == 1);
+            if (obj == null || obj.CategoryPSN == 0)
+            {
+                if (obj != null && !roots.Any(o => o.CategorySN == obj.CategorySN))
+                    roots.Add(obj);
+            }
+            else
+                LoopCategory(obj.CategoryPSN, all, ref roots);
+        }
+        /// <summary>
+        /// 获取显示的描述
+        /// </summary>
+        /// <param name="sn"></param>
+        /// <returns></returns>
+        public static System.Web.Mvc.SelectListItem GetTitleDesc(int sn)
+        {
+            var item = new System.Web.Mvc.SelectListItem();
+            item.Text = LoopCategory(sn).TrimStart('/');
+            item.Value = sn.ToString();
+            return item;
+        }
+        static string LoopCategory(int sn)
+        {
+            var obj = Find(o => o.CategorySN == sn);
+            if (obj != null)
+                return LoopCategory(obj.CategoryPSN) + "/" + obj.Title;
+            return "";
+        }
+
+        public static IEnumerable<CategoryDAO> GetLastDepthStoreCategories(string storeId, int category, int depth, int token)
+        {
+            var result = CurrentRepository._context.Database.SqlQuery<CategoryDAO>(@"with cte as
+            (
+                select l.CategoryPSN,l.CategorySN,l.Title,r.StoreId,l.OrderNum,l.Grade,0 as lvl from ProductCategory l
+                right join Warehouse r on  ','+r.CategorySN+',' like '%,'+ convert(varchar(200),l.CategorySN) +',%' 
+	            where   r.StoreId=@p0 and (@p2 != l.Grade or (@p2 = l.Grade and l.CategorySN = @p1)) and l.CompanyId =@p3 and r.CompanyId =@p3
+                union all
+                select d.CategoryPSN,d.CategorySN,d.Title,c.StoreId,d.OrderNum,d.Grade,lvl+1 from cte c 
+	            inner join ProductCategory d on c.CategorySN = d.CategoryPSN and d.companyId = @p3
+                where  (@p2 != d.Grade or (@p2 = d.Grade and d.CategorySN = @p1))
+            )
+            select CategoryPSN,CategorySN,Title,OrderNum,Grade  from cte WHERE Grade=@p2", storeId, category, depth, token).ToList();
+            return result;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="categorySN"></param>
+        /// <returns></returns>
+        public ProductCategory GetProductCategoryByCategorySN(int categorySN)
+        {
+            return CurrentRepository.Entities.Where(o => o.CategorySN == categorySN && o.CompanyId == CommonService.CompanyId && o.State == 1).FirstOrDefault();
+
+        }
+    }
+
+}

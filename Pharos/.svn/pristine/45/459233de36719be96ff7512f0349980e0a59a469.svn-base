@@ -1,0 +1,40 @@
+﻿using Pharos.Logic.BLL.DataSynchronism;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Models.DataSync
+{
+    public class DataSyncItem : BaseObservable
+    {
+        public DataSyncItem()
+        {
+            IsEnabled = true;
+            IsUpload = false;
+        }
+        public DataSyncItem(params Type[] entityTypes)
+            : this()
+        {
+            Keys = entityTypes.Select(o => o.ToString());
+
+        }
+        public bool IsChecked { get; set; }
+        public string Title { get; set; }
+
+        public bool IsEnabled { get; set; }
+
+        public bool IsUpload { get; set; }
+
+        public Func<UpdateFormData> Datas { get; set; }
+
+        public Action<UpdateFormData> UpdateAction { get; set; }
+
+        public IEnumerable<string> Keys { get; private set; }
+
+        public void SetPropertyChanged(string fieldName)
+        {
+            OnPropertyChanged(fieldName);
+        }
+    }
+
+}

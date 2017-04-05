@@ -1,0 +1,58 @@
+﻿using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Linq;
+using System.Windows.Controls;
+
+namespace Pharos.POS.Retailing.Models.DataRules
+{
+    public class DoubleRules : ValidationRule
+    {
+        public decimal? MinValue { get; set; }
+        public string MinErrorInfo { get; set; }
+        public string MaxErrorInfo { get; set; }
+        public decimal? MaxValue { get; set; }
+        public string NaNErrorInfo { get; set; }
+        public override ValidationResult Validate(object value, System.Globalization.CultureInfo cultureInfo)
+        {
+
+            string str = value.ToString();
+            ValidationResult result = new ValidationResult(false, NaNErrorInfo);
+            if (str == "-" || (str.LastIndexOf(".") == str.Length - 1 && str.Where(o => o == '.').Count() == 1) || string.IsNullOrEmpty(str))
+            {
+                return new ValidationResult(true, null);
+            }
+            try
+            {
+                var _Value = Convert.ToDecimal(value);
+                string errorInfo = string.Empty;
+                if (MinValue.HasValue && _Value < MinValue)
+                {
+                    errorInfo = MinErrorInfo;
+                }
+                if (MaxValue.HasValue && _Value > MaxValue)
+                {
+                    errorInfo += MaxErrorInfo;
+                }
+                if (string.IsNullOrEmpty(errorInfo))
+                {
+                    result = new ValidationResult(true, null);
+                }
+                else
+                {
+                    result = new ValidationResult(false, errorInfo);
+                }
+
+            }
+            catch
+            {
+
+            }
+            if (!result.IsValid)
+            {
+                Toast.DoShow(result.ErrorContent.ToString());
+            }
+
+            return result;
+        }
+    }
+}

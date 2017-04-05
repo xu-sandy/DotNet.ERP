@@ -1,0 +1,69 @@
+﻿using Pharos.Logic.ApiData.Pos.Sale;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class ProductRecordService : BaseGeneralService<VwProduct, EFDbContext>
+    {
+        public static ProductInfo GetProductRecod(string barcode, int token)
+        {
+            var query = (from a in CurrentRepository.Entities
+                         where a.Barcode == barcode && a.CompanyId == token
+                         select a).FirstOrDefault();
+            ProductInfo result = null;
+            if (query != null)
+            {
+                result = new ProductInfo()
+                {
+                    MainBarcode = query.Barcode,
+                    Brand = query.BrandTitle,
+                    Category = query.CategoryTitle,
+                    EnableEditNum = true,
+                    EnableEditPrice = ((query.Favorable ?? 1) == 1 ? true : false),
+                    ProductCode = query.ProductCode,
+                    Size = query.Size,
+                    SystemPrice = query.SysPrice,
+                    Title = query.Title,
+                    Unit = query.SubUnit,
+                    BuyPrice = query.BuyPrice,
+                    ProductType = (query.Nature == 0 ? ProductType.Normal : query.Nature == 1 ? ProductType.Combination : ProductType.Split)
+                };
+            }
+            return result;
+        }
+
+        internal static ProductInfo GetProductRecodByProductCode(string productCode, int token)
+        {
+            var query = (from a in CurrentRepository.Entities
+                         where a.ProductCode == productCode && a.CompanyId == token
+                         select a).FirstOrDefault();
+            ProductInfo result = null;
+            if (query != null)
+            {
+                result = new ProductInfo()
+                {
+                    MainBarcode = query.Barcode,
+                    Brand = query.BrandTitle,
+                    Category = query.CategoryTitle,
+                    EnableEditNum = true,
+                    EnableEditPrice = ((query.Favorable ?? 1) == 1 ? true : false),
+                    ProductCode = query.ProductCode,
+                    Size = query.Size,
+                    SystemPrice = query.SysPrice,
+                    Title = query.Title,
+                    Unit = query.SubUnit,
+                    BuyPrice = query.BuyPrice,
+                    ProductType = (query.Nature == 0 ? ProductType.Normal : query.Nature == 1 ? ProductType.Combination : ProductType.Split)
+                };
+            }
+            return result;
+        }
+    }
+}

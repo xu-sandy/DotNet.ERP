@@ -1,0 +1,83 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class CompAuthorService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<CompanyAuthorize> CompanyAuthorRepository { get; set; }
+        public OpResult SaveOrUpdate(CompanyAuthorize obj)
+        {
+            var op = new OpResult();
+            try
+            {
+                obj.AppProper = obj.AppProper ?? "N";
+                obj.StoreProper = obj.StoreProper ?? "N";
+                obj.PosMinorDisp = obj.PosMinorDisp ?? "N";
+                obj.MemberShared = obj.MemberShared ?? "Y";
+                if (obj.Id == 0)
+                {
+                    obj.CreateDT = DateTime.Now;
+                    obj.CID= CompanyAuthorRepository.GetQuery(null).Max(o => (int?)o.CID).GetValueOrDefault()+1;
+                    CompanyAuthorRepository.Add(obj);
+                }
+                else
+                {
+                    var res = CompanyAuthorRepository.Get(obj.Id);
+                    if (res != null)
+                    {
+                        res.Title = obj.Title;
+                        res.UserNum = obj.UserNum;
+                        res.StoreNum = obj.StoreNum;
+                        res.SerialNo = obj.SerialNo;
+                    }
+                }
+                op.Successed= CompanyAuthorRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                new LogEngine().WriteError("授权保存失败!", ex);
+            }
+            return op;
+        }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = CompanyAuthorRepository.GetQuery(null);
+            recordCount = query.Count();
+            return query.ToList();
+        }
+
+        public Pharos.Utility.OpResult Deletes(object[] ids)
+        {
+            var list= CompanyAuthorRepository.GetQuery(o=>ids.Contains(o.Id)).ToList();
+            return OpResult.Result(CompanyAuthorRepository.RemoveRange(list));
+        }
+
+        public CompanyAuthorize GetOne(object id)
+        {
+            return CompanyAuthorRepository.Get(id);
+        }
+        public CompanyAuthorize GetOneByCID(int cid)
+        {
+            return CompanyAuthorRepository.Find(o=>o.CID==cid);
+        }
+
+
+        public OpResult SetState(string ids, short state)
+        {
+            throw new NotImplementedException();
+        }
+
+
+        public List<CompanyAuthorize> GetList()
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

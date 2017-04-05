@@ -1,0 +1,88 @@
+﻿using Pharos.POS.Retailing.ObjectModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    public class TakeOutOrDepositMoney : BaseViewModel
+    {
+        public TakeOutOrDepositMoney() 
+        {
+            Task.Factory.StartNew(() =>
+            {
+                Time = DateTime.Now;
+                Thread.Sleep(1000);
+            });
+        }
+        public string MachineSN
+        {
+            get
+            {
+                return Global.MachineSettings.MachineInformations.MachineSn;
+            }
+        }
+
+        public string UserName
+        {
+            get
+            {
+                return Global.CurrentSaleMen.FullName;
+            }
+        }
+        DateTime time;
+        public DateTime Time
+        {
+            get
+            {
+                return time;
+            }
+            set 
+            {
+                time = value;
+                this.OnPropertyChanged(o => o.Time);
+            }
+        }
+
+        decimal amount;
+        public decimal Amount 
+        {
+            get
+            {
+                return amount;
+            }
+            set
+            {
+                amount = value;
+                this.OnPropertyChanged(o => o.Amount);
+            }
+        }
+        string password;
+        public string Password 
+        {
+            get
+            {
+                return password;
+            }
+            set
+            {
+                password = value;
+                this.OnPropertyChanged(o => o.Password);
+            }
+        }
+
+        public GeneralCommand<int> OparetCommand 
+        {
+            get 
+            {
+                return new GeneralCommand<int>((type, handler) =>
+                {
+                });
+            }
+        }
+    }
+}

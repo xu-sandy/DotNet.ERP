@@ -1,0 +1,160 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增产品", delText: "版本删除", editText: "修改产品"));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>产品：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("code", ViewBag.products as List<SelectListItem>, new { @class = "easyui-combobox", style = "width:120px;" })
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "未发布", Value = "0", Selected = true }, new SelectListItem() { Text = "已发布", Value = "1", Selected = true }, new SelectListItem() { Text = "已失效", Value = "2" } }, "state")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="copyVer()" id="copy">版本复制</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setPublish(1)">将所选版本设为已发布，用户须强制升级</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setPublish(0)">将所选版本设为已发布，用户须不强制升级</a>
+}
+<script type="text/javascript">
+    $(function () {
+        $("#copy").insertBefore($("#copy").prev());
+    });
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+    pharos.manager.singleSelect = true;
+    pharos.manager.pagination = false;
+    pharos.manager.columns = [[
+        { field: 'SysName', title: '系统名称', width: 130 },
+        { field: 'ForceTitle', title: '强制升级', width: 70 },
+        { field: 'MenusetTitle', title: '菜单设定', width: 70 },
+        { field: 'LimitsetTitle', title: '功能设定', width: 70 },
+        { field: 'Memo', title: '描述', width: 150 },
+        { field: 'UpdateDT', title: '编辑时间', width: 130 },
+        { field: 'Updater', title: '编辑人', width: 100 },
+        { field: 'PublishDT', title: '发布时间', width: 130 },
+        { field: 'Publisher', title: '发布人', width: 100 },
+        {
+            field: 'Editor', title: '操 作', width: 130,align:'center', formatter: function (value, row,index) {
+                return row.Status > 0 ? '<a href="javascript:" onclick="openMenu(\'' + row.ProductId + '\',1)">菜单查看</a>&nbsp;&nbsp;<a href="javascript:" onclick="openLimit(\'' + row.ProductId + '\',1)">权限查看</a>':
+                   '<a href="javascript:" onclick="openMenu(\'' + row.ProductId + '\')">菜单配置</a>&nbsp;&nbsp;<a href="javascript:" onclick="openLimit(\'' + row.ProductId + '\')">权限配置</a>';
+            }
+        },
+    ]];
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StateTitle', title: '状态', width: 70 },
+        { field: 'ProductCode', title: '产品号', width: 80 },
+        { field: 'Name', title: '产品全称', width: 150 },
+        { field: 'Alias', title: '产品别名', width: 100 },
+        { field: 'VerCode', title: '版本', width: 60, formatter: function (value, row, index) { return "v" + value.toFixed(1); } }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog600(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (id) {
+        this.Id = id;
+        openDialog600(this.editText, this.editurlNocache());
+    }
+    function setPublish(state) {
+        isCopy = false;
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.messager.confirm("提示", "是否确定发布该产品?", function (r) {
+            if (!r) return;
+            var ids = $.map(rows, function (item) {
+                return item.Id;
+            }).join();
+            $.post("@Url.Action("Publish")", { id: ids, t: Math.random(), state: state }, function (d) {
+                if (d.successed) {
+                    $.messager.alert("提示", "发布成功！", "info");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "发布失败！" + d.message, "error");
+                }
+            }, "json");
+        })
+    }
+    function selectBefore(rows) {
+        var result = true;
+        $.each(rows, function (i, r) {
+            if (isCopy) {
+                if (r.Status == 0) {
+                    $.messager.alert("提示", "未发布不能进行复制！", "error");
+                    result = false;
+                    return false;
+                }
+            } else {
+                if (r.MenusetTitle == "未配置") {
+                    $.messager.alert("提示", "请先配置菜单", "error");
+                    result = false;
+                    return false;
+                }
+                else if (r.LimitsetTitle == "未配置") {
+                    $.messager.alert("提示", "请先配置权限", "error");
+                    result = false;
+                    return false;
+                }
+                else if (r.Status > 0) {
+                    $.messager.alert("提示", "请选择未发布！", "error");
+                    result = false;
+                    return false;
+                }
+            }
+        })
+        return result;
+    }
+    function removeBefore(row) {
+        if (row.Status > 0) {
+            $.messager.alert("提示", "未发布才能删除！", "error");
+            return false;
+        }
+        return true;
+    }
+    function openMenu(id,detail) {
+        openDialog1000("菜单配置", "@Url.Action("Menus")?productid=" + id + "&detail=" + detail);
+        top.$("#lbsave").hide();
+    }
+    function openLimit(id, detail) {
+        openDialog1000("权限配置", "@Url.Action("Limits")?productid=" + id + "&detail=" + detail);
+        top.$("#lbsave").hide();
+    }
+    function editBefore(row, field) {
+        if (field == "Editor" || row.Status == 2) return false;
+        return true;
+    }
+    var isCopy = false;
+    function copyVer() {
+        isCopy = true;
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.messager.confirm("提示", "是否确定复制该版本?", function (r) {
+            if (!r) return;
+            var ids = $.map(rows, function (item) {
+                return item.Id;
+            }).join();
+            $.post("@Url.Action("Copy")", { id: ids, t: Math.random() }, function (d) {
+                if (d.successed) {
+                    $.messager.alert("提示", "复制成功！", "info");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "复制失败！" + d.message, "error");
+                }
+            }, "json");
+        })
+    }
+</script>

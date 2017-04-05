@@ -1,0 +1,62 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.BLL;
+using Pharos.Logic.Entity;
+using Pharos.Logic.Entity.Views;
+using Pharos.Utility.Helpers;
+
+
+namespace Pharos.Logic.DAL
+{
+    /// <summary>
+    /// 会员卡消费明细CRM-DAL
+    /// </summary>
+    public class MemberCardPayDetailsService : BaseService<Vw_MembershipCardPayDetails>
+    {
+        //支付信息   订单  卡类型 
+        public List<MemberCardPayDetailsViewModel> GetMemberCardPayDetailsByPageList(string cardType, DateTime? beginDate, DateTime? endDate, int? storeIds, out int count)
+        {
+            //var result = (from payment in CurrentRepository.Entities
+            //              join order in BaseService<SaleOrders>.CurrentRepository.Entities
+            //              on payment.PaySN equals order.PaySN
+            //              join membercard in BaseService<MembershipCard>.CurrentRepository.Entities
+            //              on payment.CardNo equals membercard.CardSN
+            //              join cardtype in BaseService<CardInfo>.CurrentRepository.Entities
+            //              on membercard.CardTypeId equals cardtype.CardTypeId
+            //              where (beginDate == null ? order.Id > 0 : beginDate < order.CreateDT) && (endDate == null ? order.Id > 0 : endDate > order.CreateDT)
+            //               && (string.IsNullOrEmpty(cardType) ? cardtype.Id > 0 : cardType == cardtype.CardTypeId)
+            //               && (payment.ApiCode == 16 && payment.CompanyId == CommonService.CompanyId)
+            //               && (order.CompanyId == CommonService.CompanyId)
+            //               && (membercard.CompanyId == CommonService.CompanyId)
+            //               && (cardtype.CompanyId == CommonService.CompanyId)
+            //              select new MemberCardPayDetailsViewModel()
+            //              {
+            //                  Id = payment.Id,
+            //                  OrderSN = order.CustomOrderSn,
+            //                  CardSN = payment.CardNo,
+            //                  CardType = cardtype.CardName,
+            //                  CreateDT = order.CreateDT,
+            //                  Price = order.Receive
+            //              });
+            var result = (from details in CurrentRepository.Entities
+                          where (beginDate == null ? details.Id > 0 : beginDate < details.CreateDT) && (endDate == null ? details.Id > 0 : endDate > details.CreateDT)
+                          && (string.IsNullOrEmpty(cardType) ? details.Id > 0 : cardType == details.CardType)
+                          && (storeIds.HasValue == true ? details.StoreId == storeIds : details.Id > 0) 
+                          && details.CompanyId == CommonService.CompanyId
+                          select new MemberCardPayDetailsViewModel()
+                             {
+                                 Id = details.Id,
+                                 OrderSN = details.OrderSN,
+                                 CardSN = details.CardSN,
+                                 CardType = details.CardType,
+                                 CreateDT = details.CreateDT,
+                                 Price = details.Price,
+                                 StoreTitle = details.StoreTitle
+                             });
+            count = result.Count();
+            return result.ToPageList();
+        }
+    }
+}

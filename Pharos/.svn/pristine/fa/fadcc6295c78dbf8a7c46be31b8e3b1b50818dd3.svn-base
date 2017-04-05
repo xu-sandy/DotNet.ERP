@@ -1,0 +1,365 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class DevicesService : BaseService
+    { 
+        [Ninject.Inject]
+        // 设备档案信息
+        public IBaseRepository<Devices> DevicesRepository { get; set; }
+
+        [Ninject.Inject]
+        //数据字典信息
+        public IBaseRepository<SysDataDictionary> SysDataDictionaryRepository { get; set; }
+
+        [Ninject.Inject]
+        //帐户管理
+        public IBaseRepository<SysUserInfo> SysUserInfoRepository { get; set; }
+
+        [Ninject.Inject]
+        //设备授权信息
+        public IBaseRepository<DeviceAuthorize> DeviceAuthorizeRepository { get; set; }
+
+        [Ninject.Inject]
+        ImportSetService ImportSetService { get; set; }
+
+        [Ninject.Inject]
+        DictionaryService DictionaryService { get; set; }
+
+        public Utility.OpResult SaveOrUpdate(Devices model)
+        {
+            var isExist = DevicesRepository.GetQuery(o=>o.CategoryId==model.CategoryId&&o.Title==model.Title&&o.Brand==model.Brand&&o.Spec==model.Spec);
+            if (isExist.Any())
+            {
+                return OpResult.Fail("该条设备记录已经存在");
+            }
+            if (model.Id == 0)
+            {
+                DevicesRepository.Add(model);
+            }
+            else
+            {
+                var source = DevicesRepository.Get(model.Id);
+                model.ToCopyProperty(source, new List<string>() { "DeviceId", "Status", "CreateUID"});
+            }
+
+            if (DevicesRepository.SaveChanges())
+            {
+                LogEngine.WriteUpdate(model.Id + "," + model.Title, LogModule.设备管理);
+            }
+            return OpResult.Success();
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+
+            //设备
+            var query = DevicesRepository.GetQuery();
+            //账户
+            var userInfo = SysUserInfoRepository.GetQuery();
+            //数据字典
+            var dataDictionary = SysDataDictionaryRepository.GetQuery();
+            //设备授权信息
+            var dAuthorize = DeviceAuthorizeRepository.GetQuery();
+
+
+
+            //分类
+            var CategoryId = (nvl["CategoryId"] ?? "").Trim();
+            //品牌
+            var Brand = (nvl["Brand"] ?? "").Trim();
+            //维护人
+            var FullName = (nvl["FullName"] ?? "").Trim();
+            //设备名称
+            var Title = (nvl["Title"] ?? "").Trim();
+
+            if (!CategoryId.IsNullOrEmpty())
+            {
+                var c = short.Parse(CategoryId);
+                query = query.Where(w=>w.CategoryId==c);
+            }
+            if (!Brand.IsNullOrEmpty())
+            {
+                query = query.Where(w => w.Brand.Contains(Brand));
+            }
+            if (!Title.IsNullOrEmpty())
+            {
+                query = query.Where(w => w.Title.Contains(Title));
+            }
+
+            var q = from quer in query
+                    let da=from  dAu in dAuthorize where dAu.DeviceId==quer.DeviceId select dAu
+                    join u in userInfo on quer.CreateUID equals u.UserId
+                    into v
+                    from w in v.DefaultIfEmpty()
+                    join d in dataDictionary on quer.CategoryId equals d.DicSN
+                    into x 
+                    from y in x.DefaultIfEmpty()
+                    select new
+                    {
+                        quer.Id,
+                        quer.DeviceId,
+                        quer.CategoryId,
+                        quer.Title,
+                        quer.Brand,
+                        quer.Spec,
+                        number=da.Count(),
+                        quer.Status,
+                        quer.CreateDT,
+                        quer.CreateUID,
+                        dTitle = y == null ? "" : y.Title,
+                        FullName = w == null ? "" : w.FullName
+                    };
+
+            if (!FullName.IsNullOrEmpty())
+            {
+                q = q.Where(w => w.FullName.Contains(FullName));
+            }
+
+            recordCount = q.Count();
+            return q.ToPageList();
+        }
+
+        public List<SysUserInfo> GetList()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Utility.OpResult Deletes(int[] ids)
+        {
+            var op = new OpResult();
+            try
+            {
+                var devices = DevicesRepository.GetQuery(o => ids.Contains(o.Id));
+                if (!devices.Any())
+                {
+                    op.Message = "查不到数据";
+                    return op;
+                }
+                var delDeviceId = devices.Select(o=>o.DeviceId);
+                var authorize = DeviceAuthorizeRepository.GetQuery(o => delDeviceId.Contains(o.DeviceId));
+                if (authorize.Any())
+                {
+                    op.Message = "无法删除，设备授权包含了要删除的设备";
+                    return op;
+                }
+
+                DevicesRepository.RemoveRange(devices.ToList());
+                op.Successed = true;
+                LogEngine.WriteDelete("移除设备", LogModule.设备管理);
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                LogEngine.WriteError(ex);
+            }
+            return op;
+        }
+
+       
+
+        public Devices GetOne(object id)
+        {
+            return DevicesRepository.Get(id);
+        }
+        /// <summary>
+        /// 获取设备分类
+        /// </summary>
+        /// <returns></returns>
+        public List<SysDataDictionary> getDataList()
+        {
+            return SysDataDictionaryRepository.GetQuery(w=>w.DicPSN==197).OrderBy(o=>o.DicSN).ToList();
+        }
+        /// <summary>
+        /// 设置可用，设置停用
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        public OpResult SetState(string ids, short state)
+        {
+            var sId = ids.Split(',').Select(o => int.Parse(o));
+            var olist = DevicesRepository.GetQuery(o => sId.Contains(o.Id)).ToList();
+            olist.Each(o => o.Status = state);
+            return OpResult.Result(DevicesRepository.SaveChanges());
+        }
+
+        /// <summary>
+        /// 导入
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <param name="httpFiles"></param>
+        /// <param name="fieldName"></param>
+        /// <param name="columnName"></param>
+        /// <returns></returns>
+
+        public OpResult Import(ImportSet obj, System.Web.HttpFileCollectionBase httpFiles, string fieldName, string columnName)
+        {
+            var op = new OpResult();
+            var errLs = new List<string>();
+            int count = 0;
+            try
+            {
+                Dictionary<string, char> fieldCols = null;
+                DataTable dt = null;
+                op = ImportSetService.ImportSet(obj, httpFiles, fieldName, columnName, ref fieldCols, ref dt);
+                if (!op.Successed) return op;
+
+                //数据字典
+                var dataDictionary = SysDataDictionaryRepository.GetQuery();
+
+                //设备分类名称
+                var CIdx = Convert.ToInt32(fieldCols["CategoryId"]) - 65;
+                //设备名称
+                var TitleIdx = Convert.ToInt32(fieldCols["Title"]) - 65;
+                //品牌
+                var BrandIdx = Convert.ToInt32(fieldCols["Brand"]) - 65;
+                //型号
+                var SpecIdx = Convert.ToInt32(fieldCols["Spec"]) - 65;
+                
+                count = dt.Rows.Count;
+                for (int i = dt.Rows.Count - 1; i >= 0; i--)
+                {
+                    try
+                    {
+                        var dr = dt.Rows[i];
+                        #region 验证
+                        //设备分类名称
+                        var text = dr[CIdx].ToString().Trim();
+                        if (text.IsNullOrEmpty())
+                        {
+                            errLs.Add("行号[" + (i + 1) + "]设备分类为空!");
+                            dt.Rows.RemoveAt(i);
+                            continue;
+                        }
+                        var dd = dataDictionary.Where(o=>o.DicPSN==197&&o.Title==text);
+                        if (!dd.Any())
+                        {
+                            errLs.Add("行号[" + (i+1) + "]设备分类在字典中不存在，请先添加!");
+                            dt.Rows.RemoveAt(i);
+                            continue;
+                        }
+                        else
+                        {
+                            dr[CIdx] = dd.Select(o=>o.DicSN).FirstOrDefault();
+                        }
+
+                        //设备名称
+                        var text2 = dr[TitleIdx].ToString().Trim();
+                        if (text2.IsNullOrEmpty())
+                        {
+                            errLs.Add("行号[" + (i + 1) + "]设备名称为空!");
+                            dt.Rows.RemoveAt(i);
+                            continue;
+                        }
+
+                        //品牌
+                        var text3 = dr[BrandIdx].ToString().Trim();
+                        if (text3.IsNullOrEmpty())
+                        {
+                            errLs.Add("行号[" + (i + 1) + "]品牌为空!");
+                            dt.Rows.RemoveAt(i);
+                            continue;
+                        }
+
+
+                        //型号
+                        var text4 = dr[SpecIdx].ToString().Trim();
+                        if (text4.IsNullOrEmpty())
+                        {
+                            errLs.Add("行号[" + (i + 1) + "]型号为空!");
+                            dt.Rows.RemoveAt(i);
+                            continue;
+                        }
+
+                        //设备分类ID
+                        var cid = dataDictionary.Where(o => o.DicPSN == 197 && o.Title == text).Select(o=>o.DicSN).FirstOrDefault();
+                        var isExist = DevicesRepository.GetQuery(o => o.CategoryId == cid && o.Title == text2 && o.Brand == text3 && o.Spec == text4);
+                        if (isExist.Any())
+                        {
+                            errLs.Add("行号[" + (i + 1) + "]设备记录已经存在!");
+                            dt.Rows.RemoveAt(i);
+                            continue;
+                        }
+
+                        #endregion
+                    }
+                    catch (Exception e)
+                    {
+                        throw new Exception("创建相关记录失败," + e.Message, e);
+                    }
+                }
+                StringBuilder sb = new StringBuilder();
+                sb.Append("begin tran ");
+                foreach (DataRow dr in dt.Rows)
+                {
+                    Devices devices = new Devices();
+                    devices.DeviceId = CommonService.GUID.ToUpper();
+                    devices.CreateUID = CurrentUser.UID;
+                    devices.CreateDT = DateTime.Now;
+
+                    sb.Append("insert into ");
+                    sb.Append(obj.TableName);
+                    sb.Append("(Status,DeviceId,CreateDT,CreateUID,");
+                    sb.Append(string.Join(",", fieldCols.Keys));
+                    sb.Append(") values(1,'" + devices.DeviceId + "','" + devices.CreateDT + "','" + devices.CreateUID + "',");
+                    foreach (var de in fieldCols)
+                    {
+                        var index = Convert.ToInt32(de.Value) - 65;
+                        try
+                        {
+                            var text = dr[index].ToString().Trim();
+                            sb.Append("'" + text + "',");
+                        }
+                        catch (Exception e)
+                        {
+                            throw new Exception("列选择超过范围!", e);
+                        }
+                    }
+                    sb = sb.Remove(sb.Length - 1, 1);
+                    sb.Append(");");
+
+
+                }
+                sb.Append(" commit tran");
+                new DBFramework.DBHelper().ExecuteNonQueryText(sb.ToString(), null);
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                op.Successed = false;
+                LogEngine.WriteError(ex);
+                errLs.Add("导入出现异常!");
+            }
+            return CommonService.GenerateImportHtml(errLs, count);
+        }
+
+        public List<Devices> GetDeviceInput(string searchName)
+        {
+            if (searchName.IsNullOrEmpty()) return null;
+            var queryDev = DevicesRepository.GetQuery();
+            var queryDict = SysDataDictionaryRepository.GetQuery();
+            var query = from x in queryDev
+                        join y in queryDict on x.CategoryId equals y.DicSN
+                        select new
+                        {
+                            x.DeviceId,
+                            x.Title,
+                            x.CategoryId,
+                            CategoryTitle= y.Title
+                        };
+            query = query.Where(o => o.Title.Contains(searchName) || o.CategoryTitle.Contains(searchName));
+            return query.Take(20).AsEnumerable().Select(o => new Devices() { DeviceId=o.DeviceId,Title=o.Title,CategoryId=o.CategoryId}).ToList();
+        }
+    }
+}

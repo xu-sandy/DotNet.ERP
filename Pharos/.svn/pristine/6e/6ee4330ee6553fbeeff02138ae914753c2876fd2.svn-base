@@ -1,0 +1,163 @@
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace QCT.Pay.Common
+{
+    public class PayHelper
+    {
+        #region Convert
+        /// <summary>
+        /// 枚举字符串转换枚举值
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        public static short Convert2EnumValue<T>(string str)
+        {
+            var val = (short)Enum.Parse(typeof(T), str);
+            return val;
+        }
+        /// <summary>
+        /// 枚举值转换为枚举字符串
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="val"></param>
+        /// <returns></returns>
+        public static string Convert2EnumString<T>(short val)
+        {
+            var str = Enum.GetName(typeof(T), val);
+            return str;
+        }
+        /// <summary>
+        /// 日期+时间格式转换
+        /// </summary>
+        /// <param name="date"></param>
+        /// <param name="time"></param>
+        /// <returns></returns>
+        public static string Convert2DateFormat(string date, string time, string formatStr)
+        {
+            string tdate = string.Empty;
+            if (!string.IsNullOrEmpty(date) && !string.IsNullOrEmpty(time))
+            {
+                try
+                {
+                    DateTime dt = DateTime.ParseExact(date + time, "yyyyMMddHHmmss", System.Globalization.CultureInfo.CurrentCulture);
+                    tdate = dt.ToString(formatStr);
+                }
+                catch { }
+            }
+            return tdate;
+        }
+        #endregion
+
+        #region Sign
+        /// <summary>
+        /// 签名（Qct Sxf）
+        /// </summary>
+        /// <param name="signObj"></param>
+        /// <param name="secretKey"></param>
+        /// <returns></returns>
+        public static string Sign(Dictionary<String, Object> signObj, String secretKey)
+        {
+            StringBuilder signdatasb = new StringBuilder();
+            foreach (var item in signObj)
+            {
+                String key = item.Key;
+                String value = signObj[key] == null ? "" : signObj[key].ToString();
+                signdatasb.Append("&").Append(key).Append("=").Append(value);
+            }
+
+            String signdata = signdatasb.ToString().Substring(1) + "&key=" + secretKey;
+            return PayHelper.GetMD5(signdata);
+        }
+        /// <summary>
+        /// 验证签名的有效性
+        /// </summary>
+        /// <param name="queryStr"></param>
+        /// <returns></returns>
+        public static bool VerifySign(Dictionary<string, object> signObj, string md5Key, string sign)
+        {
+            var thisSign = Sign(signObj, md5Key);
+            if (thisSign.Equals(sign))
+                return true;
+            else
+                return false;
+        }
+        #endregion
+
+        /// <summary>
+        /// 组装请求参数为签名字符串
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static string GetParamsStr(Dictionary<string, object> obj)
+        {
+            StringBuilder signdatasb = new StringBuilder();
+            foreach (var item in obj)
+            {
+                String key = item.Key;
+                var objVal = obj[key];
+                if (!(objVal is IEnumerable && objVal.GetType().IsGenericType)) {
+                    String value = objVal == null ? "" : objVal.ToString();
+                    signdatasb.Append("&").Append(key).Append("=").Append(value);
+                }
+            }
+            return signdatasb.ToString().Substring(1);
+        }
+        //public static string GetParamsStr(Dictionary<string, object> obj)
+        //{
+        //    StringBuilder signdatasb = new StringBuilder();
+        //    foreach (var item in obj)
+        //    {
+        //        String key = item.Key;
+        //        var valObj = obj[key];
+        //        if (valObj is IEnumerable && valObj.GetType().IsGenericType)
+        //        {
+        //            var list = (List<Dictionary<string, Object>>)valObj;
+        //            var hasChild = (list != null && list.Count > 0);
+        //            if (hasChild)
+        //                signdatasb.Append("&").Append(key).Append("=").Append("{");
+        //            foreach (var child in list)
+        //            {
+        //                foreach (var dicRow in child)
+        //                {
+        //                    String childKey = dicRow.Key;
+        //                    var value = dicRow.Value == null ? "" : dicRow.Value.ToString();
+        //                    signdatasb.Append("&").Append(key).Append("=").Append(value);
+        //                }
+        //            }
+        //            if (hasChild)
+        //                signdatasb.Append("}");
+        //        }
+        //        else
+        //        {
+        //            var value = obj[key] == null ? "" : obj[key].ToString();
+        //            signdatasb.Append("&").Append(key).Append("=").Append(value);
+        //        }
+        //    }
+        //    return signdatasb.ToString().Substring(1);
+        //}
+
+        /// <summary>
+        /// MD5加密
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static string GetMD5(string value)
+        {
+            MD5 md5 = MD5.Create();
+            byte[] data = md5.ComputeHash(Encoding.UTF8.GetBytes(value));
+            string str = "";
+            for (int i = 0; i < data.Length; i++)
+            {
+                str += data[i].ToString("x2").ToUpperInvariant();
+            }
+            return str;
+        }
+    }
+}

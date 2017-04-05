@@ -1,0 +1,29 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.BLL
+{
+    /// <summary>
+    /// 新会员
+    /// </summary>
+    public class MemberService : BaseService<Member>
+    {
+        public static bool CheckMsg(Member obj, ref string msg)
+        {
+            return new DAL.MemberDAL().CheckMessage(obj, CommonService.CompanyId, ref msg);
+        }
+
+
+        public static IEnumerable<dynamic> FindMemberPageList(NameValueCollection nvl,ref int rowCount,ref object footer)
+        {
+            var dicts= nvl.ToDictionary();
+            DynamicallyLinqHelper.Empty<Member>().And(o => o.StoreId == dicts["StoreId"], dicts["StoreId"].IsNullOrEmpty());
+            return null;
+        }
+    }
+}

@@ -1,0 +1,138 @@
+﻿@model Notice
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style>
+    .right_td { width: 200px; text-align: left; }
+</style>
+<div id="noticeDetail" style="margin:0 auto; padding:15px; line-height:40px; text-align:center; ">
+    <div class="default-form">
+        @using (Html.BeginForm())
+        {
+            <input type="hidden" name="Id" value="@Model.Id" />
+    <table style="border-color:#797979; border-collapse: collapse; ">
+        <thead>
+
+            <tr style="line-height:25px;">
+                <td class="left_td">
+                    <label>显示范围：</label>
+                </td>
+                <td class="notice-right" colspan="3">
+                    @Html.CheckBoxListFor(n => n.StoreId, ViewBag.shops as List<SelectListItem>, new { @class = "easyui-validatebox", id = "store" }, 3)
+                </td>
+            </tr>
+            <tr style="line-height:35px;">
+                <td class="left_td">
+                    <label>类型：</label>
+                </td>
+                <td class="right_td">
+                    <table cellpadding='0' class="easyui-validatebox" cellspacing='3'>
+                        <tr>
+                            <td style='padding:0px 3px;'><input type='radio' id='Type_1' name='Type' value='1' checked='checked' style='vertical-align:middle' /><label for='Type_1' style='vertical-align:middle;padding-left:3px;'>公告</label></td>
+                            <td style='padding:0px 3px;'><input type='radio' id='Type_2' name='Type' value='2' style='vertical-align:middle' /><label for='Type_2' style='vertical-align:middle;padding-left:3px;'>活动</label></td>
+                        </tr>
+                    </table>
+                </td>
+                <td class="left_td">
+                    <label>状态：</label>
+                </td>
+                <td class="right_td">
+                    @Html.RadioButtonListFor(n => n.State, ViewBag.state as List<SelectListItem>, new { @class = "easyui-validatebox", id = "state" })
+                </td>
+            </tr>
+            <tr style="height:45px">
+                <td class="left_td">
+                    <label>主题：</label>
+                </td>
+                <td class="right_td" colspan="3">
+                    &nbsp; @Html.DisplayTextFor(o => o.Theme)
+                </td>
+            </tr>
+            <tr class="table-form">
+                <td class="left_td">
+                    <label>显示时间：</label>
+                </td>
+                <td class="right_td" colspan="3">
+                    &nbsp;
+                    @Html.DisplayTextFor(o => o.BeginDate, "{0:yyyy-MM-dd}")
+                    &nbsp;&nbsp;至&nbsp;&nbsp;
+                    @Html.DisplayTextFor(o => o.ExpirationDate, "{0:yyyy-MM-dd}")
+                </td>
+            </tr>
+            <tr>
+                <td class="left_td">
+                    <label>详细内容：</label>
+                </td>
+                <td class="right_td" colspan="3">
+                    &nbsp; @Html.DisplayTextFor(o => o.NoticeContent)
+                </td>
+            </tr>
+
+
+        </thead>
+    </table>
+        }
+    </div>
+</div>
+<script type="text/javascript">
+    $(function () {
+        $("[name='Type'][value=@Model.Type]").prop('checked', true);
+
+        $("[name='StoreId']").click(function () {
+            if ($(this).val() == "") {
+                var chk = this.checked;
+                $("[name='StoreId']:not(:first)").each(function (i, r) {
+                    //console.log($(this).attr("id"));
+                    r.checked = chk;
+                })
+            } else {
+                $("[name='StoreId']:first")[0].checked = $("[name='StoreId']:not(:first):checked").size() == $("[name='StoreId']:not(:first)").size();
+            }
+            storeRequired();
+        });
+        if ($("[name='StoreId']:first").attr("checked"))
+            $("[name='StoreId']:not(:first)").attr("checked", true);
+        storeRequired();
+    })
+    function storeRequired() {
+        if ($("[name='StoreId']:checked").size() <= 0)
+            $("#store").validatebox("enableValidation");
+        else
+            $("#store").validatebox("disableValidation");
+    }
+
+    function SaveBefore() {
+
+        storeRequired();
+        return true;
+    }
+
+
+    $(function () {
+        var storeTitleArr = new Array()
+        $("table #store tr td").each(function (index, el) {
+            storeTitleArr.add($(el).html());
+        })
+
+        var htmlStr = '<table cellpadding="0" class="easyui-validatebox" id="store"  cellspacing="3">';
+
+        var tempTdIndex = 0;
+        for (var i = 0; i < storeTitleArr.length; i++) {
+            if (tempTdIndex == 0) {
+                htmlStr += '<tr>';
+            }
+            htmlStr += '<td style="padding:0px 10px;">' + storeTitleArr[i] + '</td>';
+            tempTdIndex++;
+            if (tempTdIndex == 5 || i == storeTitleArr.length-1) {
+                htmlStr += '</tr>';
+                tempTdIndex = 0;
+            }
+        }
+        htmlStr += '</table>'
+
+        $("table #store").html(htmlStr);
+
+    })
+</script>

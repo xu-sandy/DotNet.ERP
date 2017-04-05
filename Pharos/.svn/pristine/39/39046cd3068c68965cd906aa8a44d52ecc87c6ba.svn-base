@@ -1,0 +1,94 @@
+﻿using Pharos.Logic.BLL;
+using Pharos.Logic.Entity;
+using Quartz;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.InstalmentDomain
+{
+    public class IntalmentTimerTaskJob : IJob
+    {
+        public void Execute(IJobExecutionContext context)
+        {
+            Task.Factory.StartNew(() => { RefreshReturnRules(); });
+            Task.Factory.StartNew(() => { IntalmentTimeOut(); });
+        }
+
+        private void IntalmentTimeOut()
+        {
+            var date = DateTime.Now.Date;
+            var list = BaseService<InstalmentRecord>.FindList(o => o.InstalmentDT <= date && o.State == 0);
+            var memberInstalments = list.GroupBy(o => o.MemberId);
+            var memberids = memberInstalments.Select(o => o.Key).ToList();
+            var members = MembersService.FindList(o => memberids.Any(p => p == o.MemberId));
+            foreach (var item in members)
+            {
+                var memberDatas = memberInstalments.FirstOrDefault(o => o.Key == item.MemberId);
+                item.UsableIntegral += memberDatas.Sum(o => o.Integral);
+                foreach (var instalment in memberDatas)
+                {
+                    instalment.State = 1;
+                }
+            }
+            MembersService.CurrentRepository._context.SaveChanges();
+        }
+        /// <summary>
+        /// 定时作业
+        /// </summary>
+        /// <param name="companyId"></param>
+        /// <returns></returns>
+        private void RefreshReturnRules()
+        {
+            var spanTimes = new List<DateTime>();//用于作业调度
+            var datas = ReturnRulesService.GetAllActivingReturnRule();
+            if (datas == null || datas.Count() == 0)
+            {
+                return;
+            }
+            foreach (var item in datas)
+            {
+                if (item.State == 0)
+                {//未开始 
+                    //判断是否更新状态
+                    if (item.ExpiryEnd.HasValue)
+                    {//有结束时间 
+                        if (item.ExpiryStart < DateTime.Now && DateTime.Now < item.ExpiryEnd)
+                        {
+                            ReturnRulesService.UpdateReturnRulesState(1, item.Id.ToString());
+                        }
+                        else
+                        {
+                            spanTimes.Add(item.ExpiryStart);
+                        }
+                    }
+                    else
+                    {
+                        if (item.ExpiryStart < DateTime.Now)
+                        {
+                            ReturnRulesService.UpdateReturnRulesState(1, item.Id.ToString());
+                        }
+                        else
+                        {
+                            spanTimes.Add(item.ExpiryStart);
+                        }
+                    }
+                }
+                else if (item.State == 1)
+                { //活动中
+                    if (item.ExpiryEnd.HasValue)
+                    {
+                        if (item.ExpiryEnd > DateTime.Now)
+                            spanTimes.Add((DateTime)item.ExpiryEnd);
+                        else
+                        { //设置过期
+                            ReturnRulesService.UpdateReturnRulesState(2, item.Id.ToString());
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

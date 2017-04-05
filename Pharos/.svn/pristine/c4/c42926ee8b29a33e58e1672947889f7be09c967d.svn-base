@@ -1,0 +1,30 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.DAL;
+
+namespace Pharos.Logic.ApiData.Mobile.Repository
+{
+    internal class CommonDAL:BaseDAL
+    {
+        public DataTable SaleDetailReport(string storeId,DateTime start,DateTime end)
+        {
+            string sql = @"SELECT TOP 10 *,dbo.F_ProductNameBybarcode(Barcode) Title FROM (
+                SELECT a.Barcode,SUM(a.PurchaseNumber) PurchaseNumber,SUM(a.PurchaseNumber*a.ActualPrice) ActualTotal FROM dbo.SaleDetail a 
+                INNER JOIN dbo.SaleOrders b ON a.PaySN=b.PaySN where storeid='{0}' and createdt between '{1}' and '{2}'
+                GROUP BY a.Barcode) t ORDER BY t.ActualTotal desc";
+            sql = string.Format(sql, storeId, start.ToString("yyyy-MM-dd"), end.ToString("yyyy-MM-dd"));
+            return _db.DataTableText(sql, null);
+        }
+        public DataTable GetNoticeList(string userCode,bool notRead)
+        {
+            string sql = @"SELECT * FROM (
+                    SELECT id,Theme AS Title,NoticeContent Content,url,CONVERT(VARCHAR(30),CreateDT,120) CreateDT,CASE WHEN ','+reader+',' LIKE '%,{0},%' THEN 1 ELSE 0 END Flag  FROM dbo.Notice 
+                ) t where 1=1 {1} ORDER BY t.Flag,t.CreateDT desc";
+            sql = string.Format(sql, userCode, notRead ? " and Flag=0 " : "");
+            return _db.DataTableText(sql, null);
+        }
+    }
+}

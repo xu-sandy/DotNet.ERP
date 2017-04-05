@@ -1,0 +1,114 @@
+﻿using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    /// <summary>
+    /// 支付宝扫码枪扫描支付
+    /// </summary>
+    public class ZhiFuBaoPay2ViewModel : BaseViewModel
+    {
+        public ZhiFuBaoPay2ViewModel(decimal _amount, PayAction _payAction)
+        {
+            Amount = _amount;
+            PayAction = _payAction;
+        }
+        /// <summary>
+        /// 订单金额
+        /// </summary>
+        private decimal amount;
+
+        public decimal Amount
+        {
+            get { return amount; }
+            set { amount = value; this.OnPropertyChanged(o => o.Amount); }
+        }
+        /// <summary>
+        /// 判断收款类型 退换货收款、正常销售
+        /// </summary>
+        private PayAction payAction;
+
+        public PayAction PayAction
+        {
+            get { return payAction; }
+            set { payAction = value; }
+        }
+        /// <summary>
+        /// 支付用户信息
+        /// </summary>
+        private string userPayInfo;
+
+        public string UserPayInfo
+        {
+            get { return userPayInfo; }
+            set { userPayInfo = value; }
+        }
+        
+
+
+        /// <summary>
+        /// 完成支付
+        /// </summary>
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machineInfo = Global.MachineSettings.MachineInformations;
+                        List<PayWay> payWay = new List<PayWay>();
+                        PayWay _payWay = new PayWay()
+                        {
+                            Amount = Amount,
+                            Change = 0,
+                            Receive = Amount,
+                            Type = PayMode.ScanZhifubao,
+                            CardNo = UserPayInfo
+                        };
+                        payWay.Add(_payWay);
+                        ApiPayParams _params = new ApiPayParams()
+                        {
+                            StoreId = _machineInfo.StoreId,
+                            MachineSn = _machineInfo.MachineSn,
+                            CompanyToken = _machineInfo.CompanyToken,
+                            Mode = PayAction,
+                            Receivable = Amount,
+                            Payway = payWay
+                        };
+                        var result = ApiManager.Post<ApiPayParams, ApiRetrunResult<object>>(@"api/Pay", _params);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            if (result.Code == "200")
+                            {
+                                //返回成功则打开支付界面
+                                ZhiFuWanCheng page = new ZhiFuWanCheng(Amount, Amount,0m,"支付宝付款", PayAction);
+                                page.Owner = Application.Current.MainWindow;
+
+                                CurrentWindow.Hide();
+                                page.ShowDialog();
+                                CurrentWindow.Close();
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }
+                        }));
+                    });
+                });
+            }
+        }
+
+    }
+}

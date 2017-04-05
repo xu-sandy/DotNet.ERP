@@ -1,0 +1,72 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+using Pharos.Sys.Entity;
+
+namespace Pharos.Logic.BLL
+{
+    public class MembershipCardService : BaseService<MembershipCard>
+    {
+        public object FindMembershipCardPageList(int? type, short? state, DateTime? dueTimeStart, DateTime? dueTimeEnd, string keyWord, out int count)
+        {
+            var query = (from a in CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId)
+                         join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                         on a.UserUID equals b.UID
+                         join c in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                         on a.CreateUID equals c.UID
+                         select new
+                         {
+                             Id = a.Id,
+                             BatchSN = a.BatchSN,
+                             CardSN = a.CardSN,
+                             CardType = a.CardType,
+                             UserUID = b.FullName,
+                             ReChargeTotal = a.ReChargeTotal,
+                             GiveTotal = a.GiveTotal,
+                             Balance = a.Balance,
+                             Integer = a.Integer,
+                             Deposit = a.Deposit,
+                             State = a.State,
+                             ExpiryStart = a.ExpiryStart,
+                             ExpiryEnd = a.ExpiryEnd,
+                             CreateDT = a.CreateDT,
+                             CreateUID = c.FullName,
+                             LeadTime = a.LeadTime
+                         });
+
+
+
+            if (type != null)
+            {
+                query = query.Where(o => o.CardType == type);
+            }
+            if (state != null)
+            {
+                query = query.Where(o => o.State == state);
+            }
+            if (dueTimeStart != null)
+            {
+                query = query.Where(o => o.LeadTime > dueTimeStart);
+            }
+            if (dueTimeEnd != null)
+            {
+                query = query.Where(o => o.LeadTime < dueTimeEnd);
+            }
+            if (!string.IsNullOrEmpty(keyWord))
+            {
+                query = query.Where(o => o.CardSN.Contains(keyWord) || o.UserUID.Contains(keyWord));
+            }
+            count = query.Count();
+            object result = null;
+            if (count > 0)
+            {
+                result = query.ToPageList();
+            }
+            return result;
+
+        }
+    }
+}

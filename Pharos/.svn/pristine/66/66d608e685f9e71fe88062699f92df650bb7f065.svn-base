@@ -1,0 +1,96 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增退换货", delText: "撤销申请", hideEdit: true, hideDel: true, hideAdd: true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类别：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="datacontrol easyui-combobox" data-options="editable:false" name="returnType">
+                    <option value="" selected>全部</option>
+                    <option value="2">退货</option>
+                    <option value="1">换货</option>
+                    <option value="0">退整单</option>
+                    @*<option value="3">修改订单</option>*@
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="startDate" class="datacontrol Wdate" />
+            </td>
+            <td style="float:left;padding-left:5px;padding-right:5px;line-height:28px;" valign="middle">-</td>
+            <td class="input-toolbar"><input name="endDate" class="datacontrol Wdate" /></td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="addHuang()">新增换货处理</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="addTui()">新增退货处理</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="addTuiZhengDan()">新增退整单处理</a>
+    @*<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="var rows = pharos.manager.selectItems();if(rows){openDialog('查看退换详情','@Url.Action("Detail")?Id=' + rows[0].Id,600,350,true);}">查看退换详情</a>*@
+}
+
+<script type="text/javascript">
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true, hidden: true },
+        { field: 'ReturnType', title: '类别', width: 60 },
+        { field: 'PaySN', title: '新单据号', width: 140 },
+        { field: 'ProductCode', title: '商品编码', width: 130 },
+        { field: 'Barcode', title: '条码', width: 130 },
+        { field: 'Title', title: '品名', width: 150 },
+        { field: 'PurchaseNumber', title: '退换数量', width: 60 },
+        { field: 'Receive', title: '顾客补价', width: 60 },
+        { field: 'CreateDT', title: '退换日期', width: 100 },
+        { field: 'FullName', title: '经办人', width: 80 }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache());
+        //window.top.$("#lbsave .l-btn-text").html("确定");
+    }
+    pharos.manager.editItem = function (Id) {
+        openDialog800(this.editText, this.editurlNocache());
+    }
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'CreateDT', columns: ['ReturnType', 'FullName', 'Receive', 'CreateDT', 'PaySN'] });
+    }
+    function removeBefore(item) {
+        if (item.State == "已完成") {
+            $.messager.alert("提示", "已完成不能撤销!"); return false;
+        }
+        return true;
+    }
+    function addHuang() {
+        openDialog1000("商品换货处理", "@Url.Action("Huang")");
+    }
+    function addTui() {
+        openDialog1000("商品退货处理", "@Url.Action("Tui")");
+    }
+    function addTuiZhengDan() {
+        openDialog1000("退整单处理", "@Url.Action("TuiZhengDan")");
+    }
+    function setFinish() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetFinish")", { Ids: ids, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "操作成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+</script>

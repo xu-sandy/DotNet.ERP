@@ -1,0 +1,151 @@
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.BLL;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
+using System.Web;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS;
+using QCT.Pay.Common;
+using System.Collections;
+
+namespace QCT.Api.Pay.Utils
+{
+    /// <summary>
+    /// 商户支付帮助类
+    /// </summary>
+    public class PayManager
+    {
+        private static string _sxfPayUrl = string.Empty;
+        private static string _sxfNotifyUrl = string.Empty;
+        /// <summary>
+        /// 第三方随心付（SxfPay）接口调用URL
+        /// </summary>
+        public static string SxfPayUrl
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_sxfPayUrl))
+                {
+                    _sxfPayUrl = Config.GetAppSettings("sxfpayurl");
+                }
+                return _sxfPayUrl;
+            }
+        }
+        /// <summary>
+        /// 第三方随心付支付或退款结果通知URL
+        /// </summary>
+        public static string SxfNotifyUrl
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_sxfNotifyUrl))
+                {
+                    _sxfNotifyUrl = Config.GetAppSettings("sxfnotifyurl");
+                }
+                return _sxfNotifyUrl;
+            }
+        }
+        public const string SXFPAYURL = "http://unitpay.sxfpay.cn/unitpay-online/BBGUnitpay";
+        public const string SXFTRADENOTIFYURL = "http://27.154.234.10:8016/api/pay/SxfTradeNotify";
+        /// <summary>
+        /// 返回接收通知的结果
+        /// </summary>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static object ResultResponse(string code, string msg = "参数格式错误")
+        {
+            var rstCode = PayConst.FAIL_CODE;
+            if (code == PayConst.SXF_SUCCESS_CODE)
+            {
+                rstCode = PayConst.SUCCESS_CODE;
+            }
+            var result = new { return_code = rstCode, return_msg = msg };
+            return result;
+        }
+        /// <summary>
+        /// 给Sxf返回接收通知的结果
+        /// </summary>
+        /// <param name="isSuccess"></param>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static object SxfNotifyReturn(string result, string msg)
+        {
+            if (result == PayConst.SXF_SUCCESS_RETURN)
+            {
+                return new { result = PayConst.SXF_SUCCESS_RETURN, message = msg };
+            }
+            else
+            {
+                return new { result = PayConst.FAIL_CODE, message = msg };
+            }
+        }
+        /// <summary>
+        /// 验证签名的有效性
+        /// </summary>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        public static bool VerifySign(string content)
+        {
+
+            var signObj = JsonConvert.DeserializeObject<Dictionary<string, object>>(content);
+            var sign = signObj["sign"];
+            signObj.Remove("sign");
+            var mchObj = (new PayTradeService()).GetMchPay(signObj["mch_id"].ToType<int>());
+            var result = PayHelper.VerifySign(signObj, mchObj.SecretKey, sign.ToString());
+            return result;
+        }
+        //public static string Sign1(Dictionary<String, Object> signObj, String md5Key)
+        //{
+        //    StringBuilder signdatasb = new StringBuilder();
+        //    foreach (var item in signObj)
+        //    {
+        //        String key = item.Key;
+        //        var valObj = signObj[key];
+        //        if (valObj is IEnumerable && valObj.GetType().IsGenericType)
+        //        {
+        //            var list = (List<Dictionary<string, Object>>)valObj;
+        //            var hasChild = (list != null && list.Count > 0);
+        //            if (hasChild)
+        //                signdatasb.Append("&").Append(key).Append("=").Append("[");
+        //            for (int i = 0; i < list.Count; i++)
+        //            {
+        //                signdatasb.Append("{");
+        //                var j = 0;
+        //                foreach (var dicRow in list[i])
+        //                {
+        //                    String childKey = dicRow.Key;
+        //                    var value = dicRow.Value == null ? "" : dicRow.Value.ToString();
+        //                    if (j == 0)
+        //                        signdatasb.Append(childKey).Append("=").Append(value);
+        //                    else
+        //                        signdatasb.Append("&").Append(childKey).Append("=").Append(value);
+        //                    j++;
+        //                }
+        //                if (i >= list.Count - 1)
+        //                    signdatasb.Append("}");
+        //                else
+        //                    signdatasb.Append("},");
+        //            }
+        //            if (hasChild)
+        //                signdatasb.Append("]");
+        //        }
+        //        else
+        //        {
+        //            String value = signObj[key] == null ? "" : signObj[key].ToString();
+        //            signdatasb.Append("&").Append(key).Append("=").Append(value);
+        //        }
+        //    }
+
+        //    String signdata = signdatasb.ToString().Substring(1) + "&key=" + md5Key;
+        //    return PayHelper.GetMD5(signdata);
+        //}
+    }
+}

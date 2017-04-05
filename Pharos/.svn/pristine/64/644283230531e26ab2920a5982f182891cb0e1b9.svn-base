@@ -1,0 +1,18 @@
+﻿using Microsoft.Synchronization;
+using Pharos.SyncService;
+namespace Pharos.Sync.Client
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            var providerNameA = new PosLocalDbSyncProvider(1, "10");
+            var providerNameB = new RemoteProviderProxy(1, "10", "WSHttpBinding_Sync101WebService");
+            SyncOrchestrator agent = new SyncOrchestrator();
+            agent.Direction = SyncDirectionOrder.DownloadAndUpload;
+            agent.LocalProvider = providerNameA;
+            agent.RemoteProvider = providerNameB;
+            var sa = agent.Synchronize();
+        }
+    }
+}

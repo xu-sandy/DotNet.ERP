@@ -1,0 +1,106 @@
+﻿using Newtonsoft.Json;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.ApiReturnResults
+{
+    public class ChangingResult
+    {
+        public IEnumerable<ChangingList> ChangingList { get; set; }
+        public decimal Difference { get; set; }
+        public string PaySn { get; set; }
+    }
+
+    public class ChangingList : BaseViewModel
+    {
+        /// <summary>
+        /// 条码
+        /// </summary>
+        public string Barcode { get; set; }
+        /// <summary>
+        /// 名称
+        /// </summary>
+        public string Title { get; set; }
+        /// <summary>
+        /// 数量
+        /// </summary>
+        public decimal ChangeNumber { get; set; }
+        /// <summary>
+        /// 系统售价
+        /// </summary>
+        public decimal SysPrice { get; set; }
+        /// <summary>
+        /// 变价
+        /// </summary>
+        public decimal ChangePrice { get; set; }
+        /// <summary>
+        /// 小计
+        /// </summary>
+        public decimal Total { get; set; }
+
+
+        public ChangeStatus ChangeStatus { get; set; }
+        /// <summary>
+        /// 移除其中一项
+        /// </summary>
+        [JsonIgnore]
+        public GeneralCommand<object> RemoveCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        MachineInformations _machinesInfo = Global.MachineSettings.MachineInformations;
+                        //移除已添加的退换货数据
+                        ChangingParams _params = new ChangingParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CompanyToken = _machinesInfo.CompanyToken,
+                            Barcode = Barcode,
+                            Status = ChangeStatus == ChangeStatus.Change ? (int)RefundChangeViewModel.Current.Change.Mode : 0,
+                            Mode = (int)ChangeStatus
+                        };
+                        var result = ApiManager.Post<ChangingParams, ApiRetrunResult<ChangingResult>>(@"api/RemoveRefundOrChangeInfo", _params);
+                        if (result.Code == "200")
+                        {
+                            Application.Current.Dispatcher.Invoke(new Action(() =>
+                            {
+                                switch (ChangeStatus)
+                                {
+                                    case PosModels.ChangeStatus.Change:
+                                        RefundChangeViewModel.Current.Change.ChangeList = result.Result.ChangingList;
+                                        RefundChangeViewModel.Current.Change.Difference = result.Result.Difference;
+                                        break;
+
+                                    case PosModels.ChangeStatus.Refund:
+                                        RefundChangeViewModel.Current.Refund.ChangeList = result.Result.ChangingList;
+                                        RefundChangeViewModel.Current.Refund.Difference = result.Result.Difference;
+                                        break;
+                                }
+
+                            }));
+                        }
+                        else
+                        {
+                            Application.Current.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }));
+                        }
+                    });
+                });
+            }
+        }
+    }
+}

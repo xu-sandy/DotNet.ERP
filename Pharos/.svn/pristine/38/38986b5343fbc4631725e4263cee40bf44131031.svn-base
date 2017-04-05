@@ -1,0 +1,76 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    public class UnionpayModel : BaseObservable
+    {
+
+
+        private decimal receivable;
+        /// <summary>
+        /// 应收
+        /// </summary>
+        public decimal Receivable
+        {
+            get
+            {
+                return receivable;
+            }
+            set
+            {
+                receivable = value;
+                OnPropertyChanged("Receivable");
+            }
+        }
+
+        private string backCard = string.Empty;
+        public string BankCard
+        {
+            get { return backCard; }
+            set
+            {
+                backCard = value;
+                OnPropertyChanged("BankCard");
+            }
+        }
+
+        public string SalesmanUid { get; set; }
+
+
+        string salesmanUserCode = string.Empty;
+        public string SalesmanUserCode
+        {
+            get { return salesmanUserCode; }
+            set
+            {
+
+                salesmanUserCode = value.Trim();
+                VerifySaleMan();
+                OnPropertyChanged("SalesmanUserCode");
+            }
+        }
+
+        public bool VerifySaleMan()
+        {
+            if (!string.IsNullOrEmpty(SalesmanUserCode))
+            {
+                var result = SysStoreUserInfoLocalService.IsSaleMan(SalesmanUserCode, PosMachineInfo.Infos.StoreId);
+                if (string.IsNullOrEmpty(result) && !string.IsNullOrEmpty(SalesmanUserCode))
+                {
+                    Toast.DoShow("输入导购员无效！");
+                    SalesmanUid = string.Empty;
+                    salesmanUserCode = string.Empty;
+                    OnPropertyChanged("SalesmanUserCode");
+                    return false;
+                }
+                SalesmanUid = result;
+            }
+            return true;
+        }
+    }
+}

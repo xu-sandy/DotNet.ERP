@@ -1,0 +1,176 @@
+﻿@model Pharos.Logic.Entity.RechargeGifts
+@{
+    ViewBag.Title = "CreateRechargeGift";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">活动有效期：</td>
+                    <td class="input">
+                        <input type="text" id="ExpiryStart" name="ExpiryStart" value="@Model.ExpiryStart" class="easyui-validatebox Wdate" onclick="WdatePicker()" /> -
+                        <input type="text" id="ExpiryEnd" name="ExpiryEnd" value="@Model.ExpiryEnd" class="easyui-validatebox Wdate" onclick="WdatePicker()" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">活动时效：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "全天", Value = "0", Selected = true }, new SelectListItem() { Text = "每周", Value = "1" }, new SelectListItem() { Text = "时段", Value = "2" } }, "GiftAging")</td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr id="times" style="display:none">
+                    <td></td>
+                    <td>
+                        @Html.TimeBoxList(new List<string>() { "09:00", "11:00", "13:00", "14:00", "15:00", "16:00" }, "Times")
+                    </td>
+                </tr>
+                <tr id="timeweeks" style="display:none">
+                    <td></td>
+                    <td>
+                        @Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "周一", Value = "1"},
+                       new SelectListItem() { Text = "周二", Value = "2" } ,new SelectListItem() { Text = "周三", Value = "3" } ,
+                       new SelectListItem() { Text = "周四", Value = "4" } ,new SelectListItem() { Text = "周五", Value = "5" } ,
+                       new SelectListItem() { Text = "周六", Value = "6" } ,new SelectListItem() { Text = "周日", Value = "0" } }, "timeWeek")
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">充值金额：</td>
+                    <td class="input"><input type="text" name="ConditionValue" value="@Model.ConditionValue" class="easyui-textbox" /></td>
+                </tr>
+                <tr>
+                    <td class="name">赠送项目：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "通用金额", Value = "0", Selected = true }, new SelectListItem() { Text = "会员积分", Value = "1" } }, "gifttype")</td>
+                                <td><input type="text" class="easyui-textbox" data-options="width:60" name="GiftsValue" value="@Model.GiftsValue" /></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">分期赠送：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "即时赠送", Value = "0", Selected = true }, new SelectListItem() { Text = "多期赠送", Value = "1" } }, "gifttime")</td>
+                                <td id="fenqi" style="display:none">
+                                    分<input type="text" class="easyui-validatebox" name="number" value="@Model.StageNumber" style="width:50px" />期，
+                                    @*每期赠送<input type="radio" />金额<input type="radio" />积分,*@
+                                    每期赠送<input type="text" class="easyui-validatebox" name="StageAvg" value="@Model.StageAvg" style="width:50px" />，
+                                    每期赠送日期<input type="text" class="easyui-validatebox Wdate" style="width:100px" />
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">限量：</td>
+                    <td class="input"><input type="text" name="LimitNumber" value="@Model.LimitNumber" class="easyui-textbox" /></td>
+                </tr>
+            </table>
+        </div>
+        @Html.HiddenFor(o => o.StartTime1);
+        @Html.HiddenFor(o => o.EndTime1);
+        @Html.HiddenFor(o => o.StartTime2);
+        @Html.HiddenFor(o => o.EndTime2);
+        @Html.HiddenFor(o => o.StartTime3);
+        @Html.HiddenFor(o => o.EndTime3);
+        @Html.HiddenFor(o => o.StartTime1);
+        @Html.HiddenFor(o => o.GiftAgingValue);
+        @Html.HiddenFor(o => o.LimitNumber);
+    }
+</div>
+<script>
+    $(function () {
+        //control times and weeks hide/show
+        $("input[name=GiftAging]").each(function (index, value) {
+            $(this).click(function () {
+                $("#timeweeks,#times").hide();
+                var val = $(this).val();
+                if (val == 1) {
+                    $("#timeweeks").show();
+                }
+                else if (val == 2) {
+                    $("#times").show();
+                }
+            });
+        });
+
+        //control fenqi info show/hide
+        $("input[name=gifttime]").each(function (index, value) {
+            $(this).click(function () {
+                var val = $(this).val();
+                if (val == 0) {
+                    $("#fenqi").hide();
+                } else {
+                    $("#fenqi").show();
+                }
+            });
+        });
+
+        //if edit=true choose active times
+        if ('@Model.Id' > 0) {
+            switch ('@Model.GiftAging') {
+                case "0":
+                    break;
+                case "1"://week
+                    var giftValue = '@Model.GiftAgingValue';
+                    $("#timeweeks").show();
+
+                    $("input[name=timeWeek]").each(function (index, value) {
+                        var boxVal = "," + $(this).val() + ",";
+                        if ((giftValue + ",").indexOf(boxVal) > -1) {
+                            $(this).click();
+                        }
+                    });
+                    break;
+                case "2"://times
+                    $("#times").show();
+
+                    $("#Times_1").timespinner('setValue', '@Model.StartTime1');
+                    $("#Times_2").timespinner('setValue', '@Model.EndTime1');
+                    $("#Times_3").timespinner('setValue', '@Model.StartTime2');
+                    $("#Times_4").timespinner('setValue', '@Model.EndTime2');
+                    $("#Times_5").timespinner('setValue', '@Model.StartTime3');
+                    $("#Times_6").timespinner('setValue', '@Model.EndTime3');
+                    break;
+            }
+        }
+    })
+    //set save datas
+    function SaveBefore() {
+        var val = $("input[name=GiftAging]:checked").val();
+        if (val == 1) {
+            //weeks
+            var valus = "";
+            $("input[name=timeWeek]:checked").each(function (index, value) {
+                valus += "," + $(this).val();
+            });
+            $("#GiftAgingValue").val(valus);
+        } else if (val == 2) {
+            //times
+            $("#StartTime1").val($("#Times_1").timespinner('getValue'));
+            $("#EndTime1").val($("#Times_2").timespinner('getValue'));
+            $("#StartTime2").val($("#Times_3").timespinner('getValue'));
+            $("#EndTime2").val($("#Times_4").timespinner('getValue'));
+            $("#StartTime3").val($("#Times_5").timespinner('getValue'));
+            $("#EndTime3").val($("#Times_6").timespinner('getValue'));
+        }
+        //Limit
+        var limitVal = $("input[name=number]").val();
+        if (limitVal == "" || limitVal == 0) {
+            $("#LimitNumber").val("-1");
+        } else {
+            $("#LimitNumber").val(limitVal);
+        }
+    }
+</script>

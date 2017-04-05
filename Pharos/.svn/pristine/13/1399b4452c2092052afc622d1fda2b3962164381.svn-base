@@ -1,0 +1,146 @@
+﻿using Pharos.POS.Retailing.ObjectModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    public class DayReportViewModel : BaseViewModel
+    {
+        public DayReportViewModel()
+        {
+            RangeSelectItem = new List<KeyValuePair<DayReportRange, string>>();
+            RangeSelectItem.Add(new KeyValuePair<DayReportRange, string>(DayReportRange.Local, "本机"));
+            RangeSelectItem.Add(new KeyValuePair<DayReportRange, string>(DayReportRange.Store, "全店"));
+            ModeSelectItem = new List<KeyValuePair<DayReportMode, string>>() 
+            {
+                new KeyValuePair<DayReportMode,string>(DayReportMode.Day,"日结"),
+                new KeyValuePair<DayReportMode,string>(DayReportMode.Month,"月结")
+            };
+        }
+        public List<KeyValuePair<DayReportRange, string>> RangeSelectItem { get; set; }
+
+        DayReportRange range = DayReportRange.Store;
+        public DayReportRange Range
+        {
+            get
+            {
+                return range;
+            }
+            set
+            {
+                range = value;
+                this.OnPropertyChanged(o => o.Range);
+            }
+        }
+
+        public List<KeyValuePair<DayReportMode, string>> ModeSelectItem { get; set; }
+
+        DayReportMode mode = DayReportMode.Day;
+        public DayReportMode Mode
+        {
+            get
+            {
+                return mode;
+            }
+            set
+            {
+                mode = value;
+                this.OnPropertyChanged(o => o.Mode);
+            }
+        }
+
+
+        DateTime searchTime = DateTime.Now;
+        public DateTime SearchTime
+        {
+            get
+            {
+                return searchTime;
+            }
+            set
+            {
+                searchTime = value;
+                this.OnPropertyChanged(o => o.SearchTime);
+            }
+        }
+
+        IEnumerable<DayReportDetailItem> dayReportItems;
+        public IEnumerable<DayReportDetailItem> DayReportItems
+        {
+            get
+            {
+                return dayReportItems;
+            }
+            set
+            {
+                dayReportItems = value;
+                this.OnPropertyChanged(o => o.DayReportItems);
+            }
+        }
+
+        IEnumerable<SalesmanDayReportResult> usersDayReportItems;
+
+        public IEnumerable<SalesmanDayReportResult> UsersDayReportItems
+        {
+            get
+            {
+                return usersDayReportItems;
+            }
+            set
+            {
+                usersDayReportItems = value;
+                this.OnPropertyChanged(o => o.UsersDayReportItems);
+            }
+        }
+        public GeneralCommand<object> SearchCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        //查询日结
+                        DayReportParams _params = new DayReportParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            Date = SearchTime,
+                            Mode = Mode,
+                            Range = Range
+                        };
+                        var result = ApiManager.Post<DayReportParams, ApiRetrunResult<DayReportResult>>(@"api/DayReport", _params);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            if (result.Code == "200")
+                            {
+                                DayReportItems = result.Result.Summary;
+                                UsersDayReportItems = result.Result.SalesmanRecords;
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }
+                        }));
+                    });
+                });
+            }
+        }
+        public GeneralCommand<object> PrintCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+
+                });
+            }
+        }
+    }
+
+}

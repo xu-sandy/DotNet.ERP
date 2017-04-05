@@ -1,0 +1,95 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.OMS.Models;
+namespace Pharos.Logic.OMS.BLL
+{
+    public class MenuService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<SysMenus> MenuRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysUser> UserRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysRoleData> RoleDataRepository { get; set; }
+        public Pharos.Utility.OpResult SaveOrUpdate(SysMenus model)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = MenuRepository.GetQuery(null);
+            recordCount = query.Count();
+            return query.ToList();
+        }
+
+        public Pharos.Utility.OpResult Deletes(object[] ids)
+        {
+            throw new NotImplementedException();
+        }
+
+        public SysMenus GetOne(object id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public List<SysMenus> GetList()
+        {
+            return MenuRepository.GetQuery(o => o.Status).OrderBy(o => o.SortOrder).ToList();
+        }
+        public List<SysMenus> GetChildList()
+        {
+            return MenuRepository.GetQuery(o => o.Status && o.PMenuId!=0).OrderBy(o => o.SortOrder).ToList();
+        }
+        public List<SysMenuLimitModel> GetUserMenus(string userId)
+        {
+            var list = new List<SysMenuLimitModel>();
+            if(UserRepository==null) UserRepository= NinjectObject.GetFromMVC<DAL.BaseRepository<SysUser>>();
+            if (MenuRepository == null) MenuRepository = NinjectObject.GetFromMVC<DAL.BaseRepository<SysMenus>>();
+            if (RoleDataRepository == null) RoleDataRepository = NinjectObject.GetFromMVC<DAL.BaseRepository<SysRoleData>>();
+            var user = UserRepository.Find(o => o.UserId == userId);
+            if(user!=null)
+            { 
+                if(user.IsSuper)
+                    list = MenuRepository.GetQuery(o => o.Status).OrderBy(o => o.SortOrder).Select(y => new SysMenuLimitModel()
+                    {
+                        Id = y.Id,
+                        MenuId = y.MenuId,
+                        PMenuId = y.PMenuId,
+                        SortOrder = y.SortOrder,
+                        Status = y.Status,
+                        Title = y.Title,
+                        URL = y.URL,
+                        LimitIdStr="-1"
+                    }).ToList();
+                else if(!user.RoleIds.IsNullOrEmpty())
+                {
+                    var rids= user.RoleIds.ToIntArray();
+                    var queryMenu = MenuRepository.GetQuery();
+                    var queryData = RoleDataRepository.GetQuery();
+                    var query = from x in queryData
+                                join y in queryMenu on x.MenuId equals y.MenuId
+                                where y.Status && rids.Contains(x.RoleId) && x.HasSelected
+                                orderby x.SortOrder
+                                select new SysMenuLimitModel()
+                                { 
+                                    Id=y.Id,
+                                    MenuId=y.MenuId,
+                                    PMenuId=y.PMenuId,
+                                    Status=y.Status,
+                                    Title=y.Title,
+                                    URL=y.URL,
+                                    SortOrder = x.SortOrder,
+                                    LimitIdStr = x.Limitids
+                                };
+                    list = query.ToList();
+                }
+            }
+            return list;
+        }
+    }
+}

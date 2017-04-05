@@ -1,0 +1,176 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新建调拨",hideAdd:true, hideDel: true, editText: "调拨详情", hideEdit: true));
+}
+@section search{
+    <table class="table-toolbar">
+    <tr>
+        <td class="label-toolbar">
+            <label>接收分店：</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("inStore", ViewBag.outshops as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+        </td>
+        <td style="width:20px;"></td>
+        <td class="label-toolbar">
+            <label>调拨状态：</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.RadioButtonList(ViewBag.states as List<SelectListItem>, "state", new { style = "height:26px;" })
+        </td>
+        <td style="width:20px;"></td>
+    </tr>
+</table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-revocation'" onclick="auditBack()">撤回调拨</a>
+    @*<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-in-progress'" onclick="handler()">配送</a>*@
+}
+
+<script type="text/javascript">
+    var curStoreId = '@ViewBag.CurStoreId';
+    var viewurl = "@Url.Action("MoveoutDelivery")";
+    pharos.manager.geturl = "@Url.Action("FindMoveoutList")"; 
+
+    //pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+        { field: 'MoveId', checkbox: true },
+        { field: 'Id', title: 'ID', align: 'center', hidden: 'hidden' },
+        //{ field: 'OutStoreTitle', title: '调出分店', width: 150, align: 'center' },
+        { field: 'InStoreTitle', title: '接收分店', width: 150, align: 'center' },
+        { field: 'CreateDate', title: '申请时间', width: 90, align: 'center' },
+        { field: 'DeliveryDate', title: '调入时间', width: 90, align: 'center' },
+        { field: 'Barcode', title: '条形码', width: 120, align: 'center' },
+        { field: 'Title', title: '品名', width: 150, align: 'center' },
+        { field: 'SubUnit', title: '单位', width: 80, align: 'center' },
+        { field: 'SysPrice', title: '系统售价', width: 90, align: 'center' },
+        { field: 'OrderQuantity', title: '申请量', width: 90, align: 'center' },
+        { field: 'DeliveryQuantity', title: '已配送量', width: 90, align: 'center' },
+        { field: 'ActualQuantity', title: '收货量', width: 90, align: 'center' },
+        { field: 'ActualDate', title: '收货时间', width: 90, align: 'center' },
+        { field: 'StateTitle', title: '状态', width: 90, align: 'center' }
+    ]];
+
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'MoveId', columns: ['MoveId', 'InStoreTitle', 'CreateDate', 'DeliveryDate'] });
+    }
+
+
+    //var btns = [
+    //    {
+    //    text: '退回调拨请求',
+    //    iconCls: 'icon-ok',
+    //    width:'130px',
+    //    handler: function () {
+    //        //window.top.$('#formDiv iframe')[0].contentWindow.$('#State').val("3");
+    //        window.top.$('#formDiv iframe')[0].contentWindow.$('#State').val("3");
+    //        window.top.$('#formDiv iframe')[0].contentWindow.$('#DeliveryQuantity').numberbox("disableValidation");
+    //        window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+    //    }
+    //    },
+    //{
+    //    text: '保存并配送',
+    //    width: '120px',
+    //    iconCls: 'icon-ok',
+    //    handler: function () {
+    //        window.top.$('#formDiv iframe')[0].contentWindow.$('#State').val("2");
+    //        window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+    //    }
+    //}
+    //, {
+    //    text: '关闭',
+    //    iconCls: 'icon-cancel',
+    //    handler: function () { pharos.easyui.dialog.topClose("formDiv"); }
+    //}
+    //];
+    //var btns2 = [{
+    //    text: '确定收货',
+    //    width: '120px',
+    //    iconCls: 'icon-ok',
+    //    handler: function () {
+    //        //window.top.$('#formDiv iframe')[0].contentWindow.$('#State').val("4");
+    //        window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+    //    }
+    //}, {
+    //    text: '关闭',
+    //    iconCls: 'icon-cancel',
+    //    handler: function () { pharos.easyui.dialog.topClose("formDiv"); }
+    //}];
+
+    @*function receive() {
+        var rows = pharos.manager.selectItems();
+        if (rows == null) return;
+        $.each(rows, function (i, r) {
+            if (r.StateTitle != "已配送") {
+                $.messager.alert("提示", "只有已配送才能收货确认!");
+                rows = null;
+                return false;
+            }
+        });
+        if (rows) {
+            var parms = { title: '收货确认', buttons: btns2, url: '@Url.Action("Receiver")?Id=' + rows[0].Id }; openWin(parms);
+        }
+    }*@
+
+    
+    pharos.manager.editItem = function (id, row) {
+        if (row.State == "1") {
+            var url = viewurl + "?Id=" + row.Id;
+            openDialog(this.editText, url, 1000, 500, false);
+            window.top.$("#lbsave .l-btn-text").html("配送");
+        }
+        else {
+            var url = viewurl + "?Id=" + row.Id
+            openDialog(this.editText, url, 1000, 500, true);
+        }
+    }
+    function editBefore(row) {
+        return true;
+    }
+
+    ////配送
+    //function handler() {
+    //    var rows = pharos.manager.selectItems();
+    //    if (rows == null) return;
+    //    $.each(rows, function (i, r) {
+    //        if (r.StateTitle != "调拨中") {
+    //            $.messager.alert("提示", "只有调拨中才能配送商品。");
+    //            rows = null;
+    //            return false;
+    //        }
+    //    });
+    //    if (rows == null) return;
+        
+    //    var url = viewurl + "?Id=" + rows[0].Id;
+    //    openDialog("调拨详情", url, 1000, 500, false);
+    //    window.top.$("#lbsave .l-btn-text").html("配送");
+       
+    //}
+
+    //撤回调拨
+    function auditBack() {
+        var rows = pharos.manager.selectItems();
+        if (rows == null) return;
+        $.each(rows, function (i, r) {
+            if (r.StateTitle != "调拨中") {
+                $.messager.alert("提示", "只有调拨中才能撤回!");
+                rows = null;
+                return false;
+            }
+        });
+        if (rows == null) return;
+        
+        $.messager.confirm("提示", "是否确定撤回调拨?", function (r) {
+            if (!r) return;
+            var ids = $.map(rows, function (item) {
+                return item.MoveId;
+            }).join();
+            $.post("@Url.Action("ReBack")", { Ids: ids }, function () {
+                pharos.manager.gridReload();
+            })
+        });
+
+    }
+</script>

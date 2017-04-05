@@ -1,0 +1,67 @@
+﻿using Pharos.Logic.ApiData.Pos.DataSynchronism;
+using Pharos.SocketService.Retailing;
+using SuperSocket.ClientEngine;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.SocketTest.Retailing
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            SocketServer appServer = new SocketServer();
+            //Setup the appServer
+            //if (!appServer.Setup(2012)) //Setup with listening port
+            //{
+            //    Console.WriteLine("Failed to setup!");
+            //    Console.ReadKey();
+            //    return;
+            //}
+
+            Console.WriteLine();
+
+            //Try to start the appServer
+            if (!appServer.Start())
+            {
+                Console.WriteLine("Failed to start!");
+                Console.ReadKey();
+                return;
+            }
+            SocketClient client = new SocketClient();
+            var tt = client.Connect();
+            Console.Write(tt);
+            Console.WriteLine("The server started successfully, press key 'q' to stop it!");
+
+            client.Send(new ArraySegment<byte>(HexConvert("23706861726F7340736F636B6574407374617274230100017B2253746F72654964223A223136222C22456E746974794E616D65223A224461746153796E6353616C654F7264657273222C224461746173223A225731303D227D23706861726F7340736F636B657440656E6423")));
+            while (Console.ReadKey().KeyChar != 'q')
+            {
+
+                Console.WriteLine();
+                continue;
+            }
+
+            //Stop the appServer
+            appServer.Stop();
+
+            Console.WriteLine("The server was stopped!");
+            Console.ReadKey();
+        }
+
+        public static byte[] HexConvert(string hex)
+        {
+            hex = hex.Replace(" ", "");
+            var bytesLength = hex.Length / 2;
+            var result = new List<byte>();
+            for (var i = 0; i < hex.Length; i += 2)
+            {
+                var oneByte = Convert.ToByte(hex.Substring(i, 2), 16); 
+                result.Add(oneByte);
+            }
+            return result.ToArray();
+        }
+    }
+}

@@ -1,0 +1,39 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.DAL
+{
+    internal class MemberDAL
+    {
+        public bool CheckMsg(Members obj,int companyId, ref string msg)
+        {
+            using(EFDbContext db=new EFDbContext())
+            {
+                if (!obj.MobilePhone.IsNullOrEmpty() && db.Set<Members>().Any(o => o.MobilePhone == obj.MobilePhone && o.Id != obj.Id && o.CompanyId == companyId))
+                {
+                    msg = "已存在该手机号!";
+                }
+                else if (!obj.Email.IsNullOrEmpty() && db.Set<Members>().Any(o => o.Email == obj.Email && o.Id != obj.Id && o.CompanyId == companyId))
+                {
+                    msg = "已存在该邮箱!";
+                }
+                else if (!obj.MemberCardNum.IsNullOrEmpty() && db.Set<Members>().Any(o => o.MemberCardNum == obj.MemberCardNum && o.Id != obj.Id && o.CompanyId == companyId))
+                {
+                    msg = "已存在该卡号!";
+                }
+                else if (!obj.QQ.IsNullOrEmpty() && db.Set<Members>().Any(o => o.QQ == obj.QQ && o.Id != obj.Id && o.CompanyId == companyId))
+                {
+                    msg = "已存在该QQ号!";
+                }
+                else if (!obj.Weixin.IsNullOrEmpty() && db.Set<Members>().Any(o => o.Weixin == obj.Weixin && o.Id != obj.Id && o.CompanyId == companyId))
+                {
+                    msg = "已存在该微信号!";
+                }
+            }
+            return string.IsNullOrEmpty(msg);
+        }
+    }
+}

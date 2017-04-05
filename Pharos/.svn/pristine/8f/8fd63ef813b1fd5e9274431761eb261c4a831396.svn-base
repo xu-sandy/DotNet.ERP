@@ -1,0 +1,316 @@
+﻿using Newtonsoft.Json;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ApiReturnResults
+{
+    public class ChangingResult
+    {
+        public IEnumerable<ChangingList> ChangingList { get; set; }
+        public decimal Difference { get; set; }
+        public string PaySn { get; set; }
+    }
+
+    public class ChangingList : BaseViewModel, IEdit
+    {
+        internal decimal? tempNumber = null;
+        /// <summary>
+        /// 条码
+        /// </summary>
+        public string Barcode { get; set; }
+        /// <summary>
+        /// 名称
+        /// </summary>
+        public string Title { get; set; }
+        /// <summary>
+        /// 数量
+        /// </summary>
+        private decimal _ChangeNumber;
+
+        public decimal ChangeNumber
+        {
+            get { return _ChangeNumber; }
+            set
+            {
+                if (ChangeMode == 0 && RefundChangeViewModel.Current.Change.OldOrderList != null)
+                {
+                    var tempNum = 0m;
+                    if (ChangeStatus == ChangeStatus.Change)
+                    {
+                        foreach (var item in RefundChangeViewModel.Current.Change.OldOrderList)
+                        {
+                            if (item.Barcode == Barcode)
+                            {
+                                tempNum = item.ChangeNumber;
+                            }
+                        }
+                    }
+                    if (ChangeStatus == ChangeStatus.Refund)
+                    {
+                        foreach (var item in RefundChangeViewModel.Current.Refund.OldOrderList)
+                        {
+                            if (item.Barcode == Barcode)
+                            {
+                                tempNum = item.ChangeNumber;
+                            }
+                        }
+                    }
+                    if (tempNum != 0m)
+                    {
+                        if (Math.Abs(value) > Math.Abs(tempNum))
+                        {
+                            value = tempNum;
+                            Application.Current.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage("原流水号中【" + Barcode + "】数量不足！", CurrentWindow);
+                            }));
+
+                            //return;
+                        }
+                    }
+                }
+
+                if (tempNumber == null)
+                {
+                    _ChangeNumber = value;
+                }
+                else if (tempNumber >= 0)
+                {
+                    _ChangeNumber = Math.Abs(value);
+                }
+                else
+                {
+                    _ChangeNumber = -Math.Abs(value);
+                }
+                this.OnPropertyChanged(o => o.ChangeNumber);
+                //Confirm.Execute(null);
+            }
+        }
+
+        //     public decimal ChangeNumber { get; set; }
+        /// <summary>
+        /// 系统售价
+        /// </summary>
+        public decimal SysPrice { get; set; }
+        /// <summary>
+        /// 变价
+        /// </summary>
+        private decimal _ChangePrice;
+
+        public decimal ChangePrice
+        {
+            get { return _ChangePrice; }
+            set
+            {
+                _ChangePrice = value;
+                this.OnPropertyChanged(o => o.ChangePrice);
+            }
+        }
+        public int ChangeMode { get { if (ChangeNumber > 0) return 1; else return 0; } }//1=新；0=旧
+        //  public decimal ChangePrice { get; set; }
+        /// <summary>
+        /// 小计
+        /// </summary>
+        public decimal Total { get; set; }
+
+        private bool isEdit = false;
+
+        public string Unit { get; set; }
+        public bool IsEdit
+        {
+            get { return isEdit; }
+            set { isEdit = value; this.OnPropertyChanged(o => o.IsEdit); }
+        }
+
+        public string RecordId { get; set; }
+        public int ProductType { get; set; }
+        public GeneralCommand<object> Confirm
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        MachineInformations _machinesInfo = Global.MachineSettings.MachineInformations;
+                        //调用更改数量接口
+                        ChangingParams _params = new ChangingParams()
+                        {
+                            Barcode = Barcode,
+                            ChangeNumber = ChangeNumber,
+                            ChangePrice = ChangePrice,
+                            Status = 1,
+                            Mode = (int)ChangeStatus,
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CID = _machinesInfo.CompanyId,
+                            RecordId = RecordId,
+                            ProductType = ProductType
+                        };
+                        var result = ApiManager.Post<ChangingParams, ApiRetrunResult<ChangingResult>>(@"api/EditRefundOrChangeInfo", _params);
+                        if (result.Code == "200")
+                        {
+                            Application.Current.Dispatcher.Invoke(new Action(() =>
+                            {
+                                switch (ChangeStatus)
+                                {
+                                    case PosModels.ChangeStatus.Change:
+                                        RefundChangeViewModel.Current.Change.ChangeList = result.Result.ChangingList;
+                                        RefundChangeViewModel.Current.Change.Difference = result.Result.Difference;
+                                        break;
+
+                                    case PosModels.ChangeStatus.Refund:
+                                        RefundChangeViewModel.Current.Refund.ChangeList = result.Result.ChangingList;
+                                        RefundChangeViewModel.Current.Refund.Difference = result.Result.Difference;
+                                        break;
+                                }
+                                CurrentWindow.Close();
+
+                            }));
+                        }
+                        else
+                        {
+                            Application.Current.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }));
+                        }
+                    });
+                });
+            }
+        }
+
+        public ChangeStatus ChangeStatus { get; set; }
+        /// <summary>
+        /// 移除其中一项
+        /// </summary>
+        [JsonIgnore]
+        public GeneralCommand<object> RemoveCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        MachineInformations _machinesInfo = Global.MachineSettings.MachineInformations;
+                        //移除已添加的退换货数据
+                        ChangingParams _params = new ChangingParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CID = _machinesInfo.CompanyId,
+                            Barcode = Barcode,
+                            Status = ChangeStatus == ChangeStatus.Change ? (int)RefundChangeViewModel.Current.Change.Mode : 0,
+                            Mode = (int)ChangeStatus,
+                            RecordId = RecordId,
+                            ProductType = ProductType
+                        };
+                        var result = ApiManager.Post<ChangingParams, ApiRetrunResult<ChangingResult>>(@"api/RemoveRefundOrChangeInfo", _params);
+                        if (result.Code == "200")
+                        {
+                            Application.Current.Dispatcher.Invoke(new Action(() =>
+                            {
+                                switch (ChangeStatus)
+                                {
+                                    case PosModels.ChangeStatus.Change:
+                                        RefundChangeViewModel.Current.Change.ChangeList = result.Result.ChangingList;
+                                        RefundChangeViewModel.Current.Change.Difference = result.Result.Difference;
+                                        break;
+
+                                    case PosModels.ChangeStatus.Refund:
+                                        RefundChangeViewModel.Current.Refund.ChangeList = result.Result.ChangingList;
+                                        RefundChangeViewModel.Current.Refund.Difference = result.Result.Difference;
+                                        break;
+                                }
+
+                            }));
+                        }
+                        else
+                        {
+                            Application.Current.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage(result.Message, Application.Current.MainWindow);
+                            }));
+                        }
+                    });
+                });
+            }
+        }
+
+        public System.Windows.Input.ICommand EditCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+               {
+                   Pharos.POS.Retailing.ChildWin.TuiHuanHuoProductEdit page = new ChildWin.TuiHuanHuoProductEdit(this, 0);
+                   page.Owner = Application.Current.MainWindow;
+                   page.ShowDialog();
+               });
+            }
+        }
+
+        public System.Windows.Input.ICommand EditNumCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Pharos.POS.Retailing.ChildWin.TuiHuanHuoProductEdit page = new ChildWin.TuiHuanHuoProductEdit(this, 1);
+                    page.Owner = Application.Current.MainWindow;
+                    page.ShowDialog();
+                });
+            }
+        }
+
+
+        /// <summary>
+        /// 数量加
+        /// </summary>
+        public ICommand NumAdd
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (ChangeNumber <= -1)
+                    {
+                        ChangeNumber--;
+                    }
+                    else if (ChangeNumber > -1)
+                    {
+                        ChangeNumber++;
+                    }
+                });
+            }
+        }
+        /// <summary>
+        /// 数量减
+        /// </summary>
+        public ICommand NumDec
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (ChangeNumber > 1 && ChangeNumber > 0)
+                    {
+                        ChangeNumber--;
+                    }
+                    else if (ChangeNumber < -1 && ChangeNumber < 0)
+                    {
+                        ChangeNumber++;
+                    }
+                });
+            }
+        }
+    }
+}

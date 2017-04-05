@@ -1,0 +1,117 @@
+﻿using Pharos.Logic.ApiData.Pos.Cache.Redis;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Cache
+{
+    public class RedisCacheWrapper<T> : IRedisCacheWrapper<T>
+    {
+        #region Fields
+        /// <summary>
+        /// 是否忽略大小写
+        /// </summary>
+        bool _ignoreCase = false;
+        #endregion Fields
+
+        #region constructor
+        /// <summary>
+        /// 初始化RedisCache
+        /// </summary>
+        /// <param name="ignoreCase">是否忽略大小写</param>
+        public RedisCacheWrapper(bool ignoreCase = false)
+            : this(typeof(T).ToString(), ignoreCase)
+        {
+
+        }
+        /// <summary>
+        /// 初始化RedisCache
+        /// </summary>
+        /// <param name="name">缓存名称</param>
+        /// <param name="ignoreCase">是否忽略大小写</param>
+        public RedisCacheWrapper(string name, bool ignoreCase = false)
+            : this(name, new TimeSpan(0, 5, 0), ignoreCase)
+        {
+
+        }
+        /// <summary>
+        /// 初始化RedisCache
+        /// </summary>
+        /// <param name="name">缓存名称</param>
+        /// <param name="slidingExpiration">缓存过期时间</param>
+        /// <param name="ignoreCase">是否忽略大小写</param>
+        public RedisCacheWrapper(string name, TimeSpan slidingExpiration, bool ignoreCase = false)
+        {
+            Name = name;
+            SlidingExpiration = slidingExpiration;
+            _ignoreCase = ignoreCase;
+        }
+        #endregion constructor
+
+        #region Property
+        /// <summary>
+        /// 缓存统一失效时间
+        /// </summary>
+        public TimeSpan SlidingExpiration { get; set; }
+        /// <summary>
+        /// 缓存实例名称
+        /// </summary>
+        public string Name { get; private set; }
+        #endregion Property
+
+        #region Method
+        /// <summary>
+        /// 是否包含指定的Key
+        /// </summary>
+        /// <param name="key">缓存键</param>
+        /// <returns>是否存在</returns>
+        public bool ContainsKey(string key)
+        {
+            using (var redisClient = RedisManager.GetClient())
+            {
+                return redisClient.ContainsKey(key);
+            }
+        }
+        /// <summary>
+        /// 获取指定Key的值
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public T Get(string key)
+        {
+            using (var redisClient = RedisManager.GetClient())
+            {
+                return redisClient.Get<T>(key);
+            }
+        }
+        /// <summary>
+        /// 移除key所对应的值
+        /// </summary>
+        /// <param name="key"></param>
+        public void Remove(string key)
+        {
+            using (var redisClient = RedisManager.GetClient())
+            {
+                redisClient.DeleteById<T>(key);
+            }
+        }
+        /// <summary>
+        /// 设置键值缓存
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        public void Set(string key, T value)
+        {
+            using (var redisClient = RedisManager.GetClient())
+            {
+                if (!redisClient.Set<T>(key, value, SlidingExpiration))
+                {
+                    throw new PosException("缓存设置失败！");
+                }
+            }
+        }
+        #endregion Method
+    }
+}

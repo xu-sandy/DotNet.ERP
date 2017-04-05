@@ -1,0 +1,32 @@
+﻿@using Pharos.Utility.Helpers;
+@{
+    ViewBag.Title = "RoleIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增角色", editText: "修改角色", delText: "删除角色", hideSearch: true, hideAdd: !CurrentUser.HasPermiss(176), hideEdit: !CurrentUser.HasPermiss(176), hideDel: !CurrentUser.HasPermiss(177)));
+}
+
+<script type="text/javascript">
+    pharos.manager.editurl = "@Url.Action("SaveRole", Request.QueryString.ToRouteValueDictionary())";
+    pharos.manager.delurl = "@Url.Action("RemoveRole")";
+    pharos.manager.geturl = "@Url.Action("RoleList",Request.QueryString.ToRouteValueDictionary())";
+    pharos.manager.pagination = false;
+    pharos.manager.pageSize = 50;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'RoleId', title: '角色编号', width: 60 },
+        { field: 'Title', title: '角色名称', width: 130 },
+        { field: 'CreateDT', title: '创建时间', width: 150 },
+        { field: 'Creater', title: '创建人', width: 100 }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog420(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (id) {
+        this.Id = id;
+        openDialog420(this.editText, this.editurlNocache());
+    }
+    function checkClose() {
+        return true;
+    }
+</script>

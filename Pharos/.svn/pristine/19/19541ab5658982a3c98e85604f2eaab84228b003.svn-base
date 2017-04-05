@@ -1,0 +1,71 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Utility.Helpers;
+using System.Web.Http;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class OuterApiController : ApiController
+    {
+        [Ninject.Inject]
+        ProductService ProductService { get; set; }
+        [Ninject.Inject]
+        CompAuthorService CompAuthorService { get; set; }
+        /// <summary>
+        /// 对外提供商品信息
+        /// </summary>
+        /// <param name="barcode">条码</param>
+        /// <returns></returns>
+        [HttpGet]
+        public VwProduct GetProduct(string barcode)
+        {
+            var obj= ProductService.GetProductByBarcode(barcode);
+            return obj;
+        }
+        /// <summary>
+        /// 向商品中心添加信息
+        /// </summary>
+        /// <param name="products"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public int PostProduct([FromBody]List<VwProduct> products)
+        {
+            return Convert.ToInt32(ProductService.AddProduct(products));
+        }
+        /// <summary>
+        /// 获取商户信息
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public CompanyAuthorize GetCompany([FromBody]CompanyAuthorize obj)
+        {
+            if (obj.Title.IsNullOrEmpty())
+                return CompAuthorService.GetOneByCID(obj.CID.GetValueOrDefault());
+            else
+            {
+                if(obj!=null)
+                {
+                    var source= CompAuthorService.GetOneByCID(obj.CID.GetValueOrDefault());
+                    if (!CompAuthorService.ValidateCompany(obj, source))
+                        source.CID = 0;
+                    return source;
+                }
+            }
+            return null;
+        }
+        /// <summary>
+        /// 重新注册商户信息
+        /// </summary>
+        /// <param name="company"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public int RegisterAgain([FromBody]CompanyAuthorize company)
+        {
+            return Convert.ToInt32(CompAuthorService.RegisterAgain(company));
+        }
+    }
+}

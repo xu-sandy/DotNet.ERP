@@ -1,0 +1,65 @@
+﻿@model  Pharos.Logic.OMS.Entity.Devices
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .table-form td {
+        padding: 5px 0px;
+    }
+</style>
+
+<script type="text/javascript">
+    //获取续签 - 起始日期、续签 - 终止日期
+    var getStartEndDT = function (newValue, oldValue) {
+        if (newValue == "") {
+            $('#StartTime').textbox('setValue', '');
+            $('#EndTime').textbox('setValue', '');
+        }
+        else {
+            $.ajax({
+                url: "/AgentsInfo/getStartEndDT?DicSN=" + newValue+"&id=0",
+                type: "post",
+                async: false,
+                dataType: "html",
+                data: {},
+                success: function (data) {
+                    if (data != "") {
+                        $('#StartTime').textbox('readonly', false);
+                        $('#StartTime').textbox('setValue', data.split('|')[0]);
+                        $('#StartTime').textbox('readonly', true);
+
+                        $('#EndTime').textbox('readonly', false);
+                        $('#EndTime').textbox('setValue', data.split('|')[1]);
+                        $('#EndTime').textbox('readonly', true);
+                    }
+                }
+            });
+        }
+    }
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+
+        <div class="content">
+            <table class="table-form" width="100%" >
+                <tr>
+                    <input  type="hidden" value="@ViewBag.ids" name="ids"/>
+                    <td class="name">续签年：</td>
+                    <td class="input">@Html.DropDownList("ValidityYear", ViewBag.ValidityY as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120,onChange:getStartEndDT" })</td>
+                </tr>
+                <tr>
+                    <td class="name">起始日期：</td>
+                    <td class="input">@Html.TextBox("StartTime", "", new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'',width:120,readonly:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">终止日期：</td>
+                    <td class="input">@Html.TextBox("EndTime", "", new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'',width:120,readonly:true" })</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>

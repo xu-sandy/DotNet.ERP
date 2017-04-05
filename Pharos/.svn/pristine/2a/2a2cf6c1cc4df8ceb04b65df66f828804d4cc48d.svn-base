@@ -1,0 +1,118 @@
+﻿@{
+    ViewBag.Title = "Limits";
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增主菜单", delText: "删除产品", editText: "修改主菜单", hideDel: true,hideSearch:true,hideAdd:true));
+}
+
+<script type="text/javascript">
+    pharos.managertree.geturl = "@Url.Action("LimitList", new { productid = Request["productid"] })";
+    pharos.managertree.editurl = "@Url.Action("SaveLimit", new { productid = Request["productid"] })";
+    pharos.managertree.idField = "MenuId";
+    pharos.managertree.sortName = "Id";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "MenuTitle";
+    pharos.managertree.pagination = false;
+    pharos.managertree.columns = [[
+        { field: 'Id', checkbox: true,hidden:true },
+        { field: 'MenuId', title: '编号', width: 60 },
+        { field: 'MenuTitle', title: '隶属菜单', width: 150 },
+        { field: 'Title', title: '子功能权限', width: 200, formatter: function (value, row, index) { return row.LimitId? '['+row.LimitId+'] '+value:value; } },
+        { field: 'Status', title: '状态', width: 60,hidden:true , formatter: function (value, row, index) { return value == 1 ? "显示" : "隐藏"; } },
+        {
+            field: 'Editor', title: '操作', width: 200, formatter: function (value, row, index) {
+                var operat = "";
+                if (1==1) {
+                    if (row.Index == 0 || !row.LimitId)
+                        operat += "<a style='color:#555'>[上移]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a  href='javascript:moveLimitItem(1,\"" + row.LimitId + "\")'>[上移]</a>&nbsp;&nbsp;";
+                    var childcount = 0;
+                    if (row.ParentId > 0) {
+                        var po = pharos.managertree.$dg.treegrid("find", row.ParentId);
+                        childcount = po.children.length - 1;
+                    } else {
+                        childcount = pharos.managertree.$dg.treegrid("getData").length - 1;
+                    }
+                    if (row.Index == row.ChildCount-1 || !row.LimitId)
+                        operat += "<a style='color:#555'>[下移]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a  href='javascript:moveLimitItem(2,\"" + row.LimitId + "\")'>[下移]</a>&nbsp;&nbsp;";
+
+                    if (!row.LimitId)
+                        operat += "<a style='color:#555'>[显示]</a>&nbsp;&nbsp;";
+                    else if (row.Status==1)
+                        operat += "<a  href='javascript:setLimitState(0,\"" + row.LimitId + "\")'>[隐藏]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a  href='javascript:setLimitState(1,\"" + row.LimitId + "\")'>[显示]</a>&nbsp;&nbsp;";
+
+                    if (row.children.length > 0)
+                        operat += "<a style='color:#555'>[添加]</a>&nbsp;&nbsp;";
+                    //else
+                        operat += "<a href='javascript:addLimit(\"" + row.MenuId + "\")'>[添加]</a>&nbsp;&nbsp;";
+
+                    if (!row.LimitId)
+                        operat += "<a style='color:#555'>[移除]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a href='javascript:removeLimit(\"" + row.LimitId + "\")'>[移除]</a>&nbsp;";
+                }
+                return operat;
+            }
+        }
+    ]];
+    pharos.managertree.loadSuccess = function () {
+        pharos.managertree.$dg.treegrid("autoMergeCellsGroupby", { groupby: 'MenuId', columns: ['MenuId', 'MenuTitle'] });
+        //var panel = pharos.managertree.$dg.treegrid("getPanel");
+        //var ptr = panel.find('.datagrid-view2 tr[node-id="7"]>td[field="MenuId"]').first().attr("rowspan", 3).end().not(":first").hide();
+        //ptr.find('td[field="MenuId"]')
+        //ptd.not(":first").hide();
+        //ptr.find('td[field="MenuId"]:first').attr("rowspan", 3);
+    }
+    //pharos.managertree.$dg.treegrid({ idField: "LimitId" });
+    pharos.managertree.editItem = function (id, row) {
+        if (row.LimitId) {
+            this.Id = id;
+            openDialog600("修改权限", this.editurlNocache() + "&pmenuId=" + row.MenuId + "&LimitId=" + row.LimitId);
+        }
+    }
+    function moveLimitItem(mode, LimitId) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, LimitId: LimitId },
+            url: "@Url.Action("MoveLimitItem")",
+            success: function (data) {
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "权限移动失败！", "info");
+            }
+        });
+    }    function addLimit(pid) {
+        openDialog600("新增权限", pharos.managertree.editurlNocache() + "&pmenuId=" + pid + "&LimitId=");
+    }    function removeLimit(id) {
+        $.messager.confirm('提示', "是否确定移除该权限?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { LimitId: id },
+                url: "@Url.Action("RemoveLimit")",
+                success: function (data) {
+                    pharos.managertree.gridReload();
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除权限失败！", "info");
+                }
+            });
+        });
+    }    function setLimitState(mode, LimitId) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, LimitId: LimitId },
+            url: "@Url.Action("SetLimitState")",
+            success: function (data) {
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "修改状态失败！", "info");
+            }
+        });
+    }
+</script>

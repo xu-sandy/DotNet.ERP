@@ -1,0 +1,28 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows.Documents;
+
+namespace Pharos.POS.Retailing.Printers.Domain.Models.PrinterJobs
+{
+    public class RawPrinterJob : AbstractPrintJob
+    {
+        public RawPrinterJob(Printer printer)
+            : base(printer)
+        {
+
+        }
+
+        public override void DoPrint(string[] lines)
+        {
+            var text = string.Join(Environment.NewLine, lines);
+            RawPrinterHelper.SendStringToPrinter(Printer.ShareName, text + Environment.NewLine);
+        }
+
+        public override void DoPrint(FlowDocument document)
+        {
+            return;
+        }
+    }
+}

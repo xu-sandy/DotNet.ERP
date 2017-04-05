@@ -1,0 +1,69 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.Entity
+{
+    public class ProductTradePrice
+    {
+        public int CompanyId { get; set; }
+        public string Id { get; set; }
+        /// <summary>
+        /// 批发商，多个以逗号隔开
+        /// </summary>
+        public string Wholesaler { get; set; }
+        
+        /// <summary>
+        /// 状态 0-未审批1-已审批2-已失效
+        /// </summary>
+        public short State { get; set; }
+        /// <summary>
+        /// 审批时间
+        /// </summary>
+        public DateTime? AuditorDT { get; set; }
+        /// <summary>
+        /// 录入人
+        /// </summary>
+        public string CreateUID { get; set; }
+        /// <summary>
+        /// 审批人
+        /// </summary>
+        public string AuditorUID { get; set; }
+        /// <summary>
+        /// 创建时间
+        /// </summary>
+        public DateTime CreateDT { get; set; }
+
+        public List<ProductTradePriceList> TradePriceList { get; set; }
+    }
+    public class ProductTradePriceList
+    {
+        public int Id { get; set; }
+        public string TradePriceId { get; set; }
+        public string Barcode { get; set; }
+        /// <summary>
+        /// 现进价
+        /// </summary>
+        public decimal BuyPrice { get; set; }
+        /// <summary>
+        /// 现售价
+        /// </summary>
+        public decimal SysPrice { get; set; }
+        /// <summary>
+        /// 批发价
+        /// </summary>
+        public decimal TradePrice { get; set; }
+        /// <summary>
+        /// 开始时间
+        /// </summary>
+        [Newtonsoft.Json.JsonConverter(typeof(Pharos.Utility.JsonShortDate))]
+        public DateTime StartDate { get; set; }
+        /// <summary>
+        /// 结束时间 NULL-不限
+        /// </summary>
+        [Newtonsoft.Json.JsonConverter(typeof(Pharos.Utility.JsonShortDate))]
+        public DateTime? EndDate { get; set; }
+        public string Memo { get; set; }
+    }
+}

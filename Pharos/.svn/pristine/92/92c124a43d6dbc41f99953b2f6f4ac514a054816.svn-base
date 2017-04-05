@@ -1,0 +1,187 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增账号", hideDel: true, hideAdd: false, searchHeight: 50));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar" style=" padding-top:2px;">
+    <tr>
+
+        <td class="label-toolbar">
+            <label>状态：</label>
+        </td>
+        <td class="input-toolbar" style="padding-right:10px;">
+            @Html.DropDownList("State", new List<SelectListItem>() { new SelectListItem() { Text = "全部", Value = "0" }, new SelectListItem() { Text = "未审核", Value = "1" }, new SelectListItem() { Text = "可用", Value = "2" }, new SelectListItem() { Text = "暂停", Value = "3" }, new SelectListItem() { Text = "注销", Value = "4" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:100" })
+        </td>
+
+        <td class="label-toolbar">
+            <label>创建日期：</label>
+        </td>
+        <td class="input-toolbar">
+            <input name="CreateDT_begin" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+        </td>
+        <td class="label-toolbar">
+            <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+        </td>
+        <td class="input-toolbar">
+            <input name="CreateDT_end" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+        </td>
+
+        <td class="label-toolbar">
+            <label>关键字：</label>
+        </td>
+        <td class="input-toolbar" style="padding-right:10px;">
+            @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按员工姓名", Value = "1" }, new SelectListItem() { Text = "按登录账号", Value = "2" }, new SelectListItem() { Text = "按联系电话", Value = "3" } }, new { @class = "easyui-combobox datacontrol", data_options = "editable: false,width:120" })
+        </td>
+        <td class="input-toolbar">
+            <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+        </td>
+
+    </tr>
+
+    @*<tr class="s_tr">
+
+        </tr>*@
+</table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="UpState(2)">设为可用账号</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="UpState(3)">停用账号</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="del()">删除账号</a>
+}
+<script type="text/javascript">
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.State == 3) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        {
+            field: 'State', title: '状态', editor: { type: 'text', required: true }, width: 120, formatter: function (value, row, index) {
+                if (value == "1") {
+                    return "未审核";
+                }
+                else if (value == "2") {
+                    return "可用";
+                }
+                else if (value == "3") {
+                    return "停用";
+                }
+            }
+        },
+        { field: 'CID', title: '商户号', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'LoginName', title: '登录账号', editor: { type: 'text', required: true }, width: 120 }
+    ]];
+
+    pharos.manager.columns = [[
+        {
+            field: 'AccountType', title: '账号类型', editor: { type: 'text', required: true }, width: 120, formatter: function (value, row, index) {
+                if (value == "1") {
+                    return "管理员";
+                }
+                else if (value == "2") {
+                    return "普通账号";
+                }
+            }
+        },
+        {
+            field: 'StoreName', title: '隶属门店', editor: { type: 'text', required: true }, width: 200, formatter: function (value, row, index) {
+                if (row.StoreNum != null && row.StoreName != null&&row.StoreNum != "" && row.StoreName != "")
+                {
+                    return "[" + row.StoreNum + "]&nbsp;&nbsp;" + row.StoreName;
+                }
+                else
+                {
+                    return "";
+                }
+            }
+        },
+        { field: 'FullName', title: '员工姓名', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Phone', title: '联系电话', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo', title: '备注', editor: { type: 'text', required: true }, width: 200 },
+        { field: 'CreateDT', title: '创建时间', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'SFullName', title: '创建人', editor: { type: 'text', required: true }, width: 120 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 620, 'height': 350, hideSave: false, 'url': this.editurlNocache() });
+    };
+
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        openWin({ 'title': this.editText, 'width': 620, 'height': 350, hideSave: false, 'url': this.editurlNocache() });
+    }
+
+    //将所选项设为
+    function UpState(s) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("UpState")", { ids : ids, state : s, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "设置成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "设置失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+    //删除
+    function del() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+
+        var isDel = true;
+        $.each(rows, function (i, item) {
+            if (item.AccountType == 1) {
+                $.messager.alert("提示", "删除失败，管理员不能删除");
+                isDel = false;
+                return false;
+            }
+            if (item.State != 1 ) {
+                $.messager.alert("提示", "删除失败，只能删除未审核的账号");
+                isDel = false;
+                return false;
+            }
+        });
+
+        if (!isDel) {
+            return;
+        }
+
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("Delete")", { ids: ids, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "删除成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "删除失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+
+    $(function () {
+
+    });
+</script>
+
+
+

@@ -1,0 +1,126 @@
+﻿@{
+    ViewBag.Title = "Menus";
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增机构", delText: "删除机构", editText: "修改",hideAdd:!CurrentUser.HasPermiss(211),hideEdit:!CurrentUser.HasPermiss(211), hideDel: true, hideSearch: true));
+}
+
+<script type="text/javascript">
+    pharos.managertree.sortName = "Id";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "Title";
+    pharos.managertree.pagination = false;
+    pharos.managertree.columns = [[
+        { field: 'Id', checkbox: true, hidden: true },
+        { field: 'DeptId', title: '编号', width: 60 },
+        { field: 'Title', title: '机构(或部门)名称', width: 200 },
+        { field: 'DeptCode', title: '机构(或部门)代码', width: 120 },
+        { field: 'ManagerTitle', title: '机构(或部门)领导', width: 120 },
+        { field: 'DeputyTitle', title: '机构(或部门)副领导', width: 120 },
+        { field: 'UserCount', title: '成员数', width: 80 },
+        { field: 'Status', title: '状态', width: 60, formatter: function (value, row, index) { return value == 1 ? "显示" : "隐藏"; } },
+        {
+            field: 'Editor', title: '操作', width: 280, align: 'center', formatter: function (value, row, index) {
+                var operat = "";
+                @if (CurrentUser.HasPermiss(214))
+                {
+                    <text>
+                    if (row.Index == 0)
+                        operat += "<a style='color:#555'>[上移]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a  href='javascript:MoveItem(1,\"" + row.DeptId + "\")'>[上移]</a>&nbsp;&nbsp;";
+                    //debugger;
+                    var childcount = 0;
+                    if (row.ParentId > 0) {
+                        var po = pharos.managertree.$dg.treegrid("find", row.ParentId);
+                        childcount = po.children.length - 1;
+                    } else {
+                        childcount = pharos.managertree.$dg.treegrid("getData").length - 1;
+                    }
+
+                    if (row.Index == childcount)
+                        operat += "<a style='color:#555'>[下移]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a  href='javascript:MoveItem(2,\"" + row.DeptId + "\")'>[下移]</a>&nbsp;&nbsp;";
+
+                    if (row.ParentId > 0)
+                        operat += "<a  href='javascript:MoveItem(3,\"" + row.DeptId + "\")'>[升级]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a style='color:#555'>[升级]</a>&nbsp;&nbsp;";
+
+                    if (row.children.length > 0 || row.ParentId > 0 || row.PrevId == 0)
+                        operat += "<a style='color:#555'>[降级]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a  href='javascript:MoveItem(4,\"" + row.DeptId + "\")'>[降级]</a>&nbsp;&nbsp;";
+                    </text>
+                }
+
+                @if (CurrentUser.HasPermiss(212))
+                {
+                    <text>
+                if (row.Depth >= 5)//限制5级
+                    operat += "<a style='color:#555'>[添加]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a href='javascript:addDept(\"" + row.DeptId + "\")'>[添加]</a>&nbsp;&nbsp;";
+                </text>
+                }
+
+                @if (CurrentUser.HasPermiss(215))
+                {
+                    <text>
+                if (row.Status == 1)
+                    operat += "<a  href='javascript:setState(0,\"" + row.DeptId + "\")'>[隐藏]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:setState(1,\"" + row.DeptId + "\")'>[显示]</a>&nbsp;&nbsp;";
+                </text>
+                }
+
+                @if (CurrentUser.HasPermiss(213))
+                {
+                    <text>
+                if (row.children.length > 0 || row.UserCount > 0 || row.PositionCount > 0)
+                    operat += "<a style='color:#555'>[移除]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a href='javascript:removeDept(\"" + row.DeptId + "\")'>[移除]</a>&nbsp;";
+                </text>
+                }
+                return operat;
+            }
+        }
+    ]];
+    //pharos.managertree.$dg.treegrid({ idField: "DeptId" });
+    pharos.managertree.editItem = function (id, row) {
+        this.Id = id;
+        openDialog600(this.editText, this.editurlNocache() + "&PDeptId=" + row.PDeptId + "&DeptId=" + row.DeptId);
+    }
+    function MoveItem(mode, DeptId) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, DeptId: DeptId },
+            url: "@Url.Action("MoveItem")",
+            success: function (data) {
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "菜单移动失败！", "info");
+            }
+        });
+    }
+    function addDept(pid) {
+        openDialog600("新增子项", pharos.managertree.editurlNocache() + "&PDeptId=" + pid + "&DeptId=");
+    }
+
+    function removeDept(id) {
+        pharos.managertree.removeItem(id);
+    }
+    function setState(mode, deptId) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, deptId: deptId },
+            url: "@Url.Action("SetState")",
+            success: function (data) {
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "修改状态失败！", "info");
+            }
+        });
+    }
+</script>

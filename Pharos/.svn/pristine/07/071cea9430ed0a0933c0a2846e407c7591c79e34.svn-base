@@ -1,0 +1,173 @@
+﻿using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS.Entity;
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class ProductVerController : BaseController
+    {
+        #region 私有对象
+        [Ninject.Inject]
+        ProductVerService ProductVerService { get; set; }
+        
+        #endregion
+        #region 首页
+        public ActionResult Index()
+        {
+            ViewBag.products= ListToSelect(ProductVerService.GetList().Select(o => new SelectListItem() { Text = o.Value, Value = o.Key.ToString() }), emptyTitle: "全部");
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult FindPageList()
+        {
+            int count = 0;
+            var list = ProductVerService.GetPageList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+
+        [HttpPost]
+        public ActionResult Delete(int[] ids)
+        {
+            return new JsonNetResult(ProductVerService.Deletes(ids));
+        }
+        #endregion
+        #region 新建版本
+        public ActionResult Save(int? id)
+        {
+            var obj = new ProductVer();
+            if (id.HasValue)
+            {
+                obj = ProductVerService.Get(id.Value);
+            }
+            return View(obj.IsNullThrow());
+        }
+        [HttpPost]
+        public ActionResult Save(ProductVer obj)
+        {
+            var re = ProductVerService.SaveOrUpdate(obj);
+            return new OpActionResult(re);
+        }
+        [HttpPost]
+        public ActionResult Copy(int id)
+        {
+            var re = ProductVerService.Copy(id);
+            return new OpActionResult(re);
+        }
+        #endregion
+        #region 发布
+        /// <summary>
+        /// 设置状态
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult Publish(int id, short state)
+        {
+            var re = ProductVerService.Publish(id, state);
+            return new OpActionResult(re);
+        }
+        #endregion
+        #region 菜单
+        public ActionResult Menus()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult MenuList(string productid)
+        {
+            var list = ProductVerService.MenuList(productid);
+            return ToDataGrid(list,0);
+        }
+
+        public ActionResult SaveMenu(int? menuid,string productid,int? pmenuId)
+        {
+            var obj = new ProductMenu() { ProductId = productid,PMenuId=pmenuId.GetValueOrDefault(),Type=1,Status=true };
+            if (menuid.HasValue)
+            {
+                obj = ProductVerService.GetMenu(menuid.Value, productid);
+            }
+            if(pmenuId.HasValue)
+            {
+                var pm = ProductVerService.GetMenu(pmenuId.Value, productid);
+                if (pm != null) ViewBag.ParentMenu = pm.Title;
+            }
+            return View(obj.IsNullThrow());
+        }
+        [HttpPost]
+        public ActionResult SaveMenu(ProductMenu menu)
+        {
+            var re = ProductVerService.SaveMenu(menu);
+            return new OpActionResult(re);
+        }
+        [HttpPost]
+        public void RemoveMenu(int menuId, string productId)
+        {
+            ProductVerService.RemoveMenu(menuId, productId);
+        }
+        [HttpPost]
+        public void MoveMenuItem(short mode, int menuId,string productId)
+        {
+            if (mode == 1 || mode == 2)
+                ProductVerService.MoveMenuItem(mode, menuId, productId);
+            else
+                ProductVerService.MoveUpMenuItem(mode, menuId, productId);
+        }
+        #endregion
+
+        #region 权限
+        public ActionResult Limits()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult LimitList(string productid)
+        {
+            var list = ProductVerService.LimitList(productid);
+            return ToDataGrid(list, 0);
+        }
+
+        public ActionResult SaveLimit(int? limitid, string productid, int? pmenuId)
+        {
+            var obj = new ProductLimit() { ProductId = productid, MenuId = pmenuId.GetValueOrDefault(),Status = true };
+            if (limitid.HasValue)
+            {
+                obj = ProductVerService.GetLimit(limitid.Value, productid);
+            }
+            if (pmenuId.HasValue)
+            {
+                var pm = ProductVerService.GetMenu(pmenuId.Value,productid);
+                if (pm != null) ViewBag.ParentMenu = pm.Title;
+            }
+            return View(obj.IsNullThrow());
+        }
+        [HttpPost]
+        public ActionResult SaveLimit(ProductLimit menu)
+        {
+            var re = ProductVerService.SaveLimit(menu);
+            return new OpActionResult(re);
+        }
+        [HttpPost]
+        public void RemoveLimit(int limitId, string productid)
+        {
+            ProductVerService.RemoveLimit(limitId, productid);
+        }
+        [HttpPost]
+        public void MoveLimitItem(short mode, int limitId, string productid)
+        {
+            ProductVerService.MoveLimitItem(mode, limitId, productid);
+        }
+        [HttpPost]
+        public void SetLimitState(short mode, int limitId, string productid)
+        {
+            ProductVerService.SetLimitState(mode, limitId, productid);
+        }
+        #endregion
+    }
+}

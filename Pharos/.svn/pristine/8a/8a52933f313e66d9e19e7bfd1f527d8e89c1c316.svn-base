@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <configSections>
+    <!-- For more information on Entity Framework configuration, visit http://go.microsoft.com/fwlink/?LinkID=237468 -->
+    <section name="entityFramework" type="System.Data.Entity.Internal.ConfigFile.EntityFrameworkSection, EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" requirePermission="false" />
+  </configSections>
+  <!--<connectionStrings>
+    <add name="ConnectionString" connectionString="Data Source=192.168.10.126;Initial Catalog=Pharos_TestSync;Persist Security Info=True;User ID=pharos_admin;Password=pharos_admin;"/>
+  </connectionStrings>-->
+  <appSettings>
+    <add key="ConnEncrypt" value="False"/>
+    <add key="aspnet:UseTaskFriendlySynchronizationContext" value="true" />
+    <add key="ConnectionString" value="Data Source=192.168.10.126;Initial Catalog=Pharos_TestSync;Persist Security Info=True;User ID=pharos_admin;Password=pharos_admin;" />
+  </appSettings>
+  <system.web>
+    <compilation debug="true" targetFramework="4.5" />
+    <httpRuntime targetFramework="4.5" />
+  </system.web>
+  <system.serviceModel>
+    <services>
+      <service name="Pharos.SyncService.PosServerDbSyncService" behaviorConfiguration="ServiceBehavior">
+        <!-- Service Endpoints -->
+        <endpoint address="" binding="wsHttpBinding" contract="Pharos.SyncService.IPosServerDbSyncService">
+          <!-- 
+              Upon deployment, the following identity element should be removed or replaced to reflect the 
+              identity under which the deployed service runs.  If removed, WCF will infer an appropriate identity 
+              automatically.
+          -->
+          <identity>
+            <dns value="localhost"/>
+          </identity>
+        </endpoint>
+        <endpoint address="mex" binding="mexHttpBinding" contract="IMetadataExchange"/>
+      </service>
+    </services>
+    
+    
+    
+    
+    <behaviors>
+      <serviceBehaviors>
+        <behavior name="ServiceBehavior">
+          <!-- To avoid disclosing metadata information, set the value below to false and remove the metadata endpoint above before deployment -->
+          <serviceMetadata httpGetEnabled="true"/>
+          <!-- To receive exception details in faults for debugging purposes, set the value below to true.  Set to false before deployment to avoid disclosing exception information -->
+          <serviceDebug includeExceptionDetailInFaults="true"/>
+        </behavior>
+      </serviceBehaviors>
+    </behaviors>
+    <bindings>
+      <wsHttpBinding>
+        <binding maxReceivedMessageSize="2147483647" maxBufferPoolSize="2147483647" >
+          <readerQuotas
+           maxDepth="32" maxStringContentLength="2147483647" maxArrayLength="2147483647"
+       maxBytesPerRead="2147483647" maxNameTableCharCount="2147483647" />
+        </binding>
+      </wsHttpBinding>
+    </bindings>
+    <protocolMapping>
+      <add binding="basicHttpsBinding" scheme="https" />
+    </protocolMapping>
+    <serviceHostingEnvironment aspNetCompatibilityEnabled="true" multipleSiteBindingsEnabled="true" />
+  </system.serviceModel>
+  <system.webServer>
+    <modules runAllManagedModulesForAllRequests="true" />
+    <!--
+        若要在调试过程中浏览 Web 应用程序根目录，请将下面的值设置为 True。
+        在部署之前将该值设置为 False 可避免泄露 Web 应用程序文件夹信息。
+      -->
+    <directoryBrowse enabled="true" />
+  </system.webServer>
+  <entityFramework>
+    <defaultConnectionFactory type="System.Data.Entity.Infrastructure.SqlConnectionFactory, EntityFramework" />
+    <providers>
+      <provider invariantName="System.Data.SqlClient" type="System.Data.Entity.SqlServer.SqlProviderServices, EntityFramework.SqlServer" />
+    </providers>
+  </entityFramework>
+</configuration>

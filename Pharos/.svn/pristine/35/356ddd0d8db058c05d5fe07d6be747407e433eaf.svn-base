@@ -1,0 +1,61 @@
+﻿@{
+    ViewBag.Title = "CreateRechargeGift";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">活动有效期：</td>
+                    <td class="input" >
+                        <input type="text" class="easyui-validatebox Wdate" /> - 
+                        <input type="text" class="easyui-validatebox Wdate" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">活动时效：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "每天", Value = "0", Selected = true }, new SelectListItem() { Text = "每周", Value = "1" } }, "timetype")</td>
+                                <td>@Html.TimeBoxList(new List<string>() { "09:00", "11:00", "14:00", "16:00" }, "Times")</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">充值金额：</td>
+                    <td class="input"><input type="text" class="easyui-textbox" /></td>
+                </tr>
+                <tr>
+                    <td class="name">赠送项目：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "通用金额", Value = "0", Selected = true }, new SelectListItem() { Text = "会员积分", Value = "1" } }, "gifttype")</td>
+                                <td><input type="text" class="easyui-textbox" data-options="width:60" /></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">分期赠送：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "即时赠送", Value = "0", Selected = true }, new SelectListItem() { Text = "多期赠送", Value = "1" } }, "gifttime")</td>
+                                <td>分<input type="text" class="easyui-validatebox" style="width:50px" />期，每期赠送<input type="radio" />金额<input type="radio" />积分,每期赠送日期<input type="text" class="easyui-validatebox Wdate" style="width:100px" /></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">限量：</td>
+                    <td class="input"><input type="text" class="easyui-textbox" /></td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>

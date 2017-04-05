@@ -1,0 +1,113 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Mobile.Exceptions;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.BLL;
+using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.ApiData.Mobile.Services
+{
+    public class OrderService
+    {
+        public static object GetOrderDetail(string orderId)
+        {
+            var query = from a in BaseService<VwOrder>.CurrentRepository.QueryEntity
+                        join b in BaseService<IndentOrderList>.CurrentRepository.QueryEntity on a.IndentOrderId equals b.IndentOrderId
+                        join c in BaseService<VwProduct>.CurrentRepository.QueryEntity on b.Barcode equals c.Barcode
+                        where a.IndentOrderId == orderId
+                        select new
+                        {
+                            a,
+                            c.ProductCode,
+                            c.Barcode,
+                            c.Title,
+                            c.SysPrice,
+                            c.SubUnit,
+                            b.IndentNum,
+                            DeliveryNum = b.IndentNum - b.DeliveryNum
+                        };
+            var list = query.ToList();
+            if (!list.Any()) return null;
+            var order = list.Select(o => o.a).FirstOrDefault();
+            var obj = new
+            {
+                OrderId=order.IndentOrderId,
+                order.StoreTitle,
+                order.RecipientsTitle,
+                order.SupplierTitle,
+                order.OrderTotal,
+                order.ShippingAddress,
+                order.DeliveryDate,
+                StateTitle=order.State==0?"待审批":order.State==1?"已审批":"未提交",
+                Details=list.Select(o=>new{o.ProductCode,o.Barcode,o.Title,o.SysPrice,o.SubUnit,o.IndentNum,o.DeliveryNum}) };
+            return obj;
+        }
+        public static object GetOrderApproveList(string date, string pageIndex, string pageSize)
+        {
+            if (string.IsNullOrWhiteSpace(date))
+                throw new MessageException("当前日期为空!");
+            var query = BaseService<VwOrder>.CurrentRepository.QueryEntity;
+            var st1 = DateTime.Parse(date).Date;
+            var st2 = st1.AddMonths(1);
+            query = query.Where(o => o.CreateDT >= st1 && o.CreateDT < st2 && (o.State ==0 || o.State== 1));
+            var nl= new NameValueCollection();
+            nl.Add("page", pageIndex);
+            nl.Add("rows", pageSize);
+            var list = query.OrderBy(o=>o.CreateDT).ToList();
+            var days = new List<object>();
+            var dates =list.Select(o=>o.CreateDT.Date).GroupBy(o=>o.Date).ToList();
+            foreach(var dt in dates)
+            {
+                var orders = list.Where(o => o.CreateDT.Date == dt.Key).Select(o => new
+                {
+                    o.StoreTitle,
+                    o.OrderTotal,
+                    OrderId = o.IndentOrderId,
+                    StateTitle = o.State==0?"待审批":o.State==1?"已审批":"未提交",
+                    Time = o.CreateDT.ToShortTimeString()
+                }).ToList();
+                days.Add(new { Day = dt.Key.Day, Orders = orders });
+            }
+            return new {Year=st1.Year,Month=st1.Month,Days=days };
+
+        }
+        public static object GetOrderApproveDayList(string date)
+        {
+            if (string.IsNullOrWhiteSpace(date))
+                throw new MessageException("当前日期为空!");
+            var query = BaseService<VwOrder>.CurrentRepository.QueryEntity;
+            var st1 = DateTime.Parse(date);
+            var st2 = st1.AddDays(1);
+            query = query.Where(o => o.CreateDT >= st1 && o.CreateDT < st2 && o.State < 2);
+            return query.ToList().Select(o => new
+            {
+                o.StoreTitle,
+                o.OrderTotal,
+                OrderId = o.IndentOrderId,
+                StateTitle = o.StateTitle,
+                Time = o.CreateDT.ToShortTimeString()
+            });
+
+        }
+        public static void Approve(string orderId)
+        {
+            var obj = BaseService<IndentOrder>.Find(o => o.IndentOrderId == orderId && o.State<1);
+            if (obj == null) throw new MessageException("订单号不存在!");
+            obj.State = 1;
+            BaseService<IndentOrder>.Update(obj);
+        }
+
+        public static object GetOrderNumBySupplier(string supplierId)
+        {
+            if (supplierId.IsNullOrEmpty()) throw new MessageException("供应商ID为空!");
+            return BaseService<IndentOrder>.CurrentRepository.Entities.Where(o => o.State == 1 && o.SupplierID == supplierId).Count();
+        }
+        public static object GetOrderNotApproveNum()
+        {
+            return BaseService<IndentOrder>.CurrentRepository.Entities.Where(o => o.State == 0).Count();
+        }
+    }
+}

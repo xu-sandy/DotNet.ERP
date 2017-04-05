@@ -1,0 +1,209 @@
+﻿@model OutboundGoods
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    bool hideDel = false, hideOutbound = false, showDetail = true, hideAdd = false;
+    if(Request["selectType"]=="1")
+    {
+        
+    }
+    else { 
+        hideAdd = !CurrentUser.HasPermiss(SysConstLimits.库存管理_入库登记);
+        showDetail = CurrentUser.HasPermiss(SysConstLimits.库存管理_查看入库信息) || !hideAdd;
+        hideOutbound = !CurrentUser.HasPermiss(SysConstLimits.库存管理_设为已审出库);
+        hideDel = !CurrentUser.HasPermiss(SysConstLimits.库存管理_删除出库信息);
+    }
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: hideDel, delText: "删除记录"));
+}
+@section search{
+    <table style=" padding-left: 7px; margin-bottom:-3px;">
+    <tr>
+        <td>出货仓库：</td>
+        <td>
+            @Html.DropDownList("Store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,width:160" })
+        </td>
+        <td class="left_searchlabel" style="display:none">出货渠道：</td>
+        <td style="display:none">
+            @*@Html.DropDownList("Channel", ViewBag.channel as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "onSelect:applySelect" })*@
+            @Html.RadioButtonList(ViewBag.channels as List<SelectListItem>, "Channel", new { data_options = "onSelect:applySelect" })
+        </td>
+        <td class="left_searchlabel">提货单位：</td>
+        <td>
+            @Html.DropDownList("ApplyOrg", new List<SelectListItem>() { new SelectListItem(){Text="请选择",Value="",Selected=true}}, new { @class = "easyui-combobox datacontrol", data_options = "width:160", id = "ApplyOrg" })
+        </td>        
+        <td class="left_searchlabel">
+            <label>登记日期：</label>
+        </td>
+        <td>
+            <input name="StartDate" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            <label style="width:10px;">-</label>
+            <input name="EndDate" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+        </td>
+    </tr>
+</table>
+}
+@section toolbar{
+    @if(!hideOutbound)
+    { 
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(0)">设为已审</a>
+    }
+    <a class="easyui-linkbutton cus1 linkbtn" onclick="printOutboundGoods()">打印出库单</a>
+}
+
+<script type="text/javascript">
+
+    pharos.manager.geturl = "@Url.Action("FindOutboundList", "Store")";
+    pharos.manager.delurl = "@Url.Action("DeleteOutbounds","Store")";
+    pharos.manager.columns = [[
+            { field: 'Id', checkbox: true, width: 30 },
+            { field: 'OutboundId', title: '出库单', width: 120, align: 'center' },
+            { field: 'StoreTitle', title: '出货仓库', width: 100, align: 'center' },
+            //{ field: 'Channel', title: '出货渠道', width: 60, align: 'center' },
+            { field: 'ApplyOrg', title: '提货单位', width: 100, align: 'center' },
+            //{ field: 'Apply', title: '提货员', width: 60, align: 'center' },
+            { field: 'Operator', title: '经办人', width: 60, align: 'center' },
+            { field: 'OutboundNumber', title: '出库数量', width: 60, align: 'center' },
+            { field: 'OutboundPrice', title: '出库金额', width: 60, align: 'center' },
+            { field: 'CreateDTStr', title: '出仓日期', width: 60, align: 'center' },
+            { field: 'StateTitle', title: '审核状态', width: 60, align: 'center' }
+
+    ]];
+
+    $(function () {        
+        //出货渠道-提货单位，联动下拉
+        $("[name='Channel']").click(function () {
+            $.post("@Url.Action("ParentTypeSelect", "Store")", { Id: $(this).val(), showTitle: 1, t: Math.random() }, function (data) {
+                $("#ApplyOrg").combobox("clear").combobox("loadData", data);
+            }, "json");
+        });
+        if ($("[name='Channel']:first").attr("checked"))
+            $("[name='Channel']:first").click();
+        else
+            $("[name='Channel']:last").click();
+        
+    });
+
+    //变更状态
+    function setState() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.messager.confirm("提示", "是否将选中的出库单设为已审?", function (r) {
+            if (!r) { return r; }
+            var ids = $.map(rows, function (item) {
+                return item.Id;
+            }).join();
+            $.post("@Url.Action("IsOutboundHasCommodity")", { Ids: ids, t: Math.random() }, function (d) {
+                if (d.successed) {
+                    //库存充足,直接继续
+                    setOutboundStateToChecked(ids);
+                } else {
+                    $.messager.confirm("提示", d.message, function (t) {
+                        if (!t) { return t;}
+                        setOutboundStateToChecked(ids);
+                    });
+                }
+            }, "json");
+        });
+    }
+    function setOutboundStateToChecked(ids) {
+        $.post("@Url.Action("SetOutboundStateToChecked")", { Ids: ids, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    //编辑出库单
+    //var btnsub = {
+    //    text: '保存并关闭',
+    //    iconCls: 'icon-ok',
+    //    width: 140,
+    //    handler: function (e) {
+    //        window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+    //        pharos.easyui.dialog.topClose("formDiv");
+    //        setTimeout(function () { pharos.manager.gridReload(); }, 500);
+
+    //    }
+    //};
+    pharos.manager.editItem = function (Id, row) {
+        if (row.StateTitle == "已审") {
+            @if(showDetail)
+            {
+            @:openDialog(this.editText, '@Url.Action("OutboundGoods", "Store")?outboundId=' + row.OutboundId, $(window.parent).width() - 80, $(window.parent).height() - 80, true);
+            }
+        }
+        else {
+            @if(!hideAdd)
+            {
+            @:openDialog(this.editText, '@Url.Action("OutboundGoods", "Store")?outboundId=' + row.OutboundId, $(window.parent).width() - 80, $(window.parent).height() - 80, false);
+            }
+        }     
+    }
+
+    //出货渠道-提货单位，联动下拉
+    function applySelect(record) { 
+        $.post("@Url.Action("ParentTypeSelect", "Store")", { Id: record.value, showTitle: 1, t: Math.random() }, function (data) {
+            $("#ApplyOrgId").combobox("clear").combobox("loadData", data);
+        }, "json");
+    }
+
+
+
+    //打印出库单
+    var btns = [{
+        text: '打印',
+        iconCls: '',
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.printt();
+        }
+    },
+    {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            pharos.easyui.dialog.topClose("formDiv");
+        }
+    }];
+    function printOutboundGoods() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var isAllChecked = true;
+        var uncheckedOutboundId = '';
+        var ids = $.map(rows, function (item) {
+            if (item.StateTitle == "待审") {
+                isAllChecked = false;
+                uncheckedOutboundId = item.OutboundId;
+            }
+            return item.Id;
+        }).join();
+        if (!isAllChecked) {
+            $.messager.alert("提示", "出库单：" + uncheckedOutboundId + "为待审状态，不能打印");
+        } else {
+            openPrintDialog(ids);
+        }
+
+    }
+
+    function openPrintDialog(ids) {
+        var url = "@Url.Action("OutboudsGoodsPrintView", "Store")?Ids=" + ids + "&t=" + Math.random();
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("body").openTopDialog({
+            id: "formDiv",
+            title: "打印出库单",
+            width: $(window.parent).width() >= 1000 ? 1000 : $(window.parent).width() - 80,
+            height: $(window.parent).height() >= 700 ? 700 : $(window.parent).height() - 80,
+            content: cont,
+            //href: url,
+            modal: true,
+            cache: false,
+            buttons: btns,
+            tools: dialogTools(),
+            onClose: closeDialog
+        });
+    }
+
+</script>
+
+

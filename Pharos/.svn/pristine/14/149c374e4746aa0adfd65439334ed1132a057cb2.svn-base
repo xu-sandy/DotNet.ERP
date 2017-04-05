@@ -1,0 +1,83 @@
+﻿@model Pharos.Logic.Entity.MakingMembershipCard
+@{
+    ViewBag.Title = "CreateRecharge";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">新增数量：</td>
+                    <td class="input"><input type="text" name="MakeNumber" class="easyui-textbox" value="@Model.MakeNumber" min="1" placeholder="1-10000" maxlength="5" data-ng-options="require:true" /></td>
+                    <td class="name">类型：</td>
+                    <td class="input">@Html.DropDownList("CardTypeId", ViewBag.CardType as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+                </tr>
+                @*<tr>
+                        <td class="name">编号范围：</td>
+                        <td class="input"><input type="text" name="NumberStart" class="easyui-textbox" data-options="width:70" value="@Model.NumberStart" />-<input type="text" name="NumberEnd" class="easyui-textbox" data-options="width:70" value="@Model.NumberEnd" /></td>
+
+                    </tr>*@
+                <tr>
+                    <td class="name">有效期-开始：</td>
+                    <td class="input">
+                        @*<input type="text" id="ExpiryStart" name="ExpiryStart" class="datacontrol Wdate" onclick="WdatePicker({ maxDate: '#F{$dp.$D(\'ExpiryEnd\')}' })" value="@DateTime.Now.ToString("yyyy-MM-dd")" />*@
+                        <input name="ExpiryStart" id="ExpiryStart" class="datacontrol Wdate" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd', maxDate: '#F{$dp.$D(\'ExpiryEnd\')}' })" value="@Model.ExpiryStart.ToString("yyyy-MM-dd")" />
+                    </td>
+                    <td class="name">有效期-截止：</td>
+                    <td class="input">
+                        @*<input type="text" id="ExpiryEnd" name="ExpiryEnd" class="datacontrol Wdate" onclick="WdatePicker({ maxDate: '#F{$dp.$D(\'ExpiryEnd\')}' })" value="@DateTime.Now.ToString("yyyy-MM-dd")" />*@
+                        <input name="ExpiryEnd" id="ExpiryEnd" class="datacontrol Wdate" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd', minDate: '#F{$dp.$D(\'ExpiryStart\')}' })" value="" />
+                    </td>
+                </tr>
+                <tr></tr>
+                @*<tr>
+                        <td class="name">状态：</td>
+
+                        <td colspan="3" style="margin-top:80px;margin-left:50px">
+                            <input name="State" type="radio" value="0" />未制卡
+                            <input name="State" type="radio" value="1" />已制卡
+                            <input name="State" type="radio" value="2" />可用
+                            <input name="State" type="radio" value="3" />已作废
+                        </td>
+                        <td></td>
+                        <td></td>
+                    </tr>*@
+            </table>
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+        @*var state=@Model.State;
+        var radios=$("input[name=State]");
+        for (var i = 0; i < radios.length; i++) {
+            var radioVal=  $(radios[i]).val();
+            if(radioVal==state){
+                $(radios[i]).attr("checked","checked");
+            }
+        }*@
+        if ('@Model.Id' == '0') {
+            $("input[name=ExpiryStart]").val('@DateTime.Now.ToString("yyyy-MM-dd")');
+            $("input[name=CardType]").combobox("setValue", "-1");
+            $("input[name=ExpiryEnd]").val('')
+        } else {
+            if ('@Model.ExpiryEnd' != null && '@Model.ExpiryEnd' != '') {
+                $("input[name=ExpiryEnd]").val('@(Convert.ToDateTime(Model.ExpiryEnd).ToString("yyyy-MM-dd"))')
+            }
+        }
+
+        var cardType = '@Model.CardTypeId';
+        $("#CardType").combobox('setValue', cardType);
+    })
+
+    function SaveBefore() {
+        var val = $("input[name=MakeNumber]").val();
+        if (val < 1) {
+            $.messager.alert("提示", "新增数量不能小于1", "info");
+            return false;
+        }
+    }
+</script>

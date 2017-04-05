@@ -1,0 +1,41 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// YinLianZhiFu.xaml 的交互逻辑
+    /// </summary>
+    public partial class YinLianZhiFu : DialogWindow02
+    {
+        public YinLianZhiFu(decimal amount, PayAction _payAction,int reason =0)
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+            Task.Factory.StartNew(() =>
+            {
+                var model = new YinLianPayViewModel(amount, _payAction, reason);
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    this.ApplyBindings(this, model);
+                }));
+            });
+            this.PreviewKeyDown+=YinLianZhiFu_PreviewKeyDown;
+        }
+
+        private void YinLianZhiFu_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            switch (e.Key) 
+            {
+                case System.Windows.Input.Key.Enter:
+                    btn.Focus();
+                    break;
+            }
+        }
+    }
+}

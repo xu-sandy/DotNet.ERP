@@ -1,0 +1,59 @@
+﻿
+using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+using System;
+namespace Pharos.POS.Retailing.Models.Payment
+{
+    public delegate void PayCompleteHandler(BasePay info);
+
+    public abstract class BasePay
+    {
+        /// <summary>
+        /// 实现支付时，必须调用基方法
+        /// </summary>
+        /// <param name="info"></param>
+        /// <returns></returns>
+        public virtual BasePay Pay(PayDetails info)
+        {
+            ThePayDetails = info;
+            return this;
+        }
+
+        public virtual void SaveRecord()
+        {
+            //消费支付方式
+            if (!(this.ApiCode == -1 && this.ThePayDetails.MoneyNeedPay == 0))
+            {
+                ConsumptionPaymentLocalService.Save(new ConsumptionPayment()
+                {
+                    Amount = this.ThePayDetails.MoneyNeedPay,
+                    PaySN = this.ThePayDetails.PaySN,
+                    State = 1,
+                    ApiCode = this.ApiCode,
+                    ApiOrderSN = this.ApiOrderSN,
+                    IsUpload = true,
+                    CardNo = this.ThePayDetails.CardNo,
+                    CreateDT = DateTime.Now,
+                    //  Memo = payWay.ThePayDetails.Remark
+                });
+            }
+        }
+
+        public PayDetails ThePayDetails { get; set; }
+
+        public string Title { get; set; }
+
+        public int ApiCode { get; set; }
+
+        public string ApiUrl { get; set; }       
+        public string ApiOrderSN { get; set; }
+
+        public static event PayCompleteHandler PayCompleteEvent;
+
+        internal protected virtual void SetComplete()
+        {
+            if (PayCompleteEvent != null)
+                PayCompleteEvent(this);
+        }
+    }
+}

@@ -1,0 +1,112 @@
+﻿using Pharos.Logic.BLL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic;
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class BrandController : BaseController
+    {
+        //
+        // GET: /Brand/
+
+        public ActionResult Index()
+        {
+            return View();
+        }
+
+        //品牌管理
+        public ActionResult BrandManagement()
+        {
+            ViewBag.types = ListToSelect(SysDataDictService.GetBrandClassify().Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "全部");
+            return View();
+        }
+
+        public ActionResult FindPageList(string title, int? classfyId)
+        {
+            var count = 0;
+            var list = new ProductBrandBLL().GetBrandListBySearch(title, classfyId, out count);
+            return ToDataGrid(list, count);
+        }
+        [HttpPost]
+        [SysPermissionValidate(Code=Sys.SysConstLimits.品牌管理_移除品牌)]
+        public ActionResult Delete(int[] ids)
+        {
+            var list = ProductBrandService.FindList(o => ids.Contains(o.Id));
+            var brands= list.Select(o => o.BrandSN).ToList();
+            var re =new OpResult();
+            if(ProductService.IsExist(o=>o.BrandSN.HasValue && brands.Contains(o.BrandSN.Value)))
+                re.Message = "商品存在品牌关联";
+            else
+                re = ProductBrandService.Delete(list);
+            return new JsonNetResult(re);
+        }
+        //新增品牌
+        public ActionResult AddBrand(int? id)
+        {
+            ViewBag.types = ListToSelect(SysDataDictService.GetBrandClassify().Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+            var obj = new ProductBrand();
+            if (id.HasValue)
+            {
+                obj = ProductBrandService.FindById(id.Value);
+            }
+            return View(obj.IsNullThrow());
+        }
+        [HttpPost]
+        [SysPermissionValidate(Code = Sys.SysConstLimits.品牌管理_编辑品牌)]
+        public ActionResult AddBrand(ProductBrand obj)
+        {
+            var re = new OpResult();
+            obj.CompanyId = CommonService.CompanyId;
+            if (ProductBrandService.IsExist(o => o.Title == obj.Title && o.Id != obj.Id))
+                re.Message = "已存在该名称";
+            else if (obj.Id == 0)
+            {
+                obj.BrandSN = ProductBrandService.MaxSN;
+                obj.State = 1;
+                re = ProductBrandService.Add(obj);
+            }
+            else
+            {
+                var supp = ProductBrandService.FindById(obj.Id);
+                obj.ToCopyProperty(supp);
+                re = ProductBrandService.Update(supp);
+            }
+            return Content(re.ToJson());
+        }
+        [HttpPost]
+        public ActionResult SetState(string ids, short state)
+        {
+            var sId = ids.Split(',').Select(o => int.Parse(o));
+            var list = ProductBrandService.FindList(o => sId.Contains(o.Id));
+            list.ForEach(o => { o.State = state; });
+            var re = ProductBrandService.Update(list);
+            return new JsonNetResult(re);
+        }
+        [HttpPost]
+        public ActionResult GetBrandInput(string searchName)
+        {
+            if (searchName.IsNullOrEmpty()) return new EmptyResult();
+            var list = ProductBrandService.FindList(o =>o.CompanyId==CommonService.CompanyId && (o.JianPin != null && o.JianPin.StartsWith(searchName)) || o.Title.Contains(searchName));
+            return ToDataGrid(list, 10);
+        }
+        public ActionResult Import()
+        {
+            var obj= BaseService<ImportSet>.Find(o => o.CompanyId == CommonService.CompanyId && o.TableName == "ProductBrand");
+            return View(obj??new ImportSet());
+        }
+        [HttpPost]
+        public ActionResult Import(ImportSet imp)
+        {
+            imp.TableName = "ProductBrand";
+            imp.CompanyId = CommonService.CompanyId;
+            var op=ProductBrandService.Import(imp,Request.Files,Request["FieldName"],Request["ColumnName"]);
+            return Content(op.ToJson());
+        }
+    }
+}

@@ -1,0 +1,104 @@
+﻿using Pharos.Logic.BLL.LocalServices.LocalRead;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Linq;
+using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// NoticeControl.xaml 的交互逻辑
+    /// </summary>
+    public partial class NoticeControl : UserControl
+    {
+        public NoticeControl()
+        {
+            InitializeComponent();
+            spContainer.VerticalAlignment = System.Windows.VerticalAlignment.Center;
+            var entry = Assembly.GetEntryAssembly();
+            if (entry != null && Application.Current != null)
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    try
+                    {
+                        while (entry != null)
+                        {
+                            var result = NoticeLocalService.GetNotices().Select(o => string.Format("{0}:{1}", o.Theme, o.NoticeContent).Replace(Environment.NewLine, " ")).ToList();
+                            this.Dispatcher.Invoke(new Action<IEnumerable<string>>((o) =>
+                            {
+                                Notices = o;
+                                Index = 0;
+                            }), result);
+                            if (result.Count() == 0)
+                            {
+                                Thread.Sleep(new TimeSpan(0, 0, 10));
+                            }
+                            else
+                            {
+                                Thread.Sleep(new TimeSpan(1, 0, 0));
+
+                            }
+                        }
+                    }
+                    catch { }
+                });
+
+                Task.Factory.StartNew(() =>
+                {
+                    while (entry != null)
+                    {
+                        this.Dispatcher.Invoke(new Action(() =>
+                        {
+                            try
+                            {
+                                if (Notices.Count() > 0)
+                                {
+                                    spContainer.Children.Clear();
+
+                                    TextBlock txt = new TextBlock();
+                                    txt.TextWrapping = TextWrapping.NoWrap;
+                                    txt.FontSize = 18;
+                                    txt.Margin = new Thickness(0, 20, 0, 0);
+                                    txt.VerticalAlignment = System.Windows.VerticalAlignment.Center;
+                                    txt.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#707070"));
+                                    for (; Index < Notices.Count(); Index++)
+                                    {
+                                        var info = Notices.ElementAt(Index);
+                                        txt.Text += "            ";
+                                        txt.Text += info;
+                                    }
+                                    spContainer.Children.Add(txt);
+                                    ThicknessAnimation ta = new ThicknessAnimation();
+                                    ta.RepeatBehavior = RepeatBehavior.Forever;
+                                    ta.To = new Thickness(-(500 + (txt.Text.Length * 8)), 15, 0, 15);             //起始值
+                                    ta.From = new Thickness(500, 20, 0, 20);        //结束值
+                                    ta.Duration = TimeSpan.FromSeconds((ta.From.Value.Left - ta.To.Value.Left) / 50);         //动画持续时间
+                                    txt.BeginAnimation(TextBlock.MarginProperty, ta);//开始动画
+                                }
+                            }
+                            catch { }
+                        }));
+                        if (Notices.Count() == 0)
+                            Thread.Sleep(new TimeSpan(0, 0, 10));
+                        else
+                            Thread.Sleep(new TimeSpan(1, 0, 0));
+
+                    }
+                });
+            }
+            Notices = new List<string>();
+        }
+
+        private int Index { get; set; }
+        private object dataLock = new object();
+        public IEnumerable<string> Notices { get; set; }
+    }
+}

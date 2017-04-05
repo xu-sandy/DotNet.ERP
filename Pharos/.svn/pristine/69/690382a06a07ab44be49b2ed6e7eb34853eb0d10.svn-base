@@ -1,0 +1,86 @@
+﻿using Pharos.Logic.ApiData.Mobile.EaseMob;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json.Linq;
+using Pharos.Utility;
+
+namespace Pharos.Logic.ApiData.Mobile.Services
+{
+    public class ChatService
+    {
+        private static EmChat emChat;
+
+        static ChatService()
+        {
+            emChat = new EmChat(ConfigurationManager.AppSettings["em_reqUrlBase"],
+                ConfigurationManager.AppSettings["em_app_id"],
+                ConfigurationManager.AppSettings["em_app_secret"],
+                ConfigurationManager.AppSettings["em_app_org"],
+                ConfigurationManager.AppSettings["em_app_name"]);
+        }
+
+        static bool IsRequestOK(string responseStr)
+        {
+            JObject jo = JObject.Parse(responseStr);
+            if (jo.Properties().Any(a => a.Name.Equals("error", StringComparison.OrdinalIgnoreCase))) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// 创建一个环信用户
+        /// </summary>
+        /// <param name="enUserName">环信用户账号</param>
+        /// <param name="emPassword">环信密码</param>
+        /// <param name="emNickName">环信昵称，（可选）用于IOS推送</param>
+        /// <returns>OpResult</returns>
+        public static OpResult AccountCreate(string enUserName, string emPassword, string emNickName)
+        {
+            StringBuilder _build = new StringBuilder();
+            _build.Append("{");
+            _build.AppendFormat("\"username\": \"{0}\",\"password\": \"{1}\"", enUserName, emPassword);
+            if (!string.IsNullOrEmpty(emNickName))
+                _build.AppendFormat(",\"nickname\": \"{0}\"", emNickName);
+            _build.Append("}");
+
+            var responseStr = emChat.AccountCreate(_build.ToString());
+            JObject jo = JObject.Parse(responseStr);
+            if (jo.Properties().Any(a => a.Name.Equals("error", StringComparison.OrdinalIgnoreCase)))
+            {//返回错误
+                return OpResult.Fail(data: responseStr);
+            }
+            return OpResult.Success(data: responseStr);
+        }
+        /// <summary>
+        /// 删除一个指定环信用户
+        /// </summary>
+        /// <param name="emUserName">环信用户账号</param>
+        /// <returns>OpResult</returns>
+        public static OpResult AccountDel(string emUserName)
+        {
+            var responseStr = emChat.AccountDel(emUserName);
+            JObject jo = JObject.Parse(responseStr);
+            if (jo.Properties().Any(a => a.Name.Equals("error", StringComparison.OrdinalIgnoreCase)))
+            {//返回错误
+                return OpResult.Fail(data: responseStr);
+            }
+            return OpResult.Success(data: responseStr);
+        }
+        /// <summary>
+        /// 禁用环信用户账号
+        /// </summary>
+        /// <param name="emUserName">环信用户账号</param>
+        /// <returns></returns>
+        public static string AccountDeactivate(string emUserName) { return emChat.AccountDeactivate(emUserName); }
+        /// <summary>
+        /// 启用环信用户账户
+        /// </summary>
+        /// <param name="emUserName">环信用户账号</param>
+        /// <returns></returns>
+        public static string AccountActivate(string emUserName) { return emChat.AccountActivate(emUserName); }
+
+
+    }
+}

@@ -1,0 +1,223 @@
+﻿using Pharos.DBFramework;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Web;
+
+namespace Pharos.Sys.DAL
+{
+    internal partial class BaseSysEntityDAL<T>
+    {
+        public BaseSysEntityDAL()
+        {
+            TableName = typeof(T).Name;
+            DbHelper = new DBHelper();
+        }
+        public BaseSysEntityDAL(string tablename)
+            : this()
+        {
+            TableName = tablename;
+        }
+
+        #region Field
+        /// <summary>
+        /// 数据连接DB
+        /// </summary>
+        internal DBHelper DbHelper { get; set; }
+        /// <summary>
+        /// 当前DAL表名称
+        /// </summary>
+        internal string TableName { get; set; }
+        #endregion
+
+        /// <summary>
+        /// 根据ID获取数据对象
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        internal T GetById(int id)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@id", id)
+                                   };
+
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("select * from {0} where [id]=@id", TableName);
+
+            var objs = DbHelper.DataTableText<T>(sql.ToString(), parms);
+            if (objs != null && objs.Count > 0)
+                return objs[0];
+            else
+                return default(T);
+        }
+
+        internal T GetByColumn(object val, string colName)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@val", val)};
+
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("select * from {0} where [{1}]=@val", TableName, colName);
+
+            var objs = DbHelper.DataTableText<T>(sql.ToString(), parms);
+            if (objs != null && objs.Count > 0)
+                return objs[0];
+            else
+                return default(T);
+        }
+        internal bool Delete(int id)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@id" , id)};
+
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("delete from {0} where [id]=@id", TableName);
+
+            return DbHelper.ExecuteNonQueryText(sql.ToString(), parms) > 0;
+        }
+        /// <summary>
+        /// 根据ID判断数据是否存在
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        internal bool ExistsById(int id)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@id" , id)};
+
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("select count(1) from {0} where [id]=@id", TableName);
+
+            var obj = DbHelper.ExecuteScalarText(sql.ToString(), parms);
+
+            return (obj == null) ? false : Convert.ToInt32(obj) > 0;
+        }
+        /// <summary>
+        /// 获得列的最大值
+        /// </summary>
+        /// <param name="columnName"></param>
+        /// <returns></returns>
+        internal int MaxVal(string columnName,int companyId)
+        {
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("select isnull(max({0}),0) from {1} where companyId={2}", columnName, TableName,companyId);
+
+            var obj = DbHelper.ExecuteScalarText(sql.ToString(), null);
+
+            return (obj == null) ? 0 : Convert.ToInt32(obj);
+        }
+        internal bool ExistsColumn(object objid, string objColumn, object existValue, string existColumn, int companyId)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@objid" , objid),
+					new SqlParameter("@existValue" , existValue)};
+
+            string sql = string.Format("select count(1) from {0} where [{1}]<>@objid and [{2}]=@existValue and companyId={3}", TableName, objColumn, existColumn, companyId);
+
+            var obj = DbHelper.ExecuteScalarText(sql, parms);
+
+            return (obj == null) ? false : Convert.ToInt32(obj) > 0;
+        }
+        /// <summary>
+        /// 自动分页方法
+        /// </summary>
+        /// <param name="strSql">完整sql语句</param>
+        /// <param name="recordCount">记录总数</param>
+        /// <param name="nvl">参数值</param>
+        /// <returns></returns>
+        internal List<T> ExceuteSqlForPage(string strSql, out int recordCount, System.Collections.Specialized.NameValueCollection nvl = null)
+        {
+            nvl = nvl ?? HttpContext.Current.Request.Params;
+            var pageIndex = 1;
+            var pageSize = 30;
+            var sort = "Id";
+            var order = "asc";
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+            if (!nvl["sort"].IsNullOrEmpty())
+                sort = nvl["sort"];
+            if (!nvl["order"].IsNullOrEmpty())
+                order = nvl["order"];
+            order = order.ToLower();
+            if (!(order == "asc" || order == "desc"))
+                throw new ArgumentException("排序类型错误!");
+
+            string orderSql = string.Format("(ROW_NUMBER() OVER ( ORDER BY [{0}] {1})) AS RSNO", sort, order);
+            strSql = string.Format("select * from(select {0},* from ({1}) tb) t", orderSql, strSql);
+            var page = new Utility.Paging();
+            var parms = new SqlParameter[] { 
+                new SqlParameter("@SqlStr",strSql),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize)
+            };
+            var dt = DbHelper.DataTable("Comm_PageList", parms, ref page);
+            recordCount = page.RecordTotal;
+            return Pharos.DBFramework.DBHelper.ToEntity.ToList<T>(dt);
+        }
+        internal bool SaveOrUpdate(T obj)
+        {
+            var type = typeof(T);
+            var propers = type.GetProperties();
+            string pk = "Id";
+            StringBuilder sql = new StringBuilder();
+            var parms = new List<SqlParameter>();
+            var fieldValue = new Dictionary<string, object>();
+            foreach (var p in propers)
+            {
+                if (!p.CanWrite ||
+                       (p.PropertyType.IsGenericType && !p.PropertyType.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))) continue;
+                var attrs = p.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.KeyAttribute), false);
+                if (attrs.Length > 0)
+                    pk = p.Name;
+                var value = p.GetValue(obj, null);
+                fieldValue[p.Name] = value;
+            }
+            var id = fieldValue[pk];
+            fieldValue.Remove(pk);
+            int vl = 0;
+            int.TryParse(id.ToString(), out vl);
+            if (!id.IsNullOrEmpty() && vl != 0)
+            {
+                sql.Append("update " + TableName);
+                sql.Append(" set ");
+                foreach (var de in fieldValue)
+                {
+                    sql.Append(de.Key + "=@" + de.Key);
+                    sql.Append(",");
+                    parms.Add(new SqlParameter("@" + de.Key, de.Value));
+                }
+                sql = sql.Remove(sql.Length - 1, 1);
+                sql.Append(" where ");
+                sql.Append(pk + "=@" + pk);
+                parms.Add(new SqlParameter("@" + pk, id));
+            }
+            else
+            {
+                sql.Append("insert " + TableName);
+                sql.Append(" (");
+                sql.Append(string.Join(",", fieldValue.Select(o => o.Key)));
+                sql.Append(") values(");
+                sql.Append(string.Join(",", fieldValue.Select(o => "@" + o.Key)));
+                sql.Append(")");
+                parms.AddRange(fieldValue.Select(o => new SqlParameter("@" + o.Key, o.Value)));
+            }
+            var s = sql.ToString();
+            return DbHelper.ExecuteNonQueryText(sql.ToString(), parms.ToArray()) > 0;
+        }
+        internal bool Delete(object[] ids)
+        {
+            string sql = "delete from " + TableName + " where id in(" + string.Join(",", ids) + ")";
+            //SqlParameter[] parms = new SqlParameter[] { 
+            //    new SqlParameter("@ids",string.Join(",", ids))
+            //};
+            return DbHelper.ExecuteNonQueryText(sql, null) > 0;
+        }
+    }
+}

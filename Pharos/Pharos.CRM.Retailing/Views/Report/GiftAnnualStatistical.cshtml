@@ -1,0 +1,74 @@
+﻿@using Pharos.Utility.Helpers;
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true));
+    var storesData = ViewData["Stores"];
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>年份：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" value="@DateTime.Now.ToString("yyyy")" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy', isShowToday: false})" />
+            </td>
+            <td class="label-toolbar">
+                <label>供应商：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("supplier", ViewBag.suppliers as List<SelectListItem>, dataOptions: "editable:false,panelHeight:'auto',panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>品类：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.CategoryCombobox("category", true)
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("store", ViewBag.storeSelectItems as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelHeight:'auto',panelMaxHeight:200")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出报表</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = '@Url.Action("GiftAnnualStatisticalPageList")';
+    pharos.manager.pagination = false;
+    pharos.manager.singleSelect=true;
+    pharos.manager.multiSort= false;
+    pharos.manager.fitColumns=true;
+    pharos.manager.fit=true;
+    pharos.manager.singleSelect=true;
+    var columnsInfo = [];
+    var stores = [{ field: 'month', title: '月份', width: 50,rowspan:2}];
+    var storesData = @Html.Raw(storesData.ToJson());
+    for (var i = 0; i < storesData.length ; i++) {
+        stores.push({ title: storesData[i].Title, colspan: 3,width:300});
+        columnsInfo.push(
+        { field: 'TSale' + storesData[i].StoreId, title: '销售额', width: 100},
+        { field: 'Tgift' + storesData[i].StoreId, title: '赠品金额', width: 100 },
+        { field: 'Ratio' + storesData[i].StoreId, title: '赠品占比', width: 100 }
+        );
+    }
+    pharos.manager.frozen= true;
+    pharos.manager.frozenColumns=[[{ field: 'month', title: '月份', width: 100}]];
+    pharos.manager.columns = [ stores,columnsInfo];
+    function Export() {
+        var date = $("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        $.get('@Url.Action("GiftAnnualStatisticalExport")?type=1&' + $('#frmsearch').serialize())
+        window.location.href = '@Url.Action("GiftAnnualStatisticalExport")?type=1&' + $('#frmsearch').serialize();
+    }
+</script>

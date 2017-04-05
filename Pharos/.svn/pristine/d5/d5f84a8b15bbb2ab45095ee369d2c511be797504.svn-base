@@ -1,0 +1,508 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using System.Collections.Specialized;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Sys.Entity;
+
+namespace Pharos.Logic.BLL
+{
+    public class OutboundGoodsBLL : BaseService<OutboundGoods>
+    {
+        /// <summary>
+        /// 获取出库单信息
+        /// </summary>
+        /// <param name="nvl">传递条件</param>
+        /// <param name="recordCount">返回总行数</param>
+        /// <returns>list</returns>
+        public static object FindOutboundGoodsList(NameValueCollection nvl, out int recordCount)
+        {
+            var queryOutboundGoods = BaseService<OutboundGoods>.CurrentRepository.QueryEntity;
+            var queryOutboundList = BaseService<OutboundList>.CurrentRepository.QueryEntity;
+            var queryWarehouse = BaseService<Warehouse>.CurrentRepository.QueryEntity;
+            var queryUser = UserInfoService.CurrentRepository.QueryEntity;
+            var querySupplier = BaseService<Supplier>.CurrentRepository.QueryEntity.Where(o => o.BusinessType == 2);
+
+            var groupbyOutboundList = from a in queryOutboundList
+                                      group a by a.OutboundId into g
+                                      select new
+                                      {
+                                          g.Key,
+                                          OutboundPrice = g.Sum(a => a.SysPrice * a.OutboundNumber),
+                                          OutboundNumber = g.Sum(a => a.OutboundNumber)
+                                      };
+
+            var query = from x in queryOutboundGoods
+                        join y in groupbyOutboundList on x.OutboundId equals y.Key
+                        join s in queryWarehouse on x.StoreId equals s.StoreId into temp1
+                        from z in temp1.DefaultIfEmpty()
+                        join j in queryUser on x.ApplyUID equals j.UID into temp2
+                        from k in temp2.DefaultIfEmpty()
+                        join l in queryUser on x.OperatorUID equals l.UID into temp3
+                        from m in temp3.DefaultIfEmpty()
+                        join r in queryWarehouse on x.ApplyOrgId equals r.StoreId into temp4
+                        from q in temp4.DefaultIfEmpty()
+                        join a in querySupplier on x.ApplyOrgId equals a.Id into tempSupplier
+                        from b in tempSupplier.DefaultIfEmpty()
+
+                        select new
+                        {
+                            x.Id,
+                            x.OutboundId,
+                            x.StoreId,
+                            x.Channel,
+                            x.ApplyOrgId,
+                            StoreTitle = z.Title,
+                            y.OutboundPrice,
+                            y.OutboundNumber,
+                            x.CreateDT,
+                            x.ApplyUID,
+                            Apply = k.FullName,
+                            x.OperatorUID,
+                            Operator = m.FullName,
+                            ApplyOrg = x.Channel == 0 ? q.Title : b.Title,
+                            x.State,
+                        };
+
+            var Store = nvl["Store"];           
+            var Channel = nvl["Channel"];
+            var ApplyOrg = nvl["ApplyOrg"];
+            //var Apply = nvl["Apply"];
+            var StartDate = nvl["StartDate"];
+            var EndDate = nvl["EndDate"];
+
+            if (!Store.IsNullOrEmpty())
+            {
+                query = query.Where(o => o.StoreId == Store);
+            }
+            if (!Channel.IsNullOrEmpty())
+            {
+                var chan = Convert.ToInt16(Channel);
+                query = query.Where(o => o.Channel == chan);
+            }
+            if (!ApplyOrg.IsNullOrEmpty())
+            {
+                query = query.Where(o => o.ApplyOrgId == ApplyOrg);
+            }                   
+            //if (!Apply.IsNullOrEmpty())
+            //{
+            //    query = query.Where(o => o.ApplyUID == Apply);
+            //}
+            if (!StartDate.IsNullOrEmpty())
+            {
+                var st1 = DateTime.Parse(StartDate);
+                query = query.Where(o => o.CreateDT >= st1);
+            }
+            if (!EndDate.IsNullOrEmpty())
+            {
+                var st2 = DateTime.Parse(EndDate).AddDays(1);
+                query = query.Where(o => o.CreateDT < st2);
+            }
+            recordCount = query.Count();
+            return query.ToPageList(nvl).Select(o => new
+            {
+                o.Id,
+                o.OutboundId,
+                o.StoreId,
+                o.ApplyOrgId,
+                o.StoreTitle,
+                o.OutboundPrice,
+                o.OutboundNumber,
+                o.CreateDT,
+                CreateDTStr = o.CreateDT.ToString("yyyy-MM-dd"),
+                o.ApplyUID,
+                o.Apply,
+                o.OperatorUID,
+                o.Operator,
+                ApplyOrg = string.IsNullOrEmpty(o.ApplyOrg) ? "其它" : o.ApplyOrg,
+                o.State,
+                StateTitle = Enum.GetName(typeof(OutBoundState), o.State),
+                Channel = Enum.GetName(typeof(OutboundChannel), o.Channel)
+            });
+        }
+
+        /// <summary>
+        /// 级联删除出库记录
+        /// </summary>
+        /// <param name="Ids">OutboundGood主键ID</param>
+        /// <returns>执行结果</returns>
+        public static OpResult DeleteOutboundById(string[] ids)
+        {
+            var op = new OpResult();
+            try
+            {
+                var queryOutGoods = BaseService<OutboundGoods>.CurrentRepository;
+                var queryOutList = BaseService<OutboundList>.CurrentRepository;
+                var OutGoods = queryOutGoods.FindList(o => ids.Contains(o.Id.ToString())).ToList();
+                if (OutGoods.Any(o => o.State == 1))
+                {
+                    var goods = OutGoods.Where(o => o.State == 1).FirstOrDefault();
+                    op.Message = string.Format("出库单：{0}为已审状态，无法删除", goods.OutboundId);
+                    return op;
+                }
+                var OutGoodIds = OutGoods.Select(o => o.OutboundId).ToList();
+                var OutGoodLists = new List<OutboundList>();
+                foreach (var outboundId in OutGoodIds)
+                {
+                    var outGoodList = queryOutList.FindList(o => o.OutboundId == outboundId);
+                    if (outGoodList.Count() > 0)
+                        OutGoodLists.AddRange(outGoodList);
+                }
+                queryOutList.RemoveRange(OutGoodLists, false);
+                queryOutGoods.RemoveRange(OutGoods, true);
+
+                op.Successed = true;
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                Log.WriteError("删除失败", ex);
+            }
+            return op;
+        }
+
+        /// <summary>
+        /// 保存出货清单
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static OpResult SaveOrUpdate(OutboundGoods obj)
+        {
+            var re = new OpResult();
+            try
+            {
+                var details = new List<OutboundList>();
+                var outboundGoodsId = Logic.CommonRules.OutboundSN;
+                if (!string.IsNullOrWhiteSpace(obj.Rows))
+                {                   
+                    var adds = obj.Rows.ToObject<List<OutboundList>>();
+                    if (adds.Any())
+                        details.AddRange(adds.Where(o => !string.IsNullOrWhiteSpace(o.Barcode)));
+                }
+                //判断出库的商品是否有库存记录
+                //var stockNums = CommodityService.GetStockNumsByStoreId(obj.StoreId);
+                //var barcodes=details.Select(o=>o.Barcode).ToList();
+                //var stockNums = BaseService<Inventory>.FindList(o => o.StoreId == obj.StoreId && barcodes.Contains(o.Barcode));
+                foreach (var d in details)
+                {
+                    var bar= ProductService.Find(o => ("," + o.Barcodes + ",").Contains("," + d.Barcode + ","));
+                    if (bar != null)
+                    {
+                        d.AssistBarcode = d.Barcode;
+                        d.Barcode = bar.Barcode;
+                    }
+                    //var stockNum = stockNums.FirstOrDefault(o => o.Key == d.Barcode);
+                    //if (stockNum.Value == 0 && string.IsNullOrEmpty(stockNum.Key))
+                    //{
+                    //    re.Message = string.Format("条码：{0} 不存在库存记录，无法出库", d.Barcode);
+                    //    return re;
+                    //}
+                }
+                if (obj.Id == 0)
+                {//新增
+                    obj.OutboundId =obj.Channel==0?Logic.CommonRules.OutboundSN:Logic.CommonRules.WholesalerSN;
+                    obj.State = 0;
+                    if (string.IsNullOrEmpty(obj.ApplyOrgId))
+                    {
+                        obj.ApplyOrgId = "-1";
+                    }
+                    foreach (var d in details)
+                    {
+                        d.OutboundId = obj.OutboundId;
+                    }
+                    BaseService<OutboundList>.CurrentRepository.AddRange(details, false);
+                    re = Add(obj, true);
+                }
+                else
+                {//编辑
+                    var outbound = FindById(obj.Id);
+                    outbound.StoreId = obj.StoreId;
+                    outbound.Channel = obj.Channel;
+                    outbound.ApplyOrgId = obj.ApplyOrgId;
+                    //outbound.ApplyUID = obj.ApplyUID;          
+                    outbound.OperatorUID = obj.OperatorUID;
+                    outbound.CreateDT = obj.CreateDT;
+                    foreach (var d in details)
+                    {
+                        d.OutboundId = outbound.OutboundId;
+                    }
+                    var oldOutboundList = BaseService<OutboundList>.CurrentRepository.FindList(o => o.OutboundId == outbound.OutboundId).ToList();
+                    BaseService<OutboundList>.CurrentRepository.RemoveRange(oldOutboundList, false);
+                    BaseService<OutboundList>.CurrentRepository.AddRange(details, false);
+                    re = Update(outbound, true);
+
+
+                }
+            }
+            catch (Exception ex)
+            {
+                re.Message = ex.Message;
+            }
+            return re;
+        }
+        /// <summary>
+        /// 判断出库单是否库存充足
+        /// </summary>
+        /// <param name="Ids">一组出库单Id</param>
+        /// <returns></returns>
+        public static OpResult IsOutboundHasCommodity(string Ids)
+        {
+            var re = new OpResult();
+            try
+            {
+                var ids = Ids.Split(',').Select(o =>int.Parse(o)).ToList();
+                var goods = BaseService<OutboundGoods>.FindList(o => ids.Contains(o.Id));
+                var outboundGoodIds = goods.Select(o => o.OutboundId).ToList();
+                var list = BaseService<OutboundList>.FindList(o => outboundGoodIds.Contains(o.OutboundId));
+
+                var storeIds = goods.GroupBy(o => o.StoreId).Select(o => o.Key).ToList();
+                foreach (var storeId in storeIds)
+                {
+                    var outgoodsGroupbyStore = goods.Where(o => o.StoreId == storeId).ToList();
+                    var outboundGoodIdsGroupbyStore = outgoodsGroupbyStore.Select(o => o.OutboundId).ToList();
+                    var outBoundListGroupbyStore = list.Where(o => outboundGoodIdsGroupbyStore.Contains(o.OutboundId)).ToList();
+                    var datas = (from a in outBoundListGroupbyStore
+                                 group a by a.Barcode into g
+                                 select new
+                                 {
+                                     g.Key,
+                                     OutboundNum = g.Sum(o => o.OutboundNumber)
+                                 }).ToDictionary(o => o.Key, o => o.OutboundNum);
+                    //判断出库的商品是否在库存中
+                    var stockNums = CommodityService.GetStockNumsByStoreId(storeId);
+                    foreach (var d in datas)
+                    {
+                        var barcode = d.Key;
+                        var bar = list.FirstOrDefault(o => o.Barcode == d.Key);
+                        if (bar != null)
+                        {
+                            barcode = bar.AssistBarcode;
+                        }
+                        var stockNum = stockNums.FirstOrDefault(o => o.Key == d.Key);
+                        if (stockNum.Value < d.Value)
+                        {
+                            re.Message = string.Format("条码：{0} 共需出库{1}件，库存仅剩{2}件，库存量不足，是否继续？", barcode, Math.Round(d.Value, 2, MidpointRounding.AwayFromZero), Math.Round(stockNum.Value, 2, MidpointRounding.AwayFromZero));
+                            return re;
+                        }
+                    }
+                }
+                re.Successed = true;
+            }
+            catch (Exception ex)
+            {
+                re.Message = ex.Message;
+            }
+
+            return re;
+        }
+
+        /// <summary>
+        /// 设置出库单为已审状态
+        /// </summary>
+        /// <param name="Ids"></param>
+        /// <returns></returns>
+        public static OpResult SetOutboundStateToChecked(string Ids)
+        {
+            var re = new OpResult();
+            try
+            {
+                var ids = Ids.Split(',').Select(o =>int.Parse(o)).ToList();
+                var goods = BaseService<OutboundGoods>.FindList(o => ids.Contains(o.Id));
+                var outboundGoodIds = goods.Select(o => o.OutboundId).ToList();
+                var list = BaseService<OutboundList>.FindList(o => outboundGoodIds.Contains(o.OutboundId));
+                if (goods.Any(o => o.State == 1))
+                {
+                    var goodsChecked = goods.Where(o => o.State == 1).FirstOrDefault();
+                    re.Message = string.Format("出库单：{0} 已为已审状态", goodsChecked.OutboundId);
+                    return re;
+                }
+                #region 从商品库中扣除相应库存
+                var storeIds = goods.GroupBy(o => o.StoreId).Select(o => o.Key).ToList();
+                var invents = new List<InventoryRecord>();
+                foreach (var storeId in storeIds)
+                {
+                    foreach (var oid in outboundGoodIds)
+                    {
+                        var outgoodsGroupbyStore = goods.Where(o => o.StoreId == storeId && o.OutboundId==oid).ToList();
+                        var outboundGoodIdsGroupbyStore = outgoodsGroupbyStore.Select(o => o.OutboundId).ToList();
+                        var outgoods= outgoodsGroupbyStore.FirstOrDefault();
+                        var source = outgoods.Channel == 0 ? 2 : 13;
+                        var outboundType = outgoods.OutboundType;
+                        var applyOrg = !outgoods.ApplyOrgId.IsNullOrEmpty();
+                        var outBoundListGroupbyStore = list.Where(o => o.OutboundId == oid).ToList();
+                        var datas = (from a in outBoundListGroupbyStore
+                                     group a by a.Barcode into g
+                                     select new
+                                     {
+                                         g.Key,
+                                         OutboundNum = g.Sum(o => o.OutboundNumber)
+                                     }).ToDictionary(o => o.Key, o => o.OutboundNum);
+                        //判断出库的商品是否有库存记录
+                        var stockNums = CommodityService.GetStockNumsByStoreId(storeId);
+                        foreach (var d in datas)
+                        {
+                            //var stockNum = stockNums.FirstOrDefault(o => o.Key == d.Key);
+                            //if (stockNum.Value == 0 && string.IsNullOrEmpty(stockNum.Key))
+                            //{
+                            //    re.Message = string.Format("条码：{0} 不存在库存记录，无法出库", d.Key);
+                            //    return re;
+                            //}
+                            var bar = outBoundListGroupbyStore.FirstOrDefault(o => o.Barcode == d.Key);
+                            
+                            invents.Add(new InventoryRecord() { Barcode = bar.AssistBarcode ?? bar.Barcode, StoreId = storeId, Number = d.Value, Source = source, OperatId = oid });
+                            if ((source == 2 && outboundType == 1) || (source == 2 && outboundType == 2 && outgoods.ApplyOrgId!="-1"))//出库
+                                invents.Add(new InventoryRecord() { Barcode = bar.AssistBarcode ?? bar.Barcode, StoreId = outgoods.ApplyOrgId, Number = d.Value, Source = 1, OperatId = oid });
+                        }
+                    }
+                }
+                goods.ForEach(o => { o.State = 1; });
+                InventoryRecordService.SaveLog(invents);
+                re=BaseService<OutboundGoods>.Update(goods);
+                #endregion
+                //re.Successed = true;
+            }
+            catch (Exception ex)
+            {
+                re.Message = ex.Message;
+            }
+            return re;
+        }
+
+        /// <summary>
+        /// 获得出库单明细
+        /// </summary>
+        /// <param name="inboundGoodsId"></param>
+        /// <returns></returns>
+        public static object GetOutboundListByOutboundId(string outboundId, out int recordCount)
+        {
+            var queryOutboundList = BaseService<OutboundList>.CurrentRepository.QueryEntity;
+            var queryRecord = BaseService<ProductRecord>.CurrentRepository.QueryEntity;
+            var queryData = BaseService<SysDataDictionary>.CurrentRepository.QueryEntity;
+            var query = from x in queryOutboundList
+                        join y in queryRecord on x.Barcode equals y.Barcode
+                        join z in queryData on y.SubUnitId equals z.DicSN into temp
+                        from h in temp.DefaultIfEmpty()
+                        where x.OutboundId == outboundId
+                        select new
+                        {
+                            y.ProductCode,
+                            y.Title,
+                            Barcode=x.AssistBarcode?? x.Barcode,
+                            y.SubUnitId,
+                            x.SysPrice,
+                            x.BuyPrice,
+                            Price = y.SysPrice,
+                            x.OutboundNumber,
+                            Subtotal = x.SysPrice * x.OutboundNumber,
+                            x.Memo,
+                            x.Id,
+                            SubUnit = h.Title
+                        };
+
+            recordCount = query.Count();
+            var sql = query.ToString();
+            return query.ToPageList();
+        }
+
+        /// <summary>
+        /// 获得打印出库单
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <returns></returns>
+        public static List<OutboundGoods> GetPrintOutboundGoods(string Ids)
+        {
+            var ids = Ids.Split(',').Select(o => o.ToString()).ToList();
+            var queryoutGoods = BaseService<OutboundGoods>.CurrentRepository;
+            var queryOutList = BaseService<OutboundList>.CurrentRepository;
+            var queryRecord = BaseService<ProductRecord>.CurrentRepository.QueryEntity;
+            var queryData = BaseService<SysDataDictionary>.CurrentRepository.QueryEntity;
+            var outGoods = queryoutGoods.FindList(o => ids.Contains(o.Id.ToString())).ToList();
+
+            foreach (var outGood in outGoods)
+            {
+                outGood.Details = queryOutList.FindList(o => o.OutboundId == outGood.OutboundId).ToList();
+                if (outGood.Details != null)
+                {
+                    foreach (var detail in outGood.Details)
+                    {
+                        var productRecode = queryRecord.FirstOrDefault(o => o.Barcode == detail.Barcode);
+                        if (productRecode != null)
+                        {
+                            detail.ProductCode = productRecode.ProductCode;
+                            detail.ProductTitle = productRecode.Title;
+                            var unit = queryData.FirstOrDefault(o => o.DicSN == productRecode.SubUnitId);
+                            if (unit != null)
+                            {
+                                detail.Unit = unit.Title;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return outGoods;
+        }
+
+        /// <summary>
+        /// 设置批发出库的批发价
+        /// </summary>
+        /// <typeparam name="T">ProductRecord或VwProduct</typeparam>
+        /// <param name="sId">storeId或supplierId</param>
+        /// <param name="list"></param>
+        /// <param name="type">1－批发价</param>
+        public static void SetTradePrice<T>(string sId, IEnumerable<T> list, short type = 1, string supplierId = "") where T : BaseProduct
+        {
+
+            //if (sId.IsNullOrEmpty()) return;
+            var bars = list.Select(o => o.Barcode).ToList();
+            var barprices = new List<ProductMultPrice>();
+            var date = DateTime.Now.Date;
+            
+            var query = from a in BaseService<ProductTradePrice>.CurrentRepository.Entities
+                        join b in BaseService<ProductTradePriceList>.CurrentRepository.Entities on a.Id equals b.TradePriceId
+                        where a.State == 1 && ("," + a.Wholesaler + ",").Contains("," + sId + ",") && bars.Contains(b.Barcode)
+                            && b.EndDate >= date && b.StartDate <= date
+                        orderby a.CreateDT descending
+                        select b;
+
+            barprices = query.AsEnumerable().Select(o => new ProductMultPrice()
+            {
+                Barcode = o.Barcode,
+                BuyPrice = o.BuyPrice,
+                Price = o.TradePrice
+            }).ToList();
+
+            if (barprices.Count() == 0)
+            {
+                var queryPro = from a in BaseService<ProductRecord>.CurrentRepository.Entities 
+                            where bars.Contains(a.Barcode)
+                            select a;
+                    barprices = queryPro.AsEnumerable().Select(o => new ProductMultPrice()
+                {
+                    Barcode = o.Barcode,
+                    BuyPrice = o.BuyPrice,
+                    Price = o.TradePrice
+                }).ToList();
+            }
+                      
+            foreach (var o in list)
+            {
+                var obj = barprices.FirstOrDefault(i => i.Barcode == o.Barcode);
+                if (obj == null) continue;
+                if (obj.Price.HasValue)
+                { 
+                    o.SysPrice = obj.Price.GetValueOrDefault();
+                }
+                if (obj.BuyPrice.HasValue)
+                {
+                    o.BuyPrice = obj.BuyPrice.GetValueOrDefault();
+                }
+
+            }
+        }
+
+    }
+}

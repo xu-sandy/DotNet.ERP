@@ -1,0 +1,24 @@
+﻿using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+
+namespace Pharos.OMS.Retailing
+{
+    public class OpActionResult:ActionResult
+    {
+        Pharos.Utility.OpResult _op = null;
+        public OpActionResult(Pharos.Utility.OpResult op)
+        {
+            _op = op;
+        }
+        public override void ExecuteResult(ControllerContext context)
+        {
+            var op =_op?? new Pharos.Utility.OpResult();
+            context.HttpContext.Response.ContentType = "application/json";
+            context.HttpContext.Response.Output.Write(op.ToJson());
+        }
+    }
+}

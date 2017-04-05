@@ -1,0 +1,102 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideReSave = !CurrentUser.HasPermiss(SysConstLimits.库存管理_复盘录入);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增盘点", editText: "复盘", hideDel: true,hideAdd:true,hideEdit:false));
+}
+
+@section search{
+    <table class="table-toolbar" style="margin-left:1px;">
+        <tr>
+            <td class="label-toolbar">
+                <label>盘点门店:</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("storeId", ViewBag.shops as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,width:160,onSelect:storeSelect,validType:'requiredForCombo'" })
+            </td>
+            <td class="label-toolbar">
+                <label>盘点批次:</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("checkBatch", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" } }, new { @class = "easyui-combobox datacontrol", data_options = "width:120,validType:'requiredForCombo'" })
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus4 linkbtn" id="btnExcel" data-options="iconCls:'icon-export'" onclick="auditor()">审核通过</a>
+}
+
+<script type="text/javascript">
+    $(function () {
+        $("#btnExcel").insertAfter($("#searchBtn"));
+    });
+    pharos.manager.geturl = "@Url.Action("FindApprovalList")";
+    pharos.manager.columns = [[
+    { field: 'Id', checkbox: true, hidden: true },
+    { field: 'StoreTitle', title: '盘点门店', width: 100 },
+    { field: 'CheckBatch', title: '盘点批次', width: 100 },
+    { field: 'LockDate', title: '盘点日期', width: 140 },
+    { field: 'ProductCode', title: '货号', width: 100 },
+    { field: 'Barcode', title: '条码', width: 120 },
+    { field: 'Title', title: '品名', width: 150 },
+    { field: 'BrandTitle', title: '品牌', width: 80 },
+    { field: 'SubUnit', title: '单位', width: 60 },
+    { field: 'LockNumber', title: '锁库库存', width: 80 },
+    { field: 'ActualNumber', title: '实盘数量', width: 80 },
+    //{ field: 'CorrectNumber', title: '库存纠正数量', width: 80 },
+    { field: 'FullName', title: '盘点员', width: 100 }
+    ]];
+    function storeSelect(record) {
+        if (!record.value) {
+            $("#checkBatch").combobox("clear");
+            return;
+        }
+        $.post("@Url.Action("StoreSelect")", { storeId: record.value, state: 0, t: Math.random() }, function (data) {
+            $("#checkBatch").combobox("clear").combobox("loadData", data.batchs);
+        }, "json");
+    }
+    function auditor() {
+        var batch = $("#checkBatch").combobox("getValue");
+        if (!batch) {
+            $.messager.alert("提示", "请选择盘点批次!"); return;
+        }
+        $.messager.confirm("提示", "审核通过后将自动库存纠正且不能再复盘,是否继续?", function (r) {
+            if (!r) return r;
+            $.post("@Url.Action("ApprovalPass")", { checkBatch: batch, t: Math.random() }, function (d) {
+                if (d.successed) {
+                    $.messager.alert("提示", "操作成功！", "info");
+                    pharos.manager.gridReload();
+                    storeSelect({ value: $("#storeId").combobox("getValue") });
+                } else {
+                    $.messager.alert("提示", "操作失败！" + d.message, "error");
+                }
+            }, "json");
+        })
+    }
+    pharos.manager.editItem = function (Id, row) {
+        this.Id = Id;
+        if (row.State == 0) {
+            @if(!hideReSave)
+            {
+            @:openDialog600(this.editText, "@Url.Action("ReSave")?id=" + Id + "&ActualNumber=" + row.ActualNumber);
+            }
+        }
+
+    }
+    function editBefore(rowData, field, index, value) {
+        if (rowData.State == 1) {
+            $.messager.alert("提示", "该批次已审批不允许修改!");
+            return false;
+        }
+        if (field == "CorrectNumber") {
+            update(rowData.Id);
+            return false;
+        }
+        return true;
+    }
+    function update(id) {
+        //openDialog600("库存纠正", "@Url.Action("CrrectSave")?id=" + id);
+        }
+</script>

@@ -1,0 +1,169 @@
+﻿using Pharos.POS.Retailing.ObjectModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    public class ProductEdit : BaseViewModel
+    {
+        public ProductEdit()
+        {
+            this.PropertyChanged += ProductEdit_PropertyChanged;
+        }
+        string fristProperty = string.Empty;
+        void ProductEdit_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == "Num")
+            {
+                //Total
+                fristProperty = string.Empty;
+            }
+            else if (e.PropertyName == "Discount" && fristProperty != "Preferential")
+            {
+                fristProperty = e.PropertyName;
+                //Preferential
+            }
+            else if (e.PropertyName == "Preferential")
+            {
+                if (fristProperty != "Discount")
+                {
+                    fristProperty = e.PropertyName;
+
+                    //Discount
+                }
+                //Total
+                fristProperty = string.Empty;
+            }
+        }
+        /// <summary>
+        /// 条码
+        /// </summary>
+        private string barcode;
+
+        public string Barcode
+        {
+            get { return barcode; }
+            set { barcode = value; this.OnPropertyChanged(o => o.Barcode); }
+        }
+        /// <summary>
+        /// 标题
+        /// </summary>
+        private string title;
+
+        public string Title
+        {
+            get { return title; }
+            set { title = value; this.OnPropertyChanged(o => o.Title); }
+        }
+        /// <summary>
+        /// 数量
+        /// </summary>
+        private decimal num;
+
+        public decimal Num
+        {
+            get { return num; }
+            set { num = value; this.OnPropertyChanged(o => o.Num); }
+        }
+
+        private decimal sysPrice;
+
+        public decimal SysPrice
+        {
+            get { return sysPrice; }
+            set { sysPrice = value; }
+        }
+
+
+
+        /// <summary>
+        /// 折扣
+        /// </summary>
+        private decimal dicount;
+
+        public decimal Discount
+        {
+            get { return dicount; }
+            set { dicount = value; this.OnPropertyChanged(o => o.Discount); }
+        }
+        /// <summary>
+        /// 折后/特价
+        /// </summary>
+        private decimal preferential;
+
+        public decimal Preferential
+        {
+            get { return preferential; }
+            set { preferential = value; this.OnPropertyChanged(o => o.Preferential); }
+        }
+        /// <summary>
+        /// 小计
+        /// </summary>
+        private decimal total;
+
+        public decimal Total
+        {
+            get { return total; }
+            set { total = value; this.OnPropertyChanged(o => o.Total); }
+        }
+
+        public ICommand NumAdd
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Num += 1;
+                });
+            }
+        }
+        public ICommand NumDec
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Num -= 1;
+                    if (Num < 1)
+                    {
+                        Num = 1;
+                    }
+                });
+            }
+        }
+
+        public ICommand Confirm
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    var _machineInfo = Global.MachineSettings.MachineInformations;
+                    SaleParams _params = new SaleParams() { StoreId = _machineInfo.StoreId, MachineSn = _machineInfo.MachineSn, Barcode = Barcode, Status = PosViewModel.Current.SaleStatus, Number = PosViewModel.Current.Num, SalePrice = PosViewModel.Current.SalePrice, CompanyToken = _machineInfo.CompanyToken };
+                    var result = ApiManager.Post<SaleParams, ApiRetrunResult<ApiSaleReturn>>(@"api/Sale", _params);
+                    Task.Factory.StartNew(() =>
+                    {
+                        if (result.Code == "200")
+                        {
+                            PosViewModel.Current.OrderList = result.Result.BuyList;
+                            PosViewModel.Current.Preferential = result.Result.Statistics.Preferential;
+                            PosViewModel.Current.Receivable = result.Result.Statistics.Receivable;
+                            PosViewModel.Current.Num = result.Result.Statistics.Num;
+                        }
+                        else
+                        {
+                            Toast.ShowMessage(result.Message, CurrentWindow);
+                        }
+                    });
+                });
+            }
+        }
+
+
+    }
+}

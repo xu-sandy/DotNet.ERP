@@ -1,0 +1,44 @@
+﻿@{
+    ViewBag.Title = "DeviceManager";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideDel: true, hideAdd: true, hideEdit: true, hideSearch: true));
+}
+
+@section toolbar
+{
+    <a href="#" class="easyui-menubutton" style="margin-left:20px;" data-options="menu:'#mm1',iconCls:'icon-edit'">设置状态</a>
+    <div id="mm1" style="width:150px;">
+        <div data-options="iconCls:'icon-putaway-1'" onclick="setEnable(0)">设为可用</div>
+        <div data-options="iconCls:'icon-sold-out-1'" onclick="setEnable(1)">设为禁用</div>
+    </div>
+}
+
+
+<script type="text/javascript">
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'MachineSN', title: '机号', width: 100 },
+        { field: 'Title', title: '门店', width: 150 },
+        { field: 'CreateDT', title: '创建时间', width: 150 },
+        {
+            field: 'State', title: ' 状态', width: 80, formatter: function (value, row, index) {
+                return value == 0 ? "可用" : value == 1 ? "禁用" : "";
+            }
+        }
+    ]];
+    function setEnable(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetDevState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+</script>

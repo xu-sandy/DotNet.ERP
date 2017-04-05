@@ -1,0 +1,154 @@
+﻿@using QCT.Pay.Common
+@model Pharos.Logic.OMS.Entity.PayApiExt
+@{
+    ViewBag.Title = "新增支付接口";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+
+<style type="text/css">
+    .name {
+        width: 110px;
+    }
+
+    .table-form td {
+    }
+
+    .lbltitle {
+        width: 200px;
+        display: inline-block;
+        text-align: right;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm("SavePayApi", "Finance", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-form" style="width:500px;">
+                @if (Model.Id > 0)
+                {
+                    <tr>
+                        <td class="name">接口编号：</td>
+                        <td class="input">@Html.Label(Model.ApiNo.ToString())</td>
+                        <td class="name">状态：</td>
+                        <td class="input">@EnumHelper.GetDescription((PayApiState)Model.State)</td>
+                    </tr>
+                    <tr>
+                        <td class="name">版本号：</td>
+                        <td class="input">@(Model.Version)</td>
+                        <td class="name">发布信息：</td>
+                        <td class="input">
+                            @if (Model.ReleasedUID != null)
+                            {
+                                @Html.Raw(Model.Releaseder + "发布于" + Model.ReleasedDT.ToString("yyyy-MM-dd"))
+                            }
+                            else
+                            {
+                                @Html.Raw("--")
+                            }
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td class="name">收单渠道：</td>
+                    <td class="input">
+                        <input id="ChannelNo" name="ChannelNo" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text',value:'@(Model.ChannelNo == 0 ? "" : Model.ChannelNo.ToString())', data:window.drpdata['ChannelNoList'],prompt:'请选择',required:true, panelHeight: 'auto', editable: false,width:100" />
+                    </td>
+                    <td class="name">支付类型：</td>
+                    <td class="input">
+                        <input id="ChannelPayMode" name="ChannelPayMode" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text',value:'@(Model.ChannelPayMode == 0 ? "" : Model.ChannelPayMode.ToString())', data:window.drpdata['ChannelPayModeJson'],prompt:'请选择',required:true, panelHeight: 'auto', editable: false,width:100" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">交易方式：</td>
+                    <td class="input">
+                        <input id="TradeMode" name="TradeMode" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text',value:'@(Model.TradeMode == 0 ? "" : Model.TradeMode.ToString())', data:window.drpdata['TradeModeList'],prompt:'请选择',required:true, panelHeight: 'auto', editable: false,width:100" />
+                    </td>
+                    <td class="name">操作类型：</td>
+                    <td class="input">
+                        <select id="OptType" name="OptType" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text',value:'@(Model.OptType == 0 ? "" : Model.OptType.ToString())',data:window.drpdata['OptTypeList'],prompt:'请选择支付通道',width:100,editable:false,required:true"><option value="">请选择</option></select>
+                    </td>
+                </tr>
+                @if (!(Model.Id > 0))
+                {
+                    <tr>
+                        <td class="name">接口版本：</td>
+                        @*<td class="input">
+                            @Html.TextBoxFor(o => o.Version, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true,value:'1',required:true,prompt:'如：1.0',width:100,type:'numberbox',precision:1" })
+                        </td>*@
+                        <td class="input">@Html.TextBoxFor(o => o.Version, new { @class = "easyui-numberbox datacontrol", data_options = "type:'numberbox',novalidate:true,value:'1.0',precision:1,required:true,prompt:'例如：1.0',validType: 'length[3,4]',width:100" })</td>
+                        <td class="name" colspan="2"></td>
+                    </tr>
+                }
+                <tr>
+                    <td class="name">接口参数名：</td>
+                    <td class="input" colspan="3">@Html.TextBoxFor(o => o.Method, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true,required:true,prompt:'2-30个字符',validType: 'length[2,30]',width:348" })</td>
+                </tr>
+                <tr>
+                    <td class="name">接口别名：</td>
+                    <td class="input" colspan="3">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true,required:true,prompt:'2-30个字符',validType: 'length[2,30]',width:348" })</td>
+                </tr>
+                <tr>
+                    <td class="name">备注：</td>
+                    <td class="input" colspan="3">
+                        @Html.TextAreaFor(o => o.Memo, new { @class = "easyui-validatebox", data_options = "required:false,validType: 'length[0,500]',", style = "width:335px;height:60px;", maxlength = 500 })
+                        <div>限长500个字@*，还可以输入 <span style="color:#FF0000;" id="s_num">500</span> 个字*@</div>
+                    </td>
+                </tr>
+
+                @*<tr>
+                        <td class="input" colspan="8">
+                            <label class="lbltitle">单月免费交易额度：</label>
+                            @Html.TextBoxFor(o => o.MonthFreeTradeAmount, new { @class = "easyui-numberbox", data_options = "novalidate:true,required:true,prompt:'',validType:'integer',width:160" })
+                            <label>单位（万元），指当月交易额度在该范围内为免服务费。</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="input" colspan="8">
+                            <label class="lbltitle">单月超出金额服务费率：</label>
+                            @Html.TextBoxFor(o => o.OverServiceRate, new { @class = "easyui-numberbox", data_options = "novalidate:true,required:true,prompt:'',validType:'range(this.value,[0,10])',width:160,precision:2" })
+                            <label>%，指当月交易额度超出该范围外，按此服务费率收取。</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="input" colspan="8">
+                            <label class="lbltitle">单笔服务费上限：</label>
+                            @Html.TextBoxFor(o => o.SingleServFeeUpLimit, new { @class = "easyui-numberbox", data_options = "novalidate:true,required:true,prompt:'',validType:'intOrFloat',width:160" })
+                            <label>元，单笔服务费下限：</label>
+                            @Html.TextBoxFor(o => o.SingleServFeeLowLimit, new { @class = "easyui-numberbox", data_options = "novalidate:true,required:true,prompt:'',validType:'intOrFloat',width:160" })
+                            <label>元。</label>
+                        </td>
+                    </tr>*@
+
+                @*fish：暂且保留字段，Icon待后续处理*@
+                @*<tr>
+                        <td class="name">接口ICON1：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Icon1, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'',validType: 'length[2,10]',width:160" })</td>
+                        <td class="name">接口ICON2：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Icon2, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'',validType: 'length[2,10]',width:160" })</td>
+                    </tr>*@
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    window.drpdata = window.drpdata || {};
+    window.drpdata['ChannelNoList'] = @Html.Raw(ViewBag.ChannelNoList);
+    window.drpdata['ChannelPayModeJson'] = @Html.Raw(ViewBag.ChannelPayModeList);
+    window.drpdata['TradeModeList'] = @Html.Raw(ViewBag.TradeModeList);
+    window.drpdata['OptTypeList'] = @Html.Raw(ViewBag.OptTypeList);
+
+    $(function () {
+
+    });
+
+    function selectModel(obj) {
+        //fishtodo: 1待完成支付通道Change事件 2 备注字数控制方法 3 样式调整 4 保存成功提示，名称重复提示 5 类型等必输字段提示
+        $("#PayApiMethod").combobox("setValue", "");
+        var data = window.drpdata['payApiMethod'];
+        var filterData = $(data).filter(function(index,value){ return $(this).attr("groupId")==obj.value; });
+        $("#PayApiMethod").combobox({data:filterData,valueField:"value",textField:"text",value:""});
+    }
+</script>

@@ -1,0 +1,94 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class AgentsUsersService : BaseService
+    {
+
+        [Ninject.Inject]
+        // 代理商账号
+        public IBaseRepository<AgentsUsers> agentsUsersRepository { get; set; }
+
+        public OpResult SaveOrUpdate(AgentsUsers model)
+        {
+            IQueryable<AgentsUsers> isExist = null;
+            if (model.Id == 0)
+            {
+                isExist = agentsUsersRepository.GetQuery(o => o.LoginName.Trim() == model.LoginName.Trim());
+            }
+            else
+            {
+                isExist = agentsUsersRepository.GetQuery(o => o.LoginName.Trim() == model.LoginName.Trim() && o.Id != model.Id);
+            }
+            if (isExist.Any())
+            {
+                return OpResult.Fail("该登录账号已经存在");
+            }
+
+            IQueryable<AgentsUsers> isExistPrimaryAccount = null;
+            if (model.Id == 0)
+            {
+                isExist = agentsUsersRepository.GetQuery(o => o.AgentsId == model.AgentsId&&o.AgentType==1);
+            }
+            else
+            {
+                isExist = agentsUsersRepository.GetQuery(o => o.AgentsId == model.AgentsId && o.AgentType == 1 && o.Id != model.Id);
+            }
+            if (isExistPrimaryAccount.Any())
+            {
+                return OpResult.Fail("该代理商已经存在主账号");
+            }
+
+            if (!model.FullName.IsNullOrEmpty())
+            {
+                //汉字转换拼音
+                model.QuanPin = Tool.ToPinYin(model.FullName.Trim());
+            }
+            model.LoginPwd = Pharos.Utility.Security.MD5_Encrypt(model.LoginPwd);
+            if (model.Id == 0)
+            {
+                model.AgentsLoginId = CommonService.GUID.ToUpper();
+                agentsUsersRepository.Add(model);
+            }
+            else
+            {
+                var source = agentsUsersRepository.Get(model.Id);
+                var pwd = source.LoginPwd;
+                model.ToCopyProperty(source, new List<string>() { "LoginPwd", "AgentsLoginId", "CreateTime" });
+                if (!model.LoginPwd.IsNullOrEmpty() && pwd != model.LoginPwd)
+                    source.LoginPwd = model.LoginPwd;
+                agentsUsersRepository.SaveChanges();
+            }
+            return OpResult.Success();
+        }
+
+        public AgentsUsers GetOne(object id)
+        {
+            return agentsUsersRepository.Get(id);
+        }
+
+        /// <summary>
+        /// 获取代理商账号
+        /// </summary>
+        /// <returns></returns>
+        public List<AgentsUsers> GetAgentsUsersList(Expression<Func<AgentsUsers, bool>> whereLambda = null)
+        {
+            if (whereLambda != null)
+            {
+                return agentsUsersRepository.GetQuery(whereLambda).ToList();
+            }
+            return agentsUsersRepository.GetQuery().ToList();
+        }
+    }
+}

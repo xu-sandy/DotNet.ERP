@@ -1,0 +1,26 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.BLL
+{
+    public class PosDeviceService:BaseService<Entity.PosDevice>
+    {
+        public static object FindPageList(out int recordCount)
+        {
+            var query = from a in CurrentRepository.Entities
+                        join b in WarehouseService.CurrentRepository.Entities on a.StoreId equals b.StoreId
+                        select new { 
+                            a.Id,
+                            a.MachineSN,
+                            a.State,
+                            a.StoreId,
+                            a.CreateDT,
+                            b.Title
+                        };
+            recordCount=query.Count();
+            return query.ToPageList();
+        }
+    }
+}

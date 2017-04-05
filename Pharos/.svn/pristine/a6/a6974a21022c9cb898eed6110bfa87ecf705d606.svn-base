@@ -1,0 +1,61 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.OMS.BLL
+{
+    public class MenuService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<SysMenus> MenuRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysUserInfo> UserRepository { get; set; }
+        public Pharos.Utility.OpResult SaveOrUpdate(SysMenus model)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = MenuRepository.GetQuery(null);
+            recordCount = query.Count();
+            return query.ToList();
+        }
+
+        public Pharos.Utility.OpResult Deletes(object[] ids)
+        {
+            throw new NotImplementedException();
+        }
+
+        public SysMenus GetOne(object id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public List<SysMenus> GetList()
+        {
+            return MenuRepository.GetQuery(o => o.Status).OrderBy(o => o.SortOrder).ToList();
+        }
+        public List<SysMenus> GetChildList()
+        {
+            return MenuRepository.GetQuery(o => o.Status && o.PMenuId!=0).OrderBy(o => o.SortOrder).ToList();
+        }
+        public List<SysMenus> GetUserMenus(string userId)
+        {
+            var user = UserRepository.Find(o => o.UserId == userId);
+            if (user == null) return new List<SysMenus>();
+            var allmenus = GetList();
+            if (!user.IsAdmin && !user.Limits.IsNullOrEmpty())
+            {
+                var menuids = user.Limits.Split(',').Select(o => int.Parse(o)).ToList();
+                var menus = allmenus.Where(o => menuids.Contains(o.MenuId)).ToList();
+                menuids = menus.Where(o => o.PMenuId > 0).Select(o => o.PMenuId).ToList();
+                menus.AddRange(allmenus.Where(o => menuids.Contains(o.MenuId)));
+                allmenus = menus;
+            }
+            return allmenus;
+        }
+    }
+}

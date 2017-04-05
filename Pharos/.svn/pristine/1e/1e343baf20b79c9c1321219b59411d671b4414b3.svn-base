@@ -1,0 +1,180 @@
+﻿@{
+    ViewBag.Title = "ReturnManagement";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.库存管理_采购退货);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.库存管理_查看退换货) && hideAdd;
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, editText: "退货详情"));
+}
+
+<style>
+    #tbReturnDetail tr td { width: 150px; }
+</style>
+
+@section search{
+    <table class="table-toolbar" style="margin-top:-3px;">
+        <tr>
+            <td class="label-toolbar" style="padding-left:15px;">
+                处理状态：
+            </td>
+            <td class="input-toolbar">
+                @*@Html.RadioButtonListFor(o => o.State, ViewBag.returnstates as List<SelectListItem>, new { style = "height:26px;" })*@
+                @Html.RadioButtonList(ViewBag.returnstates as List<SelectListItem>, "State", new { style = "height:26px;" })
+
+
+            </td>
+            <td class="label-toolbar" style="padding-left:30px;">
+                关键词：
+            </td>
+            <td class="input-toolbar">
+                <input name="SearchText" class="datacontrol" placeholder="退货单号" />
+            </td>
+        </tr>
+    </table>
+}
+
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-in-progress'" onclick="setState(1)">转入处理中</a>
+    @if(CurrentUser.HasPermiss(SysConstLimits.库存管理_已完成退换货))
+    { 
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(2)">转为已完成</a>
+    }
+    @if(CurrentUser.HasPermiss(SysConstLimits.库存管理_打印退换货单))
+    { 
+    <a class="easyui-linkbutton cus1 linkbtn" onclick="printCommodityReturn()">打印退货单</a>
+    }
+}
+
+<script type="text/javascript">
+
+    pharos.manager.geturl = "@Url.Action("CommodityReturnList")";
+    pharos.manager.editurl = "@Url.Action("ReturnDetail")";
+
+    pharos.manager.columns = [[
+         { field: 'Id', checkbox: true, width: 30 },
+         { field: 'StateTitle', title: '状态', width: 35, align: 'center' },
+         { field: 'ReturnId', title: '退货单号', width: 70, align: 'center' },
+         { field: 'StoreTitle', title: '出货仓', width: 70, align: 'center' },
+         { field: 'SupplierTitle', title: '供应商', width: 70, align: 'center' },
+         { field: 'TotalNum', title: '数量', width: 50, align: 'center' },
+         { field: 'TotalPrice', title: '金额', width: 50, align: 'center' },
+         { field: 'CreateDT', title: '登记时间', width: 40, align: 'center' },
+         { field: 'CreateTitle', title: '经办人', width: 40, align: 'center' }
+    ]]
+
+    pharos.manager.editItem = function (Id, row) {
+        if (row.StateTitle == "未处理") {
+            @if(!hideAdd)
+            {
+                @:openDialog(this.editText, '@Url.Action("Return","Store")?returnId=' + row.ReturnId, $(window.parent).width() - 80, $(window.parent).height() - 80, false);
+            }
+        }
+        else {
+            @if(showDetail)
+            {
+            @:openDialog(this.editText, '@Url.Action("Return", "Store")?returnId=' + row.ReturnId, $(window.parent).width() - 80, $(window.parent).height() - 80, true);
+            }
+        }
+    }
+
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+
+        var isPass = true;
+        $.each(rows, function (i, r) {
+            if (r.StateTitle == "已完成" && (state == 0 || state == 1)) {
+                $.messager.alert("提示", "操作失败！已完成的商品不能更改状态！");
+                isPass = false;
+                return false;
+            }
+            if (r.StateTitle == "处理中" && state == 1) {
+                $.messager.alert("提示", "操作失败！已转入处理中的商品不能重复转入操作！");
+                isPass = false;
+                return false;
+            }
+            if (r.StateTitle == "已完成" && state == 2) {
+                $.messager.alert("提示", "操作失败！已完成的商品不能重复转入操作！");
+                isPass = false;
+                return false;
+            }
+            if (r.StateTitle == "未处理" && state == 2) {
+                $.messager.alert("提示", "操作失败！只有状态为处理中的商品才能转为已完成！");
+                isPass = false;
+                return false;
+            }
+
+        });
+        if (!isPass) return;
+
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetStates")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    $("form").submit(false);
+
+
+
+    //打印退货单
+    var btns = [{
+        text: '打印',
+        iconCls: '',
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.printt();
+        }
+    },
+    {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            pharos.easyui.dialog.topClose("formDiv");
+        }
+    }];
+    function printCommodityReturn() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var isAllChecked = true;
+        var uncheckedReturnId = '';
+        var ids = $.map(rows, function (item) {
+            if (item.StateTitle == "未处理" || item.StateTitle == "处理中") {
+                isAllChecked = false;
+                uncheckedReturnId = item.ReturnId;
+            }
+            return item.Id;
+        }).join();
+        if (!isAllChecked) {
+            $.messager.alert("提示", "退货单：" + uncheckedReturnId + "未完成，不能打印");
+        } else {
+            openPrintDialog(ids);
+        }
+
+    }
+
+    function openPrintDialog(ids) {
+        var url = "@Url.Action("ReturnPrintView", "Store")?Ids=" + ids + "&t=" + Math.random();
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("body").openTopDialog({
+            id: "formDiv",
+            title: "打印退货单",
+            width: $(window.parent).width() >= 1000 ? 1000 : $(window.parent).width() - 80,
+            height: $(window.parent).height() >= 700 ? 700 : $(window.parent).height() - 80,
+            content: cont,
+            //href: url,
+            modal: true,
+            cache: false,
+            buttons: btns,
+            tools: dialogTools(),
+            onClose: closeDialog
+        });
+    }
+</script>
+
+

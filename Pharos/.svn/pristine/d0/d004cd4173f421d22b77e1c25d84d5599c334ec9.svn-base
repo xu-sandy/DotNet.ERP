@@ -1,0 +1,106 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新建产品", delText: "删除产品", editText: "修改产品"));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>产品：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("code", ViewBag.products as List<SelectListItem>, new { @class = "easyui-combobox", style = "width:120px;" })
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox" name="state" style="width:70px;" data-options="editable: false">
+                    <option selected value="">全部</option>
+                    <option value="0">未发布</option>
+                    <option value="1">已发布</option>
+                    <option value="2">已失效</option>
+                </select>
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setPublish(1)">发布并强制更新</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setPublish(0)">发布不强制更新</a>
+}
+<script type="text/javascript">
+    pharos.manager.singleSelect = true;
+    pharos.manager.columns = [[
+        { field: 'SysName', title: '系统名称', width: 130 },
+        { field: 'ForceTitle', title: '强制升级', width: 70 },
+        { field: 'MenusetTitle', title: '菜单设定', width: 70 },
+        { field: 'LimitsetTitle', title: '功能设定', width: 70 },
+        { field: 'Memo', title: '描述', width: 150 },
+        { field: 'UpdateDT', title: '编辑时间', width: 130 },
+        { field: 'Updater', title: '编辑人', width: 100 },
+        { field: 'PublishDT', title: '发布时间', width: 130 },
+        { field: 'Publisher', title: '发布人', width: 100 },
+        {
+            field: 'Editor', title: '操 作', width: 120, formatter: function (value, row,index) {
+                return '<a href="javascript:" onclick="openMenu(\'' + row.ProductId + '\')">菜单配置</a> <a href="javascript:">权限配置</a>';
+            }
+        },
+    ]];
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StateTitle', title: '状态', width: 70 },
+        { field: 'ProductCode', title: '产品号', width: 80 },
+        { field: 'Name', title: '产品全称', width: 150 },
+        { field: 'Alias', title: '产品别名', width: 100 },
+        { field: 'VerCode', title: '版本', width: 60 }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog600(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (id) {
+        this.Id = id;
+        openDialog600(this.editText, this.editurlNocache());
+    }
+    function setPublish(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("Publish")", { id: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "发布成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "发布失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    function selectBefore(rows) {
+        var result = true;
+        $.each(rows, function (i, r) {
+            if (r.MenusetTitle == "未配置") {
+                $.messager.alert("提示", "请先配置菜单","error");
+                result = false;
+                return false;
+            }
+            else if (r.LimitsetTitle == "未配置") {
+                $.messager.alert("提示", "请先配置权限", "error");
+                result = false;
+                return false;
+            }
+        })
+        return result;
+    }
+    function openMenu(id) {
+        openDialog1000("菜单配置", "@Url.Action("Menus")?productid=" + id);
+        top.$("#lbsave").hide();
+    }
+    function editBefore(row, field) {
+        if (field == "Editor") return false;
+        return true;
+    }
+</script>

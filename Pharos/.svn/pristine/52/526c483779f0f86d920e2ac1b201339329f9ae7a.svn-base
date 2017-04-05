@@ -1,0 +1,174 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using Pharos.Logic;
+using Pharos.Logic.BLL;
+using Pharos.Logic.Entity;
+using Pharos.Sys;
+
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class STHouseMoveController : BaseController
+    {
+        #region 调入管理
+        public ActionResult MoveinIndex()
+        {
+            var list = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "全部");
+            ViewBag.inshops = list.Where(o => o.Value != Sys.CurrentUser.StoreId).ToList();
+
+            ViewBag.states = EnumToSelect(typeof(HouseMoveState), emptyTitle: "全部");
+            ViewBag.CurStoreId = CurrentUser.StoreId;
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult FindMoveinList(int page = 1, int rows = 30)
+        {
+            int count;
+            var list = STHourseMoveService.FindMoveinList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+
+        #region 申请调入
+        public ActionResult MoveinAdd(string id)
+        {
+            var list = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "请选择");
+            ViewBag.outshops = list.Where(o => o.Value != Sys.CurrentUser.StoreId ).ToList();
+            ViewBag.inshops = list.Where(o => o.Value == Sys.CurrentUser.StoreId).ToList();
+
+            //var obj = new HouseMove();
+            //if (!id.IsNullOrEmpty())
+            //{
+            //    obj = BaseService<HouseMove>.FindById(id);
+            //    var pro = BaseService<VwProduct>.Find(o => o.Barcode == obj.Barcode);
+            //    if (pro != null)
+            //    {
+            //        ViewData["ProductTitle"] = pro.Title;
+            //        ViewData["SysPrice"] = pro.SysPrice;
+            //        ViewData["StockCount"] = pro.StockNums;
+            //    }
+            //}
+            //else
+            //{
+            //    obj.OrderQuantity = 1;
+            //}
+            //return View(obj.IsNullThrow());
+            return View();
+           
+        }
+        //[HttpPost]
+        //public ActionResult MoveinAdd(STHouseMove obj)
+        //{
+        //    var re = STHourseMoveService.SaveOrUpdate(obj);
+        //    return Content(re.ToJson());
+        //}
+
+        #endregion
+
+        #endregion
+
+        #region 调出管理
+        public ActionResult MoveoutIndex()
+        {
+            var list = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "全部");
+            ViewBag.outshops = list.Where(o => o.Value != Sys.CurrentUser.StoreId).ToList();
+
+            ViewBag.states = EnumToSelect(typeof(HouseMoveState), emptyTitle: "全部");
+            ViewBag.CurStoreId = CurrentUser.StoreId;
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult FindMoveoutList(int page = 1, int rows = 30)
+        {
+            int count;
+            var list = STHourseMoveService.FindMoveoutList(Request.Params, out count);
+            return ToDataGrid(list, count);
+            return View();
+        }
+
+        #endregion
+
+
+        //[HttpPost]
+        //public ActionResult FindPageList(int page = 1, int rows = 30)
+        //{
+        //    int count;
+        //    var list = STHourseMoveService.FindMoveinList(Request.Params, out count);
+        //    return ToDataGrid(list, count);
+        //}
+       
+        //public ActionResult Detail(string id)
+        //{
+        //    var obj = STHourseMoveService.FindAllById(id);
+        //    return View(obj.IsNullThrow());
+        //}
+        //public ActionResult Handler(string id)
+        //{
+        //    var obj = STHourseMoveService.FindAllById(id);
+        //    return View(obj.IsNullThrow());
+        //}
+        //[HttpPost]
+        //public ActionResult Handler(STHouseMove obj)
+        //{
+        //    var house = STHourseMoveService.FindById(obj.Id);
+        //    house.State = obj.State;
+        //    house.DeliveryUID = Sys.CurrentUser.UID;
+        //    house.DeliveryQuantity = obj.DeliveryQuantity;
+        //    house.StockOut = obj.StockOut;
+        //    var re = STHourseMoveService.Update(house);
+        //    return Content(re.ToJson());
+        //}
+        //public ActionResult Receiver(string id)
+        //{
+        //    var obj = STHourseMoveService.FindAllById(id);
+        //    return View(obj.IsNullThrow());
+        //}
+        [HttpPost]
+        public ActionResult Receiver(STHouseMove obj)
+        {
+            var re = STHourseMoveService.Receiver(obj);
+            return Content(re.ToJson());
+        }
+        [HttpPost]
+        public ActionResult ReBack(string ids)
+        {
+            var sid = ids.Split(',');
+            var houses = STHourseMoveService.FindList(o => sid.Contains(o.Id));
+            houses.Each(o =>
+            {
+                o.State = (short)HouseMoveState.已撤回;
+            });
+            var re = STHourseMoveService.Update(houses);
+            return Content(re.ToJson());
+        }
+        [HttpPost]
+        public ActionResult Delete(string[] ids)
+        {
+            var re = new OpResult() { Successed = true };
+            var list = STHourseMoveService.FindList(o => ids.Contains(o.Id));
+            re = STHourseMoveService.Delete(list);
+            return new JsonNetResult(re);
+        }
+        [HttpPost]
+        public ActionResult ListPartial(string barcode)
+        {
+            var dicts = CommodityService.GetStockNums(barcode);
+            return PartialView(dicts);
+        }
+
+
+
+
+
+
+
+
+
+
+    }
+}

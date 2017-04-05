@@ -1,0 +1,159 @@
+﻿@model Pharos.Logic.Entity.CardInfo
+@{
+    ViewBag.Title = "CreateMemberCardType";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%" height="250px">
+                <tr>
+                    <td class="name">名称：</td>
+                    <td class="input">
+                        <input type="text" name="CardName" class="easyui-validatebox" value="@Model.CardName" data-options="required:true" />
+                    </td>
+                    <td class="name"></td>
+                    <td class="input"></td>
+                </tr>
+                <tr>
+                    <td class="name">卡片功能：</td>
+                    <td class="input">
+                        <select id="cardType" name="_cardtype" class="easyui-combobox" data-options="validType:'requiredForCombo',editable:false,multiple:true">
+                            <option name="_cardtype" value="-1">请选择</option>
+                            <option name="_cardtype" value="1">储蓄卡</option>
+                            <option name="_cardtype" value="2">购物卡</option>
+                            <option name="_cardtype" value="3">会员卡</option>
+                        </select>
+                    </td>
+                    <td class="name">卡片种类：</td>
+                    <td class="input">
+                        <select id="category" name="Category" class="easyui-combobox" data-options="validType:'requiredForCombo',editable:false">
+                            <option value="-1">请选择</option>
+                            <option value="1">电子卡</option>
+                            <option value="2">磁卡</option>
+                            <option value="3">IC卡</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">最低充值金额：</td>
+                    <td class="input"><input type="text" name="MinRecharge" class="easyui-numberbox" value="@Model.MinRecharge" data-options="precision:1" /></td>
+                    <td class="name">初始金额：</td>
+                    <td class="input"><input type="text" name="DefaultPrice" class="easyui-numberbox" value="@Model.DefaultPrice" data-options="precision:1" /></td>
+                </tr>
+                @*<tr>
+                        <td class="name">初始积分：</td>
+                        <td class="input"><input type="text" name="DefaultIntegr" class="easyui-textbox" value="@Model.DefaultIntegr" /></td>
+                        <td class="name">办卡押金：</td>
+                            <td class="input"><input type="text" name="" class="easyui-textbox" /></td>
+                    </tr>*@
+                <tr>
+                    <td class="name">状态：</td>
+                    <td class="input">
+                        @*@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "可用", Selected = true }, new SelectListItem() { Text = "注销" } }, "state")*@
+                        <input type="radio" id="stateTrue" name="state" value="0" /><label for="stateTrue">可用</label>
+                        <input type="radio" id="stateFalse" name="state" value="1" /><label for="stateFalse">禁用</label>
+
+                    </td>
+
+                </tr>
+                <tr>
+                    <td class="name">备 注：</td>
+                    <td class="input" colspan="3">
+                        <textarea name="Memo" class="easyui-validatebox" style="width:320px;height:50px;">@Model.Memo</textarea>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        @Html.HiddenFor(o => o.CardType);
+    }
+</div>
+<script>
+    $(function () {
+        $(".discount").hide();
+        //种类
+        if ('@Model.Category' != '0')
+            $("#category").combobox("setValue", '@Model.Category');
+        if ("@Model.State" == "0") {
+            //可用
+            $("#stateTrue").click();
+        } else {
+            $("#stateFalse").click();
+        }
+
+        $("#cardType").combobox({
+            onSelect: function (rec) {
+                var allval = $(this).combobox("getData");
+                var allth = allval.length;
+                if (rec.value != -1) {//选中项 1.请选择不可被选中 2.购物卡只能单独被选中 3.重选中要取消
+                    var datas = $(this).combobox("getValues").join(",");
+                    if (datas.indexOf("2") > -1 && rec.value != 2) {//有购物卡其他就不能选中
+                        $(this).combobox("unselect", rec.value);
+                    } else {
+                        if (rec.value == 2) {
+                            $(this).combobox("clear");
+                            $(this).combobox("setValue", "2");
+                        } else {
+                            $(this).combobox("unselect", -1);
+                        }
+                    }
+                    $("#CardType").parent().parent().next().next().find(".combobox-item").each(function (index, item) {
+                        var itemhtml = $(item).html();
+                        if (itemhtml == rec.text) {
+                            $(item).addClass("combobox-item-selected");
+                        }
+                    })
+                } else {//选中请选择
+                    for (var i = 0; i < allth; i++) {
+                        if (allval[i].value != -1) {
+                            $(this).combobox("unselect", allval[i].value);
+                        }
+                    }
+                }
+            }
+        });
+
+        if ('@Model.Id' == '0') {
+            $("#cardType").combobox("setValue", '-1');
+        } else {
+            $("#cardType").combobox("setValues", '@Model.CardType'.split(","));
+        }
+    })
+
+    function SaveBefore() {
+        var name = $("input[name=CardName]").val();
+        if (name == "") {
+            $.messager.alert("提示", "请输入名称！", "info");
+            return false;
+        }
+
+        //判断卡片功能 购物卡只能单选
+        var cardType = $("#cardType").combobox("getValues").join(',');
+        if (cardType == "-1") {
+            $.messager.alert("提示", "请选择卡片功能！", "info");
+            return false;
+        } else {
+            if (cardType.length > 1) {
+                //判断是否包含会员卡
+                if (cardType.indexOf('2') > -1) {
+                    $.messager.alert("提示", "购物卡为单独功能，不能和其他功能叠加！", "info");
+                    return false;
+                }
+            }
+            $("#CardType").val(cardType);
+        }
+        var _category = $("#category").combobox("getValue");
+        if (_category == "-1") {
+            $.messager.alert("提示", "请选择卡片种类！", "info");
+            return false;
+        } else if (_category == "2") {
+            var _defaultPrice = $("input[name=DefaultPrice]").val();
+            debugger
+            if (_defaultPrice <= 0 || _defaultPrice == "0.0") {
+                $.messager.alert("提示", "购物卡请设置初始金额！", "info");
+                return false;
+            }
+        }
+    }
+</script>

@@ -1,0 +1,178 @@
+﻿@{
+    ViewBag.Title = "CreateRecharge";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style>
+    .stage {
+        display: none;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                @*<tr>
+                    <td></td>
+                    <td><button type="button">读卡</button></td>
+                </tr>*@
+                <tr>
+                    <td class="name">卡号：</td>
+                    <td class="input"><input id="cardID" name="CardID" /></td>
+
+                    <td class="name">充值金额：</td>
+                    <td class="input"><input type="text" id="rechargeAmount" name="RechargeAmount" class="easyui-textbox" /></td>
+                </tr>
+                <tr>
+                    <td class="name">持卡人：</td>
+                    <td class="input"><input type="text" id="member" name="Member" disabled="disabled" class="easyui-textbox" /></td>
+
+
+                    <td class="name">可用余额：</td>
+                    <td class="input"><input type="text" id="balance" name="Balance" disabled="disabled" class="easyui-textbox" /></td>
+                </tr>
+                <tr>
+                    <td class="name">可用积分：</td>
+                    <td class="input"><input type="text" id="afterIntegral" disabled="disabled" name="AfterIntegral" class="easyui-textbox" /></td>
+                    <td class="name">备  注：</td>
+                    <td class="input"><input type="text" id="memo" name="Memo" class="easyui-validatebox" /></td>
+                </tr>
+
+                @*分期信息*@
+                @*<tr class="stage">
+                    <td class="name">分期总数：</td>
+                    <td class="input"><input type="text" id="stageNumber" name="StageNumber" class="easyui-textbox" /></td>
+                    <td class="name">每期返还：</td>
+                    <td class="input"><input type="text" id="stageAvg" name="StageAvg" class="easyui-textbox" /></td>
+                </tr>
+                <tr class="stage">
+                    <td class="name">每月：</td>
+                    <td class="input"><input type="text" id="returnDT" name="ReturnDT" class="easyui-textbox" style="width:50px" />号返还</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td colspan="3">
+                        <label id="remak"></label>
+                    </td>
+                    <td></td>
+                    <td></td>
+                </tr>*@
+            </table>
+        </div>
+        <input type="hidden" name="ruleId" id="ruleId" />
+        <input type="hidden" name="giftProject" id="giftProject" />
+    }
+</div>
+<script>
+    $(function () {
+        //query recharge info by CardSN
+        $("#cardID").combobox({
+            mode: "remote",
+            valueField: 'CardSN',
+            textField: 'CardSN',
+            onSelect: function (rec) {
+                //select member card info by card
+                $.ajax({
+                    url: '@Url.Action("GetMembersCardByCardSn")',
+                    type: 'POST',
+                    data: { cardSN: rec.CardSN },
+                    dataType: "json",
+                    success: function (data) {
+                        if (data != "" && data != undefined) {
+                            $("#member").textbox("setValue", data.RealName);
+                            if (data.Balance == 0) {
+                                data.Balance = "0";
+                            }
+                            $("#balance").textbox("setValue", data.Balance);
+                            if (data.Integer == 0) {
+                                data.Integer = "0";
+                            }
+                            $("#afterIntegral").textbox("setValue", data.Integer);
+                        }
+                    }
+                })
+            },
+            loader: function (param, success, error) {
+                var q = param.q || "";
+                if (q.length >= 0) {
+                    $.ajax({
+                        url: '@Url.Action("GetMemberCardByContainsParam")',
+                        type: "POST",
+                        data: { param: q },
+                        dataType: "json",
+                        success: function (data) {
+                            var items = $.each(data, function (value) {
+                                return value;
+                            });
+                            success(items);
+                        }
+                    })
+                }
+            }
+        });
+
+        //充值金额输入后加载充值赠送信息
+        @*$("#rechargeAmount").textbox({
+            onChange: function (n, o) {
+                $.ajax({
+                    url: '@Url.Action("GetRechargeGiftInfo")',
+                    type: "POST",
+                    data: { rechargeMoney: n },
+                    dataType: "json",
+                    success: function (data) {
+                        if (data != null && data != "") {
+                            //绑定充值赠送id
+                            $("#ruleId").val(data.RuleId);
+                            //绑定充值赠送项目
+
+                            if (data.GiftProject == 0) {//返现
+                                $("#givenAmount").textbox("setValue", data.GiftsValue);
+                                $("#giftProject").val(1);
+                            } else {//返积分
+                                $("#presentExp").textbox("setValue", data.GiftsValue);
+                                $("#giftProject").val(2);
+
+                            }
+                            //显示赠送说明
+                            var remak = "";
+                            if (data.Stage == 0) {
+                                remak += "即时赠送" + data.GiftsValue;
+                                if (data.GiftProject == 0) {
+                                    remak += "现金";
+                                } else {
+                                    remak += "积分";
+                                }
+                                $(".stage").hide();
+
+                            } else {
+                                remak += "分期赠送" + data.GiftsValue;
+                                if (data.GiftProject == 0) {
+                                    remak += "现金,";
+                                } else {
+                                    remak += "积分,";
+                                }
+                                remak += "分" + data.StageNumber + "期，每期返还" + data.StageAvg + ",每月" + data.ReturnDT + "号返还";
+                                $(".stage").show();
+                                $("#stageNumber").textbox("setValue", data.StageNumber);
+                                $("#stageAvg").textbox("setValue", data.StageAvg);
+                                $("#returnDT").textbox("setValue", data.ReturnDT);
+                            }
+
+                            $("#remak").html(remak);
+                        } else {//重置赠送信息
+                            $("#givenAmount").textbox("setValue", "")
+                            $("#presentExp").textbox("setValue", "")
+                            $(".stage").hide();
+                            $("#stageNumber").textbox("setValue", "");
+                            $("#stageAvg").textbox("setValue", "");
+                            $("#returnDT").textbox("setValue", "");
+                            $("#remak").html("");
+                        }
+                    }
+                })
+            }
+        })*@
+
+
+    })
+</script>

@@ -1,0 +1,286 @@
+﻿@model  Pharos.CRM.Retailing.Models.Traders
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .formbox td {
+        padding: 5px 0px;
+    }
+
+    .a_del a {
+        color: #8cc152;
+    }
+
+    .a_del {
+        color: #8cc152;
+    }
+
+    #tr_OrderList td div {
+        height: 28px;
+        line-height: 28px;
+        overflow: hidden;
+        margin: 5px 0px;
+    }
+
+        #tr_OrderList td div span {
+            display: block;
+            float: left;
+            width: 200px;
+            overflow: hidden;
+        }
+</style>
+
+<script type="text/javascript">
+
+    //加载省份
+    function loadProvince() {
+        $('#Province').combobox({
+            url: '@Url.Action("ProvinceSelect", "SysAdmin")?emptyTitle='+escape("请选择"),
+            valueField: 'value',
+            textField: 'text',
+            editable: false,
+            width: 100,
+            required:true,
+            novalidate:false,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                if(!isLoad){
+                    loadCity(newValue);
+                    loadDistrict(0);
+                }
+            }
+        });
+
+    }
+
+    //加载城市
+    function loadCity(provinceKey) {
+        $('#City').combobox({
+            url: '@Url.Action("CitySelect", "SysAdmin")?pid='+provinceKey+'&emptyTitle='+escape("请选择"),
+            valueField: 'value',
+            textField: 'text',
+            editable: false,
+            width: 100,
+            required: true,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                if(!isLoad)
+                    loadDistrict(newValue);
+            }
+        });
+
+    }
+
+    //加载区县
+    function loadDistrict(cityKey) {
+        $('#District').combobox({
+            url: '@Url.Action("CitySelect", "SysAdmin")?pid=' + cityKey+'&emptyTitle='+escape("请选择"),
+            valueField: 'value',
+            textField: 'text',
+            editable: false,
+            required: true,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            width: 130
+        });
+    }
+
+    //加载省市区
+    //pid:默认选中省ID
+    //cid:默认选中城市ID
+    //did:默认选中区县ID
+    function loadPCD(pid,cid,did) {
+        isLoad=true;
+        loadProvince();
+        loadCity(pid);
+        loadDistrict(cid);
+        setTimeout(function(){
+            $('#Province').combobox('setValue', pid);
+            $('#City').combobox('setValue', cid);
+            $('#District').combobox('setValue', did);
+            isLoad=false;
+        },1500)
+    }
+    var isLoad=false;
+    $(function () {
+        loadPCD(@Model.CurrentProvinceId, @Model.CurrentCityId, @Model.CurrentCounty);
+
+    });
+
+    //采购意向清单
+    function addOrderList()
+    {
+        var jso = "{\"OrderList\": [";
+        var divC=0;
+        $("#tr_OrderList div").each(function (i) {
+            var ck = $(this).find("input[name=OrderList]").is(":checked");
+            //预购数量
+            var OrderNum = $(this).find("input[name=OrderNum]").val();
+            if(ck&&OrderNum>0){
+                //设备ID
+                var Id = $(this).find("input[name=OrderList]").val();
+                //设备名称
+                var Title = $(this).find("label").html();
+                if (divC== 0) {
+                    jso = jso + "{ \"Id\":\"" + Id + "\" , \"Title\":\"" + Title + "\" ,\"OrderNum\":\"" + OrderNum + "\" }";
+                }
+                else {
+                    jso = jso +","+ "{ \"Id\":\"" + Id + "\" , \"Title\":\"" + Title + "\" ,\"OrderNum\":\"" + OrderNum + "\" }";
+                }
+                divC=divC+1;
+            }
+        });
+        jso = jso + "]}";
+        $("#h_OrderList").val(jso);
+    }
+
+
+    function SaveBefore(){
+        addOrderList();
+        return true;
+    }
+    function Refresh() {
+        $.messager.alert('提示', '注册成功！', "info", function () {
+            top.window.location.href = "@Url.Action("Login","Account")";
+        });
+    }
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o=>o.CID)
+        <div class="content" style="width:1000px;margin:0 auto;">
+
+            <div class="formbox">
+                <table class="table-form" width="100%" height="100px">
+                    <tr>
+                        <td class="name">入驻方式：</td>
+                        <td class="input">@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "在线", Value = "1" }, new SelectListItem() { Text = "独立", Value = "2" } }, "Way")</td>
+                        <td class="name">分类：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.TraderTypeId, ViewBag.TraderTypes as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false" })</td>
+                    </tr>
+                    <tr>
+                        <td class="name">开通版本：</td>
+                        <td class="input">@Html.DropDownList("OpenVersionId", new List<SelectListItem>() { new SelectListItem() { Text = "零售版", Value = "1" }, new SelectListItem() { Text = "餐饮版", Value = "2" }, new SelectListItem() { Text = "鞋服版", Value = "3" } }, new { @class = "easyui-combobox", data_options = "required:true" })</td>
+                        <td class="name">经营类目：</td>
+                        <td class="input">
+                            @Html.CheckBoxListFor(o => o.BusinessScopeId, ViewBag.BusinessScopeIds as List<SelectListItem>,6)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="name">客户简称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'2-10个字符',validType: 'length[2,10]'" })</td>
+                        <td class="name">客户全称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'2-50个字符',validType: 'length[2,50]'" })</td>
+                    </tr>
+                    <tr>
+                        <td class="name">经营模式：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.BusinessModeId, ViewBag.ModeIds as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:false,novalidate:true,editable: false" })</td>
+                        <td class="name">分店专属后台：</td>
+                        <td class="input">@Html.CheckBox("StoreProper",Convert.ToString( ViewData.Eval("StoreProper"))=="Y", new { value = "Y" })</td>
+                    </tr>
+                    <tr>
+                        <td class="name">POS次屏显示：</td>
+                        <td class="input">@Html.CheckBox("PosMinorDisp", Convert.ToString(ViewData.Eval("PosMinorDisp")) == "Y", new { value = "Y" })</td>
+                        <td class="name">APP手机端：</td>
+                        <td class="input">@Html.CheckBox("AppProper", Convert.ToString(ViewData.Eval("AppProper")) == "Y", new { value = "Y" })</td>
+                    </tr>
+                    <tr>
+                        <td class="name">区域：</td>
+                        <td class="input">
+                            <input id="Province" name="CurrentProvinceId" class="easyui-combobox datacontrol"/>-
+                            <input id="City" name="CurrentCityId" class="easyui-combobox datacontrol" />-
+                            <input id="District" name="CurrentCounty" class="easyui-combobox datacontrol"/>
+                        </td>
+                        <td class="name">详细地址：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Address, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'详细地址',width:200" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">联系人：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.LinkMan, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'联系人'" })</td>
+                        <td class="name">手机号码：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.MobilePhone, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'手机号码',validType:'mobile',width:200" })</td>
+                    </tr>
+                    <tr>
+                        <td class="name">货品盘点：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.TakeStockDates, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'定期几号盘点'" })</td>
+                        <td class="name">备注：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Memo, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'备注',width:200" })</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="formbox">
+                <table class="table-form" width="100%" height="100px">
+
+                    <tr>
+                        <td class="name" style="width:10%;">现有系统名称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.ExistsystemName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'门店现有系统名称'" })</td>
+                        <td class="name" style="width:31%;">现有设备名称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.ExistDeviceName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'门店现有设备名称'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">现有门店数量：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.ExistStoreNum, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'现有门店数量',validType:'integer'" })</td>
+                        <td class="name">每门店机数：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.EachStorePosNum, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'每门店机数',validType:'integer'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">每门店人均数：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.EachStorePersonNum, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'每门店人均数',validType:'integer'" })</td>
+                        <td class="name">计划扩张门店数量：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.PlanExpandStoreNum, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'计划扩张门店数量',validType:'integer'" })</td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox">
+                <table class="table-form" style="width:100%; height:auto;">
+
+
+                    <tr id="tr_OrderList">
+                        <td class="name" style=" width:10%;">
+                            采购意向清单：
+                        </td>
+                        <td class="input" colspan="3">
+                            <input type="hidden" id="h_OrderList" name="h_OrderList" value="" />
+
+                            @foreach (var v in ViewBag.OrderList as List<Pharos.CRM.Retailing.Models.ViewOrderList>)
+                            {
+                                <div>
+
+                                    <span class="span1">
+                                        <input type="checkbox" value="@v.Id" id="ck_@v.Id" name="OrderList" @(Html.Raw(v.IsCheck > 0 ? "checked=\"checked\"" : "")) />
+                                        &nbsp;
+                                        <label for="ck_@v.Id">@v.Title</label>
+                                        &nbsp;
+                                    </span>
+
+                                    <span class="span2">
+                                        <input id="txt_@v.Id" name="OrderNum" class="easyui-textbox" data-options="novalidate:true,required:false,prompt:'预购数量',validType:'integer',value:'@v.OrderNum',width:70" />
+                                    </span>
+
+                                </div>
+                            }
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+            <div style="text-align:center;margin:10px">
+                <a class="easyui-linkbutton cus4 linkbtn btn" href="#" onclick="$('form').submit()">发送申请</a>
+            </div>
+        </div>
+    }
+</div>
+
+
+

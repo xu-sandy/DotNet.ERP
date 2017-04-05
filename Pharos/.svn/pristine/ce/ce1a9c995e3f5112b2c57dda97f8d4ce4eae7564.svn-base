@@ -1,0 +1,817 @@
+﻿using Newtonsoft.Json;
+using Pharos.Logic.OMS.Entity;
+using QCT.Pay.Common;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.ComponentModel.DataAnnotations;
+
+namespace Pharos.Logic.OMS.Models
+{
+    #region Sxf Base
+    /// <summary>
+    /// 请求协议参数
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    [Serializable]
+    public class SxfBaseTradeRequest
+    {
+        /// <summary>
+        /// 字符集，只能取以下枚举值
+        /// 00--GBK
+        /// 01--GB2312
+        /// 02--UTF-8
+        /// 默认02--UTF-8
+        /// </summary>
+        [JsonProperty("charSet")]
+        public string CharSet { get; set; }
+        /// <summary>
+        /// 接口类型
+        /// </summary>
+        [JsonProperty("type")]
+        public string Type { get; set; }
+        /// <summary>
+        /// 商户编号，无卡支付平台给接入方分配的唯一标识
+        /// </summary>
+        [JsonProperty("merchantId")]
+        public string MchId { get; set; }
+        /// <summary>
+        /// 门店编号
+        /// </summary>
+        [JsonProperty("shopId")]
+        public string StoreId { get; set; }
+        /// <summary>
+        /// 终端编号
+        /// </summary>
+        [JsonProperty("terminalId")]
+        public string DeviceId { get; set; }
+        /// <summary>
+        /// 签名方式，MD5
+        /// </summary>
+        [JsonProperty("signType")]
+        public string SignType { get; set; }
+        /// <summary>
+        /// 版本号
+        /// </summary>
+        [JsonProperty("version")]
+        public string Version { get; set; }
+        /// <summary>
+        /// 签名数据
+        /// </summary>
+        [JsonProperty("signature")]
+        public string Signature { get; set; }
+    }
+
+    /// <summary>
+    /// 返回协议参数
+    /// </summary>
+    [Serializable]
+    public class SxfBaseTradeResponse
+    {
+        #region Properties
+        /// <summary>
+        /// 返回码，00000表示成功，其他均为错误
+        /// </summary>
+        [JsonProperty("rspCod")]
+        public string ReturnCode { get; set; }
+        /// <summary>
+        /// 返回信息，SUCCESS表示成功，其他均为错误信息
+        /// </summary>
+        [JsonProperty("rspMsg")]
+        public string ReturnMsg { get; set; }
+        /// <summary>
+        /// 接口类型
+        /// </summary>
+        [JsonProperty("type")]
+        public string Method { get; set; }
+        /// <summary>
+        /// 商户编号
+        /// </summary>
+        [JsonProperty("merchantId")]
+        public string MchId { get; set; }
+        /// <summary>
+        /// 门店编号
+        /// </summary>
+        [JsonProperty("shopId")]
+        public string StoreId { get; set; }
+        /// <summary>
+        /// 终端编号
+        /// </summary>
+        [JsonProperty("terminalId")]
+        public string DeviceId { get; set; }
+        /// <summary>
+        /// 签名方式
+        /// </summary>
+        [JsonProperty("signType")]
+        public string SignType { get; set; }
+        /// <summary>
+        /// 版本号
+        /// </summary>
+        [JsonProperty("version")]
+        public string Version { get; set; }
+        /// <summary>
+        /// 签名数据
+        /// </summary>
+        [JsonProperty("signature")]
+        public string Signature { get; set; }
+        #endregion
+
+        #region Methods
+        public bool IsSuccess()
+        {
+            if (this.ReturnCode == PayConst.SXF_SUCCESS_CODE)
+                return true;
+            else
+                return false;
+        }
+        #endregion
+    }
+
+    /// <summary>
+    /// Sxf 支付交易请求参数
+    /// </summary>
+    [Serializable]
+    public class SxfPayRequest : SxfBaseTradeRequest
+    {
+        #region Methods
+        #endregion
+
+        #region Properties
+        /// <summary>
+        /// 商户支付订单号，每笔支付订单的唯一标识，商户需保持该字段在系统内唯一
+        /// 建议生成规则：时 间 (yyyyMMddHHmmss)+4位序号
+        /// </summary>
+        [JsonProperty("payOrderNo")]
+        public string OutTradeNo { get; set; }
+        /// <summary>
+        /// 订单类型，1：普通订单 2：当面收款订单
+        /// </summary>
+        [JsonProperty("orderType")]
+        public string OrderType { get; set; }
+        /// <summary>
+        /// 交易日期，交易日期，格式： YYYYMMDD
+        /// </summary>
+        [JsonProperty("txDate")]
+        public string CreateDate { get; set; }
+        /// <summary>
+        /// 交易金额，以分为单位
+        /// </summary>
+        [JsonProperty("txAmt")]
+        public int TotalAmount { get; set; }
+        /// <summary>
+        /// 支付结果通知地址，支付结果的后台通知地址，如果该值为空，则使用商户开户时默认设置的支付结果通知地址
+        /// </summary>
+        [JsonProperty("payNotifyUrl")]
+        public string PayNotifyUrl { get; set; }
+        /// <summary>
+        /// 用户手机号，支付用户的手机号，订单类型为 2:当面收款订单，则该值必输
+        /// </summary>
+        [JsonProperty("userMobile")]
+        public string BuyerMobile { get; set; }
+        /// <summary>
+        /// 商品名称，不输，则默认为“超时购物”
+        /// fishtodo：超市购物吧？
+        /// </summary>
+        [JsonProperty("goodsName")]
+        public string GoodsName { get; set; }
+        /// <summary>
+        /// 商品描述
+        /// </summary>
+        [JsonProperty("goodDesc")]
+        public string GoodDesc { get; set; }
+        #endregion
+    }
+
+    /// <summary>
+    /// Sxf 支付交易响应参数
+    /// </summary>
+    [Serializable]
+    public class SxfPayResponse : SxfBaseTradeResponse
+    {
+        /// <summary>
+        /// 商户支付订单号
+        /// </summary>
+        [JsonProperty("payOrderNo")]
+        public string OutTradeNo { get; set; }
+    }
+    #endregion
+
+    #region Sxf BuildPayToken
+    /// <summary>
+    /// Sxf 主扫支付动态二维码生成请求参数
+    /// </summary>
+    [Serializable]
+    public class SxfBuildPayTokenRequest : SxfPayRequest
+    {
+        /// <summary>
+        /// 支付页面通知地址，支付结果前台通知地址，如果该值为空则跳转到默认成功页面
+        /// </summary>
+        [JsonProperty("frontNotifyUrl")]
+        public string FrontNotifyUrl { get; set; }
+    }
+
+    /// <summary>
+    /// 主扫支付动态支付二维码信息响应参数
+    /// </summary>
+    [Serializable]
+    public class SxfBuildPayTokenResponse : SxfPayResponse
+    {
+        /// <summary>
+        /// 动态二维码数据，一串支付的 url，请商家自行将该结果生成二维码
+        /// </summary>
+        [JsonProperty("payToken")]
+        public string PayToken { get; set; }
+        /// <summary>
+        /// 动态二维码的 httpurl
+        /// </summary>
+        [JsonProperty("imageUrl")]
+        public string QRCodeUrl { get; set; }
+    }
+    #endregion
+
+    #region Sxf ScanPay
+    /// <summary>
+    /// 被扫支付请求参数
+    /// </summary>
+    [Serializable]
+    public class SxfScanPayRequest : SxfPayRequest
+    {
+        /// <summary>
+        /// 购买者的支付二维码字符串
+        /// </summary>
+        [JsonProperty("userPayToken")]
+        public string BuyerPayToken { get; set; }
+    }
+
+    /// <summary>
+    /// Sxf 被扫支付响应参数
+    /// </summary>
+    [Serializable]
+    public class SxfScanPayResponse : SxfPayResponse
+    {
+        /// <summary>
+        /// 交易金额，以分为单位
+        /// </summary>
+        [JsonProperty("txAmt")]
+        public int ReceiptAmount { get; set; }
+        /// <summary>
+        /// 支付结果，S：支付成功 F：支付失败
+        /// </summary>
+        [JsonProperty("payResult")]
+        public string PayResult { get; set; }
+        /// <summary>
+        /// 支付渠道，WX：微信支付，ALIPAY：支付宝支付
+        /// </summary>
+        [JsonProperty("payChannel")]
+        public string PayChannel { get; set; }
+    }
+    #endregion
+
+    #region Sxf RefundApply
+    /// <summary>
+    /// 退款申请请求参数
+    /// </summary>
+    [Serializable]
+    public class SxfRefundApplyRequest : SxfBaseTradeRequest
+    {
+        /// <summary>
+        /// 商户退款订单号，每笔退款订单的唯一标识，商户需保持该字段在系统内唯一
+        /// </summary>
+        [JsonProperty("rfdOrderNo")]
+        public string OutTradeNo { get; set; }
+        /// <summary>
+        /// 原商户支付订单号
+        /// </summary>
+        [JsonProperty("payOrderNo")]
+        public string OldOutTradeNo { get; set; }
+        /// <summary>
+        /// 退款金额，以分为单位
+        /// </summary>
+        [JsonProperty("rfdAmt")]
+        public int RefundAmount { get; set; }
+        /// <summary>
+        /// 退款结果通知地址，如果该值为空，则使用商户开户时默认设置的退款结果通知地址
+        /// </summary>
+        [JsonProperty("rfdNotifyUrl")]
+        public string RfdNotifyUrl { get; set; }
+        /// <summary>
+        /// 退款原由
+        /// </summary>
+        [JsonProperty("rfdReason")]
+        public string RefundReason { get; set; }
+    }
+
+    /// <summary>
+    /// 退款申请响应参数
+    /// </summary>
+    [Serializable]
+    public class SxfRefundApplyResponse : SxfBaseTradeResponse
+    {
+        /// <summary>
+        /// 商户退款订单号，每笔退款订单的唯一标识，商户需保持该字段在系统内唯一
+        /// </summary>
+        [JsonProperty("rfdOrderNo")]
+        public string OutRefundNo { get; set; }
+        /// <summary>
+        /// 退款金额，以分为单位
+        /// </summary>
+        [JsonProperty("rfdAmt")]
+        public int RefundAmount { get; set; }
+        /// <summary>
+        /// 退款结果，商家如果收到此字段值为"0"，说明该退款订单还处于退款中，请等待退款结果后台通知，以确认是否退款成功
+        /// 0：退款中;1：退款成功;2：退款失败
+        /// </summary>
+        [JsonProperty("rfdResult")]
+        public string RefundResult { get; set; }
+    }
+    #endregion
+
+    #region Sxf Notify
+    /// <summary>
+    /// 支付结果后台通知请求参数
+    /// </summary>
+    [Serializable]
+    public class SxfPayNotifyRequest : SxfBaseTradeRequest
+    {
+        /// <summary>
+        /// 商户支付订单号
+        /// </summary>
+        [JsonProperty("payOrderNo")]
+        public string OutTradeNo { get; set; }
+        /// <summary>
+        /// 交易金额，以分为单位
+        /// </summary>
+        [JsonProperty("payAmt")]
+        public int ReceiptAmount { get; set; }
+        /// <summary>
+        /// 支付结果，S：支付成功 F：支付失败
+        /// </summary>
+        [JsonProperty("payResult")]
+        public string PayResult { get; set; }
+        /// <summary>
+        /// 支付渠道，WX：微信支付，ALIPAY：支付宝支付
+        /// </summary>
+        [JsonProperty("payChannel")]
+        public string PayChannel { get; set; }
+        /// <summary>
+        /// 支付日期，支付完成日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("payDate")]
+        public string TradeDate { get; set; }
+        /// <summary>
+        /// 支付时间,支付完成时间，格式 HHmmss
+        /// </summary>
+        [JsonProperty("payTime")]
+        public string TradeTime { get; set; }
+    }
+
+    /// <summary>
+    /// 退款结果后台通知请求参数
+    /// </summary>
+    [Serializable]
+    public class SxfRefundNotifyRequest : SxfBaseTradeRequest
+    {
+        /// <summary>
+        /// 商户退款订单号
+        /// </summary>
+        [JsonProperty("rfdOrderNo")]
+        public string OutRefundNo { get; set; }
+        /// <summary>
+        /// 退款金额，以分为单位
+        /// </summary>
+        [JsonProperty("rfdAmt")]
+        public int RefundAmount { get; set; }
+        /// <summary>
+        /// 退款结果，S：支付成功 F：支付失败
+        /// </summary>
+        [JsonProperty("rfdResult")]
+        public string RefundResult { get; set; }
+        /// <summary>
+        /// 支付渠道，WX：微信支付，ALIPAY：支付宝支付
+        /// </summary>
+        [JsonProperty("payChannel")]
+        public string PayChannel { get; set; }
+        /// <summary>
+        /// 退款日期，支付完成日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("rfdDate")]
+        public string TradeDate { get; set; }
+        /// <summary>
+        /// 退款时间,支付完成时间，格式 HHmmss
+        /// </summary>
+        [JsonProperty("rfdTime")]
+        public string TradeTime { get; set; }
+    }
+    #endregion
+
+    #region Sxf Query
+    /// <summary>
+    /// 单笔支付订单查询请求参数
+    /// </summary>
+    [Serializable]
+    public class SxfPayQueryRequest : SxfBaseTradeRequest
+    {
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="req"></param>
+        /// <param name="merchStore"></param>
+        public SxfPayQueryRequest(PayQueryRequest req, MerchantStore merchStore)
+        {
+            this.CharSet = PayConst.SXF_DEF_CHARSET;
+            this.MchId = merchStore.MchId3;
+            this.StoreId = merchStore.StoreId3;
+            this.DeviceId = req.DeviceId.ToString();
+            this.SignType = PayConst.SXF_DEF_SIGNTYPE;
+            this.Type = PayConst.SXF_TYPE_PAYORDERQUERY;
+            this.OutTradeNo = req.OutTradeNo;
+            this.Version = PayConst.SXF_DEF_VERSION;
+        }
+
+        #region Properties
+        /// <summary>
+        /// 商户支付订单号，与请参数中数据一致，原样返回
+        /// </summary>
+        [JsonProperty("payOrderNo")]
+        public string OutTradeNo { get; set; }
+        #endregion
+
+        #region Methods
+        #endregion
+    }
+    /// <summary>
+    /// 单笔支付订单查询响应参数
+    /// </summary>
+    [Serializable]
+    public class SxfPayQueryResponse : SxfBaseTradeResponse
+    {
+        #region Properties
+        /// <summary>
+        /// 交易金额
+        /// </summary>
+        [JsonProperty("txAmt")]
+        public int TotalAmount { get; set; }
+        /// <summary>
+        /// 支付订单状态，支付订单状态：U：未支付； S：支付成功；F：支付失败； C：已撤销；T：支付超时
+        /// </summary>
+        [JsonProperty("payStatus")]
+        public string PayStatus { get; set; }
+        /// <summary>
+        /// 订单类型
+        /// </summary>
+        [JsonProperty("orderType")]
+        public string OrderType { get; set; }
+        /// <summary>
+        /// 用户手机号
+        /// </summary>
+        [JsonProperty("userMobile")]
+        public string BuyerMobile { get; set; }
+        /// <summary>
+        /// 支付日期，支付完成日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("payDate")]
+        public string PayDate { get; set; }
+        /// <summary>
+        /// 支付时间,支付完成时间，格式 HHmmss
+        /// </summary>
+        [JsonProperty("payTime")]
+        public string PayTime { get; set; }
+        /// <summary>
+        /// 支付渠道，WX：微信支付，ALIPAY：支付宝支付
+        /// </summary>
+        [JsonProperty("payChannel")]
+        public string PayChannel { get; set; }
+        /// <summary>
+        /// 商户支付订单号
+        /// </summary>
+        [JsonProperty("payOrderNo")]
+        public string OutTradeNo { get; set; }
+        #endregion
+
+        #region Methods
+        public PayQueryResponse ToPayQueryResponse(MerchantStore merchStore)
+        {
+            var obj = new PayQueryResponse()
+            {
+                BuyerMobile = this.BuyerMobile,
+                CID = merchStore.CID,
+                DeviceId = string.IsNullOrEmpty(this.DeviceId) ? 0 : int.Parse(this.DeviceId),
+                OrderType = this.OrderType,
+                OutTradeNo = this.OutTradeNo,
+                PayChannel = this.PayChannel,
+                PayDate = PayHelper.Convert2DateFormat(this.PayDate, this.PayTime, "yyyy-MM-dd HH:mm:ss"),
+                PayStatus = (PayHelper.Convert2EnumString<PayStatus>(PayHelper.Convert2EnumValue<SxfPayStatus>(this.PayStatus))).ToUpper(),
+                ReturnCode = this.ReturnCode,
+                ReturnMsg = this.ReturnMsg,
+                SID = merchStore.SID,
+                SignType = this.SignType,
+                TotalAmount = this.TotalAmount,
+                Version = PayConst.DEF_VERSION
+            };
+            return obj;
+        }
+        #endregion
+    }
+    /// <summary>
+    /// 单笔支付订单查询响应参数
+    /// </summary>
+    [Serializable]
+    public class SxfBasePayQueryResponse
+    {
+        #region Properties
+        /// <summary>
+        /// 交易金额
+        /// </summary>
+        [JsonProperty("txAmt")]
+        public int TotalAmount { get; set; }
+        /// <summary>
+        /// 支付订单状态，支付订单状态：U：未支付； S：支付成功；F：支付失败； C：已撤销；T：支付超时
+        /// </summary>
+        [JsonProperty("payStatus")]
+        public string PayStatus { get; set; }
+        /// <summary>
+        /// 订单类型
+        /// </summary>
+        [JsonProperty("orderType")]
+        public string OrderType { get; set; }
+        /// <summary>
+        /// 用户手机号
+        /// </summary>
+        [JsonProperty("userMobile")]
+        public string BuyerMobile { get; set; }
+        /// <summary>
+        /// 支付日期，支付完成日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("payDate")]
+        public string PayDate { get; set; }
+        /// <summary>
+        /// 支付时间,支付完成时间，格式 HHmmss
+        /// </summary>
+        [JsonProperty("payTime")]
+        public string PayTime { get; set; }
+        /// <summary>
+        /// 支付渠道，WX：微信支付，ALIPAY：支付宝支付
+        /// </summary>
+        [JsonProperty("payChannel")]
+        public string PayChannel { get; set; }
+        /// <summary>
+        /// 商户支付订单号
+        /// </summary>
+        [JsonProperty("payOrderNo")]
+        public string OutTradeNo { get; set; }
+        #endregion
+    }
+    /// <summary>
+    /// 支付订单分页查询请求参数
+    /// </summary>
+    [Serializable]
+    public class SxfPayBatchQueryRequest : SxfBaseTradeRequest
+    {
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="req"></param>
+        /// <param name="merchStore"></param>
+        public SxfPayBatchQueryRequest(PayBatchQueryRequest req, MerchantStore merchStore)
+        {
+            this.CharSet = PayConst.SXF_DEF_CHARSET;
+            this.MchId = merchStore.MchId3;
+            this.StoreId = merchStore.StoreId3;
+            this.DeviceId = req.DeviceId == -1 ? "" : req.DeviceId.ToString();
+            this.SignType = PayConst.SXF_DEF_SIGNTYPE;
+            this.Version = PayConst.SXF_DEF_VERSION;
+            this.Type = PayConst.SXF_TYPE_PAYORDERPAGEQUERY;
+            this.PageNum = req.PageNum;
+            this.PageSize = req.PageSize;
+            this.StartDate = req.StartDate;
+            this.EndDate = req.EndDate;
+            this.OrderType = req.OrderType;
+        }
+
+        #region Properties
+        /// <summary>
+        /// 查询起始日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("startDate")]
+        public string StartDate { get; set; }
+        /// <summary>
+        /// 截止日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("endDate")]
+        public string EndDate { get; set; }
+        /// <summary>
+        /// 订单类型
+        /// </summary>
+        [JsonProperty("orderType")]
+        public string OrderType { get; set; }
+        /// <summary>
+        /// 用户手机号
+        /// </summary>
+        [JsonProperty("userMobile")]
+        public string BuyerMobile { get; set; }
+        /// <summary>
+        /// 页序号
+        /// </summary>
+        [JsonProperty("PAG_NO")]
+        public int PageNum { get; set; }
+        /// <summary>
+        /// 每页记录数
+        /// </summary>
+        [JsonProperty("PER_PAG_CNT")]
+        public int PageSize { get; set; }
+        #endregion
+    }
+    /// <summary>
+    /// 单笔支付订单查询响应参数
+    /// </summary>
+    [Serializable]
+    public class SxfPayBatchQueryResponse : SxfBaseTradeResponse
+    {
+        #region Properties
+        /// <summary>
+        /// 查询起始日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("startDate")]
+        public string StartDate { get; set; }
+        /// <summary>
+        /// 截止日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("endDate")]
+        public string EndDate { get; set; }
+        /// <summary>
+        /// 订单类型
+        /// </summary>
+        [JsonProperty("orderType")]
+        public string OrderType { get; set; }
+        /// <summary>
+        /// 用户手机号(what? 批量为何要userMobile)
+        /// </summary>
+        [JsonProperty("userMobile")]
+        public string BuyerMobile { get; set; }
+        /// <summary>
+        /// 页序号
+        /// </summary>
+        [JsonProperty("PAG_NO")]
+        public int PageNum { get; set; }
+        /// <summary>
+        /// 每页记录数
+        /// </summary>
+        [JsonProperty("PER_PAG_CNT")]
+        public int PageSize { get; set; }
+        /// <summary>
+        /// 商户批量查询订单List
+        /// </summary>
+        [JsonProperty("orderList")]
+        public List<SxfBasePayQueryResponse> OrderList { get; set; }
+        #endregion
+
+        #region Methods
+        /// <summary>
+        /// 转换为PayBatchQueryResponse
+        /// </summary>
+        /// <param name="merchStore"></param>
+        /// <returns></returns>
+        public PayBatchQueryResponse ToPayBatchQueryRsp(MerchantStore merchStore)
+        {
+            var obj = new PayBatchQueryResponse()
+            {
+                BuyerMobile = this.BuyerMobile,
+                CID = merchStore.CID,
+                DeviceId = string.IsNullOrEmpty(this.DeviceId) ? 0 : int.Parse(this.DeviceId),
+                OrderType = this.OrderType,
+                ReturnCode = this.ReturnCode,
+                ReturnMsg = this.ReturnMsg,
+                SID = merchStore.SID,
+                SignType = this.SignType,
+                Version = PayConst.DEF_VERSION,
+                StartDate = this.StartDate,
+                EndDate = this.EndDate,
+                PageNum = this.PageNum,
+                PageSize = this.PageSize,
+                OrderList = this.ToBasePayQueryRspOrderList(merchStore)
+            };
+            return obj;
+        }
+        /// <summary>
+        /// 转换为BasePayQueryOrderList
+        /// </summary>
+        /// <param name="merchStore"></param>
+        /// <returns></returns>
+        public List<BasePayQueryResponse> ToBasePayQueryRspOrderList(MerchantStore merchStore)
+        {
+            var orderList = new List<BasePayQueryResponse>();
+            if (this.OrderList != null)
+            {
+                foreach (var item in this.OrderList)
+                {
+                    orderList.Add(new BasePayQueryResponse()
+                    {
+                        BuyerMobile = item.BuyerMobile,
+                        OrderType = item.OrderType,
+                        OutTradeNo = item.OutTradeNo,
+                        PayChannel = item.PayChannel,
+                        PayDate = PayHelper.Convert2DateFormat(item.PayDate, item.PayTime, "yyyy-MM-dd HH:mm:ss"),
+                        PayStatus = (PayHelper.Convert2EnumString<PayStatus>(PayHelper.Convert2EnumValue<SxfPayStatus>(item.PayStatus))).ToUpper(),
+                        TotalAmount = item.TotalAmount
+                    });
+                }
+            }
+            return orderList;
+        }
+        #endregion
+    }
+
+    /// <summary>
+    /// 单笔退款订单查询请求参数
+    /// </summary>
+    [Serializable]
+    public class SxfRefundQueryRequest : SxfBaseTradeRequest
+    {
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="req"></param>
+        /// <param name="merchStore"></param>
+        public SxfRefundQueryRequest(RefundQueryRequest req, MerchantStore merchStore)
+        {
+            this.CharSet = PayConst.SXF_DEF_CHARSET;
+            this.MchId = merchStore.MchId3;
+            this.StoreId = merchStore.StoreId3;
+            this.DeviceId = req.DeviceId.ToString();
+            this.SignType = PayConst.SXF_DEF_SIGNTYPE;
+            this.Type = PayConst.SXF_TYPE_RFDORDERQUERY;
+            this.RefundTradeNo = req.RefundTradeNo;
+            this.Version = PayConst.SXF_DEF_VERSION;
+        }
+
+        #region Properties
+        /// <summary>
+        /// 商户退款订单号，与请参数中数据一致，原样返回
+        /// </summary>
+        [JsonProperty("rfdOrderNo")]
+        public string RefundTradeNo { get; set; }
+        #endregion
+    }
+    /// <summary>
+    /// 单笔退款订单查询响应参数
+    /// </summary>
+    [Serializable]
+    public class SxfRefundQueryResponse : SxfBaseTradeResponse
+    {
+        #region Properties
+        /// <summary>
+        /// 商户退款订单号
+        /// </summary>
+        [JsonProperty("rfdOrderNo")]
+        public string RefundTradeNo { get; set; }
+        /// <summary>
+        /// 退款金额
+        /// </summary>
+        [JsonProperty("rfdAmt")]
+        public int RefundAmount { get; set; }
+        /// <summary>
+        /// 退款订单状态：F：失败； S：成功； U：预登记（退款中）
+        /// </summary>
+        [JsonProperty("rfdStatus")]
+        public string RefundStatus { get; set; }
+        /// <summary>
+        /// 退款日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("rfdDate")]
+        public string RefundDate { get; set; }
+        /// <summary>
+        /// 退款时间，格式 HHmmss
+        /// </summary>
+        [JsonProperty("rfdTime")]
+        public string RefundTime { get; set; }
+        #endregion
+
+        #region Methods
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="merchStore"></param>
+        /// <returns></returns>
+        public RefundQueryResponse ToRefundQueryResponse(MerchantStore merchStore)
+        {
+            var obj = new RefundQueryResponse()
+            {
+                CID = merchStore.CID,
+                DeviceId = string.IsNullOrEmpty(this.DeviceId) ? 0 : int.Parse(this.DeviceId),
+                RefundTradeNo = this.RefundTradeNo,
+                RefundDate = PayHelper.Convert2DateFormat(this.RefundDate, this.RefundTime, "yyyy-MM-dd HH:mm:ss"),
+                RefundStatus = (PayHelper.Convert2EnumString<RefundStatus>(PayHelper.Convert2EnumValue<SxfRefundStatus>(this.RefundStatus))).ToUpper(),
+                ReturnCode = this.ReturnCode,
+                ReturnMsg = this.ReturnMsg,
+                SID = merchStore.SID,
+                SignType = this.SignType,
+                RefundAmount = this.RefundAmount,
+                Version = PayConst.DEF_VERSION
+            };
+            return obj;
+        }
+        #endregion
+    }
+    #endregion
+}

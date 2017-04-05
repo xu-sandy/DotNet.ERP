@@ -1,0 +1,28 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.SyncService.SyncEntities
+{
+    public class SyncDataObject : ISyncDataObject
+    {
+#if(Client ==true)
+        public SyncDataObject() 
+        {
+            StoreId = System.Configuration.ConfigurationManager.AppSettings["StoreId"];
+            CompanyToken = Convert.ToInt32(System.Configuration.ConfigurationManager.AppSettings["CompanyId"]);
+            if (string.IsNullOrEmpty(StoreId)) 
+            {
+                throw new StackOverflowException("StoreId尚未设置！");
+            }
+        }
+#endif
+        public Guid SyncItemId { get; set; }
+
+        public byte[] SyncItemVersion { get; set; }
+        public int CompanyToken { get; set; }
+        public string StoreId { get; set; } 
+    }
+}

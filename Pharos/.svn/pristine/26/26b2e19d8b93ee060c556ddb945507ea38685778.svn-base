@@ -1,0 +1,67 @@
+﻿using Pharos.POS.Retailing.ObjectModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.POS.Retailing.Extensions;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    public class CheckInventory : BaseViewModel
+    {
+        public CheckInventory() 
+        {
+            PageIndex = 1;
+            PageSize = 50;
+        }
+        string keyword;
+        public string Keyword
+        {
+            get
+            {
+                return keyword;
+            }
+            set
+            {
+                keyword = value;
+                this.OnPropertyChanged(o => o.Keyword);
+            }
+        }
+
+        List<InventoryItem> inventoryItems;
+        public List<InventoryItem> InventoryItems
+        {
+            get
+            {
+                return inventoryItems;
+            }
+            set
+            {
+                inventoryItems = value;
+                this.OnPropertyChanged(o => o.InventoryItems);
+            }
+        }
+
+        public List<TreeModel> CategoryTree
+        {
+            get
+            {
+                return new List<TreeModel>() { new TreeModel("全部", 0) { IsSelected = true }.SetChild(0) };
+            }
+        }
+
+        public int PageSize { get; set; }
+        public int PageIndex { get; set; }
+        public GeneralCommand<object> SearchCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    //todo update InventoryItems;
+                });
+            }
+        }
+    }
+}

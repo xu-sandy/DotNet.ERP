@@ -1,0 +1,156 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: true, hideDel: true));
+}
+@section search{
+<tr>
+    <td class="label-toolbar">&nbsp;</td>
+    <td class="label-toolbar">
+        <label>结算方式：</label>
+    </td>
+    <td class="input-toolbar">
+        <select name="apiTitle" class="easyui-combobox" data-options="editable:false">
+            <option value="">全部</option>
+            <option value="现金">现金</option>
+            <option value="银联">银联</option>
+            <option value="支付宝">支付宝</option>
+            <option value="微信">微信</option>
+            <option value="即付宝">即付宝</option>
+        </select>
+    </td>
+    <td class="label-toolbar">
+        <label>关键字：</label>
+    </td>
+    <td class="input-toolbar">
+        <select id="searchField" name="searchField" class="easyui-combobox" data-options="editable:false">
+            <option value="barcode">条码</option>
+            <option value="Title">品名</option>
+            <option value="ApiOrderSN">流水号</option>
+        </select>
+    </td>
+    <td class="input-toolbar">
+        &nbsp;<select name="searchText" class="easyui-combobox" data-options="prompt:'请输入查询条件...',width:150,mode:'remote',valueField:'value',textField:'text',loader:comboload"></select>
+    </td>
+</tr>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="openDialogNew('excel文件导入', '@Url.Action("Import")' , 1000, 560, true, true, btns);">选择导入</a>
+    <a href="#" id="btnExcel" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="sureImport()">确定导入</a>
+    <a href="#" id="" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-delete'" onclick="clearImport()">清空预览</a>
+}
+<script type="text/javascript">
+    var comboload=function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 1) return false;
+        $.ajax({
+            url:"@Url.Action("GetDataForSearch")",
+            type:"post",
+            data:{
+                //传值，还是JSON数据搜索
+                searchText: q,
+                searchField:$("#searchField").combobox("getValue")
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType:"json",
+            success: function (data) {
+                var items = $.map(data, function(item){
+                    return { value: item.value, text: item.text };
+                });
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    var btns = [{
+        text: '导 入',
+        iconCls: 'icon-ok',
+        id: "lbsave",
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.messager-button .l-btn-small').click();
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+        }
+    }, {
+        text: '预 览',
+        iconCls: 'icon-ok',
+        handler: function () {
+            pharos.easyui.dialog.topClose("formDiv");
+            pharos.manager.gridReload(); 
+        }
+    }];
+    pharos.manager.geturl = '@Url.Action("SaleDataMoveList")';
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = true;
+    pharos.manager.columns = [[
+        //{ field: 'ApiCode_11', title: '现金', width: 80 },
+        //{ field: 'ApiCode_12', title: '银联', width: 80 },
+        //{ field: 'ApiCode_20', title: '支付宝', width: 80 },
+        //{ field: 'ApiCode_21', title: '微信', width: 80 },
+        //{ field: 'ApiCode_19', title: '即付宝', width: 80 },
+        //{ field: 'ApiCode_15', title: '代金券', width: 80 },
+        { field: 'TotalAmount', title: '应付金额', width: 80 },
+        { field: 'Receive', title: '实收金额', width: 80 },
+        { field: 'Change', title: '找零', width: 80 },
+        { field: 'PreferentialPrice', title: '优惠', width: 80 },
+        { field: 'WipeZero', title: '抹零', width: 80 },
+        { field: 'Sort', title: '序号', width: 50 },
+        { field: 'Barcode', title: '条码', width: 150 },
+        { field: 'Title', title: '品名', width: 150 },
+        { field: 'SalesClassifyId', title: '销售方式', width: 60 },
+        { field: 'PurchaseNumber', title: '销售数量', width: 80 },
+        { field: 'SysPrice', title: '系统售价', width: 80 },
+        { field: 'ActualPrice', title: '实际售价', width: 80 },
+        { field: 'SubTotal', title: '小计金额', width: 80 },
+        { field: 'CreateUID', title: '收银员', width: 80 },
+        { field: 'Salesman', title: '导购员', width: 80 }
+    ]];
+    pharos.manager.frozenColumns = [[
+        { field: 'Type', title: '订单类型', width: 80, formatter: function (text) { return text == "1" ? "换货" : text == "2" ? "退换" : text == "3" ? "退单" :text=="-1"?"":"销售"; } },
+        { field: 'SaleDate', title: '销售日期', width: 150 },
+        { field: 'ApiOrderSN', title: '流水号', width: 120 },
+        { field: 'ApiTitle', title: '结算方式', width: 100 }
+    ]]
+    var num = 0;
+    function sureImport() {
+        var rows = pharos.manager.$dg.datagrid("getRows");
+        if (rows.length <= 0) {
+            $.messager.alert("提示", "请先选择文件预览!"); return;
+        }
+        if (num > 0) return;
+        $.messager.confirm("提示", "请先确认数据无误，正式导入后将不能撤消，是否继续？", function (r) {
+            if (!r) return;
+            $("#loading").show().find("div").html("正在导入，请稍待。。。");
+            $.post("@Url.Action("SureImport")", { t: Math.random() }, function (json) {
+                num = 0;
+                $("#loading").hide();
+                if (json.successed) {
+                    $.messager.alert("提示", "导入成功!");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "导入失败!" + json.message);
+                }
+            });
+            num++;
+        })
+    }
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'ApiOrderSN', columns: ['ApiOrderSN', 'SaleDate', 'Type','ApiTitle','PreferentialPrice', 'Change', 'WipeZero', 'TotalAmount', 'Receive'] });
+    }
+    function clearImport() {
+        $.messager.confirm("提示", "是否确定清空预览？", function (r) {
+            if (!r) return;
+            $.post("@Url.Action("ClearImport")", { t: Math.random() }, function () {
+                pharos.manager.gridReload();
+            })
+        });
+    }
+    function closeDialog() {
+
+    }
+</script>

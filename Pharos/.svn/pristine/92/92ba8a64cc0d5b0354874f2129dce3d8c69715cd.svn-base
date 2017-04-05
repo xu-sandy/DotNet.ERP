@@ -1,0 +1,493 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Data.Entity;
+using System.Text;
+using Pharos.Logic.Entity;
+using System.Collections.Specialized;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.LocalEntity;
+namespace Pharos.Logic.BLL
+{
+    public class STHouseMoveService : BaseService<HouseMove>
+    {
+        /// <summary>
+        /// 用于调入管理datagrid列表
+        /// </summary>
+        /// <param name="nvl">传递条件</param>
+        /// <param name="count">返回总行数</param>
+        /// <returns>list</returns>
+        public static object FindMoveinList(NameValueCollection nvl, out int count)
+        {
+            var queryHouse = CurrentRepository.QueryEntity.Where(o=>o.CompanyId==CommonService.CompanyId);
+            var state = nvl["state"];
+            var outStore = nvl["outStore"];
+            var queryHouseList = BaseService<HouseMoveList>.CurrentRepository.QueryEntity;
+            var queryProduct = BaseService<VwProduct>.CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            var queryStore = WarehouseService.CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            if (!state.IsNullOrEmpty())
+            { 
+                var st = short.Parse(state);
+                queryHouse = queryHouse.Where(o => o.State == st);
+            }
+            if (!outStore.IsNullOrEmpty())
+            {
+                queryHouse = queryHouse.Where(o => o.OutStoreId == outStore);
+            }
+            var type = typeof(HouseMoveState);
+            var query = from a in queryHouse
+                        from x in queryHouseList
+                        from y in queryProduct
+                        join c in queryStore on a.InStoreId equals c.StoreId into tempIn
+                        join d in queryStore on a.OutStoreId equals d.StoreId into tempOut
+                        from tin in tempIn.DefaultIfEmpty()
+                        from tout in tempOut.DefaultIfEmpty()
+                        where a.MoveId == x.MoveId && (x.Barcode==y.Barcode || (y.Barcodes!=null && y.Barcodes.Contains(x.Barcode)))
+                        select new
+                        {
+                            a.Id,
+                            a.MoveId,
+                            InStoreTitle = tin.Title,
+                            OutStoreTitle = tout.Title,
+                            InStoreId = tin.StoreId,
+                            OutStoreId = tout.StoreId,
+                            a.CreateDT,//申请时间
+                            a.DeliveryDT,//调出时间
+                            x.Barcode,
+                            y.ProductCode,
+                            y.Title,
+                            y.SubUnit,
+                            y.BrandTitle,
+                            x.SysPrice,
+                            x.OrderQuantity,
+                            x.DeliveryQuantity,
+                            x.ActualQuantity,
+                            a.ActualDT,//收货时间
+                            x.State,//明细状态
+                            tin.StoreId
+                        };
+            if (!Sys.CurrentUser.StoreId.IsNullOrEmpty())
+                query = query.Where(o => (o.InStoreId == Sys.CurrentUser.StoreId)); //|| o.OutStoreId == Sys.CurrentUser.StoreId
+            count = query.Count();
+            return query.ToPageList().Select(o => new
+            {
+                o.Id,
+                o.MoveId,
+                o.InStoreTitle ,
+                o.OutStoreTitle ,
+                o.InStoreId,
+                o.OutStoreId,
+                o.CreateDT,//申请时间
+                o.DeliveryDT,//调出时间
+                o.Barcode,
+                o.ProductCode,
+                o.Title,
+                o.SubUnit,
+                o.BrandTitle,
+                o.SysPrice,
+                o.OrderQuantity,
+                o.DeliveryQuantity,
+                o.ActualQuantity,
+                o.ActualDT,//收货时间
+                o.State,//明细状态
+                CreateDate = o.CreateDT.ToString("yyyy-MM-dd"),
+                DeliveryDate = o.DeliveryDT.IsNullOrEmpty()?"":o.DeliveryDT.Value.ToString("yyyy-MM-dd"),
+                ActualDate = o.ActualDT.IsNullOrEmpty()?"":o.ActualDT.Value.ToString("yyyy-MM-dd"), 
+
+                StateTitle = Enum.GetName(type, o.State)
+            }).ToList();
+        }
+
+        /// <summary>
+        /// 用于调出管理datagrid列表
+        /// </summary>
+        /// <param name="nvl">传递条件</param>
+        /// <param name="count">返回总行数</param>
+        /// <returns>list</returns>
+        public static object FindMoveoutList(NameValueCollection nvl, out int count)
+        {
+            var queryHouse = CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId); 
+            var state = nvl["state"];
+            var inStore = nvl["inStore"];
+            var queryHouseList = BaseService<HouseMoveList>.CurrentRepository.QueryEntity;
+            var queryProduct = BaseService<VwProduct>.CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId); 
+            var queryStore = WarehouseService.CurrentRepository.QueryEntity;
+            if (!state.IsNullOrEmpty())
+            {
+                var st = short.Parse(state);
+                queryHouse = queryHouse.Where(o => o.State == st);
+            }
+            if (!inStore.IsNullOrEmpty())
+            {
+                queryHouse = queryHouse.Where(o => o.OutStoreId == inStore);
+            }
+            var type = typeof(HouseMoveState);
+            var query = from a in queryHouse
+                        from x in queryHouseList
+                        from y in queryProduct 
+                        join c in queryStore on a.InStoreId equals c.StoreId into tempIn
+                        join d in queryStore on a.OutStoreId equals d.StoreId into tempOut
+                        from tin in tempIn.DefaultIfEmpty()
+                        from tout in tempOut.DefaultIfEmpty()
+                        where a.MoveId == x.MoveId && (x.Barcode==y.Barcode ||(y.Barcodes!=null && y.Barcodes.Contains(x.Barcode)))
+                        select new
+                        {
+                            a.Id,
+                            a.MoveId,
+                            InStoreTitle = tin.Title,
+                            OutStoreTitle = tout.Title,
+                            InStoreId = tin.StoreId,
+                            OutStoreId = tout.StoreId,
+                            a.CreateDT,//申请时间
+                            a.DeliveryDT,//调出时间
+                            x.Barcode,
+                            y.ProductCode,
+                            y.Title,
+                            y.SubUnit,
+                            y.BrandTitle,
+                            x.SysPrice,
+                            x.OrderQuantity,
+                            x.DeliveryQuantity,
+                            x.ActualQuantity,
+                            a.ActualDT,//收货时间
+                            x.State,//明细状态
+                            tin.StoreId
+                        };
+            if (!Sys.CurrentUser.StoreId.IsNullOrEmpty())
+                query = query.Where(o => (o.OutStoreId == Sys.CurrentUser.StoreId)); //|| o.InStoreId == Sys.CurrentUser.StoreId
+            count = query.Count();
+            return query.ToPageList().Select(o => new
+            {
+                o.Id,
+                o.MoveId,
+                o.InStoreTitle,
+                o.OutStoreTitle,
+                o.InStoreId,
+                o.OutStoreId,
+                o.CreateDT,//申请时间
+                o.DeliveryDT,//调出时间
+                o.Barcode,
+                o.ProductCode,
+                o.Title,
+                o.SubUnit,
+                o.BrandTitle,
+                o.SysPrice,
+                o.OrderQuantity,
+                o.DeliveryQuantity,
+                o.ActualQuantity,
+                o.ActualDT,//收货时间
+                o.State,//明细状态
+                CreateDate = o.CreateDT.ToString("yyyy-MM-dd"),
+                DeliveryDate = o.DeliveryDT.IsNullOrEmpty() ? "" : o.DeliveryDT.Value.ToString("yyyy-MM-dd"),
+                ActualDate = o.ActualDT.IsNullOrEmpty() ? "" : o.ActualDT.Value.ToString("yyyy-MM-dd"),
+
+                StateTitle = Enum.GetName(type, o.State)
+            }).ToList();
+        }
+
+
+        /// <summary>
+        /// 新增或修改
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static OpResult SaveOrUpdate(HouseMove obj)
+        {
+            var re = new OpResult();
+            try
+            {
+                var details = new List<HouseMoveList>();
+                if (!string.IsNullOrWhiteSpace(obj.Inserted))
+                {
+                    var adds = obj.Inserted.ToObject<List<HouseMoveList>>();
+                    if (adds.Any())
+                    {
+                        details.AddRange(adds.Where(o => !string.IsNullOrWhiteSpace(o.Barcode)));
+                    }
+                }
+                obj.CompanyId = CommonService.CompanyId;
+                if (obj.Id == 0)
+                {
+                    obj.MoveId = Logic.CommonRules.GUID;
+                    details.Each(o =>
+                    {
+                        o.MoveId = obj.MoveId;
+                        o.StockOut =  0;//todo
+                        o.State = 1;
+                    });
+                    obj.CreateDT = DateTime.Now;
+                    obj.CreateUID = Sys.CurrentUser.UID;
+                    obj.State = 1;
+                    Add(obj, false);
+
+                    re = BaseService<HouseMoveList>.AddRange(details);
+                }
+                    
+                else
+                {
+                    var sour = STHouseMoveService.FindById(obj.Id);
+                    var list = BaseService<HouseMoveList>.FindList(o => o.MoveId == sour.MoveId);
+                    var uid = sour.CreateUID;
+                    var create = sour.CreateDT;
+                    var state = sour.State;
+                    obj.ToCopyProperty(sour);
+                    sour.CreateDT = create;
+                    sour.CreateUID = uid;
+                    sour.State = state;
+                    details.Each(o =>
+                    {
+                        o.MoveId = sour.MoveId;
+                        o.State = sour.State;
+                        
+                    });
+                    if (!string.IsNullOrWhiteSpace(obj.Deleted))
+                    {
+                        var dels = obj.Deleted.ToObject<List<HouseMoveList>>();
+                        if (dels.Any())
+                        {
+                            var barcodes = dels.Select(o => o.Barcode).ToList();
+                            var deletes = list.Where(o => barcodes.Contains(o.Barcode)).ToList();
+                            BaseService<HouseMoveList>.CurrentRepository.RemoveRange(deletes, false);
+
+                        }
+                    }
+                    if (!string.IsNullOrWhiteSpace(obj.Updated))
+                    {
+                        var upts = obj.Updated.ToObject<List<HouseMoveList>>();
+                       
+                        if (upts.Any())
+                        {
+                            var barcodes = upts.Select(o => o.Barcode).ToList();
+                            var deletes = list.Where(o => barcodes.Contains(o.Barcode)).ToList();
+                          
+                            BaseService<HouseMoveList>.CurrentRepository.RemoveRange(deletes, false);
+                            BaseService<HouseMoveList>.AddRange(upts, false);
+                        }
+                    }
+                    BaseService<HouseMoveList>.AddRange(details, false);
+                    re = Update(sour);
+                }
+            }
+            catch (Exception ex)
+            {
+                re.Message = ex.Message;
+            }
+            return re;
+        }
+
+
+
+        /// <summary>
+        /// 用于修改回显列表
+        /// </summary>
+        /// <param name="orderId">订单ID</param>
+        /// <param name="recordCount">返回记录数</param>
+        /// <returns>list</returns>
+        public static System.Data.DataTable LoadDetailList(string moveId, out int recordCount, ref object footer)
+        {
+            recordCount = 0;
+            var dal = new Pharos.Logic.DAL.STHouseMoveDAL();
+            var dt = dal.LoadDetailList(moveId);
+            decimal nums = 0;
+            decimal deliveryNum = 0;
+            decimal actualNum = 0;
+            foreach (System.Data.DataRow dr in dt.Rows)
+            {
+                nums += Convert.ToDecimal(dr["OrderQuantity"]);
+                deliveryNum += Convert.ToDecimal(dr["DeliveryQuantity"]);
+                actualNum += Convert.ToDecimal(dr["ActualQuantity"]);
+            }
+            footer = new List<object>() { 
+                new { StockNumber="合计:",OrderQuantity=nums,DeliveryQuantity=deliveryNum,ActualQuantity=actualNum }
+            };
+            return dt;
+        }
+
+        /// <summary>
+        /// 配送
+        /// </summary>
+        /// <param name="moveId"></param>
+        /// <param name="updated"></param>
+        /// <returns></returns>
+        public static OpResult MoveOutDelivery(string moveId, string updated, string updated2)
+        {
+            var op = new OpResult();
+            try
+            {
+                int IndexofA = updated.IndexOf('['); 
+                int IndexofB = updated.IndexOf(']');
+                int IndexofC = updated2.IndexOf('[');
+                int IndexofD = updated2.IndexOf(']');
+
+                if (updated != "[]" || updated.IsNullOrEmpty())
+                {
+                    updated = updated.Substring(IndexofA, IndexofB - IndexofA + 1);
+                    if (updated.Contains("\\"))
+                    {
+                        updated = updated.Replace("\\", "");
+                    }
+                }
+                if (updated2 != "[]" || updated2.IsNullOrEmpty())
+                {
+                    updated2 = updated2.Substring(IndexofC, IndexofD - IndexofC + 1);
+                    if (updated2.Contains("\\"))
+                    {
+                        updated2 = updated2.Replace("\\", "");
+                    }
+                }
+                
+                var dists = updated.ToObject<List<HouseMoveList>>();
+                var dists2 = updated2.ToObject<List<HouseMoveList>>();
+
+                if (!updated2.IsNullOrEmpty())
+                {
+                    if (dists2.Any())
+                    {
+                        var barcodes = dists2.Select(o => o.Barcode);
+                        dists.RemoveAll(o => barcodes.Contains(o.Barcode));
+                        dists.AddRange(dists2);
+                    }
+                }
+                dists = dists.Where(o => o.DeliveryQuantity > 0).ToList();
+
+                if (!dists.Any())
+                {
+                    op.Message = "配送量必须大于0！";
+                }
+                else
+                {                                     
+                    var details = BaseService<HouseMoveList>.FindList(o => o.MoveId == moveId);
+                    var order = STHouseMoveService.Find(o => o.MoveId == moveId);
+                    var records = new List<InventoryRecord>();
+                    foreach (var dt in details)
+                    {
+                        var obj = dists.FirstOrDefault(o => o.Barcode == dt.Barcode);
+                        if (obj == null)
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            dt.DeliveryQuantity = obj.DeliveryQuantity;
+                            dt.State = 2;
+                            dt.Memo = obj.Memo;
+                        }
+                        //减库存
+                        records.Add(new InventoryRecord(){ Barcode=dt.Barcode,StoreId=order.OutStoreId,Source=4,Number=dt.DeliveryQuantity,OperatId=order.MoveId });
+                    }
+                    order.DeliveryUID = Sys.CurrentUser.UID;
+                    order.DeliveryDT = DateTime.Now;
+                    order.State = 2;
+                    BaseService<HouseMove>.Update(order);
+                    op = BaseService<HouseMoveList>.Update(details);
+                    if(op.Successed)
+                        InventoryRecordService.SaveLog(records);
+
+                }
+            }
+           
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                Log.WriteError(ex);
+            }
+            return op;
+        }
+
+
+        /// <summary>
+        /// 收货
+        /// </summary>
+        /// <param name="moveId"></param>
+        /// <param name="updated"></param>
+        /// <param name="updated2"></param>
+        /// <returns></returns>
+        public static OpResult MoveinReceive(string moveId, string updated, string updated2)
+        {
+            var op = new OpResult();
+            try
+            {
+                int IndexofA = updated.IndexOf('[');
+                int IndexofB = updated.IndexOf(']');
+
+                int IndexofC = updated2.IndexOf('[');
+                int IndexofD = updated2.IndexOf(']');
+
+                if (updated != "[]" || !updated.IsNullOrEmpty())
+                {
+                    updated = updated.Substring(IndexofA, IndexofB - IndexofA + 1);
+                    if (updated.Contains("\\"))
+                    {
+                        updated = updated.Replace("\\", "");
+                    }
+                }
+                if (updated2 != "[]" || !updated2.IsNullOrEmpty())
+                {
+                    updated2 = updated2.Substring(IndexofC, IndexofD - IndexofC + 1);
+                    if (updated2.Contains("\\"))
+                    {
+                        updated2 = updated2.Replace("\\", "");
+                    }
+                }
+
+                var dists = updated.ToObject<List<HouseMoveList>>();
+                var dists2 = updated2.ToObject<List<HouseMoveList>>();
+
+                if (!updated2.IsNullOrEmpty())
+                {
+                    if (dists2.Any())
+                    {
+                        var barcodes = dists2.Select(o => o.Barcode);
+                        dists.RemoveAll(o => barcodes.Contains(o.Barcode));
+                        dists.AddRange(dists2);
+                    }
+                }
+                dists = dists.Where(o => o.ActualQuantity > 0).ToList();
+
+                if (!dists.Any())
+                {
+                    op.Message = "收获量必须大于0！";
+                }
+                else
+                {
+                    var details = BaseService<HouseMoveList>.FindList(o => o.MoveId == moveId);
+                    var order = STHouseMoveService.Find(o => o.MoveId == moveId);
+                    var records=new List<InventoryRecord>();
+                    foreach (var dt in details)
+                    {
+                        var obj = dists.FirstOrDefault(o => o.Barcode == dt.Barcode);
+                        if (obj == null)
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            dt.ActualQuantity = obj.ActualQuantity;
+                            dt.State = 4;
+                            dt.Memo = obj.Memo;
+                            records.Add(new InventoryRecord() { Barcode = dt.Barcode, StoreId = order.InStoreId, Source = 3, Number = dt.ActualQuantity, OperatId = order.MoveId });                        
+                        }
+                    }
+                    order.ActualUID = Sys.CurrentUser.UID;
+                    order.ActualDT = DateTime.Now;
+                    order.State = 4;
+                    //增库存
+                    BaseService<HouseMove>.Update(order);
+                    op = BaseService<HouseMoveList>.Update(details);
+                    if(op.Successed)
+                        InventoryRecordService.SaveLog(records);
+
+                }
+            }
+
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                Log.WriteError(ex);
+            }
+            return op;
+        }
+
+    }
+}

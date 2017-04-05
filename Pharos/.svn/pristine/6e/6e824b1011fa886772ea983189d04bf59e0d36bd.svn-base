@@ -1,0 +1,120 @@
+﻿@model BreakageGoods
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.库存管理_报损登记);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.库存管理_查看报损) || !hideAdd;
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, delText: "删除记录",hideDel:!CurrentUser.HasPermiss(SysConstLimits.库存管理_移除报损)));
+}
+<style>
+    .datacontrol { width:115px;}
+</style>
+@section search{
+    <table style=" padding-left: 7px; margin-bottom:-3px;">
+    <tr>
+        <td>出货仓库：</td>
+        <td>
+            @Html.DropDownList("Store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+        </td>
+        <td class="left_searchlabel">状态： </td>
+        <td>
+            @Html.DropDownList("State", ViewBag.breakageState as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+        </td>
+        <td class="left_searchlabel">
+            <label>登记日期：</label>
+        </td>
+        <td>
+            <input name="StartDate" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            <label style="width:10px;">-</label>
+            <input name="EndDate" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+        </td>
+        <td class="label-toolbar">关键字：</td>
+        <td class="input-toolbar">
+            <select id="searchField" name="searchField" class="easyui-combobox" data-options="editable:false">
+                <option value="barcode">条码</option>
+                <option value="BreakageGoodsId">报损单号</option>
+            </select>
+        </td>
+        <td class="input-toolbar">
+            &nbsp;<input name="searchText" class="easyui-textbox" data-options="prompt:'请输入查询条件...'" style="width:140px;" />
+        </td>
+    </tr>
+</table>
+}
+@section toolbar{
+    @if(CurrentUser.HasPermiss(SysConstLimits.库存管理_已验报损))
+    { 
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(0)">设为已审</a>
+    }
+}
+
+<script type="text/javascript">
+
+    pharos.manager.geturl = "@Url.Action("FindBreakageGoodList", "Store")";
+    pharos.manager.delurl = "@Url.Action("DeleteBreakageGoods", "Store")";
+    pharos.manager.columns = [[
+            { field: 'Id', checkbox: true, width: 30 },
+            { field: 'StateTitle', title: '审核状态', width: 60, align: 'center' },
+            { field: 'BreakageGoodsId', title: '报损单号', width: 100, align: 'center' },
+            { field: 'BreakageTypeTitle', title: '类别', width: 60, align: 'center' },
+            { field: 'StoreTitle', title: '仓库', width: 100, align: 'center' },
+            { field: 'BreakageNumber', title: '报损数量', width: 60, align: 'center' },
+            { field: 'BreakagePrice', title: '报损金额', width: 100, align: 'center' },
+            { field: 'CreateDTStr', title: '登记日期', width: 70, align: 'center' },
+            { field: 'VerifyDTStr', title: '审核日期', width: 70, align: 'center' },
+    ]];
+
+    //变更状态
+    function setState() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.messager.confirm("提示", "是否将选中的报损单设为已审?", function (r) {
+            if (!r) { return r; }
+            var ids = $.map(rows, function (item) {
+                return item.Id;
+            }).join();
+            setBreakageGoodsStateToChecked(ids);
+
+            @*$.post("@Url.Action("IsOutboundHasCommodity")", { Ids: ids, t: Math.random() }, function (d) {
+                if (d.successed) {
+                    //库存充足,直接继续
+                    setBreakageGoodsStateToChecked(ids);
+                } else {
+                    $.messager.confirm("提示", d.message, function (t) {
+                        if (!t) { return t;}
+                        setBreakageGoodsStateToChecked(ids);
+                    });
+                }
+            }, "json");*@
+        });
+    }
+    function setBreakageGoodsStateToChecked(ids) {
+        $.post("@Url.Action("SetBreakageGoodsStateToChecked")", { Ids: ids, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    pharos.manager.editItem = function (Id, row) {
+        if (row.StateTitle == "已审核") {
+            @if(showDetail)
+            {
+            @:openDialog(this.editText, '@Url.Action("BreakageGoods", "Store")?breakageGoodsId=' + row.BreakageGoodsId, $(window.parent).width() - 80, $(window.parent).height() - 80, true);
+            }
+        }
+        else {
+            @if(!hideAdd)
+            {
+            @:openDialog(this.editText, '@Url.Action("BreakageGoods", "Store")?breakageGoodsId=' + row.BreakageGoodsId, $(window.parent).width() - 80, $(window.parent).height() - 80, false);
+            }
+        }
+    }
+
+
+
+</script>
+
+

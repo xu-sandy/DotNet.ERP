@@ -1,0 +1,38 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Data;
+
+namespace Pharos.Logic.BLL
+{
+    public class MakingCouponCardBLL
+    {
+        
+
+       /// <summary>
+        /// 获取品类列表
+       /// </summary>
+       /// <param name="recordCount">总数</param>
+        /// <returns>品类列表</returns>
+        public static object LoadCategoryList(out int recordCount)
+        {
+            recordCount = 0;
+
+            var dal = new Pharos.Logic.DAL.MakingCouponCardDAL();
+            var dt = dal.GetCategoryList();
+            var list = dt.AsEnumerable().Select(dr => new
+            {
+                Id = dr["Id"],
+                CategorySN = dr["CategorySN"],
+                BigCategoryTitle = dr["BigCategoryTitle"],
+                MidCategoryTitle = dr["MidCategoryTitle"],
+                SubCategoryTitle = dr["SubCategoryTitle"]
+            }).ToList();
+            recordCount = list.Count;
+            return list;
+        }
+
+
+    }
+}

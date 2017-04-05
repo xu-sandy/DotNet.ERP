@@ -1,0 +1,131 @@
+﻿@{
+    ViewBag.Title = "费率计算周期";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增提现转账费率", delText: "删除所选项", hideDel: false));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @*@Html.RadioButtonListFor(o => "Status", ViewBag.PayApiStatusList as List<SelectListItem>)*@
+                @*<input id="PayChannel" name="PayChannel" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text', data:window.drpdata['payChannel'], panelHeight: 'auto', editable: false,width:80" />*@
+            </td>
+            <td class="label-toolbar">
+                <label>收单渠道：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="PayApiMode" name="PayApiMode" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text', onSelect:selectModel, data:null,required:true, panelHeight: 'auto', editable: false,width:100" />
+            </td>
+            <td class="label-toolbar">
+                <label>经营类目：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="PayApiMode" name="PayApiMode" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text', onSelect:selectModel, data:null,required:true, panelHeight: 'auto', editable: false,width:140" />
+            </td>
+            <td class="label-toolbar">
+                <label>结算周期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="PayApiMode" name="PayApiMode" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text', onSelect:selectModel, data:null,required:true, panelHeight: 'auto', editable: false,width:80" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setStatus(1)">设为已发布</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setStatus(1)">设为已失效</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setStatus(2)">设定结算周期</a>
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+<script type="text/javascript">
+    window.drpdata = window.drpdata || {};
+    @*window.drpdata['payApiStatus'] = @Html.Raw(ViewBag.PayApiStatusList);*@
+    window.drpdata['payApiStatus'] = {};
+    window.drpdata['payApiMode'] = {};
+
+    pharos.manager.geturl = "@Url.Action("GetPayApiPaging")";
+    pharos.manager.editurl = "@Url.Action("PayApiForm")";
+    pharos.manager.delurl = "@Url.Action("RemovePayApi")";
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = false;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true, rowspan: 2 },
+        { field: 'Status', title: '状态', width: 40, rowspan: 2 },
+        { field: 'Version', title: '版本', width: 100, rowspan: 2 },
+        { field: 'ChannelNo', title: '渠道编号', width: 80, rowspan: 2 },
+        { field: 'BaseFreeAmount', title: '基础免费额度（元）', width: 80, rowspan: 2 },
+        { field: 'OverAmountRate', title: '超出金额费率（%）', width: 80, rowspan: 2 },
+        { field: 'SingleMinFees', title: '单笔最低收费（元）', width: 80, rowspan: 2 },
+        { field: 'Status', title: '状态', width: 60, rowspan: 2, formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['payApiStatus']);
+        }},
+        { field: 'SettlementPeriod', title: '结算周期', width: 120, rowspan: 2 },
+        { field: 'BusinessCategory', title: '经营类目', width: 120,rowspan:1, colspan: 2 },
+        { field: 'Memo', title: '备注', width: 200, rowspan: 2 },
+        { field: 'CreateDT', title: '创建时间', width: 100, rowspan: 2, formatter: function (value, row, index) { return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd") } },
+        { field: 'Creater', title: '创建人', width: 80, rowspan: 2 },
+        { field: 'ReleasedDT', title: '发布时间', width: 100, rowspan: 2, formatter: function (value, row, index) { return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd") } },
+        { field: 'Releaseder', title: '发布人', width: 80, rowspan: 2 },
+    ], [
+        { field: 'BusinessCategoryOne', title: '一级', width: 80, rowspan: 1 ,colspan:1},
+        { field: 'BusinessCategoryTwo', title: '二级', width: 100, rowspan: 1, colspan: 1 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache(), true);
+    };
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        openDialog800(this.editText, this.editurlNocache());
+    }
+
+    function removeBefore(row) {
+        var uid = '@Pharos.Logic.OMS.CurrentUser.UID';
+        if (row.Status != "1") {
+            $.messager.alert("提示", window.statusList[row.status] + "状态不能移除!");
+            return false;
+        }
+        //fishtodo:待确定如何判断是否已经有关联数据;
+        return true;
+    }
+    function selectModel(){}
+    //设置接口启用或关闭
+    function setStatus(status) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        if (rows.length > 1) {
+            $.messager.alert("提示", "只能选择一项数据进行操作", "error");
+            return false;
+        }
+        if (rows[0].Status == status) {
+            $.messager.alert("提示", "选中项已经是" + window.statusList[status] + "状态", "error");
+            return false;
+        }
+        $.post("@Url.Action("SetStatus")", { id: rows[0].Id, status: status }, function (r) {
+            if (r.successed) {
+                $.messager.alert("提示", "操作执行成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作执行失败！" + r.message, "error");
+            }
+        }, "json");
+        //fishtodo: 1 按钮图标设置
+    }
+
+    //取枚举对应值
+    function formatColumn(value, list) {
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].value == value) {
+                if (list[i].value != "")
+                    return list[i].text;
+            }
+        }
+        return value;
+    }
+</script>

@@ -1,0 +1,183 @@
+﻿@model Pharos.Logic.OMS.Entity.Traders
+@{
+    ViewBag.Title = "添加商户-基本信息";
+    Layout = "~/Areas/webapp/Views/Shared/_Layout.cshtml";
+}
+<header>
+    <span class="icon_arrow_left"></span>
+    基本信息
+</header>
+<div class="main">
+    @using( Html.BeginForm())
+    { 
+    <div class="info_item">
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 业务员帐号</div>
+            @Html.TextBoxFor(o => o.Assigner, new { req = "业务员帐号" })
+        </div>
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 业务员密码</div>
+            @Html.PasswordFor(o => o.AssignerUID, new { req = "业务员密码" })
+        </div>
+    </div>
+    <div class="info_item">
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 企业简称</div>
+            @Html.TextBoxFor(o => o.Title, new { req = "企业简称", maxlength="30" })
+        </div>
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 企业全称</div>
+            @Html.TextBoxFor(o => o.FullTitle, new { req = "企业全称", maxlength = "50" })
+        </div>
+    </div>
+    <div class="info_item">
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 客户类型</div>
+            <div class="select_item">
+                @Html.DropDownListFor(o => o.TraderTypeId, ViewBag.types as List<SelectListItem>, new { req = "客户类型" })
+                <span class="caret"></span>
+            </div>
+        </div>
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 客户来源</div>
+            @Html.TextBoxFor(o => o.Source, new { req = "客户来源", maxlength = "20" })
+        </div>
+    </div>
+    <div class="info_item">
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 跟进状态</div>
+            <div class="select_item">
+                @Html.DropDownListFor(o => o.TrackStautsId, ViewBag.trackstauts as List<SelectListItem>, new { req = "跟进状态" })
+                <span class="caret"></span>
+            </div>
+        </div>
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 经营类别</div>
+            <div class="select_item">
+                @Html.DropDownListFor(o => o.BusinessScopeId, ViewBag.businessScopes as List<SelectListItem>, new { multiple = "multiple", req = "经营类别" })
+                <span class="caret"></span>
+            </div>
+        </div>
+    </div>
+    <div class="info_item">
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 支付方式</div>
+            <div class="select_item">
+                @Html.DropDownListFor(o => o.Pay, ViewBag.pays as List<SelectListItem>, new { multiple = "multiple", req = "支付方式" })
+                <span class="caret"></span>
+            </div>
+        </div>
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 联系人</div>
+            @Html.TextBoxFor(o => o.LinkMan, new { req = "联系人", maxlength = "30" })
+        </div>
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 电话/手机</div>
+            @Html.TextBoxFor(o => o.MobilePhone, new { @type = "tel",req = "电话/手机" })
+        </div>
+        <div class="info_row">
+            <div class="info_tittle"><span class="red">*</span> 所在区域</div>
+            <input id="are" type="text" readonly="" placeholder="未选择" />
+            <input id="value" type="hidden" name="citys" req="所在区域"/>
+        </div>
+        <div class="info_row">
+            <div class="info_tittle"><span class="red"></span> 详细地址</div>
+            @Html.TextBoxFor(o => o.Address)
+        </div>
+    </div>
+    <div>
+        <div class="item_title">现有系统名称/品牌</div>
+        @Html.TextAreaFor(o => o.ExistsystemName, new { @class = "info_text", maxlength = "50" })
+    </div>
+    <div>
+        <div class="item_title">现有设备名称/品牌</div>
+        @Html.TextAreaFor(o => o.ExistDeviceName, new { @class = "info_text", maxlength = "50" })
+    </div>
+    <div class="info_item">
+        <div class="info_row">
+            <div class="info_tittle">现有门店数量</div>
+            <div class="select_item">
+                @Html.DropDownListFor(o => o.ExistStoreNum, ViewBag.storenums as List<SelectListItem>)
+                <span class="caret"></span>
+            </div>
+        </div>
+        <div class="info_row">
+            <div class="info_tittle" style="width:40%;">每门店收银电脑台数</div>
+            <div class="select_item" style="width:53%;">
+                @Html.DropDownListFor(o => o.EachStorePosNum, ViewBag.posnums as List<SelectListItem>)
+                <span class="caret"></span>
+            </div>
+        </div>
+        <div class="info_row">
+            <div class="info_tittle">每门店人均数</div>
+            <div class="select_item">
+                @Html.DropDownListFor(o => o.EachStorePersonNum, ViewBag.personnums as List<SelectListItem>)
+                <span class="caret"></span>
+            </div>
+        </div>
+        <div class="info_row">
+            <div class="info_tittle" style="width:50%;">近两年计划扩张门店数量</div>
+            <div class="select_item" style="width:45%;">
+                @Html.DropDownListFor(o => o.PlanExpandStoreNum, ViewBag.storenums as List<SelectListItem>)
+                <span class="caret"></span>
+            </div>
+        </div>
+    </div>
+    <div>
+        <div class="item_title">竞争对手</div>
+        @Html.TextAreaFor(o => o.Rival, new { @class = "info_text", maxlength = "50" })
+    </div>
+    <div>
+        <div class="item_title">竞争对手的营销模式</div>
+        @Html.TextAreaFor(o => o.Marketing, new { @class = "info_text", maxlength = "50" })
+    </div>
+    <div>
+        <div class="item_title">备注</div>
+        @Html.TextAreaFor(o => o.Memo, new { @class = "info_text", maxlength = "200" })
+        <p class="info_text1">限长200个字，还可以输入<span class="info_num"> 200 </span>个字</p>
+    </div>
+    }
+</div>
+<footer>
+    <a class="button" onclick="$('form').submit()">下一步</a>
+</footer>
+@*<script src="~/Areas/webapp/Content/js/LAreaData1.js"></script>
+    <script src="~/Areas/webapp/Content/js/LAreaData2.js"></script>*@
+<script src="~/Areas/webapp/Content/js/LArea.js"></script>
+@*<script src="~/Areas/webapp/Content/js/bootstrap-select.min.js"></script>*@
+<script>
+    var provs_data=@Html.Raw(ViewBag.provs);
+    var citys_data=@Html.Raw(ViewBag.citys);
+    var dists_data=@Html.Raw(ViewBag.dists);
+    $(function () {
+        //地址选择
+        var area2 = new LArea();
+        area2.init({
+            'trigger': '#are',
+            'valueTo': '#value',
+            'keys': {
+                id: 'value',
+                name: 'text'
+            },
+            'type': 2,
+            'data': [provs_data, citys_data, dists_data]
+        });
+        //$('#Pay').selectpicker({
+        //    selectedValue: '227',
+        //    noneSelectedText: '未选择',
+        //    showIcon:false
+        //}).andSelf().next().find(".caret").hide();
+        //$('#BusinessScopeId').selectpicker({
+        //    noneSelectedText: '未选择',
+        //}).andSelf().next().find(".caret").hide();
+
+        $("#Memo").keyup(function(e){
+            var maxlen= $(this).attr("maxlength");
+            var len= $(this).val().length;
+            $(".info_num").html(Number(maxlen)-len);
+        })
+    });
+    function refresh(){
+        window.location.href="@Url.Action("AddOrder")?uid="+$("#Assigner").val();
+    }
+</script>

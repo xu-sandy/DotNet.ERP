@@ -1,0 +1,190 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  Realm
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .formbox td {
+        padding: 5px 0px;
+    }
+</style>
+
+<script type="text/javascript">
+
+    //商户号
+    var CID = "@Model.CID";
+    if (CID == "0") {
+        CID = "";
+    }
+
+    var Id = getUrlParam('Id');
+    var isRequired = true;
+    if (Id != null) {
+        isRequired = false;
+    }
+
+    //获取url的参数
+    function getUrlParam(name) {
+
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+
+        var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+
+        if (r != null) return unescape(r[2]); return null; //返回参数值
+
+    }
+
+    $(function () {
+        @*$("#CID").next().find(".combo-arrow").removeClass("combo-arrow");
+        GetTradersFullTitle("@Model.CID");
+        loadStoreNum("@Model.CID");
+        $("#TStoreInfoId").combobox("setValue", "@Model.TStoreInfoId");
+        getStoreFullTitle("@Model.TStoreInfoId");
+        var AccountType = "@Model.AccountType";
+        if (AccountType == "1")
+        {
+            $("#LoginName").textbox("readonly",true);
+        }*@
+    });
+
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        var id = getUrlParam('Id');
+        if (id == null) {
+            id = 0;
+        }
+        $.ajax({
+            url: "@Url.Action("GetCIDStore", "BusinessUser")",
+            type: "post",
+            data: {
+                //传值，还是JSON数据搜索
+                keyword: q,
+                id: id
+            },
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function (item) {
+                    return { CID: item.CID, CID: item.CID };
+                });
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+
+    function tradersOnChange(newValue, oldValue) {
+        GetTradersFullTitle(encodeURIComponent(newValue));
+        loadStoreNum(encodeURIComponent(newValue))
+    }
+
+    //获取商户全称
+    function GetTradersFullTitle(CID) {
+        $.ajax({
+            url: "/BusinessUser/GetTradersFullTitle?CID=" + CID,
+            type: "post",
+            async: false,
+            dataType: "text",
+            data: {},
+            success: function (data) {
+                $("#TradersFullTitle").textbox("setValue", data);
+            }
+        });
+    }
+
+    //加载门店编号
+    function loadStoreNum(CID) {
+        if (CID == "") {
+            CID = 0;
+        }
+        $('#TStoreInfoId').combobox({
+            url: '/BusinessUser/getStoreNum?CID=' + CID,
+            valueField: 'TStoreInfoId',
+            textField: 'StoreNumStr',
+            editable: true,
+            width: 125,
+            required: true,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                getStoreFullTitle(encodeURIComponent(newValue))
+            }
+        });
+    }
+
+    //获取门店全称
+    function getStoreFullTitle(TStoreInfoId) {
+        $.ajax({
+            url: "/BusinessUser/getStoreFullTitle?TStoreInfoId=" + TStoreInfoId,
+            type: "post",
+            async: false,
+            dataType: "json",
+            data: {},
+            success: function (data) {
+                $("#StoreFullTitle").textbox("setValue", data.StoreName);
+            }
+        });
+    }
+
+    function SaveBefore() {
+        return true;
+    }
+
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+
+            <div class="formbox" style="border-bottom:0px;">
+                <table class="table-form" width="100%">
+
+                    <tr>
+                        <td class="name" style=" width:15%;">商户号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.CID, new { @class = "easyui-combobox", data_options = "required:true,prompt:'请输入',width:125,editable:true,mode:'remote',valueField:'CID',textField:'CID',loader:comboload,onChange:tradersOnChange,value:CID" })</td>
+                        <td class="name" style="width:20%;">客户全称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.TradersFullTitle, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'',validType: 'length[1,100]',width:190,readonly:true" })</td>
+
+                    </tr>
+
+                    <tr>
+                        <td class="name">类别：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.Category, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "0" }, new SelectListItem() { Text = "内部", Value = "1" }, new SelectListItem() { Text = "外部", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })</td>
+                        <td class="name">子域名：</td>
+                        <td class="input">
+                           @Html.TextBoxFor(o => o.Name, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'',validType: 'length[1,20]',width:70" })
+                           <span>.</span>@Html.DropDownListFor(o => o.Domain1, ViewBag.d1 as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:100" })
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">备注：</td>
+                        <td class="input" colspan="3">
+                            @Html.TextBoxFor(o => o.Remark, new { @class = "easyui-textbox", data_options = "required:false,prompt:'限50个字内',validType: 'length[0,50]',width:456" })
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+
+        </div>
+    }
+</div>
+
+
+

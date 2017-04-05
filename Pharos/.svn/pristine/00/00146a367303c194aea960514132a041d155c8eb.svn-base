@@ -1,0 +1,43 @@
+﻿using System;
+using System.Threading.Tasks;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.POS.Retailing.Extensions;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// TuiHuanHuo.xaml 的交互逻辑
+    /// </summary>
+    public partial class TuiHuanHuo : DialogWindow02
+    {
+        RefundChangeViewModel CurrentModel { get; set; }
+        public TuiHuanHuo()
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+                CurrentModel = new RefundChangeViewModel() ;
+                CurrentModel.Change.CurrentWindow = this;
+                CurrentModel.Refund.CurrentWindow = this;
+            this.ApplyBindings(this, CurrentModel);
+        }
+
+
+
+
+
+        private void txtMode_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            switch (CurrentModel.Change.Mode)
+            {
+                case Models.PosModels.ChangeInputMode.New:
+                    CurrentModel.Change.Mode = Models.PosModels.ChangeInputMode.Old;
+                    break;
+                case Models.PosModels.ChangeInputMode.Old:
+                    CurrentModel.Change.Mode = Models.PosModels.ChangeInputMode.New;
+                    break;
+            }
+        }
+    }
+}

@@ -1,0 +1,44 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class DictionaryService
+    {
+        [Ninject.Inject]
+        IBaseRepository<SysDataDictionary> DictionaryRepository { get; set; }
+        public OpResult SaveOrUpdate(SysDataDictionary model)
+        {
+            if (DictionaryRepository.GetQuery(o =>o.DicPSN==model.DicPSN && o.Title == model.Title && o.Id != model.Id).Any())
+                return OpResult.Fail("已存在该分类名称!");
+            else if (model.Id == 0)
+            {
+                model.DicSN = MaxSN() + 1;
+                model.Status = true;
+                DictionaryRepository.Add(model);
+            }
+            else
+            {
+                var source = DictionaryRepository.Get(model.Id);
+                model.ToCopyProperty(source);
+                DictionaryRepository.SaveChanges();
+            }
+            
+            return OpResult.Success();
+        }
+        public List<SysDataDictionary> GetSubUnitCategories()
+        {
+            return DictionaryRepository.GetQuery(o => o.DicPSN == 4 && o.Status).OrderBy(o => o.SortOrder).ToList();
+        }
+        public int MaxSN()
+        {
+            return DictionaryRepository.GetQuery().Max(o => (int?)o.DicSN).GetValueOrDefault();
+        }
+    }
+}

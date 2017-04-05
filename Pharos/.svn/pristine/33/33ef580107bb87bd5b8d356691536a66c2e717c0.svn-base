@@ -1,0 +1,182 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.ViewModels;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Models
+{
+    public delegate void RefreshInvoke(object obj);
+    internal static class Global
+    {
+        internal const string PosMachineConfigPath = "PosMachine.Config";
+        static Global()
+        {
+            MachineSettings = new Settings();
+            // MachineSettings.SettingsLoadEvent += MachineSettings_SettingsLoadEvent;
+        }
+
+        internal static void LoadDefualtItems()
+        {
+            RefreshPayStatus();
+            RefreshCategoryTree();
+        }
+        public static Settings MachineSettings { get; set; }
+
+        static LoginUserInfo currentSaleMen;
+        public static LoginUserInfo CurrentSaleMen
+        {
+            get
+            {
+                if (currentSaleMen == null)
+                {
+                    throw new Exception("未登录");
+                }
+                else
+                {
+                    return currentSaleMen;
+                }
+            }
+            set
+            {
+                currentSaleMen = value;
+            }
+        }
+        static Thread refreshPayStatusThread = null;
+
+        internal static void RefreshPayStatus()
+        {
+            if (refreshPayStatusThread == null)
+            {
+                Task.Factory.StartNew(() =>
+                    {
+                        try
+                        {
+                            refreshPayStatusThread = Thread.CurrentThread;
+                            var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<IEnumerable<PayItem>>>(@"api/PaysStatus", new BaseApiParams()
+                            {
+                                CID = Global.MachineSettings.MachineInformations.CompanyToken,
+                                StoreId = Global.MachineSettings.MachineInformations.StoreId
+                            });
+                            if (result.Code == "200")
+                            {
+                                Application.Current.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    Payways = result.Result;
+                                }));
+                            }
+                            else
+                            {
+                                //Toast.ShowMessage(result.Message, Application.Current.MainWindow);
+                                Payways = new List<PayItem>() {
+                                    new PayItem() { 
+                                        Mode = PosModels.PayMode.CashPay,
+                                        ApiCodes = "11", 
+                                        DisableIcon = @"..\Images\PayIcon\rmb-gray.png", 
+                                        EnableIcon = @"..\Images\PayIcon\rmb.png",
+                                        Enable = true, 
+                                        Title = "现金支付" 
+                                    } 
+                                };
+                            }
+                        }
+                        catch (Exception ex) { throw ex; }
+                        finally
+                        {
+                            refreshPayStatusThread = null;
+                        }
+                    });
+            }
+        }
+        static Thread refreshCategoryTreeThread = null;
+        internal static void RefreshCategoryTree()
+        {
+
+            if (refreshCategoryTreeThread == null)
+            {
+                Task.Factory.StartNew(() =>
+                    {
+                        try
+                        {
+                            refreshCategoryTreeThread = Thread.CurrentThread;
+                            var machineInfo = Global.MachineSettings.MachineInformations;//全局信息
+                            BaseApiParams _queryInfo = new BaseApiParams() { StoreId = machineInfo.StoreId, MachineSn = machineInfo.MachineSn, CID = Global.MachineSettings.MachineInformations.CompanyToken };
+                            var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<TreeModel>>(@"api/GetProductCategory", _queryInfo);
+
+                            Application.Current.Dispatcher.Invoke(new Action(() =>
+                            {
+                                if (result.Code == "200")
+                                {
+
+                                    categoryTree = categoryTree.InitCategory(result.Result);
+                                    if (CategoryTreeRefreshEvent != null)
+                                    {
+                                        CategoryTreeRefreshEvent(categoryTree);
+                                    }
+                                }
+                                else
+                                {
+                                    Toast.ShowMessage(result.Message, null);
+                                    categoryTree = categoryTree.InitCategory(null);
+                                    if (CategoryTreeRefreshEvent != null)
+                                    {
+                                        CategoryTreeRefreshEvent(categoryTree);
+                                    }
+                                }
+                            }));
+                        }
+                        catch (Exception ex) { throw ex; }
+                        finally
+                        {
+                            refreshCategoryTreeThread = null;
+                        }
+
+                    });
+            }
+
+        }
+        static IEnumerable<TreeModel> categoryTree;
+        public static IEnumerable<TreeModel> CategoryTree
+        {
+            get
+            {
+                if (categoryTree == null || categoryTree.Count() <= 1)
+                    RefreshCategoryTree();
+                return categoryTree;
+            }
+        }
+        static IEnumerable<PayItem> payways;
+        public static IEnumerable<PayItem> Payways
+        {
+            get
+            {
+                if (payways == null || payways.Count() <= 1)//存在默认支付方式
+                {
+                    payways = new List<PayItem>();
+                    RefreshPayStatus();
+                }
+                return payways;
+            }
+            set
+            {
+                if ((payways == null || payways.Count() == 0) && PaywaysRefreshEvent != null)
+                {
+                    payways = value;
+                    PaywaysRefreshEvent(value);
+                }
+                else
+                {
+                    payways = value;
+                }
+            }
+        }
+
+        public static event RefreshInvoke PaywaysRefreshEvent;
+        public static event RefreshInvoke CategoryTreeRefreshEvent;
+    }
+}

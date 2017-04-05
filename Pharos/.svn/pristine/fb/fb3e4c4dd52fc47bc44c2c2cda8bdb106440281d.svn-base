@@ -1,0 +1,138 @@
+﻿using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class AllOrderDiscount : BaseViewModel
+    {
+        public AllOrderDiscount(decimal _amount)
+        {
+            Amount = _amount;
+            this.PropertyChanged += AllOrderDiscount_PropertyChanged;
+        }
+        void AllOrderDiscount_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == "Discount" && flag)
+            {
+                flag = false;
+                Price = Amount * (Discount / 10);
+            }
+            else if (e.PropertyName == "Price" && flag)
+            {
+                flag = false;
+                Discount = Price / Amount * 10;
+            }
+            flag = true;
+        }
+        /// <summary>
+        /// 订单金额
+        /// </summary>
+        private decimal amount;
+
+        public decimal Amount
+        {
+            get { return amount; }
+            set { amount = value; this.OnPropertyChanged(o => o.Amount); }
+        }
+        /// <summary>
+        /// 变更属性名
+        /// </summary>
+        bool flag = true;
+
+        /// <summary>
+        /// 订单折扣
+        /// </summary>
+        private decimal discount;
+
+        public decimal Discount
+        {
+            get { return discount; }
+            set
+            {
+                discount = value;
+                this.OnPropertyChanged(o => o.Discount);
+
+
+            }
+        }
+        /// <summary>
+        /// 折后金额
+        /// </summary>
+        private decimal price;
+
+        public decimal Price
+        {
+            get { return price; }
+            set
+            {
+                price = value;
+                this.OnPropertyChanged(o => o.Price);
+
+
+            }
+        }
+        /// <summary>
+        /// 店长授权密码
+        /// </summary>
+        private string password;
+
+        public string Password
+        {
+            get { return password; }
+            set { password = value; this.OnPropertyChanged(o => o.Password); }
+        }
+
+        /// <summary>
+        /// 获取店长授权
+        /// </summary>
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        AuthorizationParams _params = new AuthorizationParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CompanyToken = _machinesInfo.CompanyToken,
+                            Password = Password
+                        };
+                        var result = ApiManager.Post<AuthorizationParams, ApiRetrunResult<object>>(@"api/Authorization", _params);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            if (result.Code == "200")
+                            {
+                                //跳到支付界面
+                                ZhiFuFangShi page = new ZhiFuFangShi(new PayWayViewModel(Price, PosModels.PayAction.Change));
+                                page.Owner = Application.Current.MainWindow;
+
+                                CurrentWindow.Hide();
+                                page.ShowDialog();
+                                CurrentWindow.Close();
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }
+                        }));
+                    });
+                });
+            }
+        }
+
+
+    }
+}

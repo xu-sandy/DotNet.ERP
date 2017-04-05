@@ -1,0 +1,154 @@
+﻿using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.Printer;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class PayComplete : BaseViewModel, IDisposable
+    {
+        private bool isRunning = true;
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="_amount">应收</param>
+        /// <param name="Receipt">实收</param>
+        /// <param name="change">找零</param>
+        public PayComplete(decimal _amount, decimal receipt, decimal change, string payWays, PayAction payAction)
+        {
+            Amount = _amount;
+            ViewModelBinded += PayComplete_ViewModelBinded;
+            if (payAction == PayAction.Sale && PosViewModel.Current.PrintStatus == PrintStatus.Open)
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    //Printer
+                    var _machineInfo = Global.MachineSettings.MachineInformations;
+                    int printWidth = 40;
+                    PrintModelHelper printer = new PrintModelHelper();
+                    TicketModel ticketModel = new TicketModel();
+                    ticketModel.TicketWidth = printWidth;//发票宽度，按字符数计算，根据打印机型号有所区别(通常在30-70之间),建议系统提供配置入口
+                    ticketModel.StoreName = _machineInfo.StoreName;
+                    ticketModel.DeviceNumber = _machineInfo.MachineSn;
+                    ticketModel.SN = PosViewModel.Current.OrderSn;
+                    ticketModel.Cashier = Global.CurrentSaleMen.UserCode;
+                    List<ProductModel> productList = new List<ProductModel>();
+                    foreach (var item in PosViewModel.Current.OrderList)
+                    {
+                        ProductModel productModel = new ProductModel();
+                        productModel.Code = item.Barcode;
+                        productModel.Name = item.Title;
+                        productModel.Num = item.Number;
+                        productModel.Price = item.ActualPrice;
+                        productModel.SubTotal = item.Total;
+                        productList.Add(productModel);
+                    }
+                    ticketModel.ProductList = productList;
+                    ticketModel.CountNum = (int)PosViewModel.Current.Num;
+                    ticketModel.TotalPrice = _amount;
+                    ticketModel.Receivable = receipt;
+                    ticketModel.Change = change;
+                    //  ticketModel.Weigh = "0 KG";
+                    ticketModel.PayType = payWays;
+                    List<string> footItemList = new List<string>();
+                    if (PosViewModel.Current.Preferential > 0m)
+                    {
+                        footItemList.Add("已优惠：" + string.Format("{0:N2}", PosViewModel.Current.Preferential));
+
+                    }
+
+                    footItemList.Add("称重商品数量请参照条码标签");
+                    footItemList.Add("欢迎光临——服务电话：" + _machineInfo.Phone);
+                    footItemList.Add("请保留电脑小票，作为退换货凭证");
+                    ticketModel.FootItemList = footItemList;
+                    string titleStr = string.Empty; string printStr = printer.GetPrintStr(ticketModel, out titleStr);
+                    PrintHelper.Print(printStr, titleStr);
+
+                });
+            }
+            else if (payAction == PayAction.Change && PosViewModel.Current.PrintStatus == PrintStatus.Open)
+            {
+
+            }
+
+        }
+
+        void PayComplete_ViewModelBinded(BaseViewModel model)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                while (isRunning)
+                {
+                    CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                    {
+                        if (Second == 0)
+                        {
+                            Dispose();
+                            CurrentWindow.Close();
+                            //PosViewModel.Current.ClearOrder.Execute(null);
+                            return;
+                        }
+                        else
+                        {
+                            Second--;
+                        }
+                    }));
+                    Thread.Sleep(1000);
+                }
+            });
+        }
+
+
+
+        private int _Second = 3;
+
+        public int Second
+        {
+            get { return _Second; }
+            set
+            {
+                _Second = value;
+                this.OnPropertyChanged(o => o.Second);
+            }
+        }
+
+        /// <summary>
+        /// 成功支付金额
+        /// </summary>
+        private decimal amount;
+
+        public decimal Amount
+        {
+            get { return amount; }
+            set { amount = value; }
+        }
+        /// <summary>
+        /// 关闭当前窗口
+        /// </summary>
+        public ICommand CloseCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    CurrentWindow.Close();
+                  //  PosViewModel.Current.ClearOrder.Execute(null);
+                });
+            }
+        }
+
+
+        public void Dispose()
+        {
+            isRunning = false;
+        }
+        ~PayComplete()
+        {
+            Dispose();
+        }
+    }
+}

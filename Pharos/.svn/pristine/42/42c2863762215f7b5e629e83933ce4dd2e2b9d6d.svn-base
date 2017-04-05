@@ -1,0 +1,295 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Sys.Entity;
+
+namespace Pharos.Logic.BLL
+{
+    /// <summary>
+    /// rechargegifts DAL
+    /// </summary>
+    public class RechargeGiftsService : BaseService<RechargeGifts>
+    {
+        /// <summary>
+        /// find rechargegifts page list by where 
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="createUID"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public object FindRechargeGiftPageList(int state, string createUID, out int count)
+        {
+            var query = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId);
+            if (state != -1)
+            {
+                query = query.Where(o => o.State == state);
+            }
+            if (!string.IsNullOrEmpty(createUID))
+            {
+                query = query.Where(o => o.CreateUID == createUID);
+            }
+            count = query.Count();
+            if (count > 0)
+            {
+                var result = (from a in query
+                              join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                              on a.CreateUID equals b.UID
+                              select new
+                              {
+                                  Id = a.Id,
+                                  State = a.State,
+                                  Stage = a.Stage,
+                                  GiftProject = a.GiftProject,
+                                  ConditionValue = a.ConditionValue,
+                                  GiftsValue = a.GiftsValue,
+                                  LimitNumber = a.LimitNumber,
+                                  StageNumber = a.StageNumber,
+                                  StageAvg = a.StageAvg,
+                                  ReturnDT = a.ReturnDT,
+                                  ExpiryStart = a.ExpiryStart,
+                                  ExpiryEnd = a.ExpiryEnd,
+                                  GiftAging = a.GiftAging,
+                                  GiftAgingValue = a.GiftAgingValue,
+                                  StartTime1 = a.StartTime1,
+                                  EndTime1 = a.EndTime1,
+                                  StartTime2 = a.StartTime2,
+                                  EndTime2 = a.EndTime2,
+                                  StartTime3 = a.StartTime3,
+                                  EndTime3 = a.EndTime3,
+                                  CreateDT = a.CreateDT,
+                                  CreateUID = b.FullName,
+                                  Category = a.Category
+                              }).ToList();
+                return result;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        /// <summary>
+        /// update db state
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="ids"></param>
+        /// <returns></returns>
+        public Utility.OpResult UpdateRechargeGiftState(int state, string ids)
+        {
+            var query = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ",")).ToList();
+            if (query.Count > 0)
+            {
+                query.ForEach(o => o.State = state);
+                CurrentRepository.Update(new RechargeGifts());
+                return new Utility.OpResult() { Successed = true, Message = "操作成功！" };
+            }
+            else
+            {
+                return new Utility.OpResult() { Successed = false, Message = "未找到对应数据！" };
+            }
+        }
+
+        public void UpdateRechargeGiftStateNoReturn(int state, string ids)
+        {
+            try
+            {
+                var query = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ",")).ToList();
+                if (query.Count > 0)
+                {
+                    query.ForEach(o => o.State = state);
+                    CurrentRepository.Update(new RechargeGifts());
+                }
+            }
+            catch (Exception e)
+            {
+
+                throw;
+            }
+        }
+        /// <summary>
+        /// get all create user
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<SysStoreUserInfo> GetCreateUserToDropDown()
+        {
+            var result = (from a in CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId)
+                          join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                          on a.CreateUID equals b.UID
+                          select b).Distinct();
+            return result;
+        }
+        /// <summary>
+        /// update a rechargegift entity
+        /// </summary>
+        /// <param name="_rechargeGift"></param>
+        /// <returns></returns>
+        public Utility.OpResult UpdateRechargeGift(RechargeGifts _rechargeGift)
+        {
+            //query data
+            var data = CurrentRepository.Entities.Where(o => o.Id == _rechargeGift.Id).FirstOrDefault();
+            //if exits
+            if (data == null)
+            {
+                return new Utility.OpResult() { Successed = false, Message = "未找到原数据！" };
+            }
+            //update
+            data.ConditionValue = _rechargeGift.ConditionValue;
+            data.EndTime1 = _rechargeGift.EndTime1;
+            data.EndTime2 = _rechargeGift.EndTime2;
+            data.EndTime3 = _rechargeGift.EndTime3;
+            data.ExpiryEnd = _rechargeGift.ExpiryEnd;
+            data.ExpiryStart = _rechargeGift.ExpiryStart;
+            data.GiftAging = _rechargeGift.GiftAging;
+            data.GiftAgingValue = _rechargeGift.GiftAgingValue;
+            data.GiftProject = _rechargeGift.GiftProject;
+            data.GiftsValue = _rechargeGift.GiftsValue;
+            data.LimitNumber = _rechargeGift.LimitNumber;
+            data.ReturnDT = _rechargeGift.ReturnDT;
+            data.Stage = _rechargeGift.Stage;
+            data.StageAvg = _rechargeGift.StageAvg;
+            data.StageNumber = _rechargeGift.StageNumber;
+            data.StartTime1 = _rechargeGift.StartTime1;
+            data.StartTime2 = _rechargeGift.StartTime2;
+            data.StartTime3 = _rechargeGift.StartTime3;
+            CurrentRepository.Update(data);
+            //return
+            return new Utility.OpResult() { Successed = true, Message = "操作成功！" };
+        }
+        /// <summary>
+        /// 根据充值金额取符合条件的充值赠送信息
+        /// </summary>
+        /// <param name="rechargeMoney"></param>
+        /// <returns></returns>
+        public object GetRechargeGiftInfo(decimal rechargeMoney)
+        {
+            List<RechargeGifts> rules = new List<RechargeGifts>();
+            //查询条件》充值金额的规则  活动状态=活动中  在当前时间内
+            var query = CurrentRepository.QueryEntity.Where(o => o.ConditionValue < rechargeMoney && o.CompanyId == CommonService.CompanyId && o.State == 1).OrderByDescending(o => o.CreateDT).ToList();
+
+            foreach (var item in query)
+            {
+                //判断充值赠送时效
+                switch (item.GiftAging)
+                {
+                    case 0://全天
+                        rules.Add(item);
+                        break;
+                    case 1://按周几
+                        var currentVal = (int)DateTime.Now.DayOfWeek;
+                        if (("," + item.GiftAgingValue + ",").Contains("," + currentVal + ","))
+                        {
+                            rules.Add(item);
+                        }
+                        break;
+                    case 2://按时段
+                        var currentHour = DateTime.Now.Hour;
+                        var currentMinute = DateTime.Now.Minute;
+                        //判断是否在时间段1内
+                        if (!string.IsNullOrEmpty(item.StartTime1) && item.StartTime1.Contains(":") && !string.IsNullOrEmpty(item.EndTime1) && item.EndTime1.Contains(":"))
+                        {
+                            string[] hour1 = item.StartTime1.Split(':');
+                            string[] endhour1 = item.EndTime1.Split(':');
+                            if (currentHour > Convert.ToInt32(hour1[0]) && currentHour < Convert.ToInt32(endhour1[0]))
+                            {
+                                rules.Add(item);
+                                goto goNext;
+                            }
+                            else if (currentHour == Convert.ToInt32(hour1[0]))
+                            {
+                                if (currentMinute < Convert.ToInt32(hour1[1]))
+                                {
+                                    rules.Add(item);
+                                    goto goNext;
+
+                                }
+                            }
+                            else if (currentHour == Convert.ToInt32(endhour1[0]))
+                            {
+                                if (currentMinute < Convert.ToInt32(endhour1[1]))
+                                {
+                                    rules.Add(item);
+                                    goto goNext;
+
+                                }
+                            }
+                        }
+                        //判断是否在时间段2内
+                        if (!string.IsNullOrEmpty(item.StartTime2) && item.StartTime2.Contains(":") && !string.IsNullOrEmpty(item.EndTime2) && item.EndTime2.Contains(":"))
+                        {
+                            string[] hour2 = item.StartTime2.Split(':');
+                            string[] endhour2 = item.EndTime2.Split(':');
+                            if (currentHour > Convert.ToInt32(hour2[0]) && currentHour < Convert.ToInt32(endhour2[0]))
+                            {
+                                rules.Add(item);
+                                goto goNext;
+                            }
+                            else if (currentHour == Convert.ToInt32(hour2[0]))
+                            {
+                                if (currentMinute < Convert.ToInt32(hour2[1]))
+                                {
+                                    rules.Add(item);
+                                    goto goNext;
+
+                                }
+                            }
+                            else if (currentHour == Convert.ToInt32(endhour2[0]))
+                            {
+                                if (currentMinute < Convert.ToInt32(endhour2[1]))
+                                {
+                                    rules.Add(item);
+                                    goto goNext;
+
+                                }
+                            }
+                        }
+                        //判断是否在时间段3内
+                        if (!string.IsNullOrEmpty(item.StartTime3) && item.StartTime3.Contains(":") && !string.IsNullOrEmpty(item.EndTime3) && item.EndTime3.Contains(":"))
+                        {
+                            string[] hour3 = item.StartTime3.Split(':');
+                            string[] endhour3 = item.EndTime3.Split(':');
+                            if (currentHour > Convert.ToInt32(hour3[0]) && currentHour < Convert.ToInt32(endhour3[0]))
+                            {
+                                rules.Add(item);
+                                goto goNext;
+                            }
+                            else if (currentHour == Convert.ToInt32(hour3[0]))
+                            {
+                                if (currentMinute < Convert.ToInt32(hour3[1]))
+                                {
+                                    rules.Add(item);
+                                    goto goNext;
+
+                                }
+                            }
+                            else if (currentHour == Convert.ToInt32(endhour3[0]))
+                            {
+                                if (currentMinute < Convert.ToInt32(endhour3[1]))
+                                {
+                                    rules.Add(item);
+                                    goto goNext;
+
+                                }
+                            }
+                        }
+                    goNext:
+                        break;
+                }
+            }
+            //返回符合条件的最新1条
+            return rules.OrderByDescending(o => o.CreateDT).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// 获取所有活动中、未开始的充值赠送规则
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<RechargeGifts> GetInActiveRechargeGiftRules(int companyid)
+        {
+            return CurrentRepository._context.Database
+                .SqlQuery<RechargeGifts>(
+@"SELECT * FROM dbo.RechargeGifts WHERE ExpiryStart< GETDATE() AND ExpiryEnd >GETDATE() AND CompanyId = @p0 AND State!=2"
+                , companyid).ToList();
+        }
+    }
+}

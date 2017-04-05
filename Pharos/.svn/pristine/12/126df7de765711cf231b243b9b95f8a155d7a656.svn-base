@@ -1,0 +1,980 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{AB64B6A5-E09F-467A-BBC6-B3E7C7E9E91A}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Pharos.Logic</RootNamespace>
+    <AssemblyName>Pharos.Logic</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+    <NuGetPackageImportStamp>d45836a1</NuGetPackageImportStamp>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Local</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Local</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="AX.CSF.Log">
+      <HintPath>..\ExtendFiles\AX.CSF.Log.dll</HintPath>
+    </Reference>
+    <Reference Include="Common.Logging, Version=3.0.0.0, Culture=neutral, PublicKeyToken=af08829b84f0328e, processorArchitecture=MSIL">
+      <HintPath>..\packages\Common.Logging.3.0.0\lib\net40\Common.Logging.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Common.Logging.Core, Version=3.0.0.0, Culture=neutral, PublicKeyToken=af08829b84f0328e, processorArchitecture=MSIL">
+      <HintPath>..\packages\Common.Logging.Core.3.0.0\lib\net40\Common.Logging.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.6.1.3\lib\net40\EntityFramework.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.6.1.3\lib\net40\EntityFramework.SqlServer.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServerCompact, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.SqlServerCompact.6.1.3\lib\net40\EntityFramework.SqlServerCompact.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Threading.Tasks, Version=1.0.12.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.Async.1.0.168\lib\net40\Microsoft.Threading.Tasks.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Threading.Tasks.Extensions, Version=1.0.12.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.Async.1.0.168\lib\net40\Microsoft.Threading.Tasks.Extensions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Threading.Tasks.Extensions.Desktop, Version=1.0.168.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.Async.1.0.168\lib\net40\Microsoft.Threading.Tasks.Extensions.Desktop.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Newtonsoft.Json.6.0.8\lib\net40\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="Quartz, Version=2.3.3.0, Culture=neutral, PublicKeyToken=f6b8c98a402cc8a4, processorArchitecture=MSIL">
+      <HintPath>..\packages\Quartz.2.3.3\lib\net40\Quartz.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="StackExchange.Redis, Version=1.1.604.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\StackExchange.Redis.1.1.604-alpha\lib\net40\StackExchange.Redis.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="StackExchange.Redis.StrongName, Version=1.1.0.0, Culture=neutral, PublicKeyToken=c219ff1ca8c2ce46, processorArchitecture=MSIL">
+      <HintPath>..\packages\StackExchange.Redis.StrongName.1.1.603\lib\net40\StackExchange.Redis.StrongName.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data.SqlServerCe, Version=4.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.SqlServer.Compact.4.0.8876.1\lib\net40\System.Data.SqlServerCe.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.IO, Version=2.6.10.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.1.1.10\lib\net40\System.IO.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Net" />
+    <Reference Include="System.Runtime, Version=2.6.10.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.1.1.10\lib\net40\System.Runtime.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Runtime.Caching" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Threading.Tasks, Version=2.6.10.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.1.1.10\lib\net40\System.Threading.Tasks.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Mvc, Version=4.0.0.1, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Microsoft.AspNet.Mvc.4.0.30506.0\lib\net40\System.Web.Mvc.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Cache\MarketingManagerCache.cs">
+      <Link>ApiData\Pos\Cache\MarketingManagerCache.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Cache\OnlineCache.cs">
+      <Link>ApiData\Pos\Cache\OnlineCache.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Cache\ProductCache.cs">
+      <Link>ApiData\Pos\Cache\ProductCache.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Cache\ShoppingCartCache.cs">
+      <Link>ApiData\Pos\Cache\ShoppingCartCache.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\DAL\LocalCeDbContext.cs">
+      <Link>ApiData\Pos\DAL\LocalCeDbContext.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\DataAdapter\MemoryCacheDataAdapter.cs">
+      <Link>ApiData\Pos\DataAdapter\MemoryCacheDataAdapter.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\DataAdapter\SqlServerCEDataAdapter.cs">
+      <Link>ApiData\Pos\DataAdapter\SqlServerCEDataAdapter.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\ApiLibrary.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\ApiLibrary.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\BaseEntity.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\BaseEntity.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\Bundling.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\Bundling.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\BundlingList.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\BundlingList.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\CommodityDiscount.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\CommodityDiscount.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\CommodityPromotion.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\CommodityPromotion.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\ConsumptionPayment.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\ConsumptionPayment.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\DeviceRegInfo.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\DeviceRegInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\FreeGiftPurchase.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\FreeGiftPurchase.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\FreeGiftPurchaseList.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\FreeGiftPurchaseList.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\MemberIntegral.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\MemberIntegral.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\Members.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\Members.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\Notice.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\Notice.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\PosIncomePayout.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\PosIncomePayout.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\ProductCategory.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\ProductCategory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\ProductGroup.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\ProductGroup.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\ProductRecord.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\ProductRecord.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\PromotionBlend.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\PromotionBlend.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\PromotionBlendList.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\PromotionBlendList.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\SaleDetail.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\SaleDetail.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\SaleOrders.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\SaleOrders.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\SalesRecord.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\SalesRecord.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\SysDataDictionary.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\SysDataDictionary.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\SysStoreUserInfo.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\SysStoreUserInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Entity\LocalCeEntity\WipeZero.cs">
+      <Link>ApiData\Pos\Entity\LocalCeEntity\WipeZero.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\AfterSale\AfterSaleMode.cs">
+      <Link>ApiData\Pos\Sale\AfterSale\AfterSaleMode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\AfterSale\ChangeProduct.cs">
+      <Link>ApiData\Pos\Sale\AfterSale\ChangeProduct.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\AfterSale\OrderChangeFactory.cs">
+      <Link>ApiData\Pos\Sale\AfterSale\OrderChangeFactory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\AfterSale\OrderChangeRefundSale.cs">
+      <Link>ApiData\Pos\Sale\AfterSale\OrderChangeRefundSale.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\BarcodeIdentity.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\BarcodeIdentity.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\BarcodeType.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\BarcodeType.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\IIdentification.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\IIdentification.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\OrderMiddleware.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\OrderMiddleware.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\JiFuBao.cs">
+      <Link>ApiData\Pos\Sale\Payment\JiFuBao.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\WeiXin.cs">
+      <Link>ApiData\Pos\Sale\Payment\WeiXin.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\Weixin2Pay.cs">
+      <Link>ApiData\Pos\Sale\Payment\Weixin2Pay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\ZhiFuBao.cs">
+      <Link>ApiData\Pos\Sale\Payment\ZhiFuBao.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\Zhifubao2Pay.cs">
+      <Link>ApiData\Pos\Sale\Payment\Zhifubao2Pay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\ReportEnum.cs">
+      <Link>ApiData\Pos\Sale\ReportEnum.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Suspend\BarcodeJsonConverter.cs">
+      <Link>ApiData\Pos\Sale\Suspend\BarcodeJsonConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Security\MD5.cs">
+      <Link>ApiData\Pos\Security\MD5.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\ApiLibraryService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\ApiLibraryService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\BundlingService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\BundlingService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\CommodityDiscountService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\CommodityDiscountService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\CommodityPromotionService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\CommodityPromotionService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\ConsumptionPaymentService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\ConsumptionPaymentService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\DeviceRegInfoService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\DeviceRegInfoService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\FreeGiftPurchaseListService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\FreeGiftPurchaseListService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\FreeGiftPurchaseService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\FreeGiftPurchaseService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\MarketingRecordService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\MarketingRecordService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\MembersService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\MembersService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\NoticeService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\NoticeService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\PosIncomePayoutService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\PosIncomePayoutService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\ProductCategorySerivce.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\ProductCategorySerivce.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\ProductRecordService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\ProductRecordService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\PromotionBlendListService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\PromotionBlendListService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\PromotionBlendService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\PromotionBlendService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\SaleDetailService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\SaleDetailService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\SaleOrdersService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\SaleOrdersService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\SysStoreUserInfoService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\SysStoreUserInfoService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\LocalCeServices\WipeZeroService.cs">
+      <Link>ApiData\Pos\Services\LocalCeServices\WipeZeroService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\CommodityDiscountService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\CommodityDiscountService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\CommodityPromotionService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\CommodityPromotionService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\FreeGiftPurchaseListService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\FreeGiftPurchaseListService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\FreeGiftPurchaseService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\FreeGiftPurchaseService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\MarketingRecordService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\MarketingRecordService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\PromotionBlendListService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\PromotionBlendListService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\PromotionBlendService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\PromotionBlendService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\WipeZeroService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\WipeZeroService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\StoreManager.cs">
+      <Link>ApiData\Pos\StoreManager.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\ApiRuningMode.cs">
+      <Link>ApiData\Pos\ValueObject\ApiRuningMode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\ApiSetting.cs">
+      <Link>ApiData\Pos\ValueObject\ApiSetting.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\ChangeOrRefundReturnOrderData.cs">
+      <Link>ApiData\Pos\ValueObject\ChangeOrRefundReturnOrderData.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\ChangingList.cs">
+      <Link>ApiData\Pos\ValueObject\ChangingList.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\MemberInfo.cs">
+      <Link>ApiData\Pos\ValueObject\MemberInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\SalemanInfo.cs">
+      <Link>ApiData\Pos\ValueObject\SalemanInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\UserDict.cs">
+      <Link>ApiData\Pos\ValueObject\UserDict.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\WarehouseInformations.cs">
+      <Link>ApiData\Pos\ValueObject\WarehouseInformations.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\AfterSale\BillHistory.cs">
+      <Link>ApiData\Pos\Sale\AfterSale\BillHistory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\CustomBarcode.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\CustomBarcode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\BundlingBarcode.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\BundlingBarcode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\JsonBarcode.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\JsonBarcode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Category\Category.cs">
+      <Link>ApiData\Pos\Sale\Category\Category.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Category\CategoryTree.cs">
+      <Link>ApiData\Pos\Sale\Category\CategoryTree.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\DataAdapter\SqlServerDataAdapter.cs">
+      <Link>ApiData\Pos\DataAdapter\SqlServerDataAdapter.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\StandardBarcode.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\StandardBarcode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\WeighBarcode.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\WeighBarcode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\BarcodeFactory.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\BarcodeFactory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Barcodes\IBarcode.cs">
+      <Link>ApiData\Pos\Sale\Barcodes\IBarcode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\DataAdapter\DataAdapterFactory.cs">
+      <Link>ApiData\Pos\DataAdapter\DataAdapterFactory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\DataAdapter\DataAdapterMode.cs">
+      <Link>ApiData\Pos\DataAdapter\DataAdapterMode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Exceptions\BarcodeException.cs">
+      <Link>ApiData\Pos\Exceptions\BarcodeException.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Exceptions\LoginExecption.cs">
+      <Link>ApiData\Pos\Exceptions\LoginExecption.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Exceptions\PosException.cs">
+      <Link>ApiData\Pos\Exceptions\PosException.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Exceptions\SaleException.cs">
+      <Link>ApiData\Pos\Exceptions\SaleException.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\DataAdapter\IDataAdapter.cs">
+      <Link>ApiData\Pos\DataAdapter\IDataAdapter.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Extensions\CollectionsExtension.cs">
+      <Link>ApiData\Pos\Extensions\CollectionsExtension.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Marketings\MarketingContext.cs">
+      <Link>ApiData\Pos\Sale\Marketings\MarketingContext.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Marketings\MarketingManager.cs">
+      <Link>ApiData\Pos\Sale\Marketings\MarketingManager.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Marketings\MarketingRule.cs">
+      <Link>ApiData\Pos\Sale\Marketings\MarketingRule.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Members\MemberCardManager.cs">
+      <Link>ApiData\Pos\Sale\Members\MemberCardManager.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Members\MembersSourseMode.cs">
+      <Link>ApiData\Pos\Sale\Members\MembersSourseMode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\BasePay.cs">
+      <Link>ApiData\Pos\Sale\Payment\BasePay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\CashCouponPay.cs">
+      <Link>ApiData\Pos\Sale\Payment\CashCouponPay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\CashPay.cs">
+      <Link>ApiData\Pos\Sale\Payment\CashPay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\IPay.cs">
+      <Link>ApiData\Pos\Sale\Payment\IPay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\IThirdPartyPayment.cs">
+      <Link>ApiData\Pos\Sale\Payment\IThirdPartyPayment.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\MultiplyPay.cs">
+      <Link>ApiData\Pos\Sale\Payment\MultiplyPay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\PayDetails.cs">
+      <Link>ApiData\Pos\Sale\Payment\PayDetails.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\PaymentFactory.cs">
+      <Link>ApiData\Pos\Sale\Payment\PaymentFactory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\PayMode.cs">
+      <Link>ApiData\Pos\Sale\Payment\PayMode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\StoredValueCardPay.cs">
+      <Link>ApiData\Pos\Sale\Payment\StoredValueCardPay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\ThirdPartyPaymentManager.cs">
+      <Link>ApiData\Pos\Sale\Payment\ThirdPartyPaymentManager.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\ThirdPartyPaymentStatus.cs">
+      <Link>ApiData\Pos\Sale\Payment\ThirdPartyPaymentStatus.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\UnionPay.cs">
+      <Link>ApiData\Pos\Sale\Payment\UnionPay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\WeixinPay.cs">
+      <Link>ApiData\Pos\Sale\Payment\WeixinPay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Payment\ZhifubaoPay.cs">
+      <Link>ApiData\Pos\Sale\Payment\ZhifubaoPay.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Statistics\DayReport.cs">
+      <Link>ApiData\Pos\Sale\Statistics\DayReport.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Suspend\SaleSuspend.cs">
+      <Link>ApiData\Pos\Sale\Suspend\SaleSuspend.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Suspend\SuspendDetails.cs">
+      <Link>ApiData\Pos\Sale\Suspend\SuspendDetails.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\Suspend\SuspendList.cs">
+      <Link>ApiData\Pos\Sale\Suspend\SuspendList.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\ApiLibraryService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\ApiLibraryService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\BundlingService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\BundlingService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\ConsumptionPaymentService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\ConsumptionPaymentService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\DeviceRegInfoService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\DeviceRegInfoService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\MembersService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\MembersService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\NoticeService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\NoticeService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\PosIncomePayoutService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\PosIncomePayoutService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\ProductCategorySerivce.cs">
+      <Link>ApiData\Pos\Services\ServerServices\ProductCategorySerivce.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\ProductRecordService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\ProductRecordService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\SaleDetailService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\SaleDetailService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\SaleOrdersService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\SaleOrdersService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\SysStoreUserInfoService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\SysStoreUserInfoService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Services\ServerServices\WarehouseService.cs">
+      <Link>ApiData\Pos\Services\ServerServices\WarehouseService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\MachineInformation.cs">
+      <Link>ApiData\Pos\MachineInformation.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\User\PosInComePayoutMode.cs">
+      <Link>ApiData\Pos\User\PosInComePayoutMode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\Announcement.cs">
+      <Link>ApiData\Pos\ValueObject\Announcement.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\BillDetails.cs">
+      <Link>ApiData\Pos\ValueObject\BillDetails.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\BillHistory.cs">
+      <Link>ApiData\Pos\ValueObject\BillHistory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\BillListItem.cs">
+      <Link>ApiData\Pos\ValueObject\BillListItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\ChangeRefundItem.cs">
+      <Link>ApiData\Pos\ValueObject\ChangeRefundItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\DayReportDetailItem.cs">
+      <Link>ApiData\Pos\ValueObject\DayReportDetailItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\DayReportResult.cs">
+      <Link>ApiData\Pos\ValueObject\DayReportResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\DeviceType.cs">
+      <Link>ApiData\Pos\ValueObject\DeviceType.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\ReasonItem.cs">
+      <Link>ApiData\Pos\ValueObject\ReasonItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\PageInfo.cs">
+      <Link>ApiData\Pos\ValueObject\PageInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\PageResult.cs">
+      <Link>ApiData\Pos\ValueObject\PageResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\WarehouseManager.cs">
+      <Link>ApiData\Pos\Sale\WarehouseManager.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\MachinesSettings.cs">
+      <Link>ApiData\Pos\MachinesSettings.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\ProductDetails.cs">
+      <Link>ApiData\Pos\Sale\ProductDetails.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\SaleStatus.cs">
+      <Link>ApiData\Pos\Sale\SaleStatus.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\ShoppingCart.cs">
+      <Link>ApiData\Pos\Sale\ShoppingCart.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\ShoppingCartFactory.cs">
+      <Link>ApiData\Pos\Sale\ShoppingCartFactory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\User\Salesclerk.cs">
+      <Link>ApiData\Pos\User\Salesclerk.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\User\StoreOperateAuth.cs">
+      <Link>ApiData\Pos\User\StoreOperateAuth.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\GiftListItem.cs">
+      <Link>ApiData\Pos\ValueObject\GiftListItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\Sale\GiftMode.cs">
+      <Link>ApiData\Pos\Sale\GiftMode.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\GiftResult.cs">
+      <Link>ApiData\Pos\ValueObject\GiftResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\LoginParams.cs">
+      <Link>ApiData\Pos\ValueObject\LoginParams.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\LoginResult.cs">
+      <Link>ApiData\Pos\ValueObject\LoginResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\MemberCardHolder.cs">
+      <Link>ApiData\Pos\ValueObject\MemberCardHolder.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\OrderItem.cs">
+      <Link>ApiData\Pos\ValueObject\OrderItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\SalesmanDayReportResult.cs">
+      <Link>ApiData\Pos\ValueObject\SalesmanDayReportResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\SaleStatistics.cs">
+      <Link>ApiData\Pos\ValueObject\SaleStatistics.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\ApiData\Pos\ValueObject\UserInfo.cs">
+      <Link>ApiData\Pos\ValueObject\UserInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\BLL\BaseService.cs">
+      <Link>BLL\BaseService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\BLL\BaseGeneralService.cs">
+      <Link>BLL\BaseGeneralService.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Cache\ActiveMarketingRuleCache.cs">
+      <Link>ApiData\Pos\Cache\ActiveMarketingRuleCache.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Cache\MarketingRuleCache.cs">
+      <Link>ApiData\Pos\Cache\MarketingRuleCache.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\CommonEnums.cs">
+      <Link>CommonEnums.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\DAL\BaseRepository.cs">
+      <Link>DAL\BaseRepository.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\DAL\ContextFactory.cs">
+      <Link>DAL\ContextFactory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\DAL\EFDbContext.cs">
+      <Link>DAL\EFDbContext.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\EntityExtend\BasePromotion.cs">
+      <Link>EntityExtend\BasePromotion.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\EntityExtend\EntityExtends.cs">
+      <Link>EntityExtend\EntityExtends.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\EntityExtend\PromotBlend.cs">
+      <Link>EntityExtend\PromotBlend.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\EntityExtend\PromotionBundling.cs">
+      <Link>EntityExtend\PromotionBundling.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\BaseEntity.cs">
+      <Link>Entity\BaseEntity.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\DeviceRegInfo.cs">
+      <Link>Entity\DeviceRegInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\Inventory.cs">
+      <Link>Entity\Inventory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\InventoryBalance.cs">
+      <Link>Entity\InventoryBalance.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\InventoryRecord.cs">
+      <Link>Entity\InventoryRecord.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\MemberIntegralSet.cs">
+      <Link>Entity\MemberIntegralSet.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\ApiLibrary.cs">
+      <Link>Entity\ApiLibrary.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\BaseEntityExtension.cs">
+      <Link>Entity\BaseEntityExtension.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\BaseOrder.cs">
+      <Link>Entity\BaseOrder.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\BaseProduct.cs">
+      <Link>Entity\BaseProduct.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\Bundling.cs">
+      <Link>Entity\Bundling.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\BundlingList.cs">
+      <Link>Entity\BundlingList.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\CommodityDiscount.cs">
+      <Link>Entity\CommodityDiscount.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\InventoryValidity.cs">
+      <Link>Entity\InventoryValidity.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\SaleOrderHistory.cs">
+      <Link>Entity\SaleOrderHistory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\Views\VwSaleDetail.cs">
+      <Link>Entity\Views\VwSaleDetail.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\WipeZero.cs">
+      <Link>Entity\WipeZero.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\CommodityPromotion.cs">
+      <Link>Entity\CommodityPromotion.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\ConsumptionPayment.cs">
+      <Link>Entity\ConsumptionPayment.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\FreeGiftPurchase.cs">
+      <Link>Entity\FreeGiftPurchase.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\FreeGiftPurchaseList.cs">
+      <Link>Entity\FreeGiftPurchaseList.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\MemberIntegral.cs">
+      <Link>Entity\MemberIntegral.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\Members.cs">
+      <Link>Entity\Members.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\Notice.cs">
+      <Link>Entity\Notice.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\PosIncomePayout.cs">
+      <Link>Entity\PosIncomePayout.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\ProductBrand.cs">
+      <Link>Entity\ProductBrand.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\ProductCategory.cs">
+      <Link>Entity\ProductCategory.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\ProductChangePrice.cs">
+      <Link>Entity\ProductChangePrice.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\ProductGroup.cs">
+      <Link>Entity\ProductGroup.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\ProductMultSupplier.cs">
+      <Link>Entity\ProductMultSupplier.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\ProductMultPrice.cs">
+      <Link>Entity\ProductMultPrice.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\ProductRecord.cs">
+      <Link>Entity\ProductRecord.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\PromotionBlend.cs">
+      <Link>Entity\PromotionBlend.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\PromotionBlendList.cs">
+      <Link>Entity\PromotionBlendList.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\SaleDetail.cs">
+      <Link>Entity\SaleDetail.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\SaleOrders.cs">
+      <Link>Entity\SaleOrders.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\SalesRecord.cs">
+      <Link>Entity\SalesRecord.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\Views\VwOrder.cs">
+      <Link>Entity\Views\VwOrder.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\Views\VwProduct.cs">
+      <Link>Entity\Views\VwProduct.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Entity\Warehouse.cs">
+      <Link>Entity\Warehouse.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\ApiLibraryMap.cs">
+      <Link>Mapping\ApiLibraryMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\BundlingListMap.cs">
+      <Link>Mapping\BundlingListMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\DeviceRegInfoMap.cs">
+      <Link>Mapping\DeviceRegInfoMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\InventoryBalanceMap.cs">
+      <Link>Mapping\InventoryBalanceMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\InventoryMap.cs">
+      <Link>Mapping\InventoryMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\InventoryRecordMap.cs">
+      <Link>Mapping\InventoryRecordMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\InventoryValidityMap.cs">
+      <Link>Mapping\InventoryValidityMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\MemberIntegralSetMap.cs">
+      <Link>Mapping\MemberIntegralSetMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\SaleMarketingMap.cs">
+      <Link>Mapping\SaleMarketingMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\SaleOrderHistoryMap.cs">
+      <Link>Mapping\SaleOrderHistoryMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\VwSaleDetailMap.cs">
+      <Link>Mapping\VwSaleDetailMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\WipeZeroMap.cs">
+      <Link>Mapping\WipeZeroMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\BundlingMap.cs">
+      <Link>Mapping\BundlingMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\NoticeMap.cs">
+      <Link>Mapping\NoticeMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\CommodityDiscountMap.cs">
+      <Link>Mapping\CommodityDiscountMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\CommodityPromotionMap.cs">
+      <Link>Mapping\CommodityPromotionMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\ConsumptionPaymentMap.cs">
+      <Link>Mapping\ConsumptionPaymentMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\FreeGiftPurchaseListMap.cs">
+      <Link>Mapping\FreeGiftPurchaseListMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\FreeGiftPurchaseMap.cs">
+      <Link>Mapping\FreeGiftPurchaseMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\MemberIntegralMap.cs">
+      <Link>Mapping\MemberIntegralMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\MembersMap.cs">
+      <Link>Mapping\MembersMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\ProductChangePriceMap.cs">
+      <Link>Mapping\ProductChangePriceMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\PosIncomePayoutMap.cs">
+      <Link>Mapping\PosIncomePayoutMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\ProductBrandMap.cs">
+      <Link>Mapping\ProductBrandMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\PromotionBlendListMap.cs">
+      <Link>Mapping\PromotionBlendListMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\PromotionBlendMap.cs">
+      <Link>Mapping\PromotionBlendMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\SaleDetailMap.cs">
+      <Link>Mapping\SaleDetailMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\SaleOrdersMap.cs">
+      <Link>Mapping\SaleOrdersMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\SysDataDictMap.cs">
+      <Link>Mapping\SysDataDictMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\SysStoreUserInfoMap.cs">
+      <Link>Mapping\SysStoreUserInfoMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\VwOrderDistributionMap.cs">
+      <Link>Mapping\VwOrderDistributionMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\WarehouseMap.cs">
+      <Link>Mapping\WarehouseMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\SysLogMap.cs">
+      <Link>Mapping\SysLogMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\VwProductMap.cs">
+      <Link>Mapping\VwProductMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\ProductMap.cs">
+      <Link>Mapping\ProductMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\ProductCategoryMap.cs">
+      <Link>Mapping\ProductCategoryMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\SysDataDictionaryMap.cs">
+      <Link>Mapping\SysDataDictionaryMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\Sys_UserMap.cs">
+      <Link>Mapping\Sys_UserMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Mapping\VwOrderMap.cs">
+      <Link>Mapping\VwOrderMap.cs</Link>
+    </Compile>
+    <Compile Include="..\Pharos.Logic\Properties\AssemblyInfo.cs">
+      <Link>Properties\AssemblyInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\pharos.service.retailing\marketing\MarketingManager.cs">
+      <Link>ApiData\Pos\Marketing\MarketingManager.cs</Link>
+    </Compile>
+    <Compile Include="ApiData\Pos\DAL\SyncDbContextFactory.cs" />
+    <Compile Include="ApiData\Pos\Entity\LocalCeEntity\Extensions\CommodityPromotion.cs" />
+    <Compile Include="ApiData\Pos\Entity\LocalCeEntity\Extensions\MemberIntegralSet.cs" />
+    <Compile Include="ApiData\Pos\Entity\LocalCeEntity\Extensions\SaleOrders.cs" />
+    <Compile Include="ApiData\Pos\Entity\LocalCeEntity\MemberIntegralSet.cs" />
+    <Compile Include="ApiData\Pos\Entity\LocalCeEntity\MemberIntegralSetList.cs" />
+    <Compile Include="ApiData\Pos\ValueObject\ProductStatus.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="job_scheduling_data_2_0.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Pharos.DBFramework\Pharos.DBFramework.csproj">
+      <Project>{e768d141-11f8-4fcd-811f-d055ad10e8a8}</Project>
+      <Name>Pharos.DBFramework</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Pharos.Infrastructure.Data\Pharos.Infrastructure.Data.csproj">
+      <Project>{27352584-9cec-4f63-9bb5-e84e71163d6a}</Project>
+      <Name>Pharos.Infrastructure.Data</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Pharos.ObjectModels\Pharos.ObjectModels.csproj">
+      <Project>{6ba8d612-1743-4176-b0ef-d4c5b2d85019}</Project>
+      <Name>Pharos.ObjectModels</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Pharos.Sys\Pharos.Sys.csproj">
+      <Project>{efb916a9-b7f8-405e-bd0a-bf70ba664626}</Project>
+      <Name>Pharos.Sys</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Pharos.Utility\Pharos.Utility.csproj">
+      <Project>{53f170da-d921-4c99-bcef-e5a3fc0183d7}</Project>
+      <Name>Pharos.Utility</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\packages\System.Data.SQLite.Core.1.0.97.0\build\net40\System.Data.SQLite.Core.targets" Condition="Exists('..\packages\System.Data.SQLite.Core.1.0.97.0\build\net40\System.Data.SQLite.Core.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>这台计算机上缺少此项目引用的 NuGet 程序包。启用“NuGet 程序包还原”可下载这些程序包。有关详细信息，请参阅 http://go.microsoft.com/fwlink/?LinkID=322105。缺少的文件是 {0}。</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\System.Data.SQLite.Core.1.0.97.0\build\net40\System.Data.SQLite.Core.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.Data.SQLite.Core.1.0.97.0\build\net40\System.Data.SQLite.Core.targets'))" />
+  </Target>
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
+  <Import Project="..\packages\Microsoft.Bcl.Build.1.0.14\tools\Microsoft.Bcl.Build.targets" Condition="Exists('..\packages\Microsoft.Bcl.Build.1.0.14\tools\Microsoft.Bcl.Build.targets')" />
+  <Target Name="EnsureBclBuildImported" BeforeTargets="BeforeBuild" Condition="'$(BclBuildImported)' == ''">
+    <Error Condition="!Exists('..\packages\Microsoft.Bcl.Build.1.0.14\tools\Microsoft.Bcl.Build.targets')" Text="This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=317567." HelpKeyword="BCLBUILD2001" />
+    <Error Condition="Exists('..\packages\Microsoft.Bcl.Build.1.0.14\tools\Microsoft.Bcl.Build.targets')" Text="The build restored NuGet packages. Build the project again to include these packages in the build. For more information, see http://go.microsoft.com/fwlink/?LinkID=317568." HelpKeyword="BCLBUILD2002" />
+  </Target>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

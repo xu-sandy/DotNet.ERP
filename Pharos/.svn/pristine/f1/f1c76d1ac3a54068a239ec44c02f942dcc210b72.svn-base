@@ -1,0 +1,30 @@
+﻿using Pharos.POS.Retailing.ChildWin.Pay;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.HotKeyHelper;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.HotKeyCommands
+{
+    public class WeChatCommand : IHotKeyCommand
+    {
+        public Action<Window> Handler
+        {
+            get
+            {
+                return new Action<Window>((win) =>
+                {
+                    if (PosViewModel.Current.OrderList.Count > 0)
+                    {
+                        WeChat page = new WeChat(PosViewModel.Current.Receivable, PosModels.PayAction.Sale);
+                        page.Owner = win;
+                        page.ShowDialog();
+                    }
+                });
+            }
+        }
+    }
+}

@@ -1,0 +1,211 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Sys.Entity;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+using Pharos.Logic.ApiData.Mobile.Exceptions;
+using System.Collections;
+
+namespace Pharos.Logic.BLL
+{
+    public class UserInfoService : BaseService<SysUserInfo>
+    {
+        public static SysUserInfo GetUserInfo(string id)
+        {
+            return UserInfoService.Find(o => o.UID == id);
+        }
+
+        public static object GetUsers(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var result = UserInfoService.CurrentRepository.QueryEntity;
+            var organizationId = nvl["organizationId"].IsNullOrEmpty() ? -1 : int.Parse(nvl["organizationId"]);
+            var departmentId = nvl["departmentId"].IsNullOrEmpty() ? -1 : int.Parse(nvl["departmentId"]);
+            var roleGroupsId = nvl["roleGroupsId"];
+            var searchText = nvl["searchText"];
+            var express = DynamicallyLinqHelper.True<SysUserInfo>().And(o => o.BranchId == organizationId, organizationId==-1).And(o => o.BumenId == departmentId, departmentId==-1)
+                .And(o => o.RoleIds != null && o.RoleIds.Contains(roleGroupsId), roleGroupsId.IsNullOrEmpty()).And(o => (o.FullName.Contains(searchText) || o.LoginName.Contains(searchText)), searchText.IsNullOrEmpty());
+            result = result.Where(express);
+            recordCount = result.Count();
+            var list = result.ToPageList();
+            var orgIds = list.Select(o => o.BranchId).Distinct().ToList();
+            var deptIds = list.Select(o => o.BumenId).Distinct().ToList();
+            var roleIds = list.Where(o => o.RoleIds != null).SelectMany(o => o.RoleIds.Split(',')).Select(o=>int.Parse(o)).Distinct().ToList();
+            var orgs = DepartmentInfoService.FindList(o => orgIds.Contains(o.Id));
+            var depts = DepartmentInfoService.FindList(o => deptIds.Contains(o.Id));
+            var roles = RoleInfoService.FindList(o => roleIds.Contains(o.Id));
+            return list.Select(o => new
+            {
+                o.Id,
+                o.FullName,
+                o.LoginName,
+                o.BranchId,
+                o.BumenId,
+                o.RoleIds,
+                o.PositionId,
+                Sex = o.Sex ? "男" : "女",
+                PositionName = o.PositionId,
+                OrganizationName = OrganizationName(o.BranchId, orgs),
+                DepartmentName = DepartmentName(o.BumenId, orgs),
+                RolesName = RolesName(o.RoleIds, roles),
+            });
+        }
+        public static SysUserInfo GetStoreUserBy(string loginname,string password,string storeid)
+        {
+            var query = from x in CurrentRepository.Entities
+                        join y in BaseService<SysStoreUserInfo>.CurrentRepository.Entities on x.UID equals y.UID
+                        where x.Status==1 && y.OperateAuth!=null && y.OperateAuth.Contains(storeid+",1") && x.LoginName == loginname && y.LoginPwd == password
+                        select x;
+            return query.FirstOrDefault();
+        }
+        public static List<SysUserInfo> GetList()
+        {
+            return FindList(null);
+        }
+        public static object GetUserAndSup(string loginName,string password="")
+        {
+            var qu= CurrentRepository.QueryEntity;
+            var qs= SupplierService.CurrentRepository.QueryEntity;
+            if(!loginName.IsNullOrEmpty() && !password.IsNullOrEmpty())
+            {
+                qu=qu.Where(o=>o.LoginName==loginName && o.LoginPwd==password);
+            }
+            var query = from x in qu
+                        join y in DepartmentInfoService.CurrentRepository.QueryEntity on x.BumenId equals y.DepId
+                        where y.Type==2 && x.Status==1
+                        select new { 
+                            x.UserCode,
+                            Account=x.LoginName,
+                            x.FullName,
+                            Sex=x.Sex?"男":"女",
+                            x.Signature,
+                            x.PhotoUrl,
+                            Department= y.Title,
+                            Type="职员",
+                            x.RoleIds,
+                            x.UID
+                        };
+            if(!loginName.IsNullOrEmpty() && !password.IsNullOrEmpty())
+            {
+                qs=qs.Where(o=>o.MasterAccount==loginName && o.MasterPwd==password);
+            }
+            var query2 = from x in qs
+                    where x.MasterAccount!=null && x.MasterAccount!="" && x.BusinessType==1 && x.MasterState==1
+                    select new {
+                        UserCode=x.Id,
+                        Account=x.MasterAccount,
+                        FullName=x.Title,
+                        Sex="",
+                        Signature="",
+                        PhotoUrl="",
+                        Department="",
+                        Type = "供应商",
+                        RoleIds="",
+                        UID = ""
+                    };
+            var q = query.Union(query2);
+            if(!loginName.IsNullOrEmpty() && password.IsNullOrEmpty())
+            {
+                return q.FirstOrDefault(o => o.Account == loginName);
+            }
+            return q.FirstOrDefault();
+        }
+        public static void UpdatePassword(string loginName,string oldpassword,string newpassword)
+        {
+            if (loginName.IsNullOrEmpty())
+                throw new MessageException("帐号为空!");
+            if (oldpassword.IsNullOrEmpty())
+                throw new MessageException("原密码为空!");
+            if (newpassword.IsNullOrEmpty())
+                throw new MessageException("新密码为空!");
+            var user= Find(o => o.LoginName == loginName && o.LoginPwd == oldpassword);
+            if (user != null)
+            {
+                user.LoginPwd = newpassword;
+                Update(user);
+            }
+            else
+            {
+                var supp = SupplierService.Find(o => o.MasterAccount == loginName && o.MasterPwd == oldpassword);
+                if (supp != null)
+                {
+                    supp.MasterPwd = newpassword;
+                    SupplierService.Update(supp);
+                }
+                else
+                    throw new MessageException("帐号或密码错误!");
+            }
+
+        }
+        public static void UpdateHandsign(string loginName, string oldpassword, string newpassword)
+        {
+            if (loginName.IsNullOrEmpty())
+                throw new MessageException("帐号为空!");
+            if (newpassword.IsNullOrEmpty())
+                throw new MessageException("新密码为空!");
+            var user = Find(o => o.LoginName == loginName && (o.LoginPwd == oldpassword || oldpassword==""));
+            if (user != null)
+            {
+                user.Handsign = newpassword;
+                Update(user);
+            }
+            else
+            {
+                var supp = SupplierService.Find(o => o.MasterAccount == loginName && (o.MasterPwd == oldpassword || oldpassword==""));
+                if (supp != null)
+                {
+                    supp.Handsign = newpassword;
+                    SupplierService.Update(supp);
+                }
+                else
+                    throw new MessageException("帐号或密码错误!");
+            }
+
+        }
+        public static object GetHandsign(string loginName)
+        {
+            if (loginName.IsNullOrEmpty())
+                throw new MessageException("帐号为空!");
+            var user = Find(o => o.LoginName == loginName);
+            if (user != null && !user.Handsign.IsNullOrEmpty())
+            {
+                return new { user.LoginName, user.Handsign,user.LoginPwd };
+            }
+            else
+            {
+                var supp = SupplierService.Find(o => o.MasterAccount == loginName);
+                if (supp != null && !supp.Handsign.IsNullOrEmpty())
+                {
+                    return new { LoginName = supp.MasterAccount, Handsign = supp.Handsign, LoginPwd=supp.MasterPwd };
+                }
+            }
+            return null;
+        }
+        static string OrganizationName(int id, List<Entity.SysDepartments> list)
+        {
+            if (id==0) return "";
+            var obj = list.FirstOrDefault(o => o.Id == id);
+            if (obj == null) return "";
+            return obj.Title;
+        }
+        static string DepartmentName(int id, List<Entity.SysDepartments> list)
+        {
+            if (id.IsNullOrEmpty()) return "";
+            var obj = list.FirstOrDefault(o => o.Id == id);
+            if (obj == null) return "";
+            return obj.Title;
+        }
+        static string RolesName(string ids, List<Entity.SysRoles> list)
+        {
+            if (ids.IsNullOrEmpty()) return "";
+            var roleIds = ids.Split(',').Select(o=>int.Parse(o));
+            var sels = list.Where(o => roleIds.Contains(o.Id)).Select(o => o.Title);
+            if (!sels.Any()) return ids;
+            return string.Join(",", sels);
+        }
+    }
+
+
+}

@@ -1,0 +1,74 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Web.Http.Filters;
+#if (Local!= true)
+using Pharos.Logic.ApiData.Mobile.Exceptions;
+#endif
+using Pharos.Api.Retailing.Models;
+namespace Pharos.Api.Retailing
+{
+    public class ApiExceptionFilterAttribute : ExceptionFilterAttribute
+    {
+        public override void OnException(HttpActionExecutedContext actionExecutedContext)
+        {
+            if (actionExecutedContext.Exception == null) return;
+            var result = new ApiRetrunResult<object>();
+#if (Local!= true)
+
+            if (actionExecutedContext.Exception is LoginExecption)
+            {
+                var ex = actionExecutedContext.Exception as LoginExecption;//登陆
+                result.Code = ex.ErrorCode ?? "401";
+                result.Message = ex.Message;
+                var code = (System.Net.HttpStatusCode)Enum.Parse(typeof(System.Net.HttpStatusCode), result.Code, true);
+                var response = actionExecutedContext.Request.CreateResponse<ApiRetrunResult<object>>(System.Net.HttpStatusCode.OK, result, "application/json");
+                actionExecutedContext.Response = response;
+            }
+            else if (actionExecutedContext.Exception is MessageException)//验证
+            {
+                var ex = actionExecutedContext.Exception as MessageException;
+                result.Code = ex.ErrorCode ?? "501";
+                result.Message = ex.Message;
+                var code = (System.Net.HttpStatusCode)Enum.Parse(typeof(System.Net.HttpStatusCode), result.Code, true);
+                var response = actionExecutedContext.Request.CreateResponse<ApiRetrunResult<object>>(System.Net.HttpStatusCode.OK, result, "application/json");
+                actionExecutedContext.Response = response;
+            }
+            else
+#endif
+                if (actionExecutedContext.Exception is Pharos.Logic.ApiData.Pos.Exceptions.PosException)//Pos APP验证 为将来提POS通用业务逻辑方便，不与Mobile耦合
+                {
+                    var ex = actionExecutedContext.Exception as Pharos.Logic.ApiData.Pos.Exceptions.PosException;
+                    result.Code = ex.ErrorCode ?? "501";
+                    result.Message = ex.Message;
+                    result.ErrorInfo = ex.Info;
+                    var code = (System.Net.HttpStatusCode)Enum.Parse(typeof(System.Net.HttpStatusCode), result.Code, true);
+                    var response = actionExecutedContext.Request.CreateResponse<ApiRetrunResult<object>>(System.Net.HttpStatusCode.OK, result, "application/json");
+                    actionExecutedContext.Response = response;
+                }
+                else//操作异常
+                {
+                    var ex = actionExecutedContext.Exception;
+                    ex.Source += ",地址:" + actionExecutedContext.Request.RequestUri.AbsolutePath;
+#if (Local!= true)
+                    new Sys.LogEngine().WriteError(ex, Sys.LogModule.APP手机端);
+#endif
+#if Local
+                Common.Logging.ILog logger = Common.Logging.LogManager.GetLogger(System.Reflection.Assembly.GetExecutingAssembly().GetName().Name);
+                logger.Error(ex.Message, ex);
+#endif
+                    result.Code = "500";
+                    result.Message = string.Format("服务器配置出错或发生异常：{0}！", ex.Message);
+                    var code = (System.Net.HttpStatusCode)Enum.Parse(typeof(System.Net.HttpStatusCode), result.Code, true);
+                    var response = actionExecutedContext.Request.CreateResponse<ApiRetrunResult<object>>(System.Net.HttpStatusCode.OK, result, "application/json");
+                    actionExecutedContext.Response = response;
+                }
+            actionExecutedContext.Response.Headers.Add("Access-Control-Allow-Origin", "*");
+#if (Local!= true)
+            Pharos.Component.qrcode.Log.Debug(actionExecutedContext.Request.RequestUri.AbsolutePath, actionExecutedContext.Exception.Message);
+#endif
+        }
+    }
+}

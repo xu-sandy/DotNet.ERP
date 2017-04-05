@@ -1,0 +1,256 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Models;
+using QCT.Pay.Common;
+using QCT.Pay.Common.Models;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Text;
+using System.Web;
+using Pharos.Utility.Helpers;
+using Newtonsoft.Json;
+using System.Collections;
+
+namespace QCT.Api.Pay.Utils
+{
+    /// <summary>
+    /// SxfPay 管理器
+    /// </summary>
+    public class SxfPayManager
+    {
+        /// <summary>
+        /// 日志记录引擎
+        /// </summary>
+        [Ninject.Inject]
+        protected LogEngine LogEngine { get; set; }
+        /// <summary>
+        /// 支付交易Service
+        /// </summary>
+        [Ninject.Inject]
+        PayTradeService PayTradeSvc { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        internal QctPayReturn QRPay(PayBuyerScanDynaRequest reqObj)
+        {
+            var result = QctPayReturn.Fail(msg: "参数格式错误");
+            //验证参数格式，判断商户权限（1、支付许可权限；2、商家支付通道权限；3、商家接口调用权限；）
+            var checkObjZS = CheckAccessAndValidate<PayBuyerScanDynaRequest>(reqObj, (short)PayOperateType.Receipt);
+            if (checkObjZS.Successed == false)
+                return checkObjZS;
+            else
+            {
+                var merchObj = (TradersChannelModel)checkObjZS.Data;
+                //创建主扫支付动态支付订单
+                var order = PayTradeSvc.CreateBuyerScanDynaOrder(reqObj, merchObj);
+                if (order == null)
+                    return QctPayReturn.Fail(msg: "订单号或商户门店信息错误");
+                else
+                {
+                    //构建Sxf请求参数，签名，发起请求
+                    var sxfBuildReq = new SxfBuildPayTokenRequest(order, PayConfig.SxfNotifyUrl);
+                    var rstObj = SendPostSxf<SxfBuildPayTokenRequest, SxfBuildPayTokenResponse>(sxfBuildReq, order, merchObj);
+                    if (rstObj.Successed)
+                    {
+                        //处理返回成功结果，将返回结果进行Qct签名并返回给商户，fishtodo:暂忽略验证Sxf返回的响应结果签名
+                        var resultObj = new PayBuyerScanDynaResponse(order, (SxfBuildPayTokenResponse)rstObj.Data);
+                        return QctPayReturn.Success(data: resultObj.PayToken);
+                    }
+                    return rstObj;
+                }
+            }
+        }
+        /// <summary>
+        /// 转换为排序字典并添加签名
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="reqModel"></param>
+        /// <param name="secretKey"></param>
+        /// <returns></returns>
+        internal Dictionary<string, object> ToDicAndSign<T>(T reqModel, string secretKey, string signField)
+        {
+            var dicMap = ToASCIIDictionary(reqModel);
+            return SetSign(dicMap, secretKey, signField);
+        }
+        /// <summary>
+        /// 数据字典对象添加签名属性
+        /// </summary>
+        /// <param name="dicMap"></param>
+        /// <param name="secretKey"></param>
+        /// <param name="signField"></param>
+        /// <returns></returns>
+        internal Dictionary<string, object> SetSign(Dictionary<string, object> dicMap, string secretKey, string signField)
+        {
+            dicMap.Remove(signField);
+            var sign = PayRules.Sign(dicMap, secretKey);
+            dicMap.Add(signField, sign);
+            return dicMap;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal Dictionary<string, object> ToASCIIDictionary<T>(T model)
+        {
+            var dicMap = new Dictionary<string, object>();
+            var type = typeof(T);
+            foreach (var item in type.GetProperties())
+            {
+                var attrs = item.GetCustomAttributes(typeof(JsonPropertyAttribute), false);
+                var value = item.GetValue(model);
+                if (!item.PropertyType.IsGenericType)
+                {
+                    if (attrs.Length > 0)
+                    {
+                        var key = ((JsonPropertyAttribute)attrs[0]).PropertyName;
+                        value = value == null ? "" : value;
+                        dicMap.Add(key, value);
+                    }
+                }
+            }
+            dicMap = dicMap.OrderBy(s => s.Key, StringComparer.Ordinal).ToDictionary(k => k.Key, v => v.Value);
+            return dicMap;
+        }
+        /// <summary>
+        /// 验证参数格式，判断商户权限（1、支付许可权限；2、商家支付通道权限；3、商家接口调用权限；）
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="pms"></param>
+        /// <returns></returns>
+        private QctPayReturn CheckAccessAndValidate<T>(T pms, short optType) where T : BaseTradeRequest
+        {
+            var errMsg = pms.TryValidateObject(pms);
+            if (!errMsg.IsNullOrEmpty())
+            {
+                return QctPayReturn.Fail(msg: errMsg);
+            }
+            //判断商户权限（1、支付许可权限；2、商家支付通道权限；3、商家接口通道权限；）
+            var checkObj = PayTradeSvc.CheckMerchAccess(pms.CID, pms.Method, pms.Version.ToType<decimal>(), optType);
+            return checkObj;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="RT"></typeparam>
+        /// <param name="sxfReq"></param>
+        /// <param name="order"></param>
+        /// <param name="merchObj"></param>
+        /// <returns></returns>
+        internal QctPayReturn SendPostSxf<T, RT>(T sxfReq, TradeOrder order, TradersChannelModel merchObj)
+            where T : SxfPayRequest
+            where RT : SxfBaseTradeResponse
+        {
+            var result = QctPayReturn.Fail(msg: "参数格式错误");
+            var rstStrSxf = SendPost(PayConfig.SxfPayUrl, ToDicAndSign(sxfReq, merchObj.SecretKey3, "signature"));
+            var rstObjSxf = JsonConvert.DeserializeObject<RT>(rstStrSxf);
+            if (rstObjSxf.IsSuccess())
+            {
+                return QctPayReturn.Success(data: rstObjSxf);
+            }
+            else
+            {
+                //处理返回失败结果
+                LogEngine.WriteError(string.Format("[QctPay{0}支付订单请求返回错误，订单号：{1}，返回参数：{2}]", typeof(T).ToString(), sxfReq.OutTradeNo, rstStrSxf), null, LogModule.支付交易);
+                result = QctPayReturn.Fail(rstObjSxf.ReturnCode, rstObjSxf.ReturnMsg);
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// 创建请求
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        internal string SendPost(string url, Dictionary<string, object> reqParams)
+        {
+            var paramsStr = ToParamsStr(reqParams);
+            var result = SendPost(url, paramsStr);
+            return result;
+        }
+        /// <summary>
+        /// Post提交支付接口
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="paramsStr"></param>
+        /// <returns></returns>
+        internal string SendPost(string url, string paramsStr)
+        {
+            var httpRequest = (HttpWebRequest)WebRequest.Create(url);
+            httpRequest.Method = "POST";
+            httpRequest.ContentType = "application/x-www-form-urlencoded";
+            httpRequest.Timeout = 40000;
+            byte[] byteRequest = System.Text.Encoding.UTF8.GetBytes(paramsStr);
+            httpRequest.ContentLength = byteRequest.Length;
+            Stream requestStream = httpRequest.GetRequestStream();
+            requestStream.Write(byteRequest, 0, byteRequest.Length);
+            requestStream.Close();
+
+            //获取服务端返回
+            var response = (HttpWebResponse)httpRequest.GetResponse();
+            //获取服务端返回数据
+            StreamReader sr = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+            var result = sr.ReadToEnd().Trim();
+            sr.Close();
+            return result;
+        }
+        internal string ToParamsStr(Dictionary<string, object> obj)
+        {
+            StringBuilder signdatasb = new StringBuilder();
+            foreach (var item in obj)
+            {
+                String key = item.Key;
+                var objVal = obj[key];
+                if (!(objVal is IEnumerable && objVal.GetType().IsGenericType))
+                {
+                    String value = objVal == null ? "" : objVal.ToString();
+                    signdatasb.Append("&").Append(key).Append("=").Append(value);
+                }
+            }
+            return signdatasb.ToString().Substring(1);
+        }
+        #region 过期代码
+        ///// <summary>
+        ///// 请求参数构造
+        ///// </summary>
+        ///// <typeparam name="T"></typeparam>
+        ///// <param name="trade"></param>
+        ///// <returns></returns>
+        //public static T GetSxfRequest<T>(TradeOrder trade)where T:SxfBaseTradeRequest,new(){
+        //    SxfBaseTradeRequest obj = new T();
+        //    obj.CharSet = PayConst.SXF_DEF_CHARSET;
+        //    obj.MchId = trade.MchId3;
+        //    obj.StoreId = trade.StoreId3;
+        //    obj.DeviceId = trade.StoreId3;
+        //    obj.SignType = PayConst.SXF_DEF_SIGNTYPE;
+        //    obj.Version = PayConst.SXF_DEF_VERSION;
+        //    return obj as T;
+        //}
+        ///// <summary>
+        ///// 获取公共的请求参数
+        ///// </summary>
+        ///// <param name="trade"></param>
+        ///// <returns></returns>
+        //public static SortedDictionary<string, object> GetSxfBaseRequest(TradeOrder trade)
+        //{
+        //    var sortDic = new SortedDictionary<string, object>();
+        //    //fishtodo:charSet signType 修改为实际请求时的类型
+        //    sortDic.Add("charSet", PayConst.SXF_DEF_CHARSET);
+        //    sortDic.Add("merchantId", trade.MchId3);
+        //    sortDic.Add("shopId", trade.StoreId3);
+        //    sortDic.Add("terminalId", trade.DeviceId3);
+        //    sortDic.Add("signType", PayConst.SXF_DEF_SIGNTYPE);
+        //    sortDic.Add("version", PayConst.SXF_DEF_VERSION);
+        //    return sortDic;
+        //}
+        #endregion
+    }
+}

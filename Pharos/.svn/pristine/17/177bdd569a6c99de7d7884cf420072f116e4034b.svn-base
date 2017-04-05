@@ -1,0 +1,126 @@
+﻿@{
+    ViewBag.Title = "TakeCouponIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增赠送规则", delText: "删除活动", hideDel: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox" name="State">
+                    <option value="-1">全部</option>
+                    <option value="0">未开始</option>
+                    <option value="1">活动中</option>
+                    <option value="2">已过期</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>创建人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("createUID", ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "" })
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="updateState(2)">设为已过期</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindRechargeGiftPageList")";
+    pharos.manager.editurl = "@Url.Action("CreateRechargeGift")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        {
+            field: 'State', title: '状态', width: 80, formatter: function (value, row, index) {
+                switch (value) {
+                    case 0:
+                        return "未开始";
+                    case 1:
+                        return "活动中";
+                    case 2:
+                        return "已过期";
+                }
+            }
+        },
+        {
+            field: 'Stage', title: '分期', width: 80, formatter: function (value, row, index) {
+                switch (value) {
+                    case 0:
+                        return "即时";
+                    case 1:
+                        return "分期";
+                }
+            }
+        },
+        {
+            field: 'GiftProject', title: '赠送项目', width: 80, formatter: function (value) {
+                switch (value) {
+                    case 0:
+                        return "返现";
+                    case 1:
+                        return "返积分";
+                }
+            }
+        },
+        {
+            field: 'Category', title: '赠送类型', width: 80, formatter: function (value) {
+                switch (value) {
+                    case 0:
+                        return "充值";
+                    case 1:
+                        return "消费";
+                }
+            }
+        },
+        {
+            field: 'ConditionValue', title: '赠送', width: 80, formatter: function (value, row, index) {
+                return "充" + value + "送" + row.GiftsValue;
+            }
+        },
+        {
+            field: 'LimitNumber', title: '限量', width: 80, formatter: function (value) {
+                if (value == -1) {
+                    return "不限";
+                } else {
+                    return value;
+                }
+            }
+        },
+        {
+            field: 'ExpiryStart', title: '有效期限', width: 130, formatter: function (value, row, index) {
+                return value + "~" + row.ExpiryEnd;
+            }
+        },
+        { field: 'ExpiryEnd', hidden: true },
+        { field: 'GiftsValue', hidden: true },
+        { field: 'CreateDT', title: '创建时间', width: 80 },
+        { field: 'CreateUID', title: '创建人', width: 80 },
+    ]];
+    pharos.manager.addItem = function () {
+        openDialog800(this.addText, this.editurl);
+    }
+    pharos.manager.editItem = function (id, row) {
+        openDialog800(this.addText, this.editurl + "?id=" + id);
+    }
+    function updateState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("UpdateRechargeGiftState")", { state: state, ids: ids }, function (result) {
+            if (result.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + result.message, "error");
+            }
+        }, "json");
+    }
+</script>

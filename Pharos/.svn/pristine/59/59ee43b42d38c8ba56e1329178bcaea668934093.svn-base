@@ -1,0 +1,205 @@
+﻿@model VwOrder
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div id="orderDetailDialog">
+    <style>
+        #querybar tr td { width: 150px; }
+
+        .left_td { width: 100px; text-align: right; }
+
+        .foottotal { border-left: 0; border-right: 0; }
+
+        #deliveryRecord tr td { width: 125px; }
+    </style>
+
+    <table style="font-size:14px; line-height:40px;" id="querybar">
+        <tr>
+            <td class="left_td">订单号：</td>
+            <td>
+                @Model.IndentOrderId
+            </td>
+            <td class="left_td">订货单位：</td>
+            <td>
+                @Model.StoreTitle
+            </td>
+            <td class="left_td">下单人：</td>
+            <td>
+                @Model.CreateTitle
+            </td>
+            <td class="left_td">下单日期：</td>
+            <td>
+                @Model.CreateDT.ToString("yyyy-MM-dd")
+            </td>
+        </tr>
+        <tr>
+            <td class="left_td">收货人：</td>
+            <td>
+                @Model.RecipientsTitle
+            </td>
+            <td class="left_td">应交货日期：</td>
+            <td>
+                @Model.DeliveryDate
+            </td>
+            <td class="left_td">收货地址：</td>
+            <td>
+                @Model.ShippingAddress
+            </td>
+            <td class="left_td">联系电话：</td>
+            <td>
+                @Model.Phone
+            </td>
+
+
+
+        </tr>
+    </table>
+
+    <div style="width: 100%; height: 1px; border-bottom: 1px dashed #999999;"></div>
+
+    <div style="margin-left: 20px; margin-right: 20px; margin-top: 20px; margin-bottom:10px; ">
+        <table class="easyui-datagrid" id="orderdetail" style="line-height: 30px; border-color: #797979; "
+               data-options="url:'@Url.Action("LoadDetailList")',queryParams:{orderId:'@Model.IndentOrderId'},showFooter:false,renderFooter:function(target, container, frozen){alert('foot')},border:true,rownumbers:true,fitColumns:true,pagination:false,singleSelect: true,title:'订 货 单',onLoadError:loadError,idField:'Id',onClickCell:clickCell ">
+            <thead>
+                <tr>
+                    <th data-options="field:'ProductCode',editor:{type:'textbox',options:{disabled:true}}" width="80" align="center">货号</th>
+                    <th data-options="field:'Barcode',editor:{type:'textbox',options:{disabled:true}}" width="110" align="center">条码</th>
+                    <th data-options="field:'Title',editor:{type:'textbox',options:{disabled:true}}" width="120" align="center">品名</th>
+                    <th data-options="field:'SubUnit',editor:{type:'textbox',options:{disabled:true}}" width="50" align="center">单位</th>
+                    <th data-options="field:'SysPrice',editor:{type:'textbox',options:{disabled:true}}" width="50" align="center">单价</th>
+                    <th data-options="field:'IndentNum',editor:{type:'textbox',options:{disabled:true}}" width="50" align="center">订货量</th>
+                    <th data-options="field:'AlreadyDeliveryNum',editor:{type:'textbox',options:{disabled:true}}" width="60" align="center">已配送量</th>
+                    <th data-options="field:'Subtotal',editor:{type:'textbox',options:{disabled:true}},formatter:function(value, row, index) {return (row.AlreadyDeliveryNum>row.IndentNum)?('￥'+(row.SysPrice*row.IndentNum).toFixed(2)):('￥'+(row.SysPrice*row.AlreadyDeliveryNum).toFixed(2)); }" width="60" align="center">小计</th>
+                    <th data-options="field:'Detail',editor:{type:'textbox',options:{readonly:true}}" width="250">赠品</th>
+                    <th data-options="field:'ProducedDate',editor:{type:'datebox',options:{disabled:false}}" id="PDate" width="90" align="center">生产日期</th>
+                    <th data-options="field:'ProductionBatch',editor:{type:'textbox',options:{disabled:false}}" width="70" align="center">生产批次</th>
+                    <th data-options="field:'DeliveryNum',editor:{type:'textbox',options:{disabled:false}}" width="60" align="center">本次预配送</th>
+                    <th data-options="field:'Expiry',editor:{type:'textbox',options:{disabled:false}}" hidden="hidden" width="0" align="center"></th>
+                </tr>
+            </thead>
+
+            @*<tfoot>
+                    <tr>
+                        <td style="border-right:0;"></td>
+                        <td class="foottotal"></td>
+                        <td class="foottotal"></td>
+                        <td class="foottotal"></td>
+                        <td class="foottotal"></td>
+                        <td style="border-left:0;">合计：</td>
+                        <td>320</td>
+                        <td>270</td>
+                        <td>8,540.00</td>
+                        <td class="foottotal"></td>
+                        <td class="foottotal"></td>
+                    </tr>
+                </tfoot>*@
+        </table>
+        <div class="default-form">
+            @using (Html.BeginForm())
+            {
+                @Html.Hidden("Updated")
+                @Html.Hidden("Updated2")
+                @Html.HiddenFor(o => o.IndentOrderId)
+                <div style="width:100%; height:30px; line-height:30px; margin-top:20px;">
+                    <div style="width: 30%; float: left;">
+                        配送批次：
+                        @if (Model.State == 3 || Model.State == 4 || Model.State == 5)
+                        {
+                            <label>@Model.DistributionBatch</label>
+                        }
+                        else
+                        {
+                            <input id="DisBatch" name="DisBatch" style="width: 60%; height: 25px; " class="easyui-textbox" data-options="prompt:'为空则自动生成'" />
+                        }
+                    </div>
+                    <div style="width: 70%; float: left;">
+                        备注：
+                        @if (Model.State == 3 || Model.State == 4 || Model.State == 5)
+                        {
+                            <label>@Model.Memo</label>
+                        }
+                        else
+                        {
+                            <input id="DisMemo" name="DisMemo" style="width: 94%; height: 25px;" class="easyui-textbox" />
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div id="deliveryRecord" class="easyui-dialog" data-options="title:'配送记录',cache:false,modal:true,width:800,height:400,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+
+    <script>
+        //点击已配送量单元格弹出配送记录窗口
+        //生产日期，生产批次，本次预配送点击单元格可编辑
+        var clickIndex = undefined;
+        function clickCell(rowIndex, field) {
+            var rows = $("#orderdetail").datagrid("getRows");
+            var row = rows[rowIndex];
+            var url = "@Url.Action("DeliveryRecord")?orderId=@Model.IndentOrderId&Title=" + row.Title + "&barcode=" + row.Barcode;
+            var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+            if (field == "AlreadyDeliveryNum" && row.AlreadyDeliveryNum > 0) {
+                $('#deliveryRecord').dialog({ content: cont, buttons: drbtns }).dialog("open");
+            }
+            else if (endClickEditing() && (field == "ProducedDate" || field == "ProductionBatch" || field == "DeliveryNum") && (row.IndentNum - row.AlreadyDeliveryNum > 0)) {
+                $('#orderdetail').datagrid('selectRow', rowIndex)
+                        .datagrid('editCell', { index: rowIndex, field: field });
+                clickIndex = rowIndex;
+            }
+        }
+        var drbtns = [{
+            text: '关闭',
+            iconCls: 'icon-cancel',
+            handler: function () {
+                $('#deliveryRecord').dialog('close');
+            }
+        }];
+        function endClickEditing() {
+            if (clickIndex == undefined) {
+                return true
+            }
+            if ($('#orderdetail').datagrid('selectRow', clickIndex)) {
+                $('#orderdetail').datagrid('endEdit', clickIndex);
+                clickIndex = undefined;
+                changeValue();
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        function changeValue() {
+            var updated = $("#orderdetail").datagrid('getChanges', "updated");
+            $("#Updated2").val(JSON.stringify(updated));
+        }
+
+        function SaveBefore() {
+            endClickEditing();
+            return confirm("是否确定进行配送操作?");
+        }
+
+        ////todo:如果该商品的保质期>0，且本次预配送>0，则生产日期必填
+        //function SaveBefore() {
+        //    endClickEditing();
+        //    var result = confirm("是否确定进行本次配送？");
+        //    if (result == true) {
+        //        var rows = $("#orderdetail").datagrid("getRows");
+        //        for (var i = 0; i < rows.length; i++) {
+        //            if ((rows[i].Expiry > 0) && (rows[i].DeliveryNum > 0) && (rows[i].ProducedDate == "" || rows[i].ProducedDate == null)) {  debugger
+        //                //todo:使该行的ProducedDate处于编辑状态，并且为必填
+        //            }
+        //            else { }
+        //        }
+        //        return true;
+        //    }
+        //    else {
+        //        return false;
+        //    }
+        //}
+
+
+    </script>
+</div>

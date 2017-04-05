@@ -1,0 +1,110 @@
+﻿@model Notice
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style>
+    .right_td { width: 200px; text-align: left; }
+</style>
+<div id="noticeDetail" style="margin:0 auto; padding:15px; line-height:40px; text-align:center; ">
+    <div class="default-form">
+        @using (Html.BeginForm())
+        {
+            <input type="hidden" name="Id" value="@Model.Id" />
+            <table style="border-color:#797979; border-collapse: collapse; ">
+                <thead>
+
+                    <tr style="line-height:25px;">
+                        <td class="left_td">
+                            <label>显示范围：</label>
+                        </td>
+                        <td class="notice-right" colspan="3">
+                            @Html.CheckBoxListFor(n => n.StoreId, ViewBag.shops as List<SelectListItem>, new { data_options = "required:true,novalidate:true", @class = "easyui-validatebox", id = "store" }, 3)
+                        </td>
+                    </tr>
+                    <tr style="line-height:35px;">
+                        <td class="left_td">
+                            <label>类型：</label>
+                        </td>
+                        <td class="right_td">
+                            <table cellpadding='0' class="easyui-validatebox" cellspacing='3'>
+                                <tr>
+                                    <td style='padding:0px 3px;'><input type='radio' id='Type_1' name='Type' value='1' checked='checked' style='vertical-align:middle' /><label for='Type_1' style='vertical-align:middle;padding-left:3px;'>公告</label></td>
+                                    <td style='padding:0px 3px;'><input type='radio' id='Type_2' name='Type' value='2' style='vertical-align:middle' /><label for='Type_2' style='vertical-align:middle;padding-left:3px;'>活动</label></td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td class="left_td">
+                            <label>状态：</label>
+                        </td>
+                        <td class="right_td">
+                            @Html.RadioButtonListFor(n => n.State, ViewBag.state as List<SelectListItem>, new { @class = "easyui-validatebox", id = "state" })
+                        </td>
+                    </tr>
+                    <tr style="height:45px">
+                        <td class="left_td">
+                            <label>主题：</label>
+                        </td>
+                        <td class="right_td" colspan="3">
+                            @Html.TextBoxFor(o => o.Theme, new { @class = "easyui-textbox", data_options = "required:true,width:400" })
+                        </td>
+                    </tr>
+                    <tr class="table-form">
+                        <td class="left_td">
+                            <label>显示时间：</label>
+                        </td>
+                        <td class="right_td" colspan="3">
+                            @Html.TextBoxFor(o => o.BeginDate, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", data_options = "required:true" })
+                            &nbsp;&nbsp;至&nbsp;&nbsp;
+                            @Html.TextBoxFor(o => o.ExpirationDate, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", data_options = "required:true,validType:'greaterEqualDate[\"#BeginDate\"]',invalidMessage:'截至日期必须大于等于开始日期'" })
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="left_td">
+                            <label>详细内容：</label>
+                        </td>
+                        <td class="right_td" colspan="3">
+                            @Html.TextAreaFor(o => o.NoticeContent, new { @class = "easyui-validatebox datacontrol", data_options = "required:true", style = "width:400px;height:100px;padding-left:5px;padding-right:5px;padding-top:1px;padding-bootm:1px;font-size:12px;" })
+                        </td>
+                    </tr>
+
+
+                </thead>
+            </table>
+        }
+    </div>
+</div>
+<script type="text/javascript">
+    $(function () {
+        $("[name='Type'][value=@Model.Type]").prop('checked', true);
+
+        $("[name='StoreId']").click(function () {
+            if ($(this).val() == "") {
+                var chk = this.checked;
+                $("[name='StoreId']:not(:first)").each(function (i, r) {
+                    //console.log($(this).attr("id"));
+                    r.checked = chk;
+                })
+            } else {
+                $("[name='StoreId']:first")[0].checked = $("[name='StoreId']:not(:first):checked").size() == $("[name='StoreId']:not(:first)").size();
+            }
+            storeRequired();
+        });
+        if ($("[name='StoreId']:first").attr("checked"))
+            $("[name='StoreId']:not(:first)").attr("checked", true);
+        storeRequired();
+    })
+    function storeRequired() {
+        if ($("[name='StoreId']:checked").size() <= 0)
+            $("#store").validatebox("enableValidation");
+        else
+            $("#store").validatebox("disableValidation");
+    }
+
+    function SaveBefore() {
+
+        storeRequired();
+        return true;
+    }
+</script>

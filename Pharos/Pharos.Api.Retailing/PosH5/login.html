@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>登录-欢迎使用道诚·科技 商业管理软件</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="">
+    <meta name="keywords" content="">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <meta name="renderer" content="webkit">
+    <meta name="apple-mobile-web-app-title" content=""/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="stylesheet" href="css/iconfont/iconfont.css">
+    <link rel="stylesheet" href="css/ui-dialog.css">
+    <link rel="stylesheet" href="css/app.css">
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="css/bgstretcher.css">
+    <script type="text/javascript" src="js/lib/jquery/1.11.3/jquery.min.js"></script>
+    <script type="text/javascript" src="js/lib/jquery-mb/1.4.5/jquery.min.js"></script>
+    <script type="text/javascript" src="js/lib/artDialog/dialog.js"></script>
+    <script type="text/javascript" src="js/bgstretcher.js"></script>
+    <script type="text/javascript" src="js/AppJS.js"></script>
+    <script type="text/javascript" src="js/Comm.js"></script>
+    <script type="text/javascript" src="js/myPlug.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function(){
+            initForm();
+            sysSetInit();
+        });
+        /**
+         * 登录表单
+         */
+        function initForm(){
+            var d=dialog({
+                align: 'right',
+                content: ''
+            });
+            $("#loginForm").on("submit",function(e){
+                e.stopPropagation();
+                e.preventDefault();
+                d.close();
+                var u = $("#username"),p = $("#password"),tag=true;
+                if($.trim(u.val())==""){
+                    d.content("请输入用户名!").show(u.parent()[0]);
+                    u.focus();
+                    tag = false;
+                }else if($.trim(p.val())==""){
+                    d.content("请输入密码!").show(p.parent()[0]);
+                    p.focus();
+                    tag = false;
+                }
+                if(!tag){
+                    return tag;
+                }
+                var devCfg = AppJS.getDeviceInfo();
+                var cfg ={
+                    data:{
+                        storeId:devCfg.storeId,
+                        machineSN:devCfg.machineSN,
+                        account:$.trim(u.val()),
+                        password :$.trim(p.val())
+                    },
+                    success:function(res){
+                        dialog.getCurrent().close();
+                        //{Code: "401", Message: "账号或者密码为空！", Result: null}
+                        //{"Code":"402","Message":"非销售员或数据维护员不允许登录销售！","Result":null}
+                        if(res.Code ==200){
+                            Comm.setCookie("userInfo",JSON.stringify( res.Result));
+                            window.location.href = "main.html";
+                        }else{
+                            dialog({
+                                title: '提示!',
+                                content: res.Message
+                            }).showModal();
+                        }
+                    },
+                    error:function(res){
+                        dialog.getCurrent().close();
+                        dialog({
+                            title: '提示!',
+                            content: res.responseJSON.Message
+                        }).showModal();
+                    }
+                } ;
+                dialog({ title: '登录中!'}).showModal();
+                Comm.Action.login(cfg);
+                return true;
+            });
+
+
+
+            $("#username").on('keydown',function(){
+                if($.trim($(this).val())==""){
+                    d.close();$(this).focus();
+                }
+            });
+            $("#password").on('keydown',function(){
+                if($.trim($(this).val())==""){
+                    d.close();$(this).focus();
+                }
+            });
+        }
+
+        /**
+         * 系统设备设置
+         */
+        function sysSetInit(){
+
+            var winSetting = dialog({
+                title: '设备配置',
+                width:400,
+                cancel:false,
+                content:document.getElementById("deviceSetting")
+            });
+            var tips=dialog({
+                align: 'right',
+                content: ''
+            });
+
+            $("#sysSetting").on('click',function(){
+                var cfg = AppJS.getDeviceInfo();
+                $("#deviceSetting input[type=text]").each(function(i,el){
+                    el.value = cfg[el.name]||"";
+                });
+                winSetting.showModal();
+            });
+            $("#settingSaveBtn").on("click",function(){
+                var els = $("#deviceSetting input[type=text]"),arr = els.serializeArray();
+                if($.trim(els[1].value)==""){
+                    tips.content("Pos 设备编号 必填!").show(els[1]);
+                    els[1].focus();
+                    return;
+                }
+                if($.trim(els[2].value)==""){
+                    tips.content("门店 ID 必填!").show(els[2]);
+                    els[2].focus();
+                    return;
+                }
+                AppJS.setDeviceInfo(arr[0].value,arr[1].value,arr[2].value,arr[3].value,arr[4].value,arr[5].value);
+                winSetting.close();
+                dialog.getCurrent().close();
+            });
+            var cfg = AppJS.getDeviceInfo();
+            if(!cfg.machineSN||!cfg.storeId){
+                $("#sysSetting").click();
+            }
+        }
+    </script>
+
+</head>
+<body class="lg-bg1">
+<div class="lg-head">
+    <div class="lg-head-rt" id="sysSetting">
+        <i class="iconfont icon-setting"></i>
+    </div>
+    <div class="lg-head-lt"><i class="lg-logo"></i>欢迎使用道诚.科技 商业管理软件</div>
+</div>
+<div class="lg-form">
+    <form id="loginForm" action="main.html" target="_self">
+        <div class="lg-cmp">
+            <i class="iconfont icon-user"></i>
+            <input name="username" class="cmp-keyboard"   data-text="username" id="username" type="text" value="" placeholder="工号"/>
+        </div>
+        <div class="lg-cmp">
+            <i class="iconfont icon-lock"></i>
+            <input name="password" class="cmp-keyboard"  data-text="password" id="password" type="password" value="" placeholder="密码"/>
+        </div>
+        <input type="submit" value="登录" class="lg-button"/>
+    </form>
+</div>
+<div class="lg-version">product version 2015</div>
+
+<div id="deviceSetting" style="display: none">
+    <table class="lg-setting">
+        <colgroup>
+            <col width="100">
+            <col>
+        </colgroup>
+        <tbody>
+            <tr>
+                <td class="lg-lb">公司简称：</td>
+                <td>
+                    <input type="text" name="name" class="lg-text" value=""  /><!--readonly-->
+                </td>
+            </tr>
+            <tr>
+                <td class="lg-lb">Pos机编号：</td>
+                <td>
+                    <input type="text" name="machineSN" class="lg-text" value="" />
+                </td>
+            </tr>
+            <tr>
+                <td class="lg-lb">门店标识：</td>
+                <td>
+                    <input type="text" name="storeId" class="lg-text"  maxlength="3" value="" />
+                </td>
+            </tr>
+            <tr>
+                <td class="lg-lb">门店名称：</td>
+                <td>
+                    <input type="text" name="storeName" class="lg-text" value="" />
+                </td>
+            </tr>
+            <tr>
+                <td class="lg-lb">门店电话：</td>
+                <td>
+                    <input type="text"  name="storePhone" class="lg-text" value="" />
+                </td>
+            </tr>
+            <tr>
+                <td class="lg-lb">服务器地址：</td>
+                <td>
+                    <input type="text" name="url" class="lg-text" value="" readonly/>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <input class="lg-setting-btn" type="button" id="settingSaveBtn" value="保存"/>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+
+<script>
+    //  Initialize Backgound Stretcher
+    $('BODY').bgStretcher({
+        images: [
+            'images/login-bg1.jpg',
+            'images/login-bg2.jpg',
+            'images/login-bg3.jpg',
+            'images/login-bg4.jpg',
+            'images/login-bg5.jpg',
+            'images/login-bg6.jpg',
+            'images/login-bg7.jpg',
+            'images/login-bg8.jpg'
+        ],
+        imageWidth: 1024,
+        imageHeight: 768,
+        slideDirection: 'N',
+        slideShowSpeed: 1000,
+        transitionEffect: 'fade',
+        sequenceMode: 'normal',
+        buttonPrev: '#prev',
+        buttonNext: '#next',
+        pagination: '#nav',
+        anchoring: 'left center',
+        anchoringImg: 'left center'
+    });
+</script>
+</body>
+</html>

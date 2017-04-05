@@ -1,0 +1,32 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Utility;
+
+namespace Pharos.Logic.BLL
+{
+    public class MemberLevelBLL
+    {
+        MemberLevelService _memberLevelService = new MemberLevelService();
+        public OpResult CreateMemberLevel(MemberLevel level)
+        {
+            level.CompanyId = CommonService.CompanyId;
+            level.CreateDT = DateTime.Now;
+            level.CreateUID = Sys.CurrentUser.UID;
+            level.State = 0;//默认生效
+            return _memberLevelService.CreateMemberLevel(level);
+        }
+
+        public object FindMemberLevelByCompanyId(out int count)
+        {
+            return _memberLevelService.FindMemberLevelByCompanyId(out count);
+        }
+
+        public bool UpdateMemberStateByIds(short state, string ids)
+        {
+            return _memberLevelService.UpdateMemberStateByIds(state, ids);
+        }
+    }
+}

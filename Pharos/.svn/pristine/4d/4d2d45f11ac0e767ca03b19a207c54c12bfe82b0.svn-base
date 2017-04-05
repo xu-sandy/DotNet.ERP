@@ -1,0 +1,57 @@
+﻿<Window x:Class="Pharos.POS.Retailing.ChildPages.History"
+         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:Retailing="clr-namespace:Pharos.POS.Retailing" 
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         WindowState="Normal" WindowStyle="None" Icon="..\Images\chongdayin.png"   Style="{DynamicResource SkinWindowStyle}"
+        AllowsTransparency="True"  WindowStartupLocation="CenterScreen"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" 
+        Background="Transparent" BorderBrush="Transparent"
+        Name="mainWindow"
+        Title="查订单" Height="600" Width="900">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\ChaKuCunStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"></ColumnDefinition>
+                <ColumnDefinition Width="120"></ColumnDefinition>
+                <ColumnDefinition Width="200"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource BaseTextBlock}" Grid.Column="0" Grid.Row="0">日期：</TextBlock>
+            <DatePicker TabIndex="1" SelectedDate="{Binding CheckTime,Mode=TwoWay}" FontSize="14" Grid.Column="1" Grid.Row="0" Height="35" Margin="0,10" VerticalAlignment="Bottom" VerticalContentAlignment="Center"></DatePicker>
+            <Button Command="{Binding Search}"  CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}" Style="{StaticResource BtnSearchStyle}" Height="35" Margin="0,10"  Grid.Column="2" Grid.Row="0">查询</Button>
+        </Grid>
+        <StackPanel Grid.Row="1">
+            <DataGrid Name="DataGridBill" PreviewKeyDown="DataGrid_PreviewKeyDown" ItemsSource="{Binding Orders}" BorderThickness="1" BorderBrush="#BCB4BB"  VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserDeleteRows="True" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False"  Height="450" Margin="10">
+                <DataGrid.Columns>
+                    <DataGridTextColumn IsReadOnly="True" Header="流水号" Width="200" Binding="{Binding PaySN}"></DataGridTextColumn>
+                    <DataGridTextColumn IsReadOnly="True" Header="时间" Width="200" Binding="{Binding CreateDT,StringFormat='yyyy-MM-dd HH:mm'}" ></DataGridTextColumn>
+                    <DataGridTextColumn IsReadOnly="True" Header="优惠" Width="180*" Binding="{Binding PreferentialPrice,StringFormat='{}{0:N}'}"></DataGridTextColumn>
+                    <DataGridTextColumn IsReadOnly="True" Header="金额" Width="180*" Binding="{Binding Amount,StringFormat='{}{0:N}'}"></DataGridTextColumn>
+                    <DataGridTemplateColumn CanUserSort="False" IsReadOnly="True" Width="200" Header="操作">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100*"></ColumnDefinition>
+                                        <ColumnDefinition Width="100*"></ColumnDefinition>
+                                    </Grid.ColumnDefinitions>
+                                    <Button  Margin="5,0,0,0"  Style="{StaticResource BtnBase}" Command="{Binding Print}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}" BorderBrush="#A0B888" Width="50" Foreground="#A0B888" Height="30"  BorderThickness="1" FontSize="12" Background="#FFFFFF" Grid.Column="0">打印</Button>
+                                </Grid>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </StackPanel>
+    </Grid>
+</Window>

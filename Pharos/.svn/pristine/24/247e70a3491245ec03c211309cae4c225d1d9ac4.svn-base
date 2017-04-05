@@ -1,0 +1,48 @@
+﻿using StackExchange.Redis;
+using System.Linq;
+
+namespace Pharos.Infrastructure.Data.Redis
+{
+    public class RedisManager
+    {
+        /// <summary>
+        /// redis配置文件信息
+        /// </summary>
+        private static RedisConfiguration redisConfigInfo = RedisConfiguration.GetConfig();
+        private static ConnectionMultiplexer redis;
+        private static object lockobj = new object();
+        /// <summary>
+        /// 静态构造方法，初始化链接池管理对象
+        /// </summary>
+        static RedisManager()
+        {
+            CreateManager();
+        }
+
+
+        /// <summary>
+        /// 创建链接池管理对象
+        /// </summary>
+        private static void CreateManager()
+        {
+            if (!string.IsNullOrEmpty(redisConfigInfo.ConnectionString))
+            {
+                redis = ConnectionMultiplexer.Connect(redisConfigInfo.ConnectionString);
+            }
+        }
+
+
+        /// <summary>
+        /// 客户端缓存操作对象
+        /// </summary>
+        public static ConnectionMultiplexer GetClient()
+        {
+            if (redis == null)
+            {
+                CreateManager();
+            }
+            return redis;
+        }
+
+    }
+}

@@ -1,0 +1,121 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增商户", hideDel: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            @*<td class="label-toolbar">
+                <label>分类：</label>
+            </td>*@
+            <td class="input-toolbar">
+                <select name="" class="easyui-combobox" style="width:150px">
+                    <option value="" selected>请选择省</option>
+                    <option value="0">福建省</option>
+                    <option value="1">广东省</option>
+                    <option value="3">浙江省</option>
+                </select>
+            </td>
+
+            <td class="input-toolbar">
+                <select name="" class="easyui-combobox" style="width:150px">
+                    <option value="" selected>请选择市</option>
+                    <option value="0">厦门市</option>
+                    <option value="1">泉州市</option>
+                    <option value="3">三明市</option>
+                </select>
+            </td>
+
+            <td class="label-toolbar">
+                <label>来源：</label>
+            </td>
+            <td class="input-toolbar">
+                <select name="" class="easyui-combobox" style="width:150px">
+                    <option value="" selected>请选择</option>
+                    <option value="0">本司</option>
+                    <option value="1">代理商</option>
+                </select>
+            </td>
+
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select name="" class="easyui-combobox" style="width:150px">
+                    <option value="" selected>请选择</option>
+                    <option value="0">未跟进</option>
+                    <option value="1">停滞</option>
+                    <option value="2">电话邀约</option>
+                    <option value="3">初步方案</option>
+                    <option value="4">等等</option>
+                </select>
+            </td>
+
+            <td class="label-toolbar">
+                <label>登记日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td>
+                <label style="width:10px;margin-left:7px;margin-right:7px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'CID/客户名称/联系人/手机号',width:150" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="">商户审核通过</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="">设为停用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="">导入</a>
+}
+<script type="text/javascript">
+
+    //pharos.manager.$dg.datagrid({
+    //    rowStyler: function (index, row) {
+    //        if (row.State == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+    //    }
+    //})
+
+    //待修改开始
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: '', title: '名称', editor: { type: 'text', required: true }, width: 120 },
+        { field: '', title: '序号', editor: { type: 'text', required: true }, width: 100 },
+        { field: '', title: '分类', editor: { type: 'text', required: true }, width: 60 },
+        { field: '', title: '品牌', editor: { type: 'text', required: true }, width: 70 },
+        { field: '', title: '型号', editor: { type: 'text', required: true }, width: 60 },
+        { field: '', title: '状态', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: '', title: '维护人', editor: { type: 'text', required: true }, width: 100 },
+        { field: '', title: '更新时间', editor: { type: 'text', required: true }, width: 100 }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog("新增设备", this.editurlNocache(), 800, 600, false);
+    };
+    pharos.manager.editItem = function (id,row) {
+        this.Id = id;
+        openDialog800(this.editText, this.editurlNocache());
+    }
+
+    function removeBefore(row) {
+        if (row.State == 1) {
+            $.messager.alert("提示", "已审状态不能删除!");
+            return false;
+        }
+        return true;
+    }
+    //待修改结束
+</script>
+

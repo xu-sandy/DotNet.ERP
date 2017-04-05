@@ -1,0 +1,244 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+using System.Web;
+using System.Transactions;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL商户域名信息
+    /// </summary>
+    public class RealmService : BaseService<Realm>
+    {
+        [Ninject.Inject]
+        IBaseRepository<CompanyAuthorize> CompanyAuthorizeRepository { get; set; }
+
+        //商户域名信息
+        [Ninject.Inject]
+        IBaseRepository<Realm> RealmRepository { get; set; }
+
+        //商户资料
+        [Ninject.Inject]
+        IBaseRepository<Traders> TradersRepository { get; set; }
+
+        //数据字典
+        [Ninject.Inject]
+        IBaseRepository<SysDataDictionary> SysDataDictionaryRepository { get; set; }
+
+        [Ninject.Inject]
+        //BLL-----商户资料
+        TradersService tradersService { get; set; }
+
+        /// <summary>
+        /// 验证
+        /// </summary>
+        /// <param name="nvl"></param>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public OpResult Verification(System.Collections.Specialized.NameValueCollection nvl, int id)
+        {
+            //商户号
+            var CID = (nvl["CID"] ?? "").Trim();
+            //子域名
+            var Name = (nvl["Name"] ?? "").Trim();
+            if (CID != "")
+            {
+                if (!Tool.IsNumber(CID))
+                {
+                    return OpResult.Fail("商户号不存在");
+                }
+                else
+                {
+                    int cid = Convert.ToInt32(CID);
+                    var q = CompanyAuthorizeRepository.GetQuery(o => o.Status == 1 && o.CID == cid);
+                    if (!q.Any())
+                    {
+                        return OpResult.Fail("商户号未申请软件许可或不是正常的软件许可");
+                    }
+                    if (!tradersService.isExistByWhere(o => o.Status == 1 && o.CID == cid))
+                    {
+                        return OpResult.Fail("商户号在客户档案不存在或不是已审");
+                    }
+                    if (id == 0)
+                    {
+                        if (isExistByWhere(o => o.CID == cid))
+                        {
+                            return OpResult.Fail("商户号已经申请过域名许可，无法重复申请");
+                        }
+                    }
+                    else
+                    {
+                        if (isExistByWhere(o => o.CID == cid && o.Id!=id))
+                        {
+                            return OpResult.Fail("商户号已经申请过域名许可，无法重复申请");
+                        }
+                    }
+                }
+            }
+            bool isExist = false;
+            if (id == 0)
+            {
+                isExist = isExistByWhere(o => o.CID == -1 && o.Name==Name);
+            }
+            else
+            {
+                isExist = isExistByWhere(o => o.CID == -1 && o.Name == Name && o.Id != id);
+            }
+            if (isExist)
+            {
+                return OpResult.Fail("输入的子域名不可用，因为该域名是保留域名");
+            }
+            bool isExist2 = false;
+            if (id == 0)
+            {
+                isExist2 = isExistByWhere(o => o.CID != -1 && o.Name == Name);
+            }
+            else
+            {
+                isExist2 = isExistByWhere(o => o.CID != -1 && o.Name == Name && o.Id != id);
+            }
+            if (isExist2)
+            {
+                return OpResult.Fail("输入的子域名不可用，因为该域名已经存在");
+            }
+            return OpResult.Success();
+        }
+
+        public OpResult Save(Realm realm, int id, System.Collections.Specialized.NameValueCollection nvl)
+        {
+            //验证
+            var op = Verification(nvl, id);
+            if (!op.Successed)
+            {
+                return op;
+            }
+            else
+            {
+                try
+                {
+                    InsertUpdate(realm,id);
+                    return OpResult.Success();
+                }
+                catch (Exception e)
+                {
+                    LogEngine.WriteError(e);
+                    return OpResult.Fail(e.InnerException.InnerException.Message);
+                }
+            }
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            //状态
+            var State = (nvl["State"] ?? "").Trim();
+            //类别
+            var Category = (nvl["Category"] ?? "").Trim();
+            //关键字类型
+            var keywordType = (nvl["keywordType"] ?? "").Trim();
+            //关键字
+            var keyword = (nvl["keyword"] ?? "").Trim();
+
+            //商户域名信息
+            var QRealm = RealmRepository.GetQuery(o=>o.CID!=-1);
+            //商户信息
+            var QTraders = TradersRepository.GetQuery();
+            //一级域名
+            var QSysData = SysDataDictionaryRepository.GetQuery(o=>o.DicPSN==600 && o.Status);
+
+            if (State!="-1")
+            {
+                short Sta = Convert.ToInt16(State);
+                QRealm = QRealm.Where(o=>o.State==Sta);
+            }
+
+            if (Category != "-1")
+            {
+                short Catego = Convert.ToInt16(Category);
+                QRealm = QRealm.Where(o => o.Category==Catego);
+            }
+
+            if (!keywordType.IsNullOrEmpty() && !keyword.IsNullOrEmpty())
+            {
+                if (keywordType == "1")
+                {
+                    if (!Tool.IsNumber(keyword) || keyword.Length > 7)
+                    {
+                        keyword = "0";
+                    }
+                    int key = Convert.ToInt32(keyword);
+                    QRealm = QRealm.Where(o => o.CID==key);
+                }
+                if (keywordType == "2")
+                {
+                    string key = keyword;
+                    QTraders = QTraders.Where(o=>o.FullTitle.Contains(key));
+                }
+            }
+
+            var q = from r in QRealm
+                    join t in QTraders on r.CID equals t.CID
+                    into tt
+                    from ttt in tt.DefaultIfEmpty()
+                    join s in QSysData on r.Domain1 equals s.DicSN
+                    into ss
+                    from sss in ss.DefaultIfEmpty()
+                    where
+                    keywordType=="3"&&(r.Name.Contains(keyword)||sss.Title.Contains(keyword))
+                    select new
+                    {
+                        r.Id,
+                        r.Category,
+                        r.CID,
+                        TradersFullTitle = ttt == null ? "" : ttt.FullTitle,
+                        Domain = r.Name + "." + sss.Title,
+                        r.Remark,
+                        r.CreateDT,
+                        r.State
+                    };
+             recordCount = q.Count();
+             return q.ToPageList();
+        }
+
+        /// <summary>
+        /// 更新状态
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="state">1是可用，2是暂停，3是注销，4是无效</param>
+        /// <returns></returns>
+        //public OpResult UpState(string ids, int state)
+        //{
+        //    OpResult opr = ExistState(ids, state);
+        //    if (!opr.Successed)
+        //    {
+        //        return opr;
+        //    }
+        //    else
+        //    {
+        //        try
+        //        {
+        //            var idss = ids.Split(',').Select(o => int.Parse(o));
+        //            UpListByWhere(o => idss.Contains(o.Id), o =>
+        //            {
+        //                o.State = state;
+        //            });
+        //            return OpResult.Success();
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            LogEngine.WriteError(e);
+        //            return OpResult.Fail(e.InnerException.InnerException.Message);
+        //        }
+        //    }
+        //}
+    }
+}

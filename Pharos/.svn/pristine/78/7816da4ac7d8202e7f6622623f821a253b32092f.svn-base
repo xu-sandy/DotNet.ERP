@@ -1,0 +1,137 @@
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.BLL;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
+using System.Web;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS;
+
+namespace QCT.Api.Pay.Utils
+{
+    /// <summary>
+    /// 商户支付帮助类
+    /// </summary>
+    public class PayManager
+    {
+        private static string _sxfPayUrl = string.Empty;
+        private static string _sxfNotifyUrl = string.Empty;
+        /// <summary>
+        /// 第三方随心付（SxfPay）接口调用URL
+        /// </summary>
+        public static string SxfPayUrl
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_sxfPayUrl))
+                {
+                    _sxfPayUrl = Config.GetAppSettings("sxfpayurl");
+                }
+                return _sxfPayUrl;
+            }
+        }
+        /// <summary>
+        /// 第三方随心付支付或退款结果通知URL
+        /// </summary>
+        public static string SxfNotifyUrl
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_sxfNotifyUrl))
+                {
+                    _sxfNotifyUrl = Config.GetAppSettings("sxfnotifyurl");
+                }
+                return _sxfNotifyUrl;
+            }
+        }
+        public const string SXFPAYURL = "http://unitpay.sxfpay.cn/unitpay-online/BBGUnitpay";
+        public const string SXFTRADENOTIFYURL = "http://27.154.234.10:8016/api/pay/SxfTradeNotify";
+        /// <summary>
+        /// 返回接收通知的结果
+        /// </summary>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static object ResultResponse(string code, string msg = "参数格式错误")
+        {
+            var rstCode = PayConst.FAILCODE;
+            if (code == PayConst.SXFSUCCESSCODE)
+            {
+                rstCode = PayConst.SUCCESSCODE;
+            }
+            var result = new { return_code = rstCode, return_msg = msg };
+            //result = "{\"return_code\":\"" + rstCode + "\",\"return_msg\":\"" + msg + "\"}";
+            return result;
+        }
+        /// <summary>
+        /// 给Sxf返回接收通知的结果
+        /// </summary>
+        /// <param name="isSuccess"></param>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static string SxfNotifyReturn(string result, string msg)
+        {
+            if (result == PayConst.SXFSUCCESSRETURN)
+            {
+                return "{\"result\":\"" + PayConst.SXFSUCCESSRETURN + "\",\"message\":\"" + msg + "\"}";
+            }
+            else
+            {
+                return "{\"result\":\"" + PayConst.FAILCODE + "\",\"message\":\"" + msg + "\"}";
+            }
+        }
+        /// <summary>
+        /// 验证签名的有效性
+        /// </summary>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        public static bool VerifySign(string content)
+        {
+            
+            var signObj = JsonConvert.DeserializeObject<SortedDictionary<string, object>>(content);
+            var sign = signObj["sign"];
+            signObj.Remove("sign");
+            var mchObj = (new PayTradeService()).GetMchPay(signObj["mch_id"].ToType<int>());
+            var result = VerifySign(signObj, mchObj.SecretKey, sign.ToString());
+            return result;
+        }
+        /// <summary>
+        /// 验证签名的有效性
+        /// </summary>
+        /// <param name="queryStr"></param>
+        /// <returns></returns>
+        private static bool VerifySign(SortedDictionary<string, object> signObj, string md5Key, string sign)
+        {
+            var thisSign = Sign(signObj, md5Key);
+            if (thisSign.Equals(sign))
+                return true;
+            else
+                return false;
+        }
+        /// <summary>
+        /// 对数据进行数字签名
+        /// </summary>
+        /// <param name="signObj"></param>
+        /// <param name="md5Key"></param>
+        /// <returns></returns>
+        public static string Sign(SortedDictionary<String, Object> signObj, String md5Key)
+        {
+            StringBuilder signdatasb = new StringBuilder();
+            foreach (var item in signObj)
+            {
+                String key = item.Key;
+                String value = signObj[key] == null ? "" : signObj[key].ToString();
+                signdatasb.Append("&").Append(key).Append("=").Append(value);
+            }
+
+            String signdata = signdatasb.ToString().Substring(1) + "&key=" + md5Key;
+            return PayHelper.GetMD5(signdata);
+        }
+    }
+}

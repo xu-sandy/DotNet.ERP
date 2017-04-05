@@ -1,0 +1,108 @@
+﻿@{
+    ViewBag.Title = "收单渠道信息";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增收单渠道",
+        delText: "注销渠道", hideDel: false));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>所属体系：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="SourceType" name="SourceType" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text', data:window.drpdata['sourceType'], panelHeight: 'auto', editable: false,width:80" />
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="InputValue1" name="InputValue1" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'名称/备注',width:140" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setStatus(1)">设为可用渠道</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setStatus(2)">停用渠道</a>
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+<script type="text/javascript">
+    window.drpdata = window.drpdata || {};
+    @*window.drpdata['payApiStatus'] = @Html.Raw(ViewBag.PayApiStatusList);*@
+
+    pharos.manager.geturl = "@Url.Action("GetPayApiPaging")";
+    pharos.manager.editurl = "@Url.Action("PayApiForm")";
+    pharos.manager.delurl = "@Url.Action("RemovePayApi")";
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = false;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ApiNo', title: '状态', width: 40 },
+        { field: 'ApiName', title: '渠道编号', width: 100},
+        { field: 'ApiAlias', title: '收单渠道', width: 80 },
+        { field: 'ApiAlias', title: '名称', width: 80 },
+        { field: 'Memo', title: '备注', width: 200 },
+        { field: 'CreateDT', title: '创建时间', width: 100, formatter: function (value, row, index) { return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd") } },
+        { field: 'Creater', title: '创建人', width: 80},
+        { field: 'CreateUID', title: '创建人ID', width: 80 },
+        { field: 'AuditDT', title: '审核时间', width: 100, formatter: function (value, row, index) { return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd") } },
+        { field: 'Auditor', title: '审核人', width: 80 },
+        { field: 'AuditUID', title: '审核人ID', width: 80}
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache(), true);
+    };
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        openDialog800(this.editText, this.editurlNocache());
+    }
+
+    function removeBefore(row) {
+        var uid = '@Pharos.Logic.OMS.CurrentUser.UID';
+        if (row.Status != "1") {
+            $.messager.alert("提示", window.statusList[row.status] + "状态不能移除!");
+            return false;
+        }
+        //fishtodo:待确定如何判断是否已经有关联数据;
+        return true;
+    }
+
+    //设置接口启用或关闭
+    function setStatus(status) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        if (rows.length > 1) {
+            $.messager.alert("提示", "只能选择一项数据进行操作", "error");
+            return false;
+        }
+        if (rows[0].Status == status) {
+            $.messager.alert("提示", "选中项已经是" + window.statusList[status] + "状态", "error");
+            return false;
+        }
+        $.post("@Url.Action("SetStatus")", { id: rows[0].Id, status: status }, function (r) {
+            if (r.successed) {
+                $.messager.alert("提示", "操作执行成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作执行失败！" + r.message, "error");
+            }
+        }, "json");
+        //fishtodo: 1 按钮图标设置
+    }
+
+    //取枚举对应值
+    function formatColumn(value, list) {
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].value == value) {
+                if (list[i].value != "")
+                    return list[i].text;
+            }
+        }
+        return value;
+    }
+</script>

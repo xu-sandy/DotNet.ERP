@@ -1,0 +1,61 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentStoreUser.HasPermiss(SysConstLimits.门店维护_创建门店);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增门店", hideDel: true,hideAdd:hideAdd,hideEdit:hideAdd));
+}
+
+@section search{
+<table class="table-toolbar">
+    <tr>
+        <td class="label-toolbar">
+            <label>状态：</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("State", ViewBag.states as List<SelectListItem>, new { @class = "datacontrol easyui-combobox", data_options = "editable:false" })
+        </td>
+    </tr>
+</table>
+}
+@section toolbar
+{
+    @if (CurrentStoreUser.HasPermiss(SysConstLimits.门店维护_营业状态))
+    { 
+<a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setEnable(1,1)">设为经营</a>
+<a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-suspend'" onclick="setEnable(0,1)">设为停业</a>
+    }
+    @if (CurrentStoreUser.HasPermiss(SysConstLimits.门店维护_后台状态))
+    { 
+<a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setEnable(1,2)">后台开放</a>
+<a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-suspend'" onclick="setEnable(0,2)">后台关闭</a>
+    }
+}
+
+<script>
+    pharos.manager.editurl = "@Url.Action("AddStorage")";
+    pharos.manager.geturl="@Url.Action("FindStoragePageList")"
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true, width: 30 },
+        { field: 'StoreId', title: '标识', width: 100, align: 'center' },
+        { field: 'Title', title: '门店名称', width: 200, align: 'center' },
+        { field: 'CategoryTitle', title: '经营品类', width: 450, align: 'center' },
+        { field: 'StateTitle', title: '经营状态', width: 100, align: 'center' },
+        { field: 'AdminTitle', title: '后台开放', width: 100, align: 'center' }
+    ]];
+
+    function setEnable(state,type) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state,type:type }, function (d) {
+        if (d.successed) {
+            $.messager.alert("提示", "修改成功！", "info");
+            pharos.manager.gridReload();
+        } else {
+            $.messager.alert("提示", "修改失败！" + d.message, "error");
+        }
+    }, "json");
+    }
+</script>

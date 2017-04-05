@@ -1,0 +1,40 @@
+﻿using System.Collections;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Markup;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// BaseShield.xaml 的交互逻辑
+    /// </summary>
+    [ContentProperty("Items")]
+    public partial class BaseShield : UserControl
+    {
+        public static readonly DependencyProperty CurrentWindowProperty = DependencyProperty.Register("CurrentWindow", typeof(object), typeof(BaseShield));
+        public static readonly DependencyProperty ItemsSourceProperty = ItemsControl.ItemsSourceProperty.AddOwner(typeof(BaseShield));
+        public BaseShield()
+        {
+            InitializeComponent();
+        }
+        public Window CurrentWindow
+        {
+            get { return (Window)GetValue(CurrentWindowProperty); }
+            set
+            {
+                SetValue(CurrentWindowProperty, value);
+            }
+        }
+
+        public IEnumerable ItemsSource
+        {
+            get { return (IEnumerable)GetValue(ItemsSourceProperty); }
+            set { SetValue(ItemsSourceProperty, value); }
+        }
+
+        public ItemCollection Items
+        {
+            get { return _itemsControl.Items; }
+        }
+    }
+}

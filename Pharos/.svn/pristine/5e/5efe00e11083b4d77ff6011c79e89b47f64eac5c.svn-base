@@ -1,0 +1,101 @@
+﻿using Pharos.Sys.Entity;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Sys.DAL
+{
+    /// <summary>
+    /// 获取所有门店角色列表数据
+    /// </summary>
+    internal class SysStoreUserInfoDAL : BaseSysEntityDAL<SysStoreUserInfo>
+    {
+        internal SysStoreUserInfoDAL() : base("SysStoreUserInfo") { }
+
+        /// <summary>
+        /// 获取所有门店角色列表数据
+        /// </summary>
+        /// <returns></returns>
+        internal DataTable GetList(int companyId)
+        {
+            var objs = DbHelper.DataTable("Sys_AllStoreRoles",new SqlParameter[]{
+                new SqlParameter("@companyId",companyId)
+            });
+            return objs;
+        }
+        /// <summary>
+        /// 新增用户门店角色信息
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal int Insert(SysStoreUserInfo model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@UID", model.UID),
+                    new SqlParameter("@OperateAuth", model.OperateAuth),
+                    new SqlParameter("@CompanyId",Sys.SysCommonRules.CompanyId)};
+
+            string sql = @"
+                insert into {0} (FullName,UserCode,LoginPwd,Sex,[Status],[UID],OperateAuth,CompanyId)
+                SELECT FullName,UserCode,LoginPwd,Sex,[Status],[UID],@OperateAuth,@CompanyId
+                FROM dbo.SysUserInfo
+                where [UID]=@UID;
+                select @@IDENTITY";
+            sql = string.Format(sql, TableName);
+
+            object obj = DbHelper.ExecuteScalarText(sql, parms);
+
+            return (obj == null) ? 0 : Convert.ToInt32(obj);
+        }
+        /// <summary>
+        /// 更新用户门店角色信息
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal bool Update(SysStoreUserInfo model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@UID", model.UID),
+                    new SqlParameter("@OperateAuth", model.OperateAuth)};
+
+            string sql = @"
+                UPDATE a SET 
+		        a.FullName=b.FullName,a.UserCode=b.UserCode,a.LoginPwd=b.LoginPwd,a.Sex=b.Sex,
+		        a.[Status]=b.[Status],a.OperateAuth=@OperateAuth
+		        FROM SysStoreUserInfo a
+		        JOIN SysUserInfo b ON a.[UID]=b.[UID]
+		        WHERE a.[UID]=@UID
+";
+            int rows = DbHelper.ExecuteNonQueryText(sql, parms);
+
+            return rows > 0 ? true : false;
+        }
+
+        internal bool Update(string uid)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@UID", uid)};
+
+            string sql = @"
+                UPDATE a SET 
+		        a.FullName=b.FullName,a.UserCode=b.UserCode,a.LoginPwd=b.LoginPwd,a.Sex=b.Sex,
+		        a.[Status]=b.[Status]
+		        FROM SysStoreUserInfo a
+		        JOIN SysUserInfo b ON a.[UID]=b.[UID]
+		        WHERE a.[UID]=@UID
+";
+            int rows = DbHelper.ExecuteNonQueryText(sql, parms);
+
+            return rows > 0 ? true : false;
+        }
+        internal List<SysStoreUserInfo> GetStoreUser(string storeId)
+        {
+            return DbHelper.DataTableText<SysStoreUserInfo>(@"SELECT b.* FROM dbo.SysUserInfo a
+                INNER JOIN dbo.SysStoreUserInfo b ON a.UID=b.UID
+                WHERE b.Status=1 AND '|'+b.OperateAuth+',' LIKE'%|" + storeId + ",%'", null);
+        }
+    }
+}

@@ -1,0 +1,133 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Pos.Sale.Barcodes;
+using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.ApiData.Pos.Sale.Payment;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.AfterSale
+{
+    public class OrderChangeRefundSale
+    {
+        public OrderChangeRefundSale()
+        {
+            ChangingList = new List<ChangeProduct>();
+            PaySn = Pharos.Logic.ApiData.Pos.Common.PaySn.New();
+        }
+
+        public List<ChangeProduct> ChangingList { get; set; }
+
+        public string PaySn { get; private set; }
+
+        /// <summary>
+        /// 购物车与结算POS机关联信息
+        /// </summary>
+        internal MachineInformation machineInformation { get; set; }
+        /// <summary>
+        /// 件数
+        /// </summary>
+        public int RecordCount
+        {
+            get
+            {
+                var products = ChangingList.Where(o => o.ProductType != ProductType.Weigh);
+                var weighProducts = ChangingList.Where(o => o.ProductType == ProductType.Weigh);
+                var count = Convert.ToInt32(products.Sum(o => o.ChangeNumber));
+                count += weighProducts.Count();
+                return count;
+            }
+        }
+
+        public decimal Difference
+        {
+            get
+            {
+                return ChangingList.Sum(o => o.Total);
+            }
+        }
+        /// <summary>
+        /// 增加退换货商品
+        /// </summary>
+        /// <param name="barcodeStr"></param>
+        /// <param name="storeId"></param>
+        /// <param name="machineSn"></param>
+        /// <param name="companyToken"></param>
+        /// <returns></returns>
+        public object Add(string barcodeStr, string storeId, string machineSn, int companyToken, bool status)
+        {
+            var barcode = BarcodeFactory.Factory(storeId, machineSn, companyToken, barcodeStr);
+            var changingItem = ChangingList.FirstOrDefault(o => o.Barcode == barcodeStr && o.Status == status);
+            if (changingItem == null)
+            {
+                ChangingList.Add(new ChangeProduct(barcode, status));
+            }
+            else
+            {
+                if (status)
+                { changingItem.ChangeNumber += barcode.SaleNumber; }
+                else
+                { changingItem.ChangeNumber -= barcode.SaleNumber; }
+
+                changingItem.Total = changingItem.ChangeNumber * changingItem.ChangePrice;
+            }
+            return new { ChangingList, Difference,PaySn };
+        }
+
+        public object Edit(string barcodeStr, string storeId, string machineSn, int companyToken, decimal num, decimal price)
+        {
+            var changingItem = ChangingList.FirstOrDefault(o => o.Barcode == barcodeStr);
+            if (changingItem != null)
+            {
+                changingItem.ChangeNumber = num;
+                changingItem.ChangePrice = price;
+                changingItem.Total = changingItem.ChangePrice * changingItem.ChangeNumber;
+            }
+            return new { ChangingList, Difference, PaySn };
+        }
+
+        public object Remove(string barcodeStr, string storeId, string machineSn, int companyToken)
+        {
+            ChangingList.RemoveAll(o => o.Barcode == barcodeStr);
+            return new { ChangingList, Difference, PaySn };
+        }
+
+        public void Clear()
+        {
+            ChangingList.Clear();
+        }
+
+        public static void ChangeOrRefund(string storeId, string machineSn, int token, int reason, string paySn, decimal amount, IPay pay)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            var shoppingcart = ShoppingCartFactory.Factory(storeId, machineSn, token);
+            var uid = shoppingcart.MachineInformation.CashierUid;
+            var changing = OrderChangeFactory.Factory(storeId, machineSn, token);
+            string apiCodes = pay != null ? pay.ApiCode.ToString() : "-1";
+
+            dataAdapter.ChangeOrRefund(changing, reason, shoppingcart.MachineInformation, changing.PaySn, amount, uid, apiCodes);
+
+        }
+        public static IEnumerable<ReasonItem> GetChangeReason(string storeId, string machineSn, int token)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            return dataAdapter.GetReason(1);
+        }
+
+        public static void RefundAll(string storeId, string machineSn, int token, int reason, string paySn, decimal amount)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            var shoppingcart = ShoppingCartFactory.Factory(storeId, machineSn, token);
+            var uid = shoppingcart.MachineInformation.CashierUid;
+
+            dataAdapter.RefundAll(reason, paySn, amount, uid);
+        }
+
+        public static IEnumerable<ReasonItem> GetRefundReason(string storeId, string machineSn, int token)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            return dataAdapter.GetReason(2);
+        }
+    }
+}

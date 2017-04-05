@@ -1,0 +1,82 @@
+﻿<Window xmlns:Retailing="clr-namespace:Pharos.POS.Retailing"  x:Class="Pharos.POS.Retailing.ChildPages.ZhengDanZheKou"
+        
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:Helpers="clr-namespace:Pharos.POS.Retailing.Helper"
+        Width="400" Height="480"
+        Title="整单折扣"  WindowState="Normal" WindowStyle="None" Icon="..\Images\ZhengDanJieSuan\price2.png"
+        xmlns:rules="clr-namespace:Pharos.POS.Retailing.Models.DataRules"
+        AllowsTransparency="True"  WindowStartupLocation="CenterScreen"   Style="{DynamicResource SkinWindowStyle}"
+        Background="Transparent" BorderBrush="Transparent"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" 
+        Name="mainWindow">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\BaseStyle.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="..\Styles\ZhengJiaZheKouStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="140"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="70"></RowDefinition>
+            <RowDefinition Height="70"></RowDefinition>
+            <RowDefinition Height="70"></RowDefinition>
+            <RowDefinition Height="70"></RowDefinition>
+            <RowDefinition Height="80"></RowDefinition>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Column="0" Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" TextAlignment="Center">应收金额：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Grid.Row="0" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtReceivable}" Text="{Binding Receivable,StringFormat='{}{0:C}'}" TextAlignment="Center"></TextBlock>
+        </StackPanel>
+
+        <StackPanel Grid.Column="0" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" Grid.Column="0" Grid.Row="1">折扣（0-10）：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <TextBox TabIndex="1" TextAlignment="Center">
+                <TextBox.Text>
+                    <Binding Mode="TwoWay" Path="RateStr" ValidatesOnExceptions="True" NotifyOnValidationError="True"  UpdateSourceTrigger="LostFocus" ValidatesOnDataErrors="True">
+                        <Binding.ValidationRules>
+                            <rules:DoubleRules MinValue="0" MaxValue="10" MinErrorInfo="请输入正确的折扣，应为0~10范围内！" MaxErrorInfo="请输入正确的折扣，应为0~10范围内！" NaNErrorInfo="请输入正确的折扣！" ></rules:DoubleRules>
+                        </Binding.ValidationRules>
+                    </Binding>
+                </TextBox.Text>
+            </TextBox>
+        </StackPanel>
+
+        <StackPanel Grid.Column="0" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" Grid.Column="0" Grid.Row="2">折后金额：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Grid.Row="2" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <TextBox TabIndex="2" TextAlignment="Center"  PreviewGotKeyboardFocus="TextBox_PreviewGotKeyboardFocus">
+                <TextBox.Text>
+                    <Binding Mode="TwoWay" Path="AmountStr" Converter="{StaticResource decimalStringFormatConverter}" ValidatesOnExceptions="True" NotifyOnValidationError="True"  UpdateSourceTrigger="LostFocus" ValidatesOnDataErrors="True">
+                        <Binding.ValidationRules>
+                            <rules:DoubleRules NaNErrorInfo="请输入正确的折后金额！" ></rules:DoubleRules>
+                        </Binding.ValidationRules>
+                    </Binding>
+                </TextBox.Text>
+            </TextBox>
+        </StackPanel>
+
+        <StackPanel Grid.Column="0" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" Grid.Column="0" Grid.Row="3">授权密码：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Grid.Row="3" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <PasswordBox TabIndex="3" Helpers:PasswordBoxBindingHelper.IsPasswordBindingEnabled="True" Helpers:PasswordBoxBindingHelper.BindedPassword="{Binding Path=Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"></PasswordBox>
+
+        </StackPanel>
+
+
+        <StackPanel Grid.ColumnSpan="2" Grid.Row="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Button TabIndex="4" Style="{StaticResource BtnOkStyle}" Command="{Binding Path=Settlement}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}">确定，并结算</Button>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,49 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.ViewModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Extensions
+{
+    public static class TreeModelExtensions
+    {
+        public static IEnumerable<TreeModel> InitCategory(this IEnumerable<TreeModel> _this, Window win)
+        {
+            var machineInfo = Global.MachineSettings.MachineInformations;//全局信息
+            BaseApiParams _queryInfo = new BaseApiParams() { StoreId = machineInfo.StoreId, MachineSn = machineInfo.MachineSn, CompanyToken = Global.MachineSettings.MachineInformations.CompanyToken };
+            var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<TreeModel>>(@"api/GetProductCategory", _queryInfo);
+            if (result.Code == "200")
+            {
+                var tree = new List<TreeModel>();
+                tree.Add(result.Result);
+                return tree;
+            }
+            else
+            {
+                _this = new List<TreeModel>() { new TreeModel("全部", 0) { IsSelected = true } };
+                Toast.ShowMessage(result.Message, win);
+            }
+            return _this;
+        }
+
+        public static int GetSelectItemSN(this IEnumerable<TreeModel> root)
+        {
+            var rootNode = root.FirstOrDefault();
+            if (root == null)
+            {
+                return 0;
+            }
+            var selectItem = rootNode.FindSelectItem(rootNode);
+            if (selectItem == null) 
+            {
+                return Convert.ToInt32(rootNode.Id);
+            }
+            return Convert.ToInt32(selectItem.Id);
+        }
+    }
+}

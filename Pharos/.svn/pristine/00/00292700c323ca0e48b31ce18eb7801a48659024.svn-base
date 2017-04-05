@@ -1,0 +1,102 @@
+﻿using Pharos.Infrastructure.Data.Cache;
+using Pharos.Infrastructure.Data.Redis;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+using System.Threading.Tasks;
+
+
+namespace Pharos.Infrastructure.Data.Normalize
+{
+    /// <summary>
+    /// 流水号生成器
+    /// </summary>
+    public class PaySn
+    {
+        const string FILENAMEFORMAT = "SN_{0}_{1}_{2}_{3}.SerialNumber";
+
+        public PaySn() { }
+        public PaySn(int companyId, string storeId, string machineSn)
+        {
+            TempFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PharosPosCache");
+            CompanyToken = companyId;
+            StoreId = storeId;
+            MachineSn = machineSn;
+            SerialNumber = 1;
+            string fileName = string.Format(FILENAMEFORMAT, CompanyToken, StoreId, MachineSn, DateTime.Now.ToString("yyyyMMdd"));
+            fileName = Path.Combine(TempFilePath, fileName);
+            if (File.Exists(fileName))
+            {
+                SerialNumber = Convert.ToInt32(File.ReadAllText(fileName));
+            }
+        }
+        public string MachineSn { get; set; }
+        public string StoreId { get; set; }
+        public int CompanyToken { get; set; }
+        public int SerialNumber { get; set; }
+        private string TempFilePath { get; set; }
+
+        private readonly Object LocalFile = new Object();
+
+        public override string ToString()
+        {
+            lock (LocalFile)
+            {
+                TempFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PharosPosCache");
+
+                string fileName = string.Format(FILENAMEFORMAT, CompanyToken, StoreId, MachineSn, DateTime.Now.ToString("yyyyMMdd"));
+                fileName = Path.Combine(TempFilePath, fileName);
+                if (File.Exists(fileName))
+                {
+                    SerialNumber = Convert.ToInt32(File.ReadAllText(fileName));
+                }
+                return MachineSn + DateTime.Now.ToString("yyyyMMdd") + SerialNumber.ToString("0000");
+            }
+        }
+
+        public void NextSerialNumber()
+        {
+            //当天文件名，记录当前流水号
+            this.SerialNumber++;
+            SaveToFile(SerialNumber);
+            RedisManager.Publish("SyncSerialNumber", JsonConvert.SerializeObject(this));
+        }
+        private void SaveToFile(object serialNumber)
+        {
+            try
+            {
+                lock (LocalFile)
+                {
+                    if (!Directory.Exists(TempFilePath))
+                    {
+                        Directory.CreateDirectory(TempFilePath);
+                    }
+                    //当天文件名，记录当前流水号
+                    string fileName = string.Format(FILENAMEFORMAT, CompanyToken, StoreId, MachineSn, DateTime.Now.ToString("yyyyMMdd"));
+                    fileName = Path.Combine(TempFilePath, fileName);
+
+                    File.WriteAllText(fileName, serialNumber.ToString());
+                    //清除昨天的流水号文件
+                    fileName = string.Format(FILENAMEFORMAT, CompanyToken, StoreId, MachineSn, DateTime.Now.AddDays(-1).ToString("yyyyMMdd"));
+                    fileName = Path.Combine(TempFilePath, fileName);
+                    if (File.Exists(fileName))
+                    {
+                        File.Delete(fileName);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        public void ResetSerialNumber(int serialNumber)
+        {
+            SaveToFile(serialNumber);
+        }
+
+    }
+}

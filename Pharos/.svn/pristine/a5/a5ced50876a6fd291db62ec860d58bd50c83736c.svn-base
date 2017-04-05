@@ -1,0 +1,48 @@
+﻿using Microsoft.Synchronization.Data;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Data;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.ServiceModel;
+using System.Text;
+
+namespace Pharos.SyncWcfService
+{
+    // 注意: 使用“重构”菜单上的“重命名”命令，可以同时更改代码、svc 和配置文件中的类名“ServiceForSync”。
+    // 注意: 为了启动 WCF 测试客户端以测试此服务，请在解决方案资源管理器中选择 ServiceForSync.svc 或 ServiceForSync.svc.cs，然后开始调试。
+    public class ServiceForSync : IServiceForSync
+    {
+        private PosDbServerSyncProvider _serverSyncProvider;
+
+        public ServiceForSync()
+        {
+            this._serverSyncProvider = new PosDbServerSyncProvider();
+        }
+
+        [System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public virtual SyncContext ApplyChanges(SyncGroupMetadata groupMetadata, DataSet dataSet, SyncSession syncSession)
+        {
+            return this._serverSyncProvider.ApplyChanges(groupMetadata, dataSet, syncSession);
+        }
+
+        [System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public virtual SyncContext GetChanges(SyncGroupMetadata groupMetadata, SyncSession syncSession)
+        {
+            return this._serverSyncProvider.GetChanges(groupMetadata, syncSession);
+        }
+
+        [System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public virtual SyncSchema GetSchema(Collection<string> tableNames, SyncSession syncSession)
+        {
+            return this._serverSyncProvider.GetSchema(tableNames, syncSession);
+        }
+
+        [System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public virtual SyncServerInfo GetServerInfo(SyncSession syncSession)
+        {
+            return this._serverSyncProvider.GetServerInfo(syncSession);
+        }
+    }
+}

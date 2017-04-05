@@ -1,0 +1,150 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Caching;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Cache
+{
+    public class MemoryCacheWrapper<T> : IMemoryCacheWrapper<T>
+    where T : class
+    {
+        private readonly MemoryCache _memoryCache;
+        private CacheItemPolicy _defaultCacheItemPolicy;
+        private bool _isDisposed;
+        private bool _ignoreCase;
+
+        public MemoryCacheWrapper()
+            : this(typeof(T).Name)
+        {
+
+        }
+
+        public MemoryCacheWrapper(string name, bool ignoreCase = false)
+            : this(name, new CacheItemPolicy { AbsoluteExpiration = ObjectCache.InfiniteAbsoluteExpiration, SlidingExpiration = new TimeSpan(0, 5, 0) }, ignoreCase)
+        {
+
+        }
+
+        public MemoryCacheWrapper(string name, TimeSpan slidingExpiration, bool ignoreCase = false)
+            : this(name, new CacheItemPolicy { AbsoluteExpiration = ObjectCache.InfiniteAbsoluteExpiration, SlidingExpiration = slidingExpiration }, ignoreCase)
+        {
+
+        }
+
+        public MemoryCacheWrapper(string name, CacheItemPolicy defaultPolicy, bool ignoreCase = false)
+        {
+            _isDisposed = false;
+            _ignoreCase = ignoreCase;
+            _memoryCache = new MemoryCache(name);
+            _defaultCacheItemPolicy = defaultPolicy;
+        }
+
+        ~MemoryCacheWrapper()
+        {
+            Dispose(false);
+        }
+
+        public string Name
+        {
+            get { return _memoryCache.Name; }
+        }
+
+        public long CacheMemoryLimitInBytes
+        {
+            get { return _memoryCache.CacheMemoryLimit; }
+        }
+
+        public long PhysicalMemoryLimit
+        {
+            get { return _memoryCache.PhysicalMemoryLimit; }
+        }
+
+        public TimeSpan PollingInterval
+        {
+            get { return _memoryCache.PollingInterval; }
+        }
+
+        public CacheItemPolicy DefaultCacheItemPolicy
+        {
+            get
+            {
+                return _defaultCacheItemPolicy;
+            }
+            set
+            {
+                if (value != null)
+                {
+                    _defaultCacheItemPolicy = value;
+                }
+            }
+        }
+
+        public virtual void Set(string key, T value)
+        {
+            if (_ignoreCase)
+                key = key.ToUpper();
+            _memoryCache.Set(key, value, DefaultCacheItemPolicy);
+        }
+
+        public virtual T Get(string key)
+        {
+            if (_ignoreCase)
+                key = key.ToUpper();
+            return _memoryCache.Get(key) as T;
+        }
+
+        public virtual void Remove(string key)
+        {
+            if (_ignoreCase)
+                key = key.ToUpper();
+            _memoryCache.Remove(key);
+        }
+
+        public virtual bool ContainsKey(string key)
+        {
+            if (_ignoreCase)
+                key = key.ToUpper();
+            return _memoryCache.Contains(key);
+        }
+
+        public virtual long Count
+        {
+            get { return _memoryCache.GetCount(); }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!this._isDisposed)
+            {
+                if (disposing)
+                {
+                    _memoryCache.Dispose();
+                }
+            }
+            _isDisposed = true;
+        }
+
+        public virtual IEnumerable<string> Keys
+        {
+            get
+            {
+                return _memoryCache.Select(p => p.Key);
+            }
+        }
+
+        public virtual IEnumerable<T> Items
+        {
+            get
+            {
+                return _memoryCache.Select(p => (T)p.Value);
+            }
+        }
+    }
+}

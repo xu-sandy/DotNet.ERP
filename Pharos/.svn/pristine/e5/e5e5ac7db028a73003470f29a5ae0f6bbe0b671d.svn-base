@@ -1,0 +1,199 @@
+﻿using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class SaleOrdersService : BaseGeneralService<SaleOrders, EFDbContext>
+    {
+        public static BillHistoryInfo GetBillDetailsHistory(string storeId, string machineSn, string paySn)
+        {
+
+            var order = CurrentRepository.Find(o => o.PaySN == paySn && o.StoreId == storeId);
+            if (order == null)
+            {
+                throw new PosException("未找到该订单！");
+            }
+            var query = (from a in SaleDetailService.CurrentRepository.Entities
+
+                         from b in ProductRecordService.CurrentRepository.Entities
+                         from c in BaseGeneralService<SaleDetailsTotal, EFDbContext>.CurrentRepository.Entities
+                         where a.Barcode == b.Barcode && a.PaySN == paySn && a.PaySN == c.PaySN && a.Barcode == c.Barcode
+                         select new BillDetails()
+                         {
+                             ActualPrice = a.ActualPrice,
+                             Barcode = a.Barcode,
+                             Number = a.PurchaseNumber,
+                             Brand = b.BrandTitle,
+                             Size = b.Size,
+                             Title = b.Title,
+                             SysPrice = b.SysPrice,
+                             Total = c.Total,
+                             IsGift = a.ActualPrice == 0,
+                             Unit = b.SubUnit
+                         });
+            var payments = BaseGeneralService<ApiLibrary, EFDbContext>.CurrentRepository.Entities.ToList().Where(o => ("," + order.ApiCode + ",").Contains("," + o.ApiCode + ",")).ToList();
+            var title = string.Empty;
+            switch (payments.Count)
+            {
+                case 0:
+                    title = "未知支付方式";
+                    break;
+                case 1:
+                    title = payments.FirstOrDefault().Title;
+                    break;
+                default:
+                    title = "多方式支付";
+                    break;
+            }
+            var cashier = SysStoreUserInfoService.Find(o => o.UID == order.CreateUID);
+            return new BillHistoryInfo()
+            {
+                Details = query.ToList(),
+                PreferentialAmount = order.PreferentialPrice,
+                TotalAmount = order.TotalAmount,
+                Payment = title,
+                PaySn = order.PaySN,
+                ProductCount = 0,
+                CashierId = cashier == null ? "未知" : cashier.UserCode,
+                Change = 0m,
+                MachineSn = order.MachineSN,
+                StoreId = order.StoreId,
+                OrderTime = order.CreateDT,
+                Received = 0m
+            };
+
+        }
+
+        public static IEnumerable<BillListItem> GetBills(string storeId, string machineSn, DateTime date)
+        {
+            var start = date.Date;
+
+            var end = date.Date.AddDays(1);
+            var query = (CurrentRepository.Entities.Where(o => o.StoreId == storeId && o.CreateDT > start && o.CreateDT < end).Select(o => new BillListItem()
+            {
+                Amount = o.TotalAmount,
+                Date = o.CreateDT,
+                PaySn = o.PaySN,
+                Number = (from a in SaleDetailService.CurrentRepository.Entities.Where(p => p.PaySN == o.PaySN)
+                          from b in ProductRecordService.CurrentRepository.Entities
+                          where a.Barcode == b.Barcode || a.Barcode == b.ProductCode
+                          select (decimal?)(b.ValuationType == 1 ? a.PurchaseNumber : 1)
+                              ).Sum() ?? 0,
+            }));
+            return query.ToList();
+
+        }
+        /// <summary>
+        /// 销售合计不统计换货
+        /// </summary>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <param name="userCodes"></param>
+        /// <returns></returns>
+        public static void DayMonthReport(DateTime from, DateTime to, ref DayReportResult result, string storeId, string machineSn = "")
+        {
+            var entities = CurrentRepository.Entities.Where(o => o.CreateDT >= from && o.CreateDT < to && o.StoreId == storeId);
+            if (!string.IsNullOrEmpty(machineSn))
+            {
+                entities = entities.Where(o => o.MachineSN == machineSn);
+            }
+            string huanhuoProject = "换货合计";
+            string xiaoshouProject = "销售合计";
+            //处理支付
+            var paymants = (from a in entities
+                            from b in ConsumptionPaymentService.CurrentRepository.Entities
+                            from c in ApiLibraryService.CurrentRepository.Entities
+                            where a.PaySN == b.PaySN && c.ApiCode == b.ApiCode
+                            group b.Amount by new { a.CreateUID, c.Title } into g
+                            select g).ToList();
+            var wipeZeros = (from a in entities
+                             from b in WipeZeroService.CurrentRepository.Entities
+                             where a.PaySN == b.PaySN
+                             group b.Number by a.CreateUID  into g
+                             select g
+                                 ).ToDictionary(o=>o.Key,o=>o.Sum());
+            //用户
+            var users = (from a in entities
+                         from b in SysStoreUserInfoService.CurrentRepository.Entities
+                         where a.CreateUID == b.UID
+                         select new { b.UserCode, a.CreateUID, b.FullName }
+                             ).ToList();
+
+            var userOrders = entities.GroupBy(o => o.CreateUID);
+            if (userOrders.Count() > 0)
+            {
+                foreach (var item in userOrders)
+                {
+                    var user = users.FirstOrDefault(o => o.CreateUID == item.Key);
+                    var userSaleOrders = item.Where(o => o.Type == 0);
+                    SalesmanDayReportResult record = new SalesmanDayReportResult()
+                    {
+                        UserCode = user.UserCode,
+                        Salesman = user.FullName,
+                        StartTime = DateTime.Now,
+                        EndTime = DateTime.Now,
+                        Sale = new SalesmanDayReportSaleResult()
+                        {
+                            SaleInfo = new DayReportDetailItem() { Number = 0, Amount = 0m, Project = xiaoshouProject },
+                            PayWay = new List<PayWayItem>()
+                        },
+                        Other = new List<DayReportDetailItem>()
+                    };
+                    if (userSaleOrders.Count() > 0)
+                    {
+                        record = new SalesmanDayReportResult()
+                        {
+                            UserCode = user.UserCode,
+                            Salesman = user.FullName,
+                            StartTime = userSaleOrders.Min(o => o.CreateDT),
+                            EndTime = userSaleOrders.Max(o => o.CreateDT),
+                            Sale = new SalesmanDayReportSaleResult()
+                            {
+                                SaleInfo = new DayReportDetailItem()
+                                {
+                                    Amount = item.Sum(o => o.TotalAmount),
+                                    Number = item.Count(),
+                                    Project = xiaoshouProject
+                                }
+                            },
+                            Other = new List<DayReportDetailItem>()
+                        };
+                    }
+
+                    record.Sale.PayWay = paymants.Where(o => o.Key.CreateUID == item.Key).Select(o => new PayWayItem() { Title = o.Key.Title, Amount = o.Sum() }).ToList();
+                    
+                    record.Sale.PayWay.Add(new PayWayItem() { Amount = wipeZeros[item.Key], Title = "自动抹零" });
+                    var userRetrunOrders = item.Where(o => o.Type == 1);
+
+                    record.Other.Add(new DayReportDetailItem()
+                    {
+                        Amount = userRetrunOrders.Sum(o => o.TotalAmount),
+                        Number = userRetrunOrders.Count(),
+                        Project = huanhuoProject
+                    });
+                    result.SalesmanRecords.Add(record);
+                }
+            }
+            result.Summary.Add(new DayReportDetailItem()
+            {
+                Amount = result.SalesmanRecords.Sum(o => o.Sale.SaleInfo.Amount),
+                Number = result.SalesmanRecords.Sum(o => o.Sale.SaleInfo.Number),
+                Project = xiaoshouProject
+            });
+            result.Summary.Add(new DayReportDetailItem()
+            {
+                Amount = result.SalesmanRecords.Sum(o => o.Other.First(p => p.Project == huanhuoProject).Amount),
+                Number = result.SalesmanRecords.Sum(o => o.Other.First(p => p.Project == huanhuoProject).Number),
+                Project = huanhuoProject
+            });
+
+        }
+    }
+}

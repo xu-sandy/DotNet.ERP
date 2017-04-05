@@ -1,0 +1,270 @@
+
+
+--2015-11-10
+--tempRPTResult改为临时表
+ALTER PROCEDURE [dbo].[Rpt_GiftAnnualStatistical]
+ @startDate VARCHAR(20),
+ @endDate VARCHAR(20),
+ @supplier VARCHAR(20),
+ @category VARCHAR(20),
+ @store VARCHAR(20)
+AS
+BEGIN
+if exists(select * from tempdb..sysobjects where id=object_id('tempdb..#T'))
+ drop table #t;
+with my1 as(
+	select * from ProductCategory where ProductCategory.CategoryPSN =0 and CategorySN = @category
+	           union all select ProductCategory.* from my1, ProductCategory where my1.CategorySN = ProductCategory.CategoryPSN)
+select CategorySN into #t from my1;
+if exists(select name from sysobjects where type='u' and name='#T1') 
+drop table #T1;
+if exists(select name from sysobjects where type='u' and name='#store') 
+drop table #store;
+if exists(select name from sysobjects where type='u' and name='#tempRPTResult') 
+drop table #tempRPTResult;
+select tt.StoreId,tt.theMonth,tt.Id into  #store  from
+(select a.StoreId,t.theMonth,a.Id from Warehouse  a
+left join 
+
+(
+ select 1  as theMonth 
+union all 
+select 2
+union all 
+select 3
+union all 
+select 4
+union all 
+select 5
+union all 
+select 6
+union all 
+select 7
+union all 
+select 8
+union all 
+select 9
+union all 
+select 10
+union all 
+select 11
+union all 
+select 12
+) as t on a.StoreId!=0) tt
+where tt.StoreId =@store or @store='' or @store is null
+order by tt.Id
+
+
+select a.StoreId,MONTH(a.CreateDT) as theMonth,b.ActualPrice,b.SysPrice,b.PurchaseNumber into #T1  from SaleOrders a
+left join SaleDetail b on a.PaySN =b.PaySN
+where a.CreateDT>@startDate and a.CreateDT<@endDate
+and b.Barcode in(select p.Barcode from ProductRecord p where (p.SupplierId = @supplier or @supplier = '' or @supplier is null)and(p.CategorySN in (select * from #t) or @category =''or @category is null) )
+
+
+declare @sql varchar(8000)
+declare @sql1 varchar(Max)
+declare @createTable varchar(Max)
+declare @execSql varchar(Max)
+
+ set @sql1=''
+ set @createTable=''
+ SET @execSql=''
+ declare @month int
+ set @month = 1
+
+  select @createTable =@createTable
++', TSale'+  CONVERT(varchar(20),a.StoreId, 0)+ ' varchar(40) null'
++', Tgift'+ CONVERT(varchar(20),a.StoreId, 0)+ ' varchar(40) null'
++', Ratio'+ CONVERT(varchar(20),a.StoreId, 0)+ ' varchar(40) null'
+ from (select Distinct StoreId from  #store) a
+  set @createTable=' month varchar(20)'+@createTable
+ set @createTable = 'create table #tempRPTResult('+@createTable+')'
+ -- exec(@createTable)
+SET @execSql = @execSql + @createTable + ' '
+
+
+
+
+ while(@month<=12)
+ begin
+  set @sql = ''
+ select @sql = @sql
+            +','''+CONVERT(varchar(20),ISNULL((select SUM(ActualPrice*PurchaseNumber) from #T1 where StoreId=a.StoreId and theMonth = @month and ActualPrice!=0),0),0)+''' TSale'+  CONVERT(varchar(20),a.StoreId, 0)
+            +','''+CONVERT(varchar(20),ISNULL((select SUM(PurchaseNumber*SysPrice) from #T1  where  StoreId=a.StoreId and theMonth =@month   and ActualPrice=0),0),0)+''' Tgift'+ CONVERT(varchar(20),a.StoreId, 0)
+			+','''+CONVERT(varchar(20),ISNULL((select SUM(PurchaseNumber*SysPrice) from #T1  where  StoreId=a.StoreId and theMonth =@month and ActualPrice=0) /(select SUM(ActualPrice*PurchaseNumber) from #T1  where StoreId=a.StoreId and theMonth = @month  and ActualPrice!=0),0),0)+''' Ratio'+ CONVERT(varchar(20),a.StoreId, 0)		
+ from (select Distinct StoreId from  #store) a
+ 
+ set @sql=CONVERT(varchar(20),@month, 0)+' month'+@sql
+
+ set @sql1='Insert into #tempRPTResult select ' + @sql
+  print( @sql1)
+ --exec( @sql1) 
+ SET @execSql = @execSql + @sql1 + ' '
+ set @month =@month+1
+end
+
+
+--处理统计
+set @sql=''
+select @sql = @sql+
+    +',CONVERT(varchar(20),Sum(CAST([TSale'+  CONVERT(varchar(20),a.StoreId, 0)+'] as decimal)),0) TSale'+  CONVERT(varchar(20),a.StoreId, 0)
+    +',CONVERT(varchar(20),Sum(CAST([Tgift'+  CONVERT(varchar(20),a.StoreId, 0)+'] as decimal)),0) Tgift'+  CONVERT(varchar(20),a.StoreId, 0)
+    +',CONVERT(varchar(20),cast(Sum(CAST([Tgift'+  CONVERT(varchar(20),a.StoreId, 0)+'] as decimal))/(CASE WHEN Sum(CAST([TSale'+  CONVERT(varchar(20),a.StoreId, 0)+'] as decimal))=0 THEN 1 else Sum(CAST([TSale'+  CONVERT(varchar(20),a.StoreId, 0)+'] as decimal)) end ) as numeric(10,2)),0) Ratio'+  CONVERT(varchar(20),a.StoreId, 0)
+ from (select Distinct StoreId from  #store) a
+ set @sql1=''
+  set @sql='''合计'' month'+@sql
+ set @sql1='Insert into  #tempRPTResult select  ' + @sql+' from #tempRPTResult'
+ --print(@sql1)
+ --exec( @sql1)
+ SET @execSql = @execSql + @sql1 + ' select * from #tempRPTResult '
+ EXEC(@execSql)
+ 
+--select * from #tempRPTResult 
+
+if exists(select name from sysobjects where type='u' and name='#tempRPTResult') 
+drop table #tempRPTResult;
+end
+
+
+--2015-11-10
+--新增报损单信息表
+CREATE TABLE [dbo].[BreakageGoods](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[BreakageGoodsId] [varchar](40) NOT NULL,
+	[StoreId] [varchar](3) NOT NULL,
+	[OperatorUID] [varchar](40) NOT NULL,
+	[CreateDT] [datetime] NOT NULL,
+	[BreakageType] [smallint] NOT NULL,
+	[Receipt] [varchar](40) NULL,
+	[Memo] [varchar](200) NULL,
+	[State] [smallint] NOT NULL,
+ CONSTRAINT [PK_BreakageGoods] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'记录ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageGoods', @level2type=N'COLUMN',@level2name=N'Id'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'报损单Id' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageGoods', @level2type=N'COLUMN',@level2name=N'BreakageGoodsId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'报损门店ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageGoods', @level2type=N'COLUMN',@level2name=N'StoreId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'经办人 UID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageGoods', @level2type=N'COLUMN',@level2name=N'OperatorUID'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'报损类别（ 0:出库、 1:入库）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageGoods', @level2type=N'COLUMN',@level2name=N'BreakageType'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'原始单据' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageGoods', @level2type=N'COLUMN',@level2name=N'Receipt'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'备注' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageGoods', @level2type=N'COLUMN',@level2name=N'Memo'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'状态（ 0:未审核、 1:已审核）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageGoods', @level2type=N'COLUMN',@level2name=N'State'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'用于管理本系统的所有货品报损基本信息' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageGoods'
+GO
+
+--2015-11-10
+--报损明细信息表
+CREATE TABLE [dbo].[BreakageList](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[BreakageGoodsId] [varchar](40) NOT NULL,
+	[Barcode] [varchar](30) NOT NULL,
+	[BreakageNumber] [money] NOT NULL,
+	[BreakagePrice] [money] NOT NULL,
+	[State] [smallint] NOT NULL,
+ CONSTRAINT [PK_BreakageList] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'明细ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageList', @level2type=N'COLUMN',@level2name=N'Id'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'报损单ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageList', @level2type=N'COLUMN',@level2name=N'BreakageGoodsId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'条码' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageList', @level2type=N'COLUMN',@level2name=N'Barcode'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'报损数量' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageList', @level2type=N'COLUMN',@level2name=N'BreakageNumber'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'报损价（出库：批发价,入库：进价）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageList', @level2type=N'COLUMN',@level2name=N'BreakagePrice'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'状态（ 0:未审核、 1:已审核）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageList', @level2type=N'COLUMN',@level2name=N'State'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'用于管理本系统的所有货品报损的明细信息' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'BreakageList'
+GO
+
+--2015-11-11
+--入库明细信息新增是否为赠品字段
+ALTER TABLE dbo.InboundList ADD IsGift smallint NOT NULL DEFAULT 0
+
+
+--2015-11-13
+--首页销售数据
+-- =============================================
+-- Author:		hs
+-- Create date: 2015-11-12
+-- Description:	<首页销售数据>
+-- =============================================
+CREATE PROCEDURE [dbo].[Rpt_IndexSalesData]
+    @startDate VARCHAR(10),
+    @endDate VARCHAR(10),
+    @type CHAR(1) = '1' ,--类别1：销售量，类型2：热销商品
+    @storeId VARCHAR(20) = ''
+AS
+    BEGIN
+        SET NOCOUNT ON;
+    
+        IF ( @type = '1' )
+            BEGIN
+               SELECT ISNULL(SUM(s.Quantity),0) AS TotalQuantity FROM dbo.SaleOrders AS so
+               INNER JOIN (
+				SELECT PaySN, 
+					SUM(CASE WHEN vp.ValuationType=1 THEN sd.PurchaseNumber ELSE 1 END) AS Quantity
+				FROM dbo.SaleDetail AS sd 
+				LEFT JOIN dbo.Vw_Product vp ON vp.Barcode = sd.Barcode
+				GROUP BY PaySN
+				) AS s ON s.PaySN = so.PaySN
+				WHERE (so.CreateDT BETWEEN @startDate AND @endDate)
+				AND (ISNULL(@storeId,'')='' OR @storeId='-1' OR so.StoreId=@storeId)			
+            END
+		
+		IF(@type = '2')
+		BEGIN
+			SELECT vp.Title,SUM(sd.PurchaseNumber) AS Quantity
+			 FROM dbo.SaleDetail AS sd
+			LEFT JOIN dbo.Vw_Product vp ON vp.Barcode = sd.Barcode
+			WHERE vp.ValuationType=1 
+			AND EXISTS ( SELECT 1
+                         FROM   dbo.SaleOrders AS so
+                         WHERE  PaySN = sd.PaySN
+                                AND so.CreateDT BETWEEN @startDate AND @endDate
+                                AND (ISNULL(@storeId,'')='' OR @storeId='-1' OR so.StoreId=@storeId))
+			GROUP BY vp.Barcode,vp.Title
+			ORDER BY SUM(sd.PurchaseNumber) DESC
+		END            
+            
+END

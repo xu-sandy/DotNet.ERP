@@ -1,0 +1,20 @@
+﻿@model Dictionary<string,int>
+@{
+    var colcount = 3;
+    var i = 0;
+    if (Model == null) { return; }
+}
+<table class="ListPartial">
+    <tr>
+        @foreach (var dict in Model)
+        {
+            if (i == colcount)
+            {
+                ViewContext.Writer.Write("</tr><tr>");
+                i = 0;
+            }
+            <td><label style="display:inline-block;" id="@(dict.Key)" val="@(dict.Value)">@(dict.Key+"("+dict.Value+")")</label></td>
+            i++;
+        }
+    </tr>
+</table>

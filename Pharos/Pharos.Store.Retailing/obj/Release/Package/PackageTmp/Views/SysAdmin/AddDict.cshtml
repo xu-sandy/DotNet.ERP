@@ -1,0 +1,67 @@
+﻿@model Pharos.Sys.EntityExtend.SysDataDictionaryExt
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.DicSN)
+        @Html.HiddenFor(o => o.DicPSN)
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-toolbar" style="width: 100%; height: 90px; ">
+                @if (Model.DicPSN != 0)
+                {
+                    <tr>
+                        <td class="name">
+                            <span>所属分类：</span>
+                        </td>
+                        <td class="input">
+                            @Html.DisplayFor(o => o.PTitle)
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td class="name">
+                        <span>名称：</span>
+                    </td>
+                    <td class="input">
+                        @if(Model.DicPSN == 0){
+                            @Html.DisplayFor(o => o.Title)
+                            @Html.HiddenFor(o => o.Title)
+                        }else{
+                            @Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true" })
+                        }
+                    </td>
+                    <td class="name">
+                        <span>状态：</span>
+                    </td>
+                    <td class="input">
+                        @Html.RadioButtonFor(o => o.Status, false) 关闭
+                        @Html.RadioButtonFor(o => o.Status, true) 启用
+                    </td>
+                </tr>
+                @*<tr></tr>*@
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    function getUrlParam(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) return unescape(r[2]); return null;
+    }
+
+    function Refresh() {
+        var customForm = getUrlParam('userwinid');
+        if (!customForm) {
+            pharos.easyui.dialog.topClose("formDiv");
+            pharos.easyui.dialog.curJquery("formDiv")("#grid").datagrid("reload");
+        } else {
+            pharos.easyui.dialog.topClose("EditformDiv");
+            pharos.easyui.treegrid.treegrid('reload');
+        }
+    }
+</script>

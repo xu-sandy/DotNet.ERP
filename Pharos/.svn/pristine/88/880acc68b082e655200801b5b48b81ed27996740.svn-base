@@ -1,0 +1,105 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System.Linq.Expressions;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public abstract class BaseService<T> where T : class
+    {
+        [Ninject.Inject]
+        protected LogEngine LogEngine { get; set; }
+
+        [Ninject.Inject]
+        IBaseRepository<T> baseRepository { get; set; }
+
+        /// <summary>
+        /// 根据ID获取一条记录
+        /// </summary>
+        /// <param name="Id"></param>
+        /// <returns></returns>
+        public T GetById(int Id)
+        {
+            return baseRepository.Get(Id);
+        }
+
+        /// <summary>
+        /// 根据条件获取列表
+        /// </summary>
+        /// <param name="whereLambda"></param>
+        /// <returns></returns>
+        public List<T> GetByWhere(Expression<Func<T, bool>> whereLambda=null)
+        {
+            return baseRepository.GetQuery(whereLambda).ToList();
+        }
+
+        /// <summary>
+        /// 获取最大编号
+        /// </summary>
+        /// <param name="whereLambda"></param>
+        /// <param name="startInt">编号最小值</param>
+        /// <param name="endInt">编号最大值</param>
+        /// <returns></returns>
+        public int getMaxInt(Expression<Func<T, int>> whereLambda, int minInt, int maxInt)
+        {
+            int i = 0;
+            if (whereLambda != null && minInt != 0 && maxInt != 0)
+            {
+                i = baseRepository.GetQuery().Max(whereLambda);
+                if (i < minInt)
+                {
+                    i = minInt;
+                }
+                else
+                {
+                    i = i + 1;
+                    if (i >= maxInt)
+                    {
+                        i = -1;
+                    }
+                }
+            }
+            else
+            {
+                i = -1;
+            }
+            return i;
+        }
+
+        /// <summary>
+        /// 插入一条记录或者更新一条记录
+        /// </summary>
+        /// <param name="model"></param>
+        /// <param name="Id"></param>
+        /// <returns></returns>
+        public T InsertUpdate(T model,int Id)
+        {
+            if (Id > 0)
+            {
+                return baseRepository.Update(model);
+            }
+            else
+            {
+                return baseRepository.Insert(model);
+            }
+        }
+
+        /// <summary>
+        /// 根据条件删除
+        /// </summary>
+        /// <param name="whereLambda"></param>
+        /// <returns></returns>
+        public OpResult DeleteByWhere(Expression<Func<T, bool>> whereLambda)
+        {
+            var list = baseRepository.GetQuery(whereLambda);
+            baseRepository.RemoveRange(list.ToList());
+            return OpResult.Success();
+        }
+    }
+}

@@ -1,0 +1,96 @@
+﻿@model Pharos.Logic.OMS.Entity.ImportSet
+@{
+    ViewBag.Title = "Import";
+    Layout = "~/Views/Shared/_ImportLayout.cshtml";
+    var cols = Form.GetExcelCol();
+    var datas = Model.FieldCols;
+}
+<div class="default-form" style="width:550px">
+    @using (Html.BeginForm("Import", "Member", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <table style="margin:10px;">
+            <tr>
+                <th>导入文件：</th>
+                <td><input type="text" class="easyui-filebox" name="file1" data-options="buttonText:'选择文件',prompt:'请选择Excel文件...',required:true,missingMessage:'请选择导入文件'" style="width:300px;" /></td>
+            </tr>
+        </table>
+        <fieldset style="margin:0px;margin-bottom:5px;">
+            <legend>导入基本配置</legend>
+            <table style="margin:10px 5px 0px 10px;width:100%">
+                <tr>
+                    <th>@Html.Hidden("FieldName", "CurrentCityId") 城 市：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("CurrentCityId") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "AssignerUID") 业务员：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("AssignerUID") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "TrackStautsId") 跟进状态：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("TrackStautsId") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "CreateDT") 日 期：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("CreateDT") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Title") 客户简称：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Title") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "FullTitle") 客户全称：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("FullTitle") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "Source") 客户来源：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Source") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "BusinessScopeId") 经营类别：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("BusinessScopeId") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Pay") 支付方式：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Pay") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "BusinessModeId") 客户类型：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("BusinessModeId") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "ExistsystemName") 现有系统名称：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("ExistsystemName") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "ExistDeviceName") 现有设备名称：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("ExistDeviceName") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "EachStorePosNum") 每门店收银电脑台数：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("EachStorePosNum") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "EachStorePersonNum") 每门店人均数：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("EachStorePersonNum") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "ExistStoreNum") 现有门店数量：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("ExistStoreNum") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "PlanExpandStoreNum") 近2年计划扩张门店数量：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("PlanExpandStoreNum") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Rival") 竞争对手：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Rival") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Marketing") 竞争对手的营销模式：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Marketing") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "LinkMan") 联系人：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("LinkMan") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "MobilePhone") 电话/手机：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("MobilePhone") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Address") 地 址：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Address") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "Memo") 备注说明：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Memo") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "VisitDT") 跟进日期：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("VisitDT") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Content") 跟进状况：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Content") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>起始行：</th>
+                    <td>@Html.TextBoxFor(o => o.MinRow, new { @class = "easyui-numberbox", style = "width:85px" })</td>
+                    <th>终止行：</th>
+                    <td>@Html.TextBoxFor(o => o.MaxRow, new { @class = "easyui-numberbox", style = "width:85px" })</td>
+                    <th>新建关联记录：</th>
+                    <td>@Html.CheckBoxFor(o => o.RefCreate)</td>
+                </tr>
+            </table>
+        </fieldset>
+    }
+</div>

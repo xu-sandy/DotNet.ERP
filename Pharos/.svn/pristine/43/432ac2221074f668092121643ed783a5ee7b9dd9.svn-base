@@ -1,0 +1,178 @@
+﻿using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels.Pay
+{
+    public class CashCouponPayViewModel : BaseViewModel
+    {
+        public CashCouponPayViewModel(decimal _amount, PayAction _mode, int reason = 0)
+        {
+            var isWipeZero = Global.MachineSettings.MachineInformations.IsNonCashWipeZero;
+
+            IsOperatEnabled = true;
+            Amount = _amount;//抹零前
+            if (isWipeZero)
+            {
+                WipeZeroAfter = Math.Round(_amount, 1, MidpointRounding.AwayFromZero);//摸零后
+            }
+            else
+            {
+                WipeZeroAfter = _amount;
+            }
+            WipeZero = _amount - WipeZeroAfter;//摸零金额
+            if (WipeZero < 0)
+            {
+                WipeZero = 0;
+            }
+            Mode = _mode;
+            Reason = reason;
+        }
+
+        int Reason { get; set; }
+        private decimal wipeZeroAfter;
+        /// <summary>
+        /// 抹零后金额
+        /// </summary>
+        public decimal WipeZeroAfter
+        {
+            get { return wipeZeroAfter; }
+            set { wipeZeroAfter = value; this.OnPropertyChanged(o => o.WipeZeroAfter); }
+        }
+
+        private PayAction mode;
+
+        public PayAction Mode
+        {
+            get { return mode; }
+            set { mode = value; this.OnPropertyChanged(o => o.Mode); }
+        }
+
+        /// <summary>
+        /// 订单金额
+        /// </summary>
+        private decimal amount;
+
+        public decimal Amount
+        {
+            get { return amount; }
+            set { amount = value; this.OnPropertyChanged(o => o.Amount); }
+        }
+        /// <summary>
+        /// 现金收款
+        /// </summary>
+        private decimal cashCoupon;
+
+        public decimal CashCoupon
+        {
+            get { return cashCoupon; }
+            set
+            {
+                cashCoupon = value;
+                this.OnPropertyChanged(o => o.CashCoupon);
+            }
+        }
+        /// <summary>
+        /// 抹零
+        /// </summary>
+        private decimal wipeZero;
+
+        public decimal WipeZero
+        {
+            get { return wipeZero; }
+            set
+            {
+                wipeZero = value;
+                this.OnPropertyChanged(o => o.WipeZero);
+            }
+        }
+
+        /// <summary>
+        /// 现金支付确认事件
+        /// </summary>
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    IsOperatEnabled = false;
+                    this.OnPropertyChanged(o => o.IsOperatEnabled);
+
+                    if ((CashCoupon + WipeZero) >= Amount)
+                    {
+                        Task.Factory.StartNew(() =>
+                        {
+                            var _machinesInfo = Global.MachineSettings.MachineInformations;
+                            List<PayWay> payWay = new List<PayWay>();
+                            PayWay _payWay = new PayWay()
+                            {
+                                Amount = WipeZeroAfter,
+                                Receive = CashCoupon,
+                                Change = 0,
+                                Type = PayMode.CashCoupon,
+                                WipeZero = WipeZero
+                            };
+                            payWay.Add(_payWay);
+                            ApiPayParams _params = new ApiPayParams()
+                            {
+                                StoreId = _machinesInfo.StoreId,
+                                MachineSn = _machinesInfo.MachineSn,
+                                CompanyToken = _machinesInfo.CompanyToken,
+                                Mode = Mode,
+                                Receivable = WipeZeroAfter,
+                                OrderAmount = Amount,
+                                Payway = payWay,
+                                Reason = Reason
+                            };
+                            var result = ApiManager.Post<ApiPayParams, ApiRetrunResult<object>>(@"api/Pay", _params);
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                if (result.Code == "200")
+                                {
+                                    ZhiFuWanCheng page = new ZhiFuWanCheng(WipeZeroAfter, CashCoupon, 0, "代金券", Mode, (DateTime)result.Result);
+                                    page.Owner = Application.Current.MainWindow;
+
+                                    CurrentWindow.Hide();
+                                    page.ShowDialog();
+                                    CurrentWindow.Close();
+                                }
+                                else
+                                {
+                                    Toast.ShowMessage(result.Message, CurrentWindow);
+                                }
+                                IsOperatEnabled = true;
+                            }));
+                        });
+                    }
+                    else
+                    {
+                        IsOperatEnabled = true;
+                        Toast.ShowMessage("收款不得低于应收金额！", CurrentWindow);
+                    }
+                });
+            }
+        }
+
+        bool _IsOperatEnabled = true;
+
+        public bool IsOperatEnabled
+        {
+            get { return _IsOperatEnabled; }
+            set
+            {
+                _IsOperatEnabled = value;
+                this.OnPropertyChanged(o => o.IsOperatEnabled);
+            }
+        }
+    }
+}

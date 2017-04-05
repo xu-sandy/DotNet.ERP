@@ -1,0 +1,51 @@
+﻿using Microsoft.Synchronization;
+using Pharos.SyncService.Cache;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.SyncService.SyncProviders
+{
+    public static class SyncProviderFactory
+    {
+        static SyncProviderCache _SyncProviderCache = null;
+        static SyncProviderFactory()
+        {
+            if (_SyncProviderCache == null)
+                _SyncProviderCache = new SyncProviderCache();
+        }
+
+        private static string KeyFactory(int companyId, string storeId, SyncDirectionOrder syncDirectionOrder)
+        {
+            return string.Format("{0}_{1}_{2}", companyId, storeId, syncDirectionOrder);
+        }
+        public static PosDbSyncProvider Factory(int companyId, string storeId, SyncDirectionOrder syncDirectionOrder, bool isNew = false)
+        {
+
+            PosDbSyncProvider syncProvider;
+            var key = KeyFactory(companyId, storeId, syncDirectionOrder);
+            if (isNew)
+                goto NewItem;
+
+            if (_SyncProviderCache.ContainsKey(key))
+            {
+                syncProvider = _SyncProviderCache.Get(key);
+                if (syncProvider == null)
+                {
+                    goto NewItem;
+                }
+                return syncProvider;
+            }
+        NewItem:
+            var dataServiceGroups = SyncDataServiceGroupFactory.Factory(new RemoteSyncContext());
+            var syncContext = dataServiceGroups.FirstOrDefault(o => o.SyncDirectionOrder == syncDirectionOrder);
+            syncProvider = new PosDbSyncProvider(companyId, storeId, syncContext);
+            _SyncProviderCache.Set(key, syncProvider);
+            GC.Collect();
+            return syncProvider;
+
+
+        }
+    }
+}

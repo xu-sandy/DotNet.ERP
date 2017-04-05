@@ -1,0 +1,230 @@
+﻿using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class FindMember : BaseViewModel
+    {
+        /// <summary>
+        /// 会员手机号
+        /// </summary>
+        private string phone;
+
+        public string Phone
+        {
+            get { return phone; }
+            set
+            {
+                if (value == null)
+                    value = "";
+                phone = value.Trim();
+                this.OnPropertyChanged(o => o.Phone);
+            }
+        }
+        /// <summary>
+        /// 会员卡号
+        /// </summary>
+        private string cardNo;
+
+        public string CardNo
+        {
+            get { return cardNo; }
+            set
+            {
+                if (value == null)
+                    value = "";
+                cardNo = value.Trim();
+                this.OnPropertyChanged(o => o.CardNo);
+            }
+        }
+        private string memberId;
+
+        public string MemberId
+        {
+            get { return memberId; }
+            set
+            {
+                memberId = value;
+                this.OnPropertyChanged(o => o.MemberId);
+            }
+        }
+
+        private string name;
+
+        public string Name
+        {
+            get { return name; }
+            set
+            {
+                name = value;
+                this.OnPropertyChanged(o => o.Name);
+            }
+        }
+
+
+        private bool sex = true;
+
+        public bool Sex
+        {
+            get { return sex; }
+            set
+            {
+                sex = value;
+                this.OnPropertyChanged(o => o.Sex);
+            }
+        }
+
+
+
+        private string zhifubao;
+
+        public string ZhiFuBao
+        {
+            get { return zhifubao; }
+            set
+            {
+                zhifubao = value;
+                this.OnPropertyChanged(o => o.ZhiFuBao);
+            }
+        }
+
+
+
+        private string weixin;
+
+        public string WeiXin
+        {
+            get { return weixin; }
+            set
+            {
+                weixin = value;
+                this.OnPropertyChanged(o => o.WeiXin);
+            }
+        }
+
+        private string email;
+
+        public string Email
+        {
+            get { return email; }
+            set
+            {
+                email = value;
+                this.OnPropertyChanged(o => o.Email);
+
+            }
+        }
+        private decimal jifen;
+
+        public decimal JiFen
+        {
+            get { return jifen; }
+            set
+            {
+                jifen = value;
+                this.OnPropertyChanged(o => o.JiFen);
+
+            }
+        }
+
+
+        private DateTime birthday = DateTime.Now;
+
+        public DateTime Birthday
+        {
+            get { return birthday; }
+            set
+            {
+                birthday = value;
+                this.OnPropertyChanged(o => o.Birthday);
+            }
+        }
+
+        private string address;
+        public string Address
+        {
+            get { return address; }
+            set
+            {
+                address = value;
+                this.OnPropertyChanged(o => o.address);
+            }
+        }
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (!string.IsNullOrEmpty(PosViewModel.Current.CardNo))
+                    {
+                        CurrentWindow.Close();
+                        return;
+                    }
+                    if (!string.IsNullOrEmpty(Phone) || !string.IsNullOrEmpty(CardNo))
+                    {
+                        //调会员信息接口
+                        Task.Factory.StartNew(() =>
+                        {
+                            var _machinesInfo = Global.MachineSettings.MachineInformations;
+                            SetMemberParams _params = new SetMemberParams()
+                            {
+                                To = MembersSourseMode.Internal,
+                                Phone = Phone,
+                                CardNo = CardNo,
+                                StoreId = _machinesInfo.StoreId,
+                                MachineSn = _machinesInfo.MachineSn,
+                                CID = _machinesInfo.CompanyId
+                            };
+                            var result = ApiManager.Post<SetMemberParams, ApiRetrunResult<SetMemberResult>>(@"api/SetMember", _params);
+                            if (result.Code == "200")
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    //会员信息回传到主界面
+                                    this.Phone = result.Result.MobilePhone;
+                                    this.CardNo = result.Result.MemberCardNum;
+                                    MemberId = result.Result.MemberId;
+                                    Name = result.Result.RealName;
+                                    Sex = result.Result.Sex;
+                                    ZhiFuBao = result.Result.ZhiFuBao;
+                                    WeiXin = result.Result.WeiXin;
+                                    Email = result.Result.Email;
+                                    Birthday = result.Result.Birthday;
+                                    Address = result.Result.Address;
+                                    JiFen = result.Result.UsableIntegral;
+                                    PosViewModel.Current.Phone = result.Result.MobilePhone;
+                                    PosViewModel.Current.CardNo = result.Result.MemberCardNum;
+                                    PosViewModel.Current.FullName = result.Result.RealName;
+                                    PosViewModel.Current.UsableIntegral = result.Result.UsableIntegral;
+
+                                }));
+                            }
+                            else
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    Toast.ShowMessage(result.Message, CurrentWindow);
+                                    Phone = string.Empty;
+                                    Birthday = new DateTime();
+                                }));
+                            }
+                        });
+
+
+                    }
+                    else
+                    {
+                        Toast.ShowMessage("请输入会员卡号或会员手机号！", CurrentWindow);
+                    }
+                });
+            }
+        }
+
+    }
+}

@@ -1,0 +1,65 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增品牌", delText: "移除品牌",editText:"修改品牌"));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>分类：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("classfyId", ViewBag.types as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,width:120" })
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="title" name="title" class="datacontrol easyui-textbox" placeholder="名称" data-options="prompt:'名称'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setEnable(1)">设为可用</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-suspend'" onclick="setEnable(0)">设为停用</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="openDialog600('Excel文件导入','@Url.Action("Import")');window.top.$('#lbsave .l-btn-text').width(100).html('开始导入');">导入</a>
+}
+<script>
+
+    pharos.manager.geturl = "@Url.Action("FindPageList")";
+    pharos.manager.editurl = "@Url.Action("AddBrand")";
+    pharos.manager.columns = [[
+                { field: 'Id', checkbox: true, width: 30 },
+                { field: 'Source', title: '来源', width: 100, align: 'center', formatter: function (value, row, index) { return value == 1 ? "本司" : "商户"; } },
+                { field: 'BrandSN', title: '编号', width: 100, align: 'center',hidden:true },
+                { field: 'ClassifyTitle', title: '分类', width: 150, align: 'center' },
+                { field: 'Title', title: '品牌名称', width: 300, align: 'center' },
+                { field: 'JianPin', title: '简拼', width: 100, align: 'center' },
+                { field: 'ProductCount', title: '档案商品量', width: 150, align: 'center' },
+                { field: 'StateTitle', title: '状态', width: 100, align: 'center' },
+    ]];
+
+    function setEnable(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    function removeBefore(item) {
+        if (item.ProductCount > 0) {
+            $.messager.alert("提示", "无法移除，该品牌下存在商品档案信息!"); return false;
+        }
+        return true;
+    }
+</script>

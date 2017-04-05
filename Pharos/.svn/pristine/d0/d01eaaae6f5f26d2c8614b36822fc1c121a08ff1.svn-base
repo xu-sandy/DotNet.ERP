@@ -1,0 +1,132 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.Logic.DAL;
+using Pharos.SyncService.Exceptions;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.SyncService.Helpers;
+using System.Data.Entity;
+
+namespace Pharos.SyncService.RemoteDataServices
+{
+    public class CommodityDiscountPackageRemoteService : ISyncDataService
+    {
+        public TimeSpan SyncInterval
+        {
+            get
+            {
+                return new TimeSpan(0, 30, 0);
+            }
+        }
+        public string Name
+        {
+            get
+            {
+                return this.GetType().ToString();
+            }
+
+        }
+        public Microsoft.Synchronization.SyncDirectionOrder SyncDirectionOrder
+        {
+            get { return Microsoft.Synchronization.SyncDirectionOrder.Download; }
+        }
+
+        public IEnumerable<ISyncDataObject> GetSyncObjects(int companyId, string storeId)
+        {
+            try
+            {
+                using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+                {
+
+                    //PromotionType 1:单品折扣、 2:捆绑促销、 3:组合促销、4:买赠促销、 5:满元促销
+                    var commodity = db.CommodityPromotions.Where(o => (("," + o.StoreId + ",").Contains("," + storeId + ",") || ("," + o.StoreId + ",").Contains(",-1,")) && o.CompanyId == companyId && o.PromotionType == 1).ToList();
+                    List<SyncDataPackage> result = new List<SyncDataPackage>();
+
+                    foreach (var item in commodity)
+                    {
+                        var package = GetVersion(item, companyId, storeId, db);
+                        result.Add(package);
+                    }
+                    return result;
+                }
+            }
+            catch
+            {
+                return new List<ISyncDataObject>();
+            }
+        }
+
+        private SyncDataPackage GetVersion(Pharos.Logic.Entity.CommodityPromotion item, int companyId, string storeId, EFDbContext db)
+        {
+            var package = new SyncDataPackage() { SyncItemId = item.SyncItemId, EntityType = "CommodityDiscountPackage" };
+            package.Items.Add(new SyncDataPackageItem() { SyncItemId = item.SyncItemId, EntityType = typeof(CommodityPromotion).ToString(), SyncItemVersion = item.SyncItemVersion });
+
+            var commdity = db.CommodityPromotions.Where(o => o.CompanyId == companyId && (("," + o.StoreId + ",").Contains("," + storeId + ",") || ("," + o.StoreId + ",").Contains(",-1,")) && o.PromotionType == 1).ToList().Select(o => new SyncDataPackageItem()
+            {
+                SyncItemVersion = o.SyncItemVersion,
+                SyncItemId = o.SyncItemId,
+                EntityType = typeof(CommodityPromotion).ToString()
+            }).ToList();
+            package.Items.AddRange(commdity);
+            var commdity_discount = db.CommodityDiscounts.Where(o => o.CompanyId == companyId && o.CommodityId == item.Id).ToList().Select(o => new SyncDataPackageItem()
+            {
+                SyncItemVersion = o.SyncItemVersion,
+                SyncItemId = o.SyncItemId,
+                EntityType = typeof(CommodityDiscount).ToString()
+            }).ToList();
+            package.Items.AddRange(commdity_discount);
+            return package;
+        }
+
+        public ISyncDataObject GetItem(Guid guid, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+            {
+                var commodits = db.CommodityPromotions.Where(o => o.SyncItemId == guid).ToList();
+                var commodit = commodits.FirstOrDefault();
+                var discounts = db.CommodityDiscounts.Where(o => o.CommodityId == commodit.Id).ToList();
+                var package = new Package() { SyncItemId = guid, EntityType = "CommodityDiscountPackage" };
+                package.Init(commodits.Select(o => new CommodityPromotion().InitEntity(o)).ToList());
+                package.Init(discounts.Select(o => new CommodityDiscount().InitEntity(o)).ToList());
+                return package;
+            }
+        }
+        public IDictionary<Microsoft.Synchronization.SyncId, ISyncDataObject> GetItems(IEnumerable<Microsoft.Synchronization.SyncId> ids, int companyId, string StoreId)
+        {
+            using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+            {
+                var syncidsdict = ids.ToDictionary(o => o.GetGuidId(), o => o);
+                var syncids = syncidsdict.Keys;
+                var query = db.CommodityPromotions.Where(o => syncids.Contains(o.SyncItemId)).Include(o => o.CommodityDiscounts).ToList();
+                return query.ToDictionary(o => syncidsdict[o.SyncItemId], o =>
+                {
+                    var package = new Package() { SyncItemId = o.SyncItemId, EntityType = "CommodityDiscountPackage" };
+                    package.Init(new CommodityPromotion[] { new CommodityPromotion().InitEntity(o) });
+                    package.Init(o.CommodityDiscounts.Select(p => new CommodityDiscount().InitEntity(p)).ToList());
+                    return package as ISyncDataObject;
+                });
+            }
+        }
+        public byte[] CreateItem(ISyncDataObject data, Guid guid, int companyId, string storeId)
+        {
+            throw new SyncException("单品折扣数据包不允许修改远程数据");
+        }
+
+        public byte[] UpdateItem(Guid guid, ISyncDataObject mergedData, int companyId, string storeId)
+        {
+            throw new SyncException("单品折扣数据包不允许修改远程数据");
+        }
+
+        public void DeleteItem(Guid syncItemId, int companyId, string storeId)
+        {
+            throw new SyncException("单品折扣数据包不允许删除远程数据");
+        }
+
+        public ISyncDataObject Merge(ISyncDataObject syncDataObject1, ISyncDataObject syncDataObject2, int companyId, string storeId)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

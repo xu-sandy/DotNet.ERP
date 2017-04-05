@@ -1,0 +1,254 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    var _menus = ViewBag.Menus as List<Pharos.Sys.Models.MenuModel>;
+    var accessCount = ViewBag.accessCount;
+}
+
+<script src="~/Scripts/scriptbreaker-multiple-accordion-1.js"></script>
+
+
+<link href="~/Content/index.css" rel="stylesheet" />
+<style>
+    .left_td { width: 100px; text-align: right; }
+
+    .right_td { width: 200px; text-align: left; }
+</style>
+
+<script language="JavaScript">
+
+    $(document).ready(function () {
+        $(".topnav").accordion({
+            accordion: false,
+            speed: 500,
+            closedSign: 'closedSign',
+            openedSign: 'openedSign'
+        });
+    });
+</script>
+<link rel="stylesheet" href="~/Content/fakeLoader.css">
+<script type="text/javascript" src="~/Scripts/fakeLoader.js"></script>
+
+
+<div id="fakeloader"></div>
+
+
+<script type="text/javascript">
+    @*var accessCount = '@accessCount';
+    if (accessCount == '1') {
+        $("#fakeloader").fakeLoader({
+            timeToHide: 3000, //Time in milliseconds for fakeLoader disappear
+            zIndex: 999, // Default zIndex
+            spinner: "spinner1",//Options: 'spinner1', 'spinner2', 'spinner3', 'spinner4', 'spinner5', 'spinner6', 'spinner7'
+            bgColor: "rgba(64,64,64,0.4)", //Hex, RGB or RGBA colors
+            imagePath: "@Url.Action("", "Content")/image/anigif.gif",//If you want can you insert your custom image
+            text: '@(string.IsNullOrEmpty(ViewBag.welcomeText) ? "" : ViewBag.welcomeText)' + ", " + '@(string.IsNullOrEmpty(ViewBag.userName) ? "" : ViewBag.userName)'
+        });
+    }*@
+
+</script>
+
+
+
+@helper Menus(List<Pharos.Sys.Models.MenuModel> menus)
+{
+    foreach (var item in menus)
+    {
+        if (item.Children.Count > 0)
+        {
+            <li>
+                <a id="_@item.Id" title="展开/收缩" class="tree" data-options="{url:'@item.Url',level:@item.Level,id:'@item.Id',value:'@item.Value',text:'@item.Name'}" style="padding-left:@(item.Level*30)px;"><label>@item.Name</label></a>
+                <ul>
+                    @Menus(item.Children)
+                </ul>
+            </li>
+        }
+        else
+        {
+            var itemUrl = item.Url.IsNullOrEmpty() ? "" : (item.Url.StartsWith("/") ? Url.Content("~" + item.Url) : item.Url);
+            <li><a id="_@item.Id" class="@(item.ParentId == "" ? "tree" : "")" data-options="{url:'@itemUrl',level:@item.Level,id:'@item.Id',value:'@item.Value',text:'@item.Name'}" style="padding-left:@(item.Level*30)px;">@item.Name</a></li>
+        }
+    }
+}
+<div id="layout" data-options="fit:true,border:false">
+    <div data-options="region:'north'" style="height:72px;">
+        @Html.Partial("_Partial_Header")
+    </div>
+    <div data-options="region:'west',split:true,title:'导航菜单'" style="width: 207px; overflow-y: auto; overflow-x:hidden;">
+        @*系统管理导航*@
+        <ul class="topnav">
+
+            @Menus(_menus)
+        </ul>
+        @*<ul id="menu"></ul>*@
+    </div>
+    <div data-options="region:'center'">
+        <div id="tabs" class="easyui-tabs" title="双击刷新" data-options="fit:true,border:false,onContextMenu:onMenu">
+            <div title="首页" style="padding: 10px;">
+                @Html.Partial("_Partial_Center")
+            </div>
+        </div>
+
+        @*@Html.Partial("_Partial_PopWindow")*@
+    </div>
+    <div data-options="region:'south',border:false" style="height:42px;background:#ffffff;padding:5px;">
+        @Html.Partial("_Partial_Footer")
+    </div>
+</div>
+
+<div id="mm" class="easyui-menu">
+    <div data-options="iconCls:'icon-reload'" onclick="tabs_reload();">刷新</div>
+    <div data-options="iconCls:'icon-no'" onclick="tabs_close(0);">关闭</div>
+    <div onclick="tabs_close(1);">除此之外全部关闭</div>
+    <div onclick="tabs_close(2);">关闭左侧所有</div>
+    <div onclick="tabs_close(3);">关闭右侧所有</div>
+    <div onclick="tabs_close(4);">关闭所有</div>
+</div>
+
+
+@section header{
+
+
+    <script type="text/javascript">
+        $(function () {
+            $layout = $("#layout");
+            //$menu = $("#menu");
+
+            $layout.layout({
+                fit: true,
+                border: false
+            });
+
+            @*$menu.tree({
+                url: "@Url.Action("getmenus", "menu")",
+                onClick: function (node) {
+                    if ('url' in node.attributes) {
+                        jump(node.text, node.attributes.url, node.id);
+                    }
+                }
+            });*@
+
+            //tabs事件绑定
+            $("#tabs").delegate(".tabs-inner", "dblclick", function () {
+                var tab = $('#tabs').tabs('getSelected');
+                var url = $(tab.panel('options').content).attr('src');
+                if (url == null || url == '' || url == 'undefined')
+                    return;
+                $('#tabs').tabs('update', { tab: tab, options: { content: createFrame(url) } });
+            })
+            $("#tabs").tabs({
+                onSelect: function (title, index) {
+                    var tab = $('#tabs').tabs('getSelected');
+                    $(".topnav .select").removeClass("select");
+                    $("#_" + tab.panel('options').id).addClass("select");
+                },
+                //onAdd: function (title, index) {
+                //    $(".icon-mini-refresh").attr("title", "刷新本页面");
+                //}
+            });
+        })
+
+        //创建frame
+        function createFrame(url) {
+            return '<iframe scrolling="auto" frameborder="0" src="' + url + '" style="width:100%;height:99%;"></iframe>';
+        }
+        function jump(text, url, id) {
+            if (url == "/client/index") {
+                addnode(text, url, id);
+            } else if (!isTabExists(id)) {
+                addnode(text, url, id);
+            }
+            else {
+                $('#tabs').tabs('select', text)
+            }
+        }
+        function addnode(text, url, id) {
+            $("#tabs").tabs('add', {
+                title: text,
+                closable: true,
+                id: id,
+                bodyCls: 'tabContent',
+                content: createFrame(url),
+                //tools: [{
+                //    iconCls: 'icon-mini-refresh', handler: function () { $(".tabs-selected .tabs-inner").dblclick(); }
+                //}]
+            });
+        }
+        function isTabExists(id) {
+            var isExists = false;
+            var tabs = $("#tabs").tabs('tabs');
+            $.each(tabs, function (i, r) {
+                if (r[0].id == id)
+                    isExists = true;
+            });
+            return isExists;
+        }
+
+        $(function () {
+            $('#winpop').toggle().delay(3000).animate({ bottom: 340 })
+        })
+
+    </script>
+
+    <script type="text/javascript">
+        $(function () {
+            $tab = $('#tabs');
+        })
+        var tabIndex;
+
+        function onMenu(e, title, index) {
+            e.preventDefault();
+            $('#mm').menu('show', {
+                left: e.pageX,
+                top: e.pageY
+            });
+            tabIndex = index;
+        }
+
+        function tabs_reload() {
+            var tab = $tab.tabs('getTab', tabIndex);
+            var url = $(tab.panel('options').content).attr('src');
+            if (url == null || url == '' || url == 'undefined')
+                return;
+            $tab.tabs('update', { tab: tab, options: { content: createFrame(url) } });
+        }
+
+        function tabs_close(index) {
+            var l = $tab.tabs("tabs").length;
+
+            switch (index) {
+                //关闭
+                case 0:
+                    if (tabIndex != 0)
+                        $tab.tabs('close', tabIndex);
+                    break;
+                    //除此之外全部关闭
+                case 1:
+                    for (var i = l - 1; i > tabIndex; i--) {
+                        $tab.tabs('close', i);
+                    }
+                    for (var i = tabIndex - 1; i >= 1; i--) {
+                        $tab.tabs('close', i);
+                    }
+                    break;
+                    //关闭左侧所有
+                case 2:
+                    for (var i = tabIndex - 1; i >= 1; i--) {
+                        $tab.tabs('close', i);
+                    }
+                    break;
+                    //关闭右侧所有
+                case 3:
+                    for (var i = l - 1; i > tabIndex; i--) {
+                        $tab.tabs('close', i);
+                    }
+                    break;
+                    //关闭所有
+                case 4:
+                    for (var i = l - 1; i >= 1; i--) {
+                        $tab.tabs('close', i);
+                    }
+                    break;
+            }
+        }
+    </script>
+}

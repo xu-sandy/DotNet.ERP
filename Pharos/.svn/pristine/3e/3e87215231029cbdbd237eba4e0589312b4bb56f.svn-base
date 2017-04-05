@@ -1,0 +1,224 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Data;
+using Pharos.Logic.ApiData.Mobile.Exceptions;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+
+namespace Pharos.Logic.ApiData.Mobile.Services
+{
+    public class TakeStockService
+    {
+        static CommonDAL dal = new CommonDAL();
+        public static object GetStoreBatchnoList(string storeId)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+                throw new MessageException("门店号为空!");
+            var list= BaseService<Entity.TreasuryLocks>.FindList(o => o.LockStoreID == storeId && o.State==0).OrderByDescending(o=>o.LockDate).Select(o=>o.CheckBatch).ToList();
+            return list;
+        }
+        public static object GetTakestockList(string storeId, string checkBatch, string userCode)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+                throw new MessageException("门店号为空!");
+            if (string.IsNullOrWhiteSpace(checkBatch))
+                throw new MessageException("批次为空!");
+            if (string.IsNullOrWhiteSpace(userCode))
+                throw new MessageException("用户编码为空!");
+            //var query = from a in BaseService<Entity.StockTaking>.CurrentRepository.Entities
+            //            let o=from b in BaseService<Entity.TreasuryLocks>.CurrentRepository.Entities where a.CheckBatch==b.CheckBatch select b
+            //            join c in BaseService<Entity.VwProduct>.CurrentRepository.Entities on a.Barcode equals c.Barcode
+            //            select new { 
+            //                a.Barcode,
+            //                c.Title,
+            //                c.SubUnit,
+            //                a.CheckBatch,
+            //                ActualNumber = a.ActualNumber == null ? 0 : a.ActualNumber,
+            //                a.CreateDT,
+            //            };
+            var user = UserInfoService.Find(o => o.UserCode == userCode);
+            if (user == null)
+                throw new MessageException("用户编码不存在!");
+
+            var nvl = new System.Collections.Specialized.NameValueCollection();
+            nvl.Add("storeId", storeId);
+            nvl.Add("checkBatch", checkBatch);
+            nvl.Add("userId", user.UID);
+            nvl.Add("sort", "LockDate");
+            nvl.Add("order", "desc");
+            int count=0;
+            var dt= dal.FindTakeStockPages(nvl, out count, false);
+            return dt.AsEnumerable().Select(o => new
+            {
+                Barcode=o["Barcode"],
+                Title=o["Title"],
+                SubUnit=o["SubUnit"],
+                CheckBatch=o["CheckBatch"],
+                ActualNumber = o["ActualNumber"] is DBNull ? 0 : o["ActualNumber"],
+                CreateDT = ((DateTime)(o["LockDate"] is DBNull ? o["CreateDT"] : o["LockDate"])).ToString("yyyy-MM-dd")
+            });
+        }
+        public static object GetTakestockBybarcode(string storeId, string checkBatch,string barcode)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+                throw new MessageException("门店号为空!");
+            if (string.IsNullOrWhiteSpace(checkBatch))
+                throw new MessageException("批次为空!");
+            if (string.IsNullOrWhiteSpace(barcode))
+                throw new MessageException("商品条码为空!");
+            var nvl = new System.Collections.Specialized.NameValueCollection();
+            nvl.Add("storeId", storeId);
+            nvl.Add("checkBatch", checkBatch);
+            nvl.Add("barcode", barcode);
+            int count = 0;
+            var dt = dal.FindTakeStockPages(nvl, out count, false);
+            if (dt==null || dt.Rows.Count<=0)
+                throw new MessageException("该门店和批次下无此商品条码!");
+            var o=dt.Rows[0];
+            return new{
+                Barcode = o["Barcode"],
+                Title = o["Title"],
+                SubUnit = o["SubUnit"],
+                CheckBatch = o["CheckBatch"],
+                Size=o["Size"],
+                ActualNumber = o["ActualNumber"] is DBNull ? 0 : o["ActualNumber"],
+                CreateDT = ((DateTime)(o["LockDate"] is DBNull ? o["CreateDT"] : o["LockDate"])).ToString("yyyy-MM-dd")
+            };
+        }
+        public static object GetTakestockByinputBarcode(string storeId, string checkBatch, string barcode)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+                throw new MessageException("门店号为空!");
+            if (string.IsNullOrWhiteSpace(checkBatch))
+                throw new MessageException("批次为空!");
+            if (string.IsNullOrWhiteSpace(barcode))
+                throw new MessageException("商品条码为空!");
+            var nvl = new System.Collections.Specialized.NameValueCollection();
+            nvl.Add("storeId", storeId);
+            nvl.Add("checkBatch", checkBatch);
+            nvl.Add("searchText", barcode);
+            int count = 0;
+            var dt = dal.FindTakeStockPages(nvl, out count, false);
+            if (dt == null || dt.Rows.Count <= 0)
+                throw new MessageException("该门店和批次下无商品条码!");
+            return dt.AsEnumerable().Select(o=>new 
+            {
+                Barcode = o["Barcode"],
+                Title = o["Title"],
+                SubUnit = o["SubUnit"],
+                CheckBatch = o["CheckBatch"],
+                Size = o["Size"],
+                ActualNumber = o["ActualNumber"] is DBNull ? 0 : o["ActualNumber"],
+                CreateDT = ((DateTime)(o["LockDate"] is DBNull ? o["CreateDT"] : o["LockDate"])).ToString("yyyy-MM-dd")
+            });
+        }
+        public static void SaveStock(string storeId, string checkBatch, string checkUID,Dictionary<string,decimal> barnums)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+                throw new MessageException("门店号为空!");
+            if (string.IsNullOrWhiteSpace(checkBatch))
+                throw new MessageException("盘点批次为空!");
+            if (string.IsNullOrWhiteSpace(checkUID))
+                throw new MessageException("盘点员为空!");
+            if (!barnums.Any())
+                throw new MessageException("盘点内容为空!");
+
+            var barcodes = barnums.Keys.ToList();
+            var query = from a in BaseService<StockTaking>.CurrentRepository.QueryEntity
+                        join b in BaseService<TreasuryLocks>.CurrentRepository.QueryEntity on a.CheckBatch equals b.CheckBatch
+                        where b.LockStoreID==storeId && a.CheckBatch==checkBatch && barcodes.Contains(a.Barcode)
+                        select new { 
+                            a.Barcode,
+                            a.ActualNumber,
+                            a.CheckBatch,
+                            b.State
+                        };
+            var stocks = query.ToList();
+            if (!stocks.Any())
+                throw new MessageException("批次或条码不存在!");
+            if (stocks.Any(o=>o.State==1))
+                throw new MessageException("该批次已通过审核,不能再盘点!");
+            var user = UserInfoService.Find(o => o.UserCode == checkUID);
+            if (user == null)
+                throw new MessageException("用户编码不存在!");
+            var stocklogs = BaseService<StockTakingLog>.FindList(o => barcodes.Contains(o.Barcode) && o.CheckBatch == checkBatch && o.State == 1);
+            var insertLog = new List<StockTakingLog>();
+            var date = DateTime.Now;
+            foreach (var de in barnums)
+            {
+                var sk = stocks.FirstOrDefault(o => o.Barcode == de.Key);
+                if (sk == null)
+                {
+                    throw new MessageException("条码[" + de.Key + "]不存在!");
+                }
+                if (stocklogs.Any(o => o.Barcode == de.Key))
+                {
+                    throw new MessageException("条码[" + de.Key + "]条码已复盘!");
+                }
+                insertLog.Add(new StockTakingLog()
+                {
+                    Barcode=sk.Barcode,
+                    CheckBatch=sk.CheckBatch,
+                    CheckUID = user.UID,
+                    CreateDT = date,
+                    CreateUID=user.UID,
+                    Number=de.Value
+                });
+            }
+            if (insertLog.Any())
+            {
+                BaseService<StockTakingLog>.AddRange(insertLog);
+            }
+        }
+        public static void ReSaveStock(string storeId, string checkBatch, string checkUID, string barcode, string number)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+                throw new MessageException("门店号为空!");
+            if (string.IsNullOrWhiteSpace(checkBatch))
+                throw new MessageException("盘点批次为空!");
+            if (string.IsNullOrWhiteSpace(checkUID))
+                throw new MessageException("盘点员为空!");
+            if (string.IsNullOrWhiteSpace(barcode))
+                throw new MessageException("条码为空!");
+            if (string.IsNullOrWhiteSpace(number))
+                throw new MessageException("实盘数量为空!");
+            decimal num = 0;
+            if(!decimal.TryParse(number,out num))
+                throw new MessageException("实盘数量格式不正确!");
+            var query = from a in BaseService<StockTaking>.CurrentRepository.QueryEntity
+                        join b in BaseService<TreasuryLocks>.CurrentRepository.QueryEntity on a.CheckBatch equals b.CheckBatch
+                        where b.LockStoreID == storeId && a.CheckBatch == checkBatch && a.Barcode==barcode
+                        select new
+                        {
+                            a.Barcode,
+                            a.ActualNumber,
+                            a.CheckBatch,
+                            b.State
+                        };
+            var stock = query.FirstOrDefault();
+            if (stock == null)
+                throw new MessageException("批次或条码不存在!");
+            if (stock.State == 1)
+                throw new MessageException("该批次已通过审核,不能再盘点!");
+
+            var user= UserInfoService.Find(o => o.UserCode == checkUID);
+            if(user==null)
+                throw new MessageException("用户编码不存在!");
+            var log = new StockTakingLog()
+            {
+                Barcode = stock.Barcode,
+                CheckBatch = stock.CheckBatch,
+                CheckUID = user.UID,
+                CreateUID = user.UID,
+                CreateDT = DateTime.Now,
+                Number = num,
+                State = 1
+            };
+            BaseService<StockTakingLog>.Add(log);
+        }
+    }
+}

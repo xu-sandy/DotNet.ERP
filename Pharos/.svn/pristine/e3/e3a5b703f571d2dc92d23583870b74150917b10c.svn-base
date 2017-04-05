@@ -1,0 +1,77 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增", hideDel: true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td style="display:none;">
+                <input name="PayType" value="2" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("StoreId", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datacontrol" })
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("State", ViewBag.states as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(1)">设为可用</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-suspend'" onclick="setState(0)">设为停用</a>
+}
+<script>
+    pharos.manager.geturl = "@Url.Action("WeixinPayList")";
+    pharos.manager.editurl = "@Url.Action("WeixinPaySettingSave")";
+
+    pharos.manager.columns = [[
+                { field: 'Id', checkbox: true, width: 30 },
+                { field: 'StoreTitle', title: '适用门店', width: 200, align: 'center' },
+                { field: 'PartnerId', title: '唯一标识(appID)', width: 100, align: 'center' },
+                { field: 'AppId', title: '支付商户号(mchID)', width: 100, align: 'center' },
+                { field: 'CheckKey', title: '支付密钥(key)', width: 150, align: 'center' },
+                //{ field: 'NotifyUrl', title: '支付通知页面', width: 100, align: 'center' },
+                { field: 'StateTitle', title: '状态', width: 50, align: 'center' },
+                { field: 'AlterDate', title: '更新时间', width: 60, align: 'center' },
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialogNew(this.addText, this.editurlNocache(), 800, 350, false, true);
+    }
+    pharos.manager.editItem = function (Id, row) {
+        this.Id = Id;
+        openDialogNew(this.addText, this.editurlNocache(), 800, 350, false, true);
+    }
+
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "操作成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+</script>
+
+
+
+

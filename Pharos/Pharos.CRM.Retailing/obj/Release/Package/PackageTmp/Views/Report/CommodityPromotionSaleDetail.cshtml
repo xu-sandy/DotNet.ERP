@@ -1,0 +1,72 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>月份：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM', isShowToday: false})" @*value="@DateTime.Now.ToString("yyyy-MM")"*@ />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datecontrol", data_options = "editable:false,panelHeight:'auto',panelMaxHeight:200" })
+            </td>
+            <td class="label-toolbar">
+                <label>品类：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("parentType", ViewBag.parenttypes as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,panelHeight:'auto',panelMaxHeight:200" })
+            </td>
+            <td class="label-toolbar">
+                <label>供应商：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("supplierId", ViewBag.suppliers as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,panelHeight:'auto',panelMaxHeight:200" })
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = '@Url.Action("QueryBigCategoryStatisticsPageList")';
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = true;
+    pharos.manager.columns = [[
+        { field: 'BigCategoryTitle', title: '商品编码', width: 150 },
+        { field: 'BigCategoryTitle', title: '门店', width: 150 },
+        { field: 'BigCategoryTitle', title: '供应商', width: 150 },
+        { field: 'BigCategoryTitle', title: '品牌', width: 150 },
+        { field: 'BigCategoryTitle', title: '大类', width: 150 },
+        { field: 'BigCategoryTitle', title: '条码', width: 150 },
+        { field: 'BigCategoryTitle', title: '商品名称', width: 150 },
+        { field: 'BigCategoryTitle', title: '单位', width: 150 },
+        { field: 'BigCategoryTitle', title: '系统售价', width: 150 },
+        { field: 'BigCategoryTitle', title: '促销价格', width: 150 },
+        { field: 'BigCategoryTitle', title: '销售数量', width: 150 },
+        { field: 'SaleTotal', title: '销售金额', width: 100, formatter: function (value) { return value.formatMoney(''); } },
+        { field: 'BuyTotal', title: '进价金额', width: 100, formatter: function (value) { return value.formatMoney(''); } },
+        { field: 'BigCategoryTitle', title: '促销进价', width: 150 },
+        { field: 'JMLL', title: '毛利率', width: 80 },
+        { field: 'JML', title: '毛利额', width: 80, formatter: function (value) { return value.formatMoney(''); } },
+        { field: 'Percent', title: '销售占比', width: 80 }
+    ]];
+    function Export() {
+        var date = $("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        window.location.href = '@Url.Action("SaleStatisticsExport")?type=2&' + $('#frmsearch').serialize();
+    }
+</script>

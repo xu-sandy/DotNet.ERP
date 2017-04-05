@@ -1,0 +1,52 @@
+﻿@model Pharos.Logic.OMS.Entity.ProductPublishVer
+@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var list=new List<SelectListItem>(){
+        new SelectListItem(){Text="不升级",Value=""},
+        new SelectListItem(){Text="升级",Value="1"}
+    };
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-form" width="100%" height="260px">
+                <tr>
+                    <td class="name">升级系统：</td>
+                    <td class="input" colspan="2">@Html.DropDownListFor(o => o.ProductId, ViewBag.products as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo',width:200,editable:false" + (Request["isadd"].IsNullOrEmpty() ? ",readonly:true" : "") })</td>
+                    <td class="name">版本号：</td>
+                    <td class="input">@Html.DisplayTextFor(o=>o.VerCodeTitle)</td>
+                    <td class="input">版本状态：@(Model.VerStatusTitle + "," + Model.StatusTitle)</td>
+                </tr>
+                <tr>
+                    <td class="name">功能升级：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.HasModelId, list, new { @class = "easyui-combobox", data_options = "width:80,editable:false,value:'"+(Model.ModuleId.IsNullOrEmpty()?"":"1")+"'" })</td>
+                    <td class="input">@Html.DropDownListFor(o => o.ModuleId, new List<SelectListItem>() { new SelectListItem() { Text = "自动选择最新版本号",Value=Model.ModuleId??"" } }, new { @class = "easyui-combobox", data_options = "width:140,editable:false" })</td>
+                    <td class="name">角色升级：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.HasRoleId, list, new { @class = "easyui-combobox", data_options = "width:80,editable:false,value:'" + (Model.RoleId.IsNullOrEmpty() ? "" : "1") + "'" })</td>
+                    <td class="input">@Html.DropDownListFor(o => o.RoleId, new List<SelectListItem>() { new SelectListItem() { Text = "自动选择最新版本号", Value = Model.RoleId ?? "" } }, new { @class = "easyui-combobox", data_options = "width:140,editable:false" })</td>
+                </tr>
+                <tr>
+                    <td class="name">字典升级：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.HasDictId, list, new { @class = "easyui-combobox", data_options = "width:80,editable:false,value:'" + (Model.DictId.IsNullOrEmpty() ? "" : "1") + "'" })</td>
+                    <td class="input">@Html.DropDownListFor(o => o.DictId, new List<SelectListItem>() { new SelectListItem() { Text = "自动选择最新版本号", Value = Model.DictId ?? "" } }, new { @class = "easyui-combobox", data_options = "width:140,editable:false" })</td>
+                    <td class="name">初始数据升级：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.HasDataId, list, new { @class = "easyui-combobox", data_options = "width:80,editable:false,value:'" + (Model.DataId.IsNullOrEmpty() ? "" : "1") + "'" })</td>
+                    <td class="input">@Html.DropDownListFor(o => o.DataId, new List<SelectListItem>() { new SelectListItem() { Text = "自动选择最新版本号", Value = Model.DataId ?? "" } }, new { @class = "easyui-combobox", data_options = "width:140,editable:false" })</td>
+                </tr>
+                <tr>
+                    <td class="name">历史数据处理：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.IsRunSql, new List<SelectListItem>(){new SelectListItem(){Text="不处理",Value="false"},new SelectListItem(){Text="处理",Value="true"}}, new { @class = "easyui-combobox", data_options = "width:80,editable:false,value:'" + (Model.IsRunSql ? "true" : "false") + "'" })</td>
+                </tr>
+            </table>
+        </div>
+        
+    }
+</div>
+<script type="text/javascript">
+    function SaveBefore() {
+        return true;
+    }
+</script>

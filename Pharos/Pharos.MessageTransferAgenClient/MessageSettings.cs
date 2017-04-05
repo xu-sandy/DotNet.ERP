@@ -1,0 +1,82 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace Pharos.MessageTransferAgenClient
+{
+    public class MessageSettings : ConfigurationSection
+    {
+        static MessageSettings current;
+        public static MessageSettings Current
+        {
+            get
+            {
+                if (current == null)
+                {
+                    current = GetConfig();
+                }
+                return current;
+            }
+        }
+        public bool IsWeb { get; set; }
+
+        private static MessageSettings GetConfig()
+        {
+            MessageSettings section = (MessageSettings)ConfigurationManager.GetSection("MessageClient");
+            return section;
+        }
+        [ConfigurationProperty("Port", DefaultValue = 3033, IsRequired = false)]
+        public int Port
+        {
+            get
+            {
+                return (int)base["Port"];
+            }
+            set
+            {
+                base["Port"] = value;
+            }
+        }
+
+        [ConfigurationProperty("Host", DefaultValue = "localhost", IsRequired = false)]
+        public string Host
+        {
+            get
+            {
+                return (string)base["Host"];
+            }
+            set
+            {
+                base["Host"] = value;
+            }
+        }
+
+        [ConfigurationProperty("WebSiteURI", DefaultValue = "", IsRequired = false)]
+        public string WebSiteURI
+        {
+            get
+            {
+                return (string)base["WebSiteURI"];
+            }
+            set
+            {
+                base["WebSiteURI"] = value;
+            }
+        }
+        [ConfigurationProperty("SubscribeId", DefaultValue = "", IsRequired = false)]
+        public string SubscribeId
+        {
+            get
+            {
+                return (string)base["SubscribeId"];
+            }
+            set
+            {
+                base["SubscribeId"] = value;
+            }
+        }
+    }
+}

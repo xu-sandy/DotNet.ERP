@@ -1,0 +1,27 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.SyncService.SyncEntities
+{
+    [Serializable]
+    public class SyncDataObject : ISyncDataObject
+    {
+        public Guid SyncItemId { get; set; }
+
+        public byte[] SyncItemVersion { get; set; }
+
+    }
+    public class SyncDataPackage : SyncDataObject
+    {
+        public SyncDataPackage(params byte[][] syncItemVersion)
+        {
+            SyncItemVersions = syncItemVersion.ToList();
+            this.SyncItemVersion = SyncItemVersions.Max();
+        }
+        public List<byte[]> SyncItemVersions { get; set; }
+
+    }
+}

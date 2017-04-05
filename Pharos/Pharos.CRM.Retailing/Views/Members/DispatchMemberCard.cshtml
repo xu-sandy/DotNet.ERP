@@ -1,0 +1,191 @@
+﻿@model Pharos.Logic.Entity.MembershipCard
+@{
+    ViewBag.Title = "CreateRecharge";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">卡号：</td>
+                    <td class="input"><input type="text" id="cardNo" name="CardSN" class="easyui-validatebox" value="@Model.CardSN" data-options="required:true" style="width:180px" /></td>
+                    <td class="name">批次：</td>
+                    <td class="input"><label id="batch"> @Model.BatchSN</label></td>
+
+                </tr>
+                <tr>
+                    <td class="name">持卡人：</td>
+                    <td class="input"><input id="memberId" name="memberId" style="width:180px" class="easyui-validatebox" data-options="validType:'requiredForCombo'" /></td>
+                    <td class="name">押金：</td>
+                    <td class="input"><input type="text" name="Deposit" id="deposit" class="easyui-numberbox" style="width:100px" value="@Model.Deposit" data-options="precision:1" />元</td>
+                </tr>
+                <tr>
+                    <td class="name" colspan="2"><label id="message" style="color:red"></label></td>
+                    <td></td>
+                    <td>
+                        <input type="hidden" id="submitState" value="0" />
+                        <input type="hidden" id="Id" name="Id" value="@Model.Id" />
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+        //卡号编辑完后加载批次信息
+        $("input[name=CardSN]").blur(function () {
+            var val = $("input[name=CardSN]").val();
+            if (val != "") {
+                $.post("@Url.Action("GetMembersCardByCardSn")", { cardSn: val }, function (data) {
+                    if (data == undefined || data == "") {
+                        $.messager.alert("提示", "未找到该会员卡信息！", "info");
+                        return false;
+                    }
+                    //状态过滤
+                    if (data.State == 2) {
+                        $("#message").html("该卡已挂失！");
+                        return false;
+                    } else if (data.State == 3) {
+                        $("#message").html("该卡已作废！");
+                        return false;
+                    } else if (data.State == 4) {
+                        $("#message").html("该卡已退卡！");
+                        return false;
+                    }
+                    //是否有人持卡
+                    if ((data.RealName != null || data.Phone != null) && (data.RealName != "" || data.Phone != "")) {
+                        $("#message").html("该卡已被占用！");
+                        $("#submitState").val(1);
+                        if (data.RealName != null) {
+                            $("#memberId").combobox("setValue", data.RealName);
+                        }
+                        else if (data.Phone != null) {
+                            $("#memberId").combobox("setValue", data.Phone);
+                        } else {
+                            $("#memberId").combobox("setValue", "");
+                        }
+                        //设置只读
+                        $("#memberId").combobox("disable");
+                        $("#deposit").textbox("disable");
+                    } else {
+                        $("#submitState").val(0);
+                        $("#message").html("");
+                        $("#memberId").combobox("enable");
+                        $("#deposit").textbox("enable");
+                        $("#memberId").combobox("setValue", "");
+                    }
+                    $("#batch").html(data.Batch);
+                    $("#Id").val(data.Id);
+                    $("#deposit").textbox("setValue", data.Deposit);
+                }, "json");
+            }
+        });
+        $("input[name=CardSN]").keyup(addSpeac);
+        //$("#cardNo").textbox({
+        //    onChange: function (n, o) {
+        //        if (n.length == 19) {
+
+        //        }
+        //    }
+        //});
+        //选人
+        $("#memberId").combobox({
+            url: '',
+            valueField: 'MemberId',
+            textField: 'MemberInfo',
+            mode: 'remote',
+            loader: function (param, success, error) {
+                var q = param.q || "";
+                if (q.length > 0) {
+                    $.ajax({
+                        url: '@Url.Action("GetMembersBySearch")',
+                        type: "POST",
+                        data: { param: q },
+                        dataType: "json",
+                        success: function (data) {
+                            comboRows = data;
+                            var items = $.each(data, function (value) {
+                                return value;
+                            });
+                            success(items);
+                        }
+                    })
+                }
+            }
+        });
+        //给会员下拉框赋值
+        if ('@Model.MemberId' != '') {
+            $("#memberId").combobox('setValue', '@Model.MemberId');
+        }
+        addSpeac();
+        //限制押金输入长度
+        $("#deposit").numberbox('textbox').attr('maxlength', 12)
+
+    })
+
+    var comboRows = [];
+    function addSpeac() {
+        var val = $("input[name=CardSN]").val().replace(/\s+/g, "");
+        //if ((val.length % 4) == 0)
+        if (val.length > 4) {
+            $("input[name=CardSN]").val(val.replace(/(.{4})/g, '$1 '));
+        }
+    }
+
+    //var isgetData = true;
+    //function comboSelect(newValue, oldValue) {
+    //    if (isgetData) {
+    //        var datas = $("#memberId").combobox('getData');
+    //        if (datas.length == 1) {
+    //            isgetData = false;
+    //            $("#memberId").combobox('select', datas[0].value);
+    //        }
+    //    }
+    //}
+
+    function SaveBefore() {
+        //卡号
+        var val = $("#cardNo").val();
+        if (val == "") {
+            $.messager.alert("提示", "卡号不能为空！", "info");
+            return false;
+        }
+        //持卡人
+        var member = $("#memberId").combobox('getValue');
+        if (member == "") {
+            $.messager.alert("提示", "持卡人不能为空！", "info");
+            return false;
+        }
+        if (member.length != 32) {
+            var isPass = false;
+            if (comboRows.length == 1) {
+                $.each(comboRows, function (index, item) {
+                    if (member == (item.MemberInfo + "").split("(")[1].split(")")[0]) {
+                        $("#memberId").combobox('select', item.MemberId);
+                        isPass = true;
+                    }
+                })
+            }
+            if (!isPass) {
+                $.messager.alert("提示", "会员信息不正确！", "info");
+                return false;
+            }
+        }
+        //重复绑
+        var submitState = $("#submitState").val();
+        if (submitState == 1) {
+            $.messager.alert("提示", "该卡已发出，不可修改！", "info");
+            return false;
+        }
+        var isPass = false;
+        //弹确认
+        isPass = confirm("卡片一经发出不可修改，请确认信息是否正确！");
+        if (!isPass) {
+            return false;
+        }
+    }
+</script>

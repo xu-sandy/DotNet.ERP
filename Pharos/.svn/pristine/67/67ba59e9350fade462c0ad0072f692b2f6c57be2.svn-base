@@ -1,0 +1,485 @@
+﻿<control:DialogWindow02 x:Class="Pharos.POS.Retailing.ChildWin.TuiHuanHuo"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:converter="clr-namespace:Pharos.Wpf.XamlConverters;assembly=Pharos.Wpf"       
+         xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"
+        Title="退换货" Height="650" Width="1024" WindowStartupLocation="CenterScreen" Icon="..\Images\ChaKuCun\search.png" Margin="0" WindowStyle="None">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\TuiHuanHuoStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+            <converter:EnumForTitleConverter x:Key="EnumForTitleConverter"></converter:EnumForTitleConverter>
+        </ResourceDictionary>
+    </Window.Resources>
+    <TabControl Name="tabControl">
+        <TabItem Height="42" Margin="0" Padding="0"  DataContext="{Binding Change}">
+            <TabItem.Header>
+                <Grid>
+                    <Rectangle Fill="{Binding RelativeSource={RelativeSource TemplatedParent},Path=Background.Color}" Width="100" Height="40"></Rectangle>
+                    <Label VerticalContentAlignment="Center" HorizontalContentAlignment="Center" HorizontalAlignment="Stretch" Margin="0" Padding="0" Content="换货(F2)" MouseDown="TabItemHeader_HuanHuo_PreviewMouseDown" />
+                </Grid>
+            </TabItem.Header>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="151*"/>
+                    <ColumnDefinition Width="859*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                </Grid.RowDefinitions>
+
+                <DataGrid Grid.Column="2" Grid.RowSpan="6" Name="HUANHUOGRID" ScrollViewer.VerticalScrollBarVisibility="Visible" Margin="10" ItemsSource="{Binding ChangeList,Mode=TwoWay}" BorderThickness="1" BorderBrush="#BCB4BB"  VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserDeleteRows="True" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False" Grid.ColumnSpan="2">
+
+                    <!--begin    ChangeMode-->
+                    
+
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn MinWidth="160"  Header="条码" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                        </Grid.ColumnDefinitions>
+                                        <!--<Border Name="duoma" Grid.Column="0" BorderThickness="1" BorderBrush="Red" Margin="5">
+                                            <TextBlock Foreground="Red" FontSize="14" Text="原"></TextBlock>
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ChangeMode}" Value="1">
+                                                            <Setter Property="Visibility" Value="Collapsed"></Setter>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding ChangeMode}" Value="0">
+                                                            <Setter Property="Visibility" Value="Visible"></Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>-->
+                                        <Border Name="duoma1" Grid.Column="0" BorderThickness="1" BorderBrush="Red" Margin="5">
+                                            <TextBlock Foreground="Red" FontSize="14" Text="新"></TextBlock>
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ChangeMode}" Value="0">
+                                                            <Setter Property="Visibility" Value="Collapsed"></Setter>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding ChangeMode}" Value="1">
+                                                            <Setter Property="Visibility" Value="Visible"></Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{Binding Barcode,Mode=OneWay}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                                    <Setter Property="Height" Value="auto"/>
+                                                    <Setter Property="HorizontalAlignment" Value="Left"/>
+                                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <!--<DataGridTextColumn Binding="{Binding Barcode}" IsReadOnly="True" Header="条码" Width="190">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="Height" Value="auto"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>-->
+                        <DataGridTextColumn Binding="{Binding Title}" IsReadOnly="True" Header="品名" Width="200*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="Height" Value="auto"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <!--<DataGridTextColumn Binding="{Binding ChangePrice,StringFormat='{}{0:N}'}" IsReadOnly="False" Header="售价" Width="100"></DataGridTextColumn>-->
+                        <DataGridTemplateColumn IsReadOnly="True" Header="单价" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <TextBlock Name="txtpricechange" Text="{Binding ChangePrice,StringFormat='{}{0:N}'}"></TextBlock>
+                                        <TextBox Name="txtpriceEdit" Height="35" Width="80"  VerticalContentAlignment="Center" Visibility="Visible" Text="{Binding ChangePrice,StringFormat='{}{0:N}',UpdateSourceTrigger=LostFocus}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding EditCtrl}" Value="0">
+                                                            <Setter Property="FocusManager.FocusedElement" Value="{Binding ElementName=txtpriceEdit}"></Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="True">
+                                            <Setter TargetName="txtpricechange" Property="Visibility" Value="Collapsed"></Setter>
+                                            <Setter TargetName="txtpriceEdit" Property="Visibility" Value="Visible"></Setter>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="False">
+                                            <Setter TargetName="txtpriceEdit" Property="Visibility" Value="Collapsed"></Setter>
+                                            <Setter TargetName="txtpricechange" Property="Visibility" Value="Visible"></Setter>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+
+                        <DataGridTemplateColumn IsReadOnly="True" Header="换货数量" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <TextBlock Name="txtchange" Text="{Binding ChangeNumber,StringFormat='{}{0:0.####}'}"></TextBlock>
+                                        <TextBox Name="txtEdit"  Height="35" Width="80"  VerticalContentAlignment="Center" Visibility="Visible" Text="{Binding ChangeNumber,StringFormat='{}{0:0.####}',UpdateSourceTrigger=LostFocus}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding EditCtrl}" Value="1">
+                                                            <Setter Property="FocusManager.FocusedElement" Value="{Binding ElementName=txtEdit}"></Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="True">
+                                            <Setter TargetName="txtchange" Property="Visibility" Value="Collapsed"></Setter>
+                                            <Setter TargetName="txtEdit" Property="Visibility" Value="Visible"></Setter>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="False">
+                                            <Setter TargetName="txtEdit" Property="Visibility" Value="Collapsed"></Setter>
+                                            <Setter TargetName="txtchange" Property="Visibility" Value="Visible"></Setter>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Binding="{Binding Unit}" IsReadOnly="True" Header="单位" Width="50">
+                        </DataGridTextColumn>
+                        <DataGridTemplateColumn Header="操作" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                            <ColumnDefinition  Width="Auto"></ColumnDefinition>
+                                            <ColumnDefinition  Width="30"></ColumnDefinition>
+                                        </Grid.ColumnDefinitions>
+                                        <!--<control:PosButton Name="btn" Grid.Column="0" BorderBrush="#5C5753" BorderThickness="1"  FontSize="16" Width="50" Height="30"  Background="White" Foreground="#5C5753" Content="编辑" Command="{Binding EditCommand}"/>-->
+                                        <control:PosButton Grid.Column="1" BorderBrush="#B85D5C" BorderThickness="1"  FontSize="16" Width="50" Height="30"  Background="White" Foreground="#B85D5C" Content="移除" Command="{Binding RemoveCommand}"/>
+                                    </Grid>
+                                    <!--<DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="True">
+                                            <Setter TargetName="btn" Property="Content" Value="保存"></Setter>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="False">
+                                            <Setter TargetName="btn" Property="Content" Value="编辑"></Setter>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>-->
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!--<Grid Grid.Row="1" Grid.ColumnSpan="2">-->
+                <!--<Grid.RowDefinitions>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="auto"></RowDefinition>
+                        <RowDefinition Height="80"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"></ColumnDefinition>
+                        <ColumnDefinition Width="200"></ColumnDefinition>
+                        <ColumnDefinition Width="100"></ColumnDefinition>
+                        <ColumnDefinition Width="200"></ColumnDefinition>
+                        <ColumnDefinition Width="100"></ColumnDefinition>
+                        <ColumnDefinition Width="200"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>-->
+                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource titleStyle}" Text="流水号："></TextBlock>
+                <control:IconTextBox Name="ChangeOldOrderSn" TabIndex="0" Grid.Row="0" Grid.Column="1"  Style="{StaticResource contentStyle}" Text="{Binding OldOrderSN,StringFormat='{}{0:N}'}"></control:IconTextBox>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource titleStyle}" Text="导购员："></TextBlock>
+                <control:IconTextBox TabIndex="1" Grid.Row="1" Name="ChangeSaleman" Grid.Column="1"  Style="{StaticResource contentStyle}" Text="{Binding OldSaleMan,StringFormat='{}{0:N}'}"></control:IconTextBox>
+
+
+                <TextBlock Grid.Row="3" Grid.Column="0" MouseDown="txtMode_MouseDown" Style="{StaticResource titleStyle}"><Run Text="{Binding Converter={StaticResource EnumForTitleConverter},Path=Mode,Mode=TwoWay}"></Run><Run FontSize="10" Text="(F10)"></Run><Run Text="："></Run></TextBlock>
+                <control:IconTextBox Grid.Row="3" Grid.Column="1" Name="txtChangeBarcode" DefualtEnter="False" TabIndex="2" PreviewKeyDown="IconTextBox_PreviewKeyDown" Style="{StaticResource contentStyle}" Text="{Binding Barcode,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"></control:IconTextBox>
+
+                <!--<TextBlock Style="{StaticResource titleStyle}" Grid.Column="2">换货理由：</TextBlock>
+                    <ComboBox  Grid.Column="3" TabIndex="1" ItemsSource="{Binding ReasonItem}" DisplayMemberPath="Title" SelectedValuePath="DicSN" SelectedValue="{Binding Reason}"></ComboBox>-->
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource titleStyle}" Text="顾客补价："></TextBlock>
+                <control:IconTextBox TabIndex="3" Grid.Row="4" Grid.Column="1"  Style="{StaticResource contentStyle}" Text="{Binding Difference,StringFormat='{}{0:N}'}"></control:IconTextBox>
+                <TextBlock  Grid.Row="5" Grid.Column="0"  Style="{StaticResource titleStyle}" Text="授权密码：" ></TextBlock>
+                <control:IconPasswordBox Name="ChangePwd" TabIndex="4"  Grid.Row="5" Grid.Column="1"  Style="{StaticResource  passwordStyle}" Password="{Binding Password,Mode=TwoWay}"></control:IconPasswordBox>
+
+                <control:PosButton Grid.ColumnSpan="10" TabIndex="5" Grid.Row="6" Style="{StaticResource BtnStyle}" HorizontalAlignment="Center" Content="确定" Command="{Binding ConfirmCommand}"></control:PosButton>
+
+                <!--</Grid>-->
+            </Grid>
+        </TabItem>
+        <TabItem Height="42" Margin="0" Padding="0" VerticalAlignment="Bottom"  DataContext="{Binding Refund}">
+            <TabItem.Header>
+                <Grid>
+                    <Rectangle Fill="{Binding RelativeSource={RelativeSource TemplatedParent},Path=Background.Color}" Width="100" Height="40"></Rectangle>
+                    <Label VerticalContentAlignment="Center" HorizontalContentAlignment="Center" HorizontalAlignment="Stretch" Margin="0" Padding="0" Content="退货(A)" MouseDown="TabItemHeader_TuiHuo_PreviewMouseDown" />
+                </Grid>
+            </TabItem.Header>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="151*"/>
+                    <ColumnDefinition Width="859*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                    <RowDefinition Height="70"></RowDefinition>
+                </Grid.RowDefinitions>
+
+                <DataGrid Name="TUIHUOGRID"  ScrollViewer.VerticalScrollBarVisibility="Visible"  Margin="10" ItemsSource="{Binding ChangeList,Mode=TwoWay}" BorderThickness="1" BorderBrush="#BCB4BB"  VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserDeleteRows="True" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False" Grid.ColumnSpan="2" Grid.Column="2" Grid.RowSpan="6">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Binding="{Binding Barcode}" IsReadOnly="True" Header="条码" Width="190">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="Height" Value="auto"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Binding="{Binding Title}" IsReadOnly="True" Header="品名" Width="200*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="Height" Value="auto"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <!--<DataGridTextColumn Binding="{Binding ChangePrice,StringFormat='{}{0:N}'}" IsReadOnly="True" Header="售价" Width="100" ></DataGridTextColumn>-->
+                        <DataGridTemplateColumn IsReadOnly="True" Header="单价" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <TextBlock Name="txtprice" Text="{Binding ChangePrice,StringFormat='{}{0:N}'}"></TextBlock>
+                                        <TextBox Name="txtpriceEdit"  Height="35" Width="80"  VerticalContentAlignment="Center" Visibility="Visible" Text="{Binding ChangePrice,StringFormat='{}{0:N}',UpdateSourceTrigger=LostFocus}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding EditCtrl}" Value="0">
+                                                            <Setter Property="FocusManager.FocusedElement" Value="{Binding ElementName=txtpriceEdit}"></Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="True">
+                                            <Setter TargetName="txtprice" Property="Visibility" Value="Collapsed"></Setter>
+                                            <Setter TargetName="txtpriceEdit" Property="Visibility" Value="Visible"></Setter>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="False">
+                                            <Setter TargetName="txtpriceEdit" Property="Visibility" Value="Collapsed"></Setter>
+                                            <Setter TargetName="txtprice" Property="Visibility" Value="Visible"></Setter>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn IsReadOnly="True" Header="退货数量" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <TextBlock Name="txtchange" Text="{Binding ChangeNumber,StringFormat='{}{0:0.####}'}"></TextBlock>
+                                        <TextBox Name="txtEdit"  Height="35" Width="80" VerticalContentAlignment="Center" Visibility="Visible" Text="{Binding ChangeNumber,StringFormat='{}{0:0.####}',UpdateSourceTrigger=LostFocus}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding EditCtrl}" Value="1">
+                                                            <Setter Property="FocusManager.FocusedElement" Value="{Binding ElementName=txtEdit}"></Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="True">
+                                            <Setter TargetName="txtchange" Property="Visibility" Value="Collapsed"></Setter>
+                                            <Setter TargetName="txtEdit" Property="Visibility" Value="Visible"></Setter>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="False">
+                                            <Setter TargetName="txtEdit" Property="Visibility" Value="Collapsed"></Setter>
+                                            <Setter TargetName="txtchange" Property="Visibility" Value="Visible"></Setter>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Binding="{Binding Unit}" IsReadOnly="True" Header="单位" Width="50">
+                        </DataGridTextColumn>
+                        <DataGridTemplateColumn Header="操作" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                            <ColumnDefinition  Width="Auto"></ColumnDefinition>
+                                            <ColumnDefinition  Width="30"></ColumnDefinition>
+                                        </Grid.ColumnDefinitions>
+                                        <!--<control:PosButton Grid.Column="0" Name="btn" BorderBrush="#5C5753" BorderThickness="1"  FontSize="16" Width="50" Height="30"  Background="White" Foreground="#5C5753" Content="编辑" Command="{Binding EditCommand}"/>-->
+                                        <control:PosButton Grid.Column="1" BorderBrush="#B85D5C" BorderThickness="1"  FontSize="16" Width="50" Height="30"  Background="White" Foreground="#B85D5C" Content="移除" Command="{Binding RemoveCommand}"/>
+                                    </Grid>
+                                    <!--<DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="True">
+                                            <Setter TargetName="btn" Property="Content" Value="保存"></Setter>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsEdit}" Value="False">
+                                            <Setter TargetName="btn" Property="Content" Value="编辑"></Setter>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>-->
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!--<Grid Grid.Row="1" Grid.ColumnSpan="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="80"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"></ColumnDefinition>
+                        <ColumnDefinition Width="200"></ColumnDefinition>
+                        <ColumnDefinition Width="100"></ColumnDefinition>
+                        <ColumnDefinition Width="200"></ColumnDefinition>
+                        <ColumnDefinition Width="100"></ColumnDefinition>
+                        <ColumnDefinition Width="200"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>-->
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource titleStyle}" Text="流水号："></TextBlock>
+                <control:IconTextBox Name="RefundOldOrderSn" TabIndex="0" Grid.Row="0" Grid.Column="1"  Style="{StaticResource contentStyle}" Text="{Binding OldOrderSN,StringFormat='{}{0:N}'}"></control:IconTextBox>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource titleStyle}" Text="导购员："></TextBlock>
+                <control:IconTextBox TabIndex="1" Name="RefundSaleman" Grid.Row="1" Grid.Column="1"  Style="{StaticResource contentStyle}" Text="{Binding OldSaleMan,StringFormat='{}{0:N}'}"></control:IconTextBox>
+
+
+                <TextBlock Grid.Row="3"  Grid.Column="0" Style="{StaticResource titleStyle}" Text="原条码"><Run FontSize="10" Text="(F10)"></Run><Run Text="："></Run></TextBlock>
+                <control:IconTextBox InputMethod.PreferredImeState="Off" InputMethod.IsInputMethodEnabled="False" DefualtEnter="False" Name="txtRefundBarcode" PreviewKeyDown="IconTextBox_PreviewKeyDown"  TabIndex="2" Grid.Row="3"  Grid.Column="1" Style="{StaticResource contentStyle}"  Text="{Binding Barcode,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"></control:IconTextBox>
+
+                <!--<TextBlock Style="{StaticResource titleStyle}" Grid.Column="2">退货理由：</TextBlock>
+                    <ComboBox TabIndex="1"  Grid.Column="3" ItemsSource="{Binding ReasonItem}" DisplayMemberPath="Title" SelectedValuePath="DicSN" SelectedValue="{Binding Reason,Mode=TwoWay}"></ComboBox>-->
+
+                <TextBlock  Grid.Row="4"   Grid.Column="0" Style="{StaticResource titleStyle}" Text="顾客补价："></TextBlock>
+                <control:IconTextBox TabIndex="3" Grid.Row="4"  Grid.Column="1" Style="{StaticResource contentStyle}" Text="{Binding Difference,StringFormat='{}{0:N}',Mode=TwoWay}"></control:IconTextBox>
+                <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource titleStyle}" Text="授权密码：" ></TextBlock>
+                <control:IconPasswordBox TabIndex="4" Grid.Row="5" Name="RefundPwd" Grid.Column="1" Style="{StaticResource  passwordStyle}" Password="{Binding Password,Mode=TwoWay}"></control:IconPasswordBox>
+                <control:PosButton TabIndex="5" Grid.ColumnSpan="10" Grid.Row="6" Style="{StaticResource BtnStyle}" HorizontalAlignment="Center" Content="确定"  Command="{Binding ConfirmCommand}"></control:PosButton>
+
+                <!--</Grid>-->
+            </Grid>
+        </TabItem>
+        <TabItem Height="42" Margin="0" Padding="0" DataContext="{Binding RefundOrder}">
+            <TabItem.Header>
+                <Grid>
+                    <Rectangle Fill="{Binding RelativeSource={RelativeSource TemplatedParent},Path=Background.Color}" Width="100" Height="40"></Rectangle>
+                    <Label VerticalContentAlignment="Center" HorizontalContentAlignment="Center" HorizontalAlignment="Stretch" Margin="0" Padding="0" Content="退单(T)" MouseDown="TabItemHeader_TuiDan_PreviewMouseDown" />
+                </Grid>
+            </TabItem.Header>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="151*"/>
+                    <ColumnDefinition Width="859*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"></RowDefinition>
+                    <RowDefinition Height="130"></RowDefinition>
+                </Grid.RowDefinitions>
+                <DataGrid  ScrollViewer.VerticalScrollBarVisibility="Visible" Margin="10" ItemsSource="{Binding OrderList,Mode=OneWay}" BorderThickness="1" BorderBrush="#BCB4BB"  VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserDeleteRows="True" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False" Grid.ColumnSpan="2">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Binding="{Binding Barcode}" IsReadOnly="True" Header="条码" Width="190">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="Height" Value="auto"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Binding="{Binding Title}" IsReadOnly="True" Header="品名" Width="200*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="Height" Value="auto"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Binding="{Binding ActualPrice,StringFormat='{}{0:N}'}" IsReadOnly="True" Header="单价" Width="100*"></DataGridTextColumn>
+                        <DataGridTextColumn Binding="{Binding Number,StringFormat='{}{0:0.####}'}" IsReadOnly="True" Header="数量" Width="100*"></DataGridTextColumn>
+                        <DataGridTextColumn Binding="{Binding Unit}" IsReadOnly="True" Header="单位" Width="50">
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Binding="{Binding Total,StringFormat='{}{0:N}'}" IsReadOnly="True" Header="小计" Width="100*"></DataGridTextColumn>
+
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <Grid Grid.Row="1" Grid.ColumnSpan="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="80"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"></ColumnDefinition>
+                        <ColumnDefinition Width="200"></ColumnDefinition>
+                        <ColumnDefinition Width="100"></ColumnDefinition>
+                        <ColumnDefinition Width="200"></ColumnDefinition>
+                        <ColumnDefinition Width="100"></ColumnDefinition>
+                        <ColumnDefinition Width="200"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock  Grid.Column="0" Style="{StaticResource titleStyle}" Text="流水号："></TextBlock>
+                    <control:IconTextBox Name="txtRefundAllBarcode" TabIndex="0" Grid.Column="1" Style="{StaticResource contentStyle}"  PreviewKeyDown="IconTextBox_PreviewKeyDown" Text="{Binding PaySn,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"></control:IconTextBox>
+
+                    <!--<TextBlock Style="{StaticResource titleStyle}" Grid.Column="2">退货理由：</TextBlock>
+                    <ComboBox TabIndex="1"  Grid.Column="3" ItemsSource="{Binding ReasonItem}" DisplayMemberPath="Title" SelectedValuePath="DicSN" SelectedValue="{Binding Reason}"></ComboBox>-->
+
+                    <TextBlock  Grid.Column="2" Style="{StaticResource titleStyle}" Text="顾客补价："></TextBlock>
+                    <control:IconTextBox TabIndex="2" Grid.Column="3" Style="{StaticResource contentStyle}" Text="{Binding Difference,StringFormat='{}{0:N}',Mode=TwoWay}"></control:IconTextBox>
+                    <TextBlock Grid.Column="4" Grid.Row="0" Style="{StaticResource titleStyle}" Text="授权密码：" ></TextBlock>
+                    <control:IconPasswordBox TabIndex="3" Grid.Row="0" Grid.Column="5" Style="{StaticResource  passwordStyle}" Password="{Binding Password,Mode=TwoWay}"></control:IconPasswordBox>
+                    <control:PosButton TabIndex="4" Grid.ColumnSpan="10" Grid.Row="2" Style="{StaticResource BtnStyle}" HorizontalAlignment="Center" Content="确定"  Command="{Binding ConfirmCommand}"></control:PosButton>
+
+
+                </Grid>
+            </Grid>
+        </TabItem>
+    </TabControl>
+</control:DialogWindow02>

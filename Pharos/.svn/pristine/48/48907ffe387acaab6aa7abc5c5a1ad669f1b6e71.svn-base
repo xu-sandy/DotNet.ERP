@@ -1,0 +1,39 @@
+﻿using Pharos.Logic.OMS.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Pharos.Logic.OMS.Entity.View;
+using System.Data;
+using System.Data.SqlClient;
+using Pharos.Logic.OMS.IDAL;
+
+namespace Pharos.Logic.OMS.DAL
+{
+    /// <summary>
+    /// BLL商家支付许可档案
+    /// </summary>
+    public class PayLicenseRepository : BaseRepository<PayLicense>, IPayLicenseRepository
+    {
+        /// <summary>
+        /// 获取CID
+        /// </summary>
+        /// <param name="keyword"></param>
+        /// <returns></returns>
+        public  List<Traders> getListCID(string keyword)
+        {
+            using (EFDbContext db = new EFDbContext())
+            {
+                var sql = string.Format("select top 30 * from Traders where CID like @keyword");
+                SqlParameter[] parameters = { 
+                                    new SqlParameter("@keyword",SqlDbType.NVarChar,1000)
+                                    };
+                parameters[0].Value = keyword;
+
+                List<Traders> list = db.Database.SqlQuery<Traders>(sql, parameters).ToList();
+                return list;
+            }
+        }
+    }
+}

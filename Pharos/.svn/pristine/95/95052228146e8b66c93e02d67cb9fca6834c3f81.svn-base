@@ -1,0 +1,236 @@
+﻿using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class RefundOrderViewModel : BaseViewModel
+    {
+        public RefundOrderViewModel()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                //取退换货理由
+                ReasonParams _params = new ReasonParams()
+                {
+                    StoreId = _machinesInfo.StoreId,
+                    MachineSn = _machinesInfo.MachineSn,
+                    CompanyToken = _machinesInfo.CompanyToken,
+                    Type = (int)ChangeStatus.Refund
+                };
+                var result = ApiManager.Post<ReasonParams, ApiRetrunResult<IEnumerable<ApiReasonResult>>>(@"api/GetReason", _params);
+                if (result.Code == "200")
+                {
+                    CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                    {
+                        ReasonItem = result.Result;
+                        var first = ReasonItem.FirstOrDefault();
+                        if (first != null)
+                            Reason = first.DicSN;
+                    }));
+                }
+                else
+                {
+                    Toast.ShowMessage(result.Message, CurrentWindow);
+                }
+            });
+        }
+
+        MachineInformations _machinesInfo = Global.MachineSettings.MachineInformations;
+
+        string password = string.Empty;
+        public string Password { get { return password; } set { password = value; this.OnPropertyChanged(o => o.Password); } }
+
+
+        /// <summary>
+        /// 支付流水号
+        /// </summary>
+        private string paySn;
+
+        public string PaySn
+        {
+            get { return paySn; }
+            set
+            {
+                //条码变动时加载数据
+
+                if (!string.IsNullOrEmpty(value))
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+
+                        FindBillHistoryParams _params = new FindBillHistoryParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CompanyToken = _machinesInfo.CompanyToken,
+                            PaySn = value
+                        };
+                        var result = ApiManager.Post<FindBillHistoryParams, ApiRetrunResult<BillHistoryInfo>>(@"api/FindBillHistory", _params);
+                        if (result.Code == "200")
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                if (result.Result.OrderType == 0)
+                                {
+                                    if (result.Result.OrderStatus == 0)
+                                    {
+                                        OrderList = result.Result.Details;
+                                        Difference = -result.Result.WipeZeroAfterTotalAmount;
+                                        paySn = result.Result.PaySn;
+                                        this.OnPropertyChanged(o => o.PaySn);
+                                    }
+                                    else
+                                    {
+                                        Toast.ShowMessage("该流水号已退单！", CurrentWindow);
+                                    }
+                                }
+                                else
+                                {
+                                    Toast.ShowMessage("该单非销售单，请确认是否正确！", CurrentWindow);
+                                }
+                            }));
+
+                        }
+                        else
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                                paySn = string.Empty;
+                                this.OnPropertyChanged(o => o.PaySn);
+                            }));
+
+                        }
+                    });
+                }
+            }
+        }
+        /// <summary>
+        /// 变更列表
+        /// </summary>
+        private IEnumerable<BillDetails> orderList;
+
+        public IEnumerable<BillDetails> OrderList
+        {
+            get { return orderList; }
+            set
+            {
+                orderList = value;
+                this.OnPropertyChanged(o => o.OrderList);
+            }
+        }
+        /// <summary>
+        /// 理由列表
+        /// </summary>
+        private IEnumerable<ApiReasonResult> reasonItem;
+
+        public IEnumerable<ApiReasonResult> ReasonItem
+        {
+            get { return reasonItem; }
+            set { reasonItem = value; this.OnPropertyChanged(o => o.ReasonItem); }
+        }
+        int _Reason;
+        /// <summary>
+        /// 选中的退换货理由
+        /// </summary>
+        public int Reason
+        {
+            get { return _Reason; }
+            set
+            {
+                _Reason = value;
+                this.OnPropertyChanged(o => o.Reason);
+            }
+        }
+
+        /// <summary>
+        /// 差价
+        /// </summary>
+        private decimal difference;
+
+        public decimal Difference
+        {
+            get { return difference; }
+            set { difference = value; this.OnPropertyChanged(o => o.Difference); }
+        }
+        /// <summary>
+        /// 确认事件
+        /// </summary>
+        public GeneralCommand<object> ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    //调确认的接口
+                    if (OrderList.Count() > 0)
+                    {
+                        Task.Factory.StartNew(() =>
+                        {
+
+                            AuthorizationParams _paramsAuth = new AuthorizationParams()
+                            {
+                                StoreId = _machinesInfo.StoreId,
+                                MachineSn = _machinesInfo.MachineSn,
+                                CompanyToken = _machinesInfo.CompanyToken,
+                                Password = Password
+                            };
+                            var resultAuth = ApiManager.Post<AuthorizationParams, ApiRetrunResult<object>>(@"api/Authorization", _paramsAuth);
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                if (resultAuth.Code == "200")
+                                {
+
+                                    NoNeedPaySaveParams _params = new NoNeedPaySaveParams()
+                                    {
+                                        Amount = Difference,
+                                        PaySn = PaySn,
+                                        Reason = Reason,
+                                        StoreId = _machinesInfo.StoreId,
+                                        MachineSn = _machinesInfo.MachineSn,
+                                        CompanyToken = _machinesInfo.CompanyToken
+                                    };
+                                    var result = ApiManager.Post<NoNeedPaySaveParams, ApiRetrunResult<object>>(@"api/RefundAll", _params);
+                                    if (result.Code == "200")
+                                    {
+                                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                        {
+                                            Toast.ShowMessage("操作成功！", CurrentWindow);
+                                            //清除当前所有项
+                                            Clear();
+                                        }));
+                                    }
+                                    else
+                                    {
+                                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                        {
+                                            Toast.ShowMessage(result.Message, CurrentWindow);
+                                        }));
+                                    }
+                                }
+
+                            }));
+
+                        });
+                    }
+                });
+            }
+        }
+
+        /// <summary>
+        /// 清除数据
+        /// </summary>
+        public void Clear()
+        {
+            OrderList = new List<BillDetails>();
+            Difference = 0m;
+            Password = string.Empty;
+        }
+    }
+}

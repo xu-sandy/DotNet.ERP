@@ -1,0 +1,157 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.POS.Retailing.RawInput;
+using Pharos.Wpf.Controls;
+using System;
+using System.Linq;
+using System.Collections.ObjectModel;
+using System.Threading;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Input;
+using System.Collections.Generic;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// MachineSettings.xaml 的交互逻辑
+    /// </summary>
+    public partial class MachineSettings : DialogWindow
+    {
+        public MachineSettings()
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+
+            var collections = new ObservableCollection<ISettingsItem>();
+            var machineInformations = Global.MachineSettings.MachineInformations;
+            machineInformations.CurrentWindow = this;
+            machineInformations.CurrentBindingElement = tabControl;
+
+            var servicesConfiguration = Global.MachineSettings.ServicesConfiguration;
+            servicesConfiguration.CurrentWindow = this;
+            servicesConfiguration.CurrentBindingElement = tabControl;
+
+
+            var devicesSettingsConfiguration = Global.MachineSettings.DevicesSettingsConfiguration;
+            servicesConfiguration.CurrentWindow = this;
+            servicesConfiguration.CurrentBindingElement = tabControl;
+
+
+            collections.Add(servicesConfiguration);
+            collections.Add(machineInformations);
+           // collections.Add(devicesSettingsConfiguration);
+            tabControl.SelectionChanged += tabControl_SelectionChanged;
+            tabControl.ItemsSource = collections;
+            this.Closing += MachineSettings_Closing;
+            this.Loaded += MachineSettings_Loaded;
+        }
+
+        private void tabControl_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (tabControl.SelectedItem != Global.MachineSettings.DevicesSettingsConfiguration && Global.MachineSettings.DevicesSettingsConfiguration.IsScanDeviceSetting)
+            {
+                Global.MachineSettings.DevicesSettingsConfiguration.IsScanDeviceSetting = false;
+
+                Global.MachineSettings.DevicesSettingsConfiguration.ScanDeviceId = Global.MachineSettings.DevicesSettingsConfiguration.tempScanDeviceId;
+                Global.MachineSettings.DevicesSettingsConfiguration.tempScanDeviceId = "";
+            }
+        }
+        private static RawKeyboard _keyboardDriver;
+
+        void MachineSettings_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (this.Owner == null)
+                Application.Current.MainWindow = this;
+            //获取本窗体的句柄
+            WindowInteropHelper wndHelper = new WindowInteropHelper(this);
+            var _wpfHwnd = wndHelper.Handle;
+
+            _keyboardDriver = new RawKeyboard(_wpfHwnd);
+            _keyboardDriver.CaptureOnlyIfTopMostWindow = false;
+            _keyboardDriver.EnumerateDevices();
+
+            //之所以不在 WndProc 进行消息的拦截，是因为···在 WPF 中，消息到 WndProc 的时候，都已经显示在界面上了
+            //当然，在 WinForm 程序上还是有效的，所以在这里，就 在这个消息中截取
+            System.Windows.Interop.ComponentDispatcher.ThreadFilterMessage += ComponentDispatcher_ThreadFilterMessage;
+        }
+        bool isMonitoring;
+        Queue<Win32.KeyAndState> eventQueue = new Queue<Win32.KeyAndState>();
+        void ComponentDispatcher_ThreadFilterMessage(ref System.Windows.Interop.MSG msg, ref bool handled)
+        {
+            switch (msg.message)
+            {
+                //这里只能以 INPUT 来截取，不支持 KEYDOWN 来截取，不然后面的 RawInput 获取值的时候无效
+                case Win32.WM_INPUT:
+                    {
+
+
+                        // Should never get here if you are using PreMessageFiltering
+                        KeyPressEvent keyPressEvent;
+                        _keyboardDriver.ProcessRawInput(msg.lParam, out keyPressEvent);
+
+                        if (keyPressEvent.KeyPressState == "MAKE")
+                        {
+                            isMonitoring = false;
+
+                            string str_Out = string.Empty;
+
+                            if (KeyInterop.KeyFromVirtualKey(keyPressEvent.VKey) == Key.Enter)
+                            {
+                                ThreadPool.QueueUserWorkItem((o) =>
+                               {
+                                   while (eventQueue.Count > 0)
+                                   {
+                                       Win32.KeyAndState keyAndState = eventQueue.Dequeue();
+
+                                       str_Out += WindowExtensions.Chr(keyAndState.Key).ToString();
+
+                                       System.Threading.Thread.Sleep(5); // might need adjustment
+                                   }
+
+                                   Application.Current.Dispatcher.BeginInvoke((Action)(() =>
+                                   {
+                                       if (Global.MachineSettings.DevicesSettingsConfiguration.IsScanDeviceSetting)
+                                       {
+                                           Global.MachineSettings.DevicesSettingsConfiguration.ScanDeviceId = keyPressEvent.DeviceName;
+                                           Global.MachineSettings.DevicesSettingsConfiguration.StartSetScanCommand.Execute(null);
+                                       }
+                                   }));
+
+                                   eventQueue.Clear();
+                                   isMonitoring = true;
+                               });
+                            }
+
+                            // 回车 作为结束标志
+                            if (isMonitoring)
+                            {
+                                //存储 Win32 按键的int值
+                                int key = keyPressEvent.VKey;
+                                byte[] state = new byte[256];
+                                Win32.GetKeyboardState(state);
+                                eventQueue.Enqueue(new Win32.KeyAndState(key, state));
+                            }
+                            handled = true;
+
+                        }
+                    }
+                    break;
+
+            }
+            return;
+        }
+        void MachineSettings_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (Global.MachineSettings.Enable && this.Owner == null)
+            {
+
+                Login win = new Login();
+                win.Show();
+            }
+            System.Windows.Interop.ComponentDispatcher.ThreadFilterMessage -= ComponentDispatcher_ThreadFilterMessage;
+
+        }
+    }
+}

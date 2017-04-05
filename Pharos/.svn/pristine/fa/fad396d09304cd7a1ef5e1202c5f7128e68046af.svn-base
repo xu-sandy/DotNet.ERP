@@ -1,0 +1,122 @@
+﻿@{
+    ViewBag.Title = "RechargeIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增卡片", delText: "移除", hideDel: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类型：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option></select>
+            </td>
+            <td class="label-toolbar">
+                <label>批次：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option></select>
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option></select>
+            </td>
+            <td class="label-toolbar">
+                <label>创建人：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option><option>张三</option></select>
+            </td>
+            <td class="label-toolbar">
+                <label>创建日期:</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date1" class="datacontrol Wdate" style="width:120px" />
+            </td>
+            <td style="float:left;margin-left:7px;margin-right:7px;line-height:28px;">-</td>
+            <td class="input-toolbar">
+                <input name="date2" class="datacontrol Wdate" style="width:120px" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="">导出制卡</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="">导出历史</a>
+    <a href="#" class="easyui-menubutton" style="margin-left:0px;" data-options="menu:'#mm1',iconCls:'icon-edit'">设置状态</a>
+    <div id="mm1" style="width:150px;">
+        <div data-options="iconCls:''" onclick="">设为已制卡</div>
+        <div data-options="iconCls:''" onclick="">设为可用</div>
+        <div data-options="iconCls:''" onclick="">设为作废</div>
+    </div>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindCreateCardPageList")";
+    pharos.manager.editurl = "@Url.Action("CreateMemberCard")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        //{ field: 'BatchSN', title: '批次', width: 80 },
+        { field: 'CardType', title: '卡片类型', width: 80 },
+        {
+            field: 'NumberStart', title: '编号范围', width: 80, formatter: function (value, row, index) {
+                return value + "-" + row.NumberEnd;
+            }
+        },
+        { field: 'NumberEnd', hidden: true },
+        { field: 'MakeNumber', title: '制作数量', width: 80 },
+        { field: 'StateTitle5', title: '发放数量', width: 80 },
+        { field: 'StateTitle6', title: '已领数量', width: 80 },
+        { field: 'AllRechange', title: '允许充值', width: 80 },
+        { field: 'MinRecharge', title: '最低充值', width: 80 },
+        //{ field: 'StateTitle9', title: '办卡押金', width: 80 },
+        {
+            field: 'CouponType', title: '优惠方式', width: 80, formatter: function (value, row, index) {
+                switch (value) {
+                    case "0":
+                        return "无";
+                    case "1":
+                        return "方案折扣";
+                    case "2":
+                        return "固定折扣";
+                }
+            }
+        },
+        {
+            field: 'IntegrationType', title: '积分方式', width: 80, formatter: function (value, row, index) {
+                switch (value) {
+                    case "0":
+                        return "无";
+                    case "1":
+                        return "方案积分";
+                }
+            }
+        },
+        {
+            field: 'State', title: '状态', width: 80, formatter: function (value, row, index) {
+                switch (value) {
+                    case 0:
+                        return "未制卡";
+                        break;
+                    case 1:
+                        return "已制卡";
+                        break;
+                    case 2:
+                        return "可用";
+                        break;
+                    case 3:
+                        return "已作废";
+                        break;
+                }
+            }
+        },
+        { field: 'ExpiryStart', title: '有效期限', width: 80 },
+        { field: 'CreateDT', title: '创建时间', width: 80 },
+        { field: 'CreateUID', title: '创建人', width: 80 },
+    ]];
+
+</script>

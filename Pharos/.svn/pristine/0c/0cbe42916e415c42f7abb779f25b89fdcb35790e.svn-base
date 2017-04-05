@@ -1,0 +1,157 @@
+﻿using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.HotKeyHelper;
+using Pharos.Wpf.ViewModelHelpers;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// KuaiJieJian.xaml 的交互逻辑
+    /// </summary>
+    public partial class KuaiJieJian : DialogWindow02
+    {
+        public KuaiJieJian()
+        {
+            InitializeComponent();
+            this.PreviewKeyDown += KuaiJieJian_PreviewKeyDown;
+            model = HotKey.Rules.Select(o => new HoykeyViewModel()
+            {
+                CurrentWindow = this,
+                Keys = o.Keys,
+                Title = o.Title,
+                Name = o.Name,
+                EnableSet = o.EnableSet
+            }).ToList();
+            list.ItemsSource = model;
+        }
+        IEnumerable<HoykeyViewModel> model;
+        void KuaiJieJian_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                this.Close();
+                return;
+            }
+            if (CurrentRule != null)
+            {
+                var keys = Keyboard.Modifiers.ToString();
+                var modifierKeys = keys.Replace(",", "+");
+                if (modifierKeys == "None")
+                {
+                    modifierKeys = string.Empty;
+                }
+
+                string key = string.Empty;
+                switch (e.Key)
+                {
+                    case Key.LeftAlt:
+                    case Key.LeftCtrl:
+                    case Key.LeftShift:
+                    case Key.RightAlt:
+                    case Key.RightCtrl:
+                    case Key.RightShift:
+                        break;
+                    case Key.System:
+                        switch (e.SystemKey)
+                        {
+                            case Key.LeftAlt:
+                            case Key.LeftCtrl:
+                            case Key.LeftShift:
+                            case Key.RightAlt:
+                            case Key.RightCtrl:
+                            case Key.RightShift:
+                                break;
+                            default:
+                                key = e.SystemKey.ToString();
+                                break;
+                        }
+                        break;
+                    default:
+                        key = e.Key.ToString();
+                        break;
+
+                }
+                if (!string.IsNullOrEmpty(modifierKeys) && !string.IsNullOrEmpty(key))
+                {
+                    modifierKeys += "+";
+                }
+                var hotKey = string.Format("{0}{1}", modifierKeys, key);
+                foreach (var rule in HotKey.Rules)
+                {
+                    if (rule.Keys.VerfyKey(hotKey))
+                    {
+                        Toast.ShowMessage("热键已被占用！", this);
+                        e.Handled = true;
+                        return;
+                    }
+                }
+                CurrentRule.Keys = hotKey;
+                e.Handled = true;
+            }
+        }
+        HoykeyViewModel CurrentRule { get; set; }
+
+        public ICommand ResetCommand
+        {
+            get
+            {
+                return new GeneralCommand<HoykeyViewModel>((o1, o2) =>
+                {
+                    if (CurrentRule != o1 && CurrentRule != null)
+                    {
+                        CurrentRule.ButtonColor = "Gray";
+                        CurrentRule = o1;
+                        CurrentRule.ButtonColor = "#93C34D";
+                    }
+                    else if (CurrentRule == o1)
+                    {
+                        CurrentRule.ButtonColor = "Gray";
+                        CurrentRule = null;
+                    }
+                    else
+                    {
+                        CurrentRule = o1;
+                        CurrentRule.ButtonColor = "#93C34D";
+                    }
+                });
+            }
+        }
+        public ICommand SaveCommand
+        {
+            get
+            {
+                return new GeneralCommand<HotKeyRule>((o1, o2) =>
+                {
+                    try
+                    {
+                        //var model= list.ItemsSource as IEnumerable<HoykeyViewModel>;
+                        foreach (var item in HotKey.Rules)
+                        {
+                            var node = model.FirstOrDefault(o => o.Name == item.Name);
+                            if (node == null)
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                item.Keys = node._Keys;
+                            }
+                        }
+                        HotKey.SaveConfig();
+                        Toast.ShowMessage("修改成功！", this);
+                        this.Close();
+
+                    }
+                    catch
+                    {
+                        Toast.ShowMessage("无法保存快捷键修改！", this);
+                    }
+
+                });
+            }
+        }
+    }
+}

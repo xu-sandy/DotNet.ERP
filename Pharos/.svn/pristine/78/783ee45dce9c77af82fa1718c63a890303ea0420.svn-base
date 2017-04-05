@@ -1,0 +1,33 @@
+﻿@model OrderDistribution
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+@*<div id="deliveryRecord" class="easyui-window" data-options="closed:true,title:'配送记录' " style="margin:0 auto; width:550px; padding:5px 0 25px 15px; line-height:30px; text-align:center; ">*@
+@using (Html.BeginForm())
+{
+
+    <div style="width:95%; height:35px; line-height:35px; margin-left:28px; text-align:left;">
+        品名：
+        @Request["Title"]
+    </div>
+
+    @*</div>*@
+
+    @Html.HiddenFor(o => o.Id)
+
+    <table class="easyui-datagrid" id="deliveryrecord" style="line-height: 30px; border-color: #797979; "
+           data-options="url:'@Url.Action("LoadDeliveryRecordList")',queryParams:{orderId:'@Request["orderId"]',barcode:'@Request["Barcode"]'},showFooter:false,renderFooter:function(target, container, frozen){alert('foot')},border:true,rownumbers:true,fitColumns:true,pagination:false,singleSelect: true,onLoadError:loadError,idField:'Id'">
+        <thead>
+            <tr>
+                <th data-options="field:'DistributionBatch',editor:{type:'textbox',options:{disabled:true}}" width="120" align="center">配送批次</th>
+                <th data-options="field:'ProducedDate' ,editor:{type:'textbox' ,options:{disabled:true}} "width="120" align="center">生产日期</th>
+                <th data-options="field:'ProductionBatch',editor:{type:'textbox',options:{disabled:true}}" width="120" align="center">生产批次</th>
+                <th data-options="field:'DeliveryNum',editor:{type:'textbox',options:{disabled:true}}" width="120" align="center">配送数量</th>
+                <th data-options="field:'DeliveryDT',editor:{type:'textbox',options:{disabled:true}}" width="150" align="center">配送时间</th>
+                <th data-options="field:'StateTitle',editor:{type:'textbox',options:{disabled:true}}" width="120" align="center">状态</th>
+            </tr>
+        </thead>
+    </table>
+}

@@ -1,0 +1,156 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Data;
+using Pharos.Utility;
+using Pharos.Logic.Entity;
+using Pharos.Logic.DAL;
+
+namespace Pharos.Logic.BLL
+{
+    public class MakingCouponCardBLL : BaseService<MakingCouponCard>
+    {
+        private MakingCouponCardDAL _dal = new MakingCouponCardDAL();
+        
+        /// <summary>
+        /// 保存优惠券：新增或修改
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveOrUpdate(MakingCouponCard model)
+        {
+            OpResult result = new OpResult();
+            if (model.Id == 0)
+            {
+                model.CreateDT = DateTime.Now;
+                model.CreateUID = Sys.CurrentUser.UID;
+                model.CompanyId = CommonService.CompanyId;
+                model.State = 0;
+                #region 批次
+                var firstBatchSN = DateTime.Now.ToString("yyMMdd") + "01";
+                var firstBatchToInt = long.Parse(firstBatchSN);
+                var min = DateTime.Parse(DateTime.Now.ToShortDateString());
+                var max = min.AddDays(1);
+                var batchListCount = BaseService<MakingCouponCard>.FindList(o => o.CreateDT >= min && o.CreateDT < max).Count();
+                model.BatchSN = (firstBatchToInt + batchListCount).ToString();//批次：6位日期 + 2位序号,示例：16081601
+                #endregion
+                result = BaseService<MakingCouponCard>.Add(model);
+                return result;
+            }
+            else
+            {
+                return BaseService<MakingCouponCard>.Update(model);//todo:
+            }
+        }
+
+        //获取制作优惠券列表
+        public DataTable FindCreateCouponPageList(Paging paging, int couponType, int couponFrom, short state, string storeIds, string expiryStart, string expiryEnd, string receiveStart, string receiveEnd, string createUID)
+        {
+            return _dal.FindCreateCouponPageList(paging, couponType, couponFrom, state, storeIds, expiryStart, expiryEnd, receiveStart, receiveEnd, createUID);
+        }
+
+        //获取单个优惠券对象
+        public MakingCouponCard FindModelById(int Id)
+        {
+            var model = BaseService<MakingCouponCard>.FindById(Id);
+            return model;
+        }
+
+        /// <summary>
+        /// 获取品类列表
+        /// </summary>
+        /// <param name="recordCount">总数</param>
+        /// <returns>品类列表</returns>
+        public object LoadTypeList(int Id, int type, out int recordCount)
+        {
+            recordCount = 0;
+            if (Id==0) return null;
+            var dal = new Pharos.Logic.DAL.MakingCouponCardDAL();
+            var obj = BaseService<MakingCouponCard>.FindById(Id);
+            int proTypes = -1;
+            string proCodes = "";
+            
+            if (obj!=null)
+            {
+                proTypes = obj.ProductTypes;
+                proCodes = obj.ProductCode;
+            }
+            if (proTypes == 2 && proTypes==type)//指定品类
+            {
+                var dt = dal.GetCategoryList(proCodes);
+                var list = dt.AsEnumerable().Select(dr => new
+                {
+                    BigCategoryTitle = dr["BigCategoryTitle"],
+                    MidCategoryTitle = dr["MidCategoryTitle"],
+                    SubCategoryTitle = dr["SubCategoryTitle"]
+                }).ToList();
+                recordCount = list.Count;
+                return list;
+            }
+            else if (proTypes == 3 && proTypes == type)//具体商品
+            {
+                var proList = proCodes.Split(',').ToList();
+
+                var queryProduct = BaseService<VwProduct>.CurrentRepository.QueryEntity.ToList();
+                //var query = queryProduct.Where(o => proList.Contains(o.Barcode));
+                var query = from y in proList
+                            from z in queryProduct
+                            where (y == z.Barcode || ("," + z.Barcodes + ",").Contains("," + y + ","))
+                            select new
+                            {
+                                z.Barcode,
+                                z.ProductCode,
+                                z.Title,
+                                z.CategoryTitle,
+                                z.SubUnit,
+                                z.SysPrice,
+                                z.StockNums
+                            };
+
+                var list = query.ToList();
+                recordCount = list.Count;
+                return list;
+            }
+            else if (proTypes == 4)//指定品牌
+            {
+                return null;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 生成优惠券：新增或修改
+        /// </summary>
+        /// <param name="Id"></param>
+        /// <param name="num"></param>
+        /// <returns></returns>
+        public OpResult GenerateCoupon(int Id, int num)
+        {
+            OpResult result = new OpResult();
+            //if (model.Id != 0)
+            //{
+            //    model.CreateDT = DateTime.Now;
+            //    model.CreateUID = Sys.CurrentUser.UID;
+            //    model.CompanyId = CommonService.CompanyId;
+            //    model.State = 0;
+            //    #region 批次
+            //    var firstBatchSN = DateTime.Now.ToString("yyMMdd") + "01";
+            //    var firstBatchToInt = long.Parse(firstBatchSN);
+            //    var min = DateTime.Parse(DateTime.Now.ToShortDateString());
+            //    var max = min.AddDays(1);
+            //    var batchListCount = BaseService<MakingCouponCard>.FindList(o => o.CreateDT >= min && o.CreateDT < max).Count();
+            //    model.BatchSN = (firstBatchToInt + batchListCount).ToString();//批次：6位日期 + 2位序号,示例：16081601
+            //    #endregion
+            //    result = BaseService<MakingCouponCard>.Add(model);
+            //    return result;
+            //}
+
+            return result;
+        }
+
+    }
+}

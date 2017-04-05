@@ -1,0 +1,233 @@
+﻿@model Pharos.Logic.OMS.Entity.PayChannelManage
+@{
+    ViewBag.Title = "收单渠道信息";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增收单渠道", hideAdd: !CurrentUser.HasPermiss(142), hideDel: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>收单渠道：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="ChannelNo" name="ChannelNo" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text', data:window.drpdata['ChannelJson'], panelHeight: 'auto', editable: false,width:100" />
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="KeyValues" name="KeyValues" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'收单渠道/名称/备注',width:140" />
+            </td>
+            @*<td class="label-toolbar">
+                    <label>状态：</label>
+                </td>
+                <td class="input-toolbar">
+                    @Html.CheckBoxListFor(o => o.State, ViewBag.CkbStateList as List<SelectListItem>)
+                </td>*@
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if (CurrentUser.HasPermiss(143))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(1)">设为可用渠道</a>
+    }
+    @if (CurrentUser.HasPermiss(144))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(2)">停用渠道</a>
+    }
+    @if (CurrentUser.HasPermiss(145))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(3)">注销渠道</a>
+    }
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+<script type="text/javascript">
+    window.drpdata = window.drpdata || {};
+    window.drpdata['ChannelJson'] = @Html.Raw(ViewBag.ChannelJson);
+    window.drpdata['StateJson'] = @Html.Raw(ViewBag.StateJson);
+    window.drpdata['ChannelPayModeJson'] = @Html.Raw(ViewBag.ChannelPayModeJson);
+    window.drpdata['PayOperateTypeJson'] = @Html.Raw(ViewBag.PayOperateTypeJson);
+    window.btns = window.btns || {};
+    window.btns["hasAdd"] = '@(CurrentUser.HasPermiss(142).ToType<int>())';
+
+    pharos.manager.geturl = "@Url.Action("GetPayChannelPaging")";
+    pharos.manager.editurl = "@Url.Action("PayChannelForm")";
+    pharos.manager.delurl = "@Url.Action("RemovePayChannel")";
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = false;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'State', title: '状态', width: 60, align:'center', formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['StateJson']);
+        }},
+        { field: 'ChannelNo', title: '渠道编号', width: 60 , align:'center'},
+        { field: 'ChannelCode', title: '收单渠道', width: 100},
+        { field: 'ChannelTitle', title: '渠道全称', width: 100 },
+        { field: 'PlatformNum', title: '第三方平台号', width: 100 },
+        { field: 'IsDefault', title: '默认渠道', width: 80 , align:'center', formatter: function (value, row) {
+            return formatBool(value);
+        }},
+        { field: 'ChannelPayMode', title: '支付方式', width: 80, align:'center', formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['ChannelPayModeJson']);
+        }},
+        { field: 'OptType', title: '操作类型', width: 100 , align:'center', formatter: function (value, row) {
+            return formatColumnMultiple(value, window.drpdata['PayOperateTypeJson']);
+            //return formatColumn(value, window.drpdata['ChannelPayModeJson']);
+        }},
+        { field: 'MonthFreeTradeAmount', title: '单月免费<br />交易额(元)', width: 80 , align:'center' },
+        { field: 'OverServiceRate', title: '超出金额<br />服务费率(%)', width: 80, align:'center' },
+        { field: 'SingleServFeeLowLimit', title: '单笔服务费<br />下限(元)', width: 85, align:'center' },
+        { field: 'SingleServFeeUpLimit', title: '单笔服务费<br />上限(元)', width: 85, align:'center' },
+        { field: 'Memo', title: '备注', width: 200 },
+        { field: 'CreateDT', title: '创建时间', width: 100, align:'center', formatter: function (value, row, index) { return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd") } },
+        { field: 'Creater', title: '创建人', width: 80 , align:'center'},
+        { field: 'AuditDT', title: '审核时间', width: 100, align:'center', formatter: function (value, row, index) {
+            if(row.AuditUID!=null)
+                return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd")
+            else
+                return "--";
+        } },
+        { field: 'Auditer', title: '审核人', width: 80 , align:'center',formatter: function (value, row, index) {
+            if(row.Auditer!=null)
+                return row.Auditer;
+            else
+                return "--";
+        } },
+        { field: 'Operation', title: '操作', width: 200,formatter: function (value, row) {
+            var operat = '<a href=\'javascript:setChannelDetail(' + value + ',' + row.ChannelNo + ')\'>[服务费率设置]</a>';
+            return operat;
+        } }
+    ]];
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'Id', columns: ['State', 'ChannelNo', 'ChannelCode', 'ChannelTitle', 'PlatformNum', 'IsDefault', 'Memo', 'CreateDT', 'Creater', 'AuditDT', 'Auditer','Operation'] });
+    }
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialogNew(this.addText, this.editurlNocache(), 500, 400, false, true);
+    };
+    pharos.manager.editItem = function (id, row) {
+        var hideAdd = true;
+        if(window.btns["hasAdd"]=="1")
+            hideAdd = false;
+        this.Id = id;
+        openDialogNew(this.addText, this.editurlNocache(), 500, 400, hideAdd, true);
+    }
+    function editBefore(row, field) {
+        if (field == "Operation") return false;
+        return true;
+    }
+
+    //设置可用停用
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        if (rows.length > 1) {
+            $.messager.alert("提示", "只能选择一项数据进行操作", "error");
+            return false;
+        }
+        var stateJson = window.drpdata['StateJson'];
+        if (rows[0].State == state) {
+            $.messager.alert("提示", "选中项已经是" + stateJson[state].text + "状态", "error");
+            return false;
+        }
+        if(state==3){
+            CancelPayChannel(rows);
+        }
+        else{
+            if(state==2 && rows[0].State!=1){
+                $.messager.alert("提示", "选中项非启用状态无法停用", "error");
+                return false;
+            }
+            $.messager.confirm("提示", "是否确定更改状态", function (r) {
+                if (!r) return;
+                $.post("@Url.Action("SetPayChannelState")", { id: rows[0].Id, state: state }, function (r) {
+                    if (r.successed) {
+                        $.messager.alert("提示", "操作执行成功！", "info");
+                        pharos.manager.gridReload();
+                    } else {
+                        $.messager.alert("提示", "操作执行失败！" + r.message, "error");
+                    }
+                }, "json");
+            });
+        }
+
+        //fishtodo: 1 按钮图标设置
+    }
+    function CancelPayChannel(rows){
+        if(rows[0].State != 2 && rows[0].State!=0){
+            $.messager.alert("提示", "只有未审核与停用状态的数据才可以注销", "error");
+            return false;
+        }
+        $.messager.confirm("提示", "确定注销该收单渠道吗？", function (r) {
+            if (!r) return;
+            $.post("@Url.Action("CancelPayChannel")", { id: rows[0].Id }, function (r) {
+                if (r.successed) {
+                    $.messager.alert("提示", "操作执行成功！", "info");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "操作执行失败！" + r.message, "error");
+                }
+            }, "json");
+        });
+    }
+    function setChannelDetail(value,channelNo){
+        var psn = "aaa";
+        openWin({
+            'title': '服务费率设置', 'width': 900, 'height': 600, hideSave: false, 'url': "@Url.Action("PayChannelDetail")?ChannelNo=" + channelNo + "&psn=" + psn, 'buttons': [{
+                text: '关闭',
+                iconCls: 'icon-cancel',
+                handler: function () { pharos.easyui.dialog.topClose("formDiv"); }
+            }]
+        });
+        return false;
+    }
+
+    //取枚举对应值
+    function formatColumn(value, list) {
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].value == value) {
+                if (list[i].value != "")
+                    return list[i].text;
+            }
+        }
+        return value;
+    }
+    function formatBool(value){
+        if(value==true){
+            return "是";
+        }
+        else{
+            return "否";
+        }
+    }
+    function formatColumnMultiple(values, list) {
+        var text = "";
+        if(values!=null){
+            var valueList = values.split(',');
+            for (var j = 0; j < valueList.length; j++) {
+                var value = valueList[j];
+                for (var i = 0; i < list.length; i++) {
+                    if (list[i].value == value) {
+                        if (list[i].value != "")
+                        {
+                            text += list[i].text+",";
+                            break;
+                        }
+                    }
+                }
+            }
+            if(text!=""){
+                text = text.slice(0,text.length-1);
+            }
+            else{
+                text = values;
+            }
+            return text;
+        }
+    }
+</script>

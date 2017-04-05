@@ -1,0 +1,104 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// 代理商档案
+    /// </summary>
+    public class AgentsInfoService : BaseService
+    {
+
+        [Ninject.Inject]
+        // 代理商档案
+        IBaseRepository<AgentsInfo> AgentsInfoRepository { get; set; }
+
+        /// <summary>
+        /// 获取最大AgentsId
+        /// </summary>
+        /// <returns></returns>
+        public int getMaxAgentsId()
+        {
+            //return TradersRepository.GetQuery().Max(o => (int?)o.CID).GetValueOrDefault() + 1;
+            int AgentsId = 0;
+            AgentsId = AgentsInfoRepository.GetQuery().Max(o => (int?)o.AgentsId).GetValueOrDefault();
+            if (AgentsId < 100001)
+            {
+                AgentsId = 100001;
+            }
+            else
+            {
+                AgentsId = AgentsId + 1;
+                if (AgentsId >= 999999)
+                {
+                    AgentsId = -1;
+                }
+            }
+            return AgentsId;
+        }
+
+        /// <summary>
+        /// 增加或者修改
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveOrUpdate(AgentsInfo model)
+        {
+
+            //代理商全称是否存在
+            IQueryable<AgentsInfo> isExistFullName = null;
+            if (model.Id == 0)
+            {
+                isExistFullName = AgentsInfoRepository.GetQuery(o => o.FullName == model.FullName);
+            }
+            else
+            {
+                isExistFullName = AgentsInfoRepository.GetQuery(o => o.FullName == model.FullName && o.Id != model.Id);
+            }
+            if (isExistFullName.Any())
+            {
+                return OpResult.Fail("该代理商全称已经存在");
+            }
+
+            //代理商简称是否存在
+            IQueryable<AgentsInfo> isExistName = null;
+            if (model.Id == 0)
+            {
+                isExistName = AgentsInfoRepository.GetQuery(o => o.Name == model.Name);
+            }
+            else
+            {
+                isExistName = AgentsInfoRepository.GetQuery(o => o.Name == model.Name && o.Id != model.Id);
+            }
+            if (isExistName.Any())
+            {
+                return OpResult.Fail("该代理商简称已经存在");
+            }
+           
+            if (model.Id == 0)
+            {
+                model.AgentsId = getMaxAgentsId();
+                AgentsInfoRepository.Add(model);
+            }
+            else
+            {
+                var source = AgentsInfoRepository.Get(model.Id);
+                model.ToCopyProperty(source, new List<string>() { "AgentsId", "CreateTime", "CreateUid" });
+            }
+
+            AgentsInfoRepository.SaveChanges();
+            return OpResult.Success();
+        }
+
+
+    }
+}

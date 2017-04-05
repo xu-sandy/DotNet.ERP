@@ -1,0 +1,61 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services.LocalCeServices
+{
+    public class ProductCategorySerivce : BaseGeneralService<ProductCategory, LocalCeDbContext>
+    {
+        /// <summary>
+        /// 获取全部分类
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        public static IEnumerable<CategoryDAO> GetStoreCategories(string storeId, int token)
+        {
+            try
+            {
+                var result = CurrentRepository.Entities.Select(o=>new CategoryDAO()
+                {
+                    CategoryPSN= o.CategoryPSN,
+                     CategorySN = o.CategorySN,
+                    Grade= o.Grade,
+                 OrderNum= o.OrderNum,
+                 Title = o.Title
+                }).ToList();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        /// <summary>
+        /// 根据分类查询子分类和本身
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <param name="category"></param>
+        /// <param name="depth"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        public static IEnumerable<CategoryDAO> GetLastDepthStoreCategories(string storeId, int category, int depth, int token)
+        {
+            string categoryStr = category.ToString();
+            var result = CurrentRepository.Entities.Where(o => o.Grade >= depth && ("/" + o.CategoryCode + "/").Contains("/" + categoryStr + "/")).Select(o => new CategoryDAO()
+            {
+                CategoryPSN = o.CategoryPSN,
+                CategorySN = o.CategorySN,
+                Grade = o.Grade,
+                OrderNum = o.OrderNum,
+                Title = o.Title
+            }).ToList();
+            return result;
+        }
+    }
+}

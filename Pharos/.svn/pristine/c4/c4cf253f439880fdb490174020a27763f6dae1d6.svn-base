@@ -1,0 +1,540 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  Traders
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .formbox td {
+        padding: 5px 0px;
+    }
+
+
+
+
+    #tab {
+        overflow: hidden;
+    }
+
+        #tab a {
+            display: block;
+            width: 100px;
+            height: 35px;
+            line-height: 35px;
+            text-align: center;
+            color: #232323;
+            font-size: 104%;
+            float: left;
+            border: 1px solid #d4d4d4;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+   #tab .sel {
+            background-color: #d4d4d4;
+  }
+
+   #tabLog {
+        border-collapse: collapse;
+    }
+
+  #tabLog, #tabLog th, #tabLog td {
+       border: 1px solid #ccc;
+  }
+
+ #tabLog td {
+         padding: 7px 10px;
+ }
+
+ #tabLog td .noedit {
+       border: 0px;
+      text-align: center;
+  }
+
+
+
+</style>
+<script src="~/Scripts/tool.js"></script>
+<script type="text/javascript">
+
+
+    //加载次数
+    var loadNum = 0;
+    //加载省份
+    function loadProvince() {
+        $('#Province').combobox({
+            url: '/Member/getProvince',
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: true,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                loadCity(newValue);
+                loadDistrict(0);
+            },
+            onLoadSuccess: function () {
+                $(this).combobox('setValue', '@Model.CurrentProvinceId');
+                //所有客户
+                if (all == "0") {
+                    $(this).combobox("readonly");
+                }
+            }
+        });
+
+    }
+
+    //加载城市
+    function loadCity(provinceKey) {
+        $('#City').combobox({
+            url: '/Member/getCity?ProvinceID=' + provinceKey,
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: true,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                loadDistrict(newValue);
+            },
+            onLoadSuccess: function () {
+                if (loadNum<2)
+                {
+                    $(this).combobox('setValue', '@Model.CurrentCityId');
+                }
+                //所有客户
+                if (all == "0") {
+                    $(this).combobox("readonly");
+                }
+            }
+        });
+
+    }
+
+    //加载省市区
+    function loadPCD() {
+        loadProvince();
+    }
+
+    $(function () {
+
+        loadPCD();
+
+        VerificationBusinessCategory();
+
+        $("#tab a").click(function (){
+            v=$(this).attr("v");
+            $("#tab a").removeClass("sel");
+            $(this).addClass("sel");
+            $(".formbox").hide();
+            $("."+v).show();
+        }).eq(0).trigger("click");
+
+        //售卖商品简述
+        $("#BriefIntroduction").keyup(function () {
+            brief(this);
+        }).trigger("keyup");
+
+        //经营类目
+        $("input[name=BusinessCategory]").click(function () {
+            VerificationBusinessCategory();
+        });
+
+    });
+
+
+    function SaveBefore() {
+        return true;
+    }
+
+    //售卖商品简述
+    function brief(oTextArea) {
+        //获得textarea的maxlength属性
+        var MaxLength = oTextArea.getAttribute("maxlength");
+        var num = MaxLength - oTextArea.value.length;
+        $('#b_num').html(num);
+    }
+
+    //经营类目
+    function VerificationBusinessCategory() {
+        if ($("input[name=BusinessCategory]:checked").size() <= 0)
+            $("#DivBusinessCategory").validatebox("enableValidation");
+        else
+            $("#DivBusinessCategory").validatebox("disableValidation");
+    }
+
+    //选择图片
+    function selFile(_obj,imgId,aId,divId) {
+        var _imgsrc = $(_obj).filebox("getValue");
+        var _file = $(_obj).context.ownerDocument.activeElement.files[0];
+        $("#" + imgId).attr("src", tool.tol.getObjectURL(_file));
+        $("#" + aId).attr("href", tool.tol.getObjectURL(_file));
+        $("#" + divId).show();
+    }
+
+    //移除
+    function remove(imgId, aId, divId,fileId) {
+        $("#" + imgId).attr("src", "");
+        $("#" + aId).attr("href", "");
+        $("#" + divId).hide();
+        $("#" + fileId).filebox("setValue","");
+    }
+
+    function seeImg(i) {
+        var src = $(i).find("img").attr("src");
+        if (src != "") {
+            window.open(src);
+        }
+        return false;
+    }
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+
+        <div class="content">
+
+            <div id="tab">
+                <a href="javascript:;" v="tab1">经营信息</a>
+                <a href="javascript:;" v="tab2" style="border-left-style:none; border-right-style:none;">商户信息</a>
+                <a href="javascript:;" v="tab3" style="border-right-style:none;">结算账户</a>
+                <a href="javascript:;" v="tab4">审核日志</a>
+            </div>
+
+            <div class="formbox tab1" style="display:none;">
+                <table class="table-form" width="100%" height="100px">
+                    <tr>
+                        <td class="name" style="width:11%;">指派人：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AssignerUID, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name" style="width:8%;">商户号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-combobox", data_options = "required:true,prompt:'请输入',validType: 'integer',width:120" })</td>
+                        <td class="name">商户名称：</td>
+                        <td class="input">@Html.TextBoxFor(o=>o.Title, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',width:140,readonly:true" })</td>
+                        <td class="name" style="width:8%;">所属体系：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AssignerUID, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">服务商号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Source, new { @class = "easyui-combobox", data_options = "required:true,prompt:'为空表示无',validType: 'integer',width:120,editable:true" })</td>
+                        <td class="name">城市：</td>
+                        <td class="input" >
+                            <input id="Province" name="CurrentProvinceId" class="easyui-combobox datacontrol" />-
+                            <input id="City" name="CurrentCityId" class="easyui-combobox datacontrol" />
+                        </td>
+                        <td class="name">企业性质：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.ExistStoreNum, ViewBag.user as List<SelectListItem> as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable: false,width:120,validType:'requiredForCombo'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">经营类目：</td>
+                        <td class="input" colspan="7" style="width:90%; line-height:30px; ">
+                            <div id="DivBusinessCategory" style="padding:5px; width:98%; min-height:20px; height:20px; height:auto !important; " data-options="required:true,missingMessage:'至少选择一项'" class="easyui-validatebox">
+                                @foreach (var v in ViewBag.BusinessScopeId as List<Business>)
+                                {
+                                    <input type="checkbox" value="@v.ById" id="BusinessScopeId_@v.Id" name="BusinessCategory" @(Html.Raw(Model.BusinessScopeId.Contains(v.ById.ToString()) ? "checked=\"checked\"" : "")) />@:&nbsp;<label for="BusinessScopeId_@v.Id">@v.Title</label>&nbsp; &nbsp;
+                                }
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">商家支付联系人：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:120,validType:'length[4,50]'" })</td>
+                        <td class="name" style="width:8%;">手机号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:120,validType:'mobile'" })</td>
+                        <td class="name">常用邮箱：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:120,validType:'email'" })</td>
+                        <td class="name" style="width:8%;">客服电话：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.BusinessModeId, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:120" })</td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox tab1" style="display:none;">
+                <table class="table-form" width="100%">
+
+                    <tr>
+                        <td class="name" style="width:11%;">资质或证件上传：</td>
+                        <td class="input" colspan="3" style=" width:40%;">
+                            <div style="margin-bottom:7px; margin-top:7px; padding-top:7px;">
+                                <input type="text" class="easyui-filebox" id="IDPhoto1" name="IDPhoto1" data-options="buttonText:'选择文件',prompt:'请选择文件',required:true,missingMessage:'请选择文件',onChange:function(){selFile(this,'ImgIDPhoto1','AIDPhoto1','div_IDPhoto1')}" style="width:300px;" />
+                            </div>
+                            <div style="color:#ff0000;">
+                                若不涉及特殊商品， 此处请上传《营业执照》。<br/>
+                                图片文件大小限1Mb以内，格式为bmp、png、jpeg、jpg或gif。
+                            </div>
+                        </td>
+                        <td class="input" colspan="4">
+                            <div id="div_IDPhoto1" style=" display:none; ">
+                                <a href="javascript:void(0)" id="AIDPhoto1" style="" onclick="return seeImg(this)">
+                                    <img id="ImgIDPhoto1" src="" style="width:80px; height:80px; vertical-align:bottom;" />
+                                </a>
+                                &nbsp;&nbsp;
+                                <a href="javascript:void(0)" id="DelIDPhoto1" style="" onclick="remove('ImgIDPhoto1', 'AIDPhoto1', 'div_IDPhoto1', 'IDPhoto1')">【移除】</a>
+                            </div>
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox tab1" style=" border-bottom:0px; display:none;">
+                <table class="table-form" width="100%">
+
+                    <tr>
+                        <td class="name" style="width:11%;">售卖商品简述：</td>
+                        <td class="input">@Html.TextArea("BriefIntroduction", new { @class = "easyui-validatebox", style = "width:709px; height: 100px; max-width: 709px; max-height: 100px; resize: none; ", maxlength = "300", data_options = "novalidate:false,required:false,prompt:'',validType: 'length[0,300]'" })</td>
+                    </tr>
+
+                    <tr id="tr_prompt">
+                        <td class="name"></td>
+                        <td class="input">
+                        限长300个字，还可以输入 <span style="color:#FF0000;" id="b_num">300</span> 个字
+                        <div style="padding-top:5px;">
+                            <span style="color:#ff0000;">请简要描述售卖的商品或提供的服务，必须在营业执照经营范围内，且必须与所选类目对应一致。</span><br />
+                            <span style="color:#ff0000;">请勿直接照抄营业执照中的经营范围，否则将会导致您的申请资料被驳回。</span>
+                        </div>
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox tab2" style="display:none;">
+
+                <table class="table-form" width="100%" >
+
+                    <tr>
+                        <td class="name" style="width:13%;">商户号：</td>
+                        <td class="input" style="width:22%;">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',width:120,readonly:true" })</td>
+                        <td class="name" style="width:8%;">商户名称：</td>
+                        <td class="input" style="width:20%;">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',width:120,readonly:true" })</td>
+                        <td class="name">注册地址：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'与执照一致',width:140,validType:'length[1,100]'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">营业执照注册号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'与执照一致',width:140,validType:'length[1,50]'" })</td>
+                        <td class="name">经营范围：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:140,validType:'length[1,50]'" })</td>
+                        <td class="name">营业期限：</td>
+                        <td class="input">
+                            @Html.TextBoxFor(o => o.Title, new { @class = "easyui-datebox", data_options = "required:true,prompt:'',width:120" })
+                            &nbsp;&nbsp;至&nbsp;&nbsp;
+                            @Html.TextBoxFor(o => o.Title, new { @class = "easyui-datebox", data_options = "required:true,prompt:'为空长期',width:120" })
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">组织机构代码：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'限50个字符',width:140,validType:'length[1,50]'" })</td>
+                        <td class="name">有效期：</td>
+                        <td class="input" colspan="3">
+                            @Html.TextBoxFor(o => o.CityTitles, new { @class = "easyui-datebox", data_options = "required:true,prompt:'',width:120" })
+                            &nbsp;&nbsp;至&nbsp;&nbsp;
+                            @Html.TextBoxFor(o => o.Cities, new { @class = "easyui-datebox", data_options = "required:true,prompt:'为空长期',width:120" })
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name" style="width:13%;">证件上传：</td>
+                        <td class="input" colspan="3" style="width:22%; height:80px;">
+                            <div>
+                                <input type="text" class="easyui-filebox" id="IDPhoto2" name="IDPhoto2" data-options="buttonText:'选择文件',prompt:'请选择文件',required:true,missingMessage:'请选择文件',onChange:function(){selFile(this,'ImgIDPhoto2','AIDPhoto2','div_IDPhoto2')}" style="width:300px;" />
+                            </div>
+                            <div style="color:#ff0000; padding-top:10px;">
+                                如果您的企业属于三证合一，此处请上传营业执照。
+                            </div>
+                        </td>
+                        <td class="input" colspan="3" >
+                            <div style=" margin-left:-105px; display:none;" id="div_IDPhoto2">
+                                <a href="javascript:void(0)" id="AIDPhoto2" style="" onclick="return seeImg(this)">
+                                    <img id="ImgIDPhoto2" src="" style="width:80px; height:80px; vertical-align:bottom;" />
+                                </a>
+                                &nbsp;&nbsp;
+                                <a href="javascript:void(0)" id="DelIDPhoto2" style="" onclick="remove('ImgIDPhoto2', 'AIDPhoto2', 'div_IDPhoto2', 'IDPhoto2')">【移除】</a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr>
+
+                    </tr>
+
+                </table>
+
+            </div>
+
+            <div class="formbox tab2" style="display:none; padding-top:5px;">
+
+                <table class="table-form" width="100%" >
+
+                    <tr>
+                        <td class="name">企业法人姓名：</td>
+                        <td class="input" style="width:22%">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:120,readonly:true" })</td>
+                        <td class="name" style="width:8%;">身份证号码：</td>
+                        <td class="input" style="width:5%;">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:120,readonly:true" })</td>
+                        <td class="name" style="width:14%;">证件有效期：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'与营业执照一致',width:140,validType:'length[1,100]'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name" style="width:13%;">证件正面上传：</td>
+                        <td class="input" colspan="3" style="width:22%; height:80px;">
+                            <div>
+                                <input type="text" class="easyui-filebox" id="IDPhoto3" name="IDPhoto3" data-options="buttonText:'选择文件',prompt:'请选择文件',required:true,missingMessage:'请选择文件',onChange:function(){selFile(this,'ImgIDPhoto3','AIDPhoto3','div_IDPhoto3')}" style="width:300px;" />
+                            </div>
+                            <div style="color:#ff0000;">
+
+                            </div>
+                        </td>
+                        <td class="input" colspan="3">
+                            <div style="  display:none;" id="div_IDPhoto3">
+                                <a href="javascript:void(0)" id="AIDPhoto3" style="" onclick="return seeImg(this)">
+                                    <img id="ImgIDPhoto3" src="" style="width:80px; height:80px; vertical-align:bottom;" />
+                                </a>
+                                &nbsp;&nbsp;
+                                <a href="javascript:void(0)" id="DelIDPhoto3" style="" onclick="remove('ImgIDPhoto3', 'AIDPhoto3', 'div_IDPhoto3', 'IDPhoto3')">【移除】</a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name" style="width:13%;">证件反面上传：</td>
+                        <td class="input" colspan="3" style="width:22%; height:80px;">
+
+                            <div>
+                               <input type="text" class="easyui-filebox" id="IDPhoto4" name="IDPhoto4" data-options="buttonText:'选择文件',prompt:'请选择文件',required:true,missingMessage:'请选择文件',onChange:function(){selFile(this,'ImgIDPhoto4','AIDPhoto4','div_IDPhoto4')}" style="width:300px;" />
+                            </div>
+                            <div style="color:#ff0000;">
+
+                            </div>
+                        </td>
+                        <td class="input" colspan="3" >
+                            <div style="display:none;" id="div_IDPhoto4">
+                                <a href="javascript:void(0)" id="AIDPhoto4" style="" onclick="return seeImg(this)">
+                                    <img id="ImgIDPhoto4" src="" style="width:80px; height:80px; vertical-align:bottom;" />
+                                </a>
+                                &nbsp;&nbsp;
+                                <a href="javascript:void(0)" id="DelIDPhoto4" style="" onclick="remove('ImgIDPhoto4', 'AIDPhoto4', 'div_IDPhoto4', 'IDPhoto4')">【移除】</a>
+                            </div>
+                        </td>
+                    </tr>
+
+
+                </table>
+
+            </div>
+
+            <div class="formbox tab2" style="display:none; border-bottom:0px;">
+
+                <table class="table-form" width="100%">
+
+                    <tr>
+                        <td colspan="6">
+                            <div style="color:#ff0000;  padding-left:37px; padding-top:10px;">
+                                小贴士：图片文件大小限1Mb以内，格式为bmp、png、jpeg、jpg或gif。
+                            </div>
+                        </td>
+                    </tr>
+
+                </table>
+
+            </div>
+
+            <div class="formbox tab3" style="display:none;">
+
+                <table class="table-form" width="100%">
+
+                    <tr>
+                        <td class="name">商户号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',width:120,readonly:true" })</td>
+                        <td class="name" style="width:8%;">商户名称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',width:120,readonly:true" })</td>
+                        <td class="name">财务联系人：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:120,validType:'length[1,20]'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">账号类型：</td>
+                        <td class="input">@Html.DropDownList("BillingType", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "对公账户", Value = "1" }, new SelectListItem() { Text = "私人账户", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name">开户名称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Cities, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:140,validType:'length[1,50]'" })</td>
+                        <td class="name">联系人电话：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:140,validType:'length[1,20]'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">开户银行城市：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-combobox", data_options = "required:true,prompt:'输入城市名称或拼音',width:140,validType:'length[1,50]'" })</td>
+                        <td class="name">开户银行：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:140,validType:'length[1,50]'" })</td>
+                        <td class="name">开户支行：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:140,validType:'length[1,100]'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name"></td>
+                        <td class="input"></td>
+                        <td class="name">银行账号：</td>
+                        <td class="input" colspan="3">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:140,validType:'length[1,50]'" })</td>
+                    </tr>
+
+                </table>
+
+            </div>
+            
+            <div class="formbox tab3" style="display:none; border-bottom:0px;">
+
+                <table class="table-form" width="100%">
+
+                    <tr>
+                        <td colspan="6">
+                            <div style="color:#ff0000;  padding-left:39px; padding-top:10px;">
+                                小贴士：您选择的是对公账户，请注意不要填写个人银行账号，企业类型帐号，结算账户不支持修改为私人账户。
+                            </div>
+                        </td>
+                    </tr>
+
+                </table>
+
+            </div>
+
+            <div class="formbox tab4" style="display:none; border-bottom:0px;">
+                <table class="table-form" width="100%" id="tabLog">
+
+                    <tr style="background-color:#eff4fb">
+                        <td class="name" style="width:15%;text-align:center;">时间</td>
+                        <td style="text-align:center;">描述说明</td>
+                        <td style="text-align:center; width:7%;">操作人</td>
+                    </tr>
+
+                    <tr name="trLog">
+                        <td style="text-align:center;">2016-12-17 15:41:33</td>
+                        <td style="text-align:left; padding:7px 10px;">已提交支付许可材料信息申请</td>
+                        <td style="text-align:center;">张三</td>
+                    </tr>
+
+                    <tr name="trLog">
+                        <td style="text-align:center;">2016-12-18 11:21:52</td>
+                        <td style="text-align:left; padding:7px 10px;">被驳回：结算账户请填写企业对公账户</td>
+                        <td style="text-align:center;">李四</td>
+                    </tr>
+
+                </table>
+            </div>
+
+        </div>
+    }
+</div>
+
+

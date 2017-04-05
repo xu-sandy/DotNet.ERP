@@ -1,0 +1,114 @@
+﻿@{
+    ViewBag.Title = "TakeCouponIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增等级", delText: "移除", hideDel: true, hideEdit: false, hideSearch: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>今年关怀：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox">
+                    <option>全部</option>
+                    <option selected>未关怀</option>
+                    <option>已关怀</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>日历：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox">
+                    <option>全部</option>
+                    <option>按公历</option>
+                    <option>按农历</option>
+                </select>
+            </td>
+            <td class="input-toolbar">
+                &nbsp;<input type="text" class="easyui-textbox" data-options="prompt:'距离生日天数'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="SetCardTypeState(0)">设为可用</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="SetCardTypeState(1)">设为禁用</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindMemberGradePageList")";
+    pharos.manager.editurl = "@Url.Action("CreateMemberGrade")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'LevelSN', title: '编号', hidden: true },
+        { field: 'LevelTitle', title: '名称', width: 120 },
+        { field: 'MemberCount', title: '会员量', width: 60 },
+        {
+            field: 'CouponType', title: '优惠方式', width: 80, formatter: function (value, row, index) {
+                switch (value) {
+                    case 0:
+                    default:
+                        return "无";
+                    case 1:
+                        return "方案折扣";
+                    case 2:
+                        return "固定折扣";
+                }
+            }
+        },
+        //{
+        //    field: 'IntegerType', title: '积分方式', width: 80, formatter: function (value, row, index) {
+        //        switch (value) {
+        //            case 0:
+        //            default:
+        //                return "无";
+        //            case 1:
+        //                return "方案折扣";
+        //        }
+        //    }
+        //},
+    {
+        field: 'Discount', title: '折扣', width: 50, formatter: function (value) {
+            if (value == -1) {
+                return "无";
+            } else {
+                return value;
+            }
+        }
+    },
+        //{ field: 'ConverRatio', title: '积分转换比例', width: 60 },
+
+    { field: 'AutoUpdate', title: '自动升级', width: 60, formatter: function (value, row, index) { if (value == false) { return "否" } else { return "是" } } },
+    { field: 'Memo', title: '说明', width: 180, nowrap: false },
+    {
+        field: 'State', title: '状态', width: 50, formatter: function (value, row, index) {
+            if (value == 1) {
+                return "禁用"
+            }
+            else {
+                return "可用"
+            }
+        }
+    },
+    { field: 'CreateDT', title: '更新时间', width: 120 },
+    { field: 'CreateUID', title: '更新人', width: 80 },
+    ]];
+    function SetCardTypeState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("UpdateMemberLevelState")", { state: state, ids: ids }, function (result) {
+            if (result.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + result.message, "error");
+            }
+        }, "json");
+    }
+</script>

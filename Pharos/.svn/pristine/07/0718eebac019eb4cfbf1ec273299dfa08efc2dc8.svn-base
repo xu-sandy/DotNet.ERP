@@ -1,0 +1,133 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.Logic.DAL;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.SyncService.Helpers;
+using Pharos.SyncService.Exceptions;
+
+namespace Pharos.SyncService.RemoteDataServices
+{
+    public class SalePackageSyncRemoteService : ISyncDataService
+    {
+        public Microsoft.Synchronization.SyncDirectionOrder SyncDirectionOrder
+        {
+            get { return Microsoft.Synchronization.SyncDirectionOrder.UploadAndDownload; }
+        }
+
+        public IEnumerable<ISyncDataObject> GetSyncObjects(int companyId, string storeId)
+        {
+            try
+            {
+                using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+                {
+                    var query = from a in db.SaleOrders
+                                from b in db.SaleDetails
+                                // from c in db.SalesRecords
+                                from c in db.ConsumptionPayments
+                                from d in db.WipeZeros
+                                where a.PaySN == b.PaySN && a.PaySN == c.PaySN && a.PaySN == d.PaySN
+                                select new SyncDataPackage(a.SyncItemVersion, b.SyncItemVersion, c.SyncItemVersion, d.SyncItemVersion)
+                                {
+                                    SyncItemId = a.SyncItemId,
+                                };
+                    return query.ToList();
+                }
+            }
+            catch
+            {
+                return new List<ISyncDataObject>();
+            }
+        }
+
+        public ISyncDataObject GetItem(Guid guid, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+            {
+                var query = from a in db.SaleOrders
+                            from b in db.SaleDetails
+                            // from c in db.SalesRecords
+                            from c in db.ConsumptionPayments
+                            from d in db.WipeZeros
+                            where a.PaySN == b.PaySN && a.PaySN == c.PaySN && a.PaySN == d.PaySN && a.SyncItemId == guid
+                            select new
+                            {
+                                a,
+                                b,
+                                c,
+                                d
+                            };
+
+                var result = query.ToList();
+                if (result != null)
+                {
+                    var package = new Package() { SyncItemId = guid };
+                    package.Init(result.Select(o => new SaleOrders().InitEntity(o.a)).Distinct().ToList());
+                    package.Init(result.Select(o => new SaleDetail().InitEntity(o.b)).Distinct().ToList());
+                    package.Init(result.Select(o => new ConsumptionPayment().InitEntity(o.c)).Distinct().ToList());
+                    package.Init(result.Select(o => new WipeZero().InitEntity(o.d)).Distinct().ToList());
+                    return package;
+
+                }
+                throw new SyncException("获取销售数据包失败！");
+            }
+        }
+
+        public byte[] CreateItem(ISyncDataObject data, Guid guid, int companyId, string storeId)
+        {
+            var temp = data as Package;
+            using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+            {
+                var orders = temp.GetEntities<SaleOrders>();
+                var saleDetails = temp.GetEntities<SaleDetail>();
+                var consumptionPayments = temp.GetEntities<ConsumptionPayment>();
+                var wipeZeros = temp.GetEntities<WipeZero>();
+                db.SaleOrders.AddRange(orders.Select(o => new Pharos.Logic.Entity.SaleOrders().InitEntity(o, false)));
+                db.SaleDetails.AddRange(saleDetails.Select(o => new Pharos.Logic.Entity.SaleDetail().InitEntity(o, false)));
+                db.ConsumptionPayments.AddRange(consumptionPayments.Select(o => new Pharos.Logic.Entity.ConsumptionPayment().InitEntity(o, false)));
+                db.WipeZeros.AddRange(wipeZeros.Select(o => new Pharos.Logic.Entity.WipeZero().InitEntity(o, false)));
+                db.SaveChanges();
+                var query = from a in db.SaleOrders
+                            from b in db.SaleDetails
+                            // from c in db.SalesRecords
+                            from c in db.ConsumptionPayments
+                            from d in db.WipeZeros
+                            where a.PaySN == b.PaySN && a.PaySN == c.PaySN && a.PaySN == d.PaySN && a.SyncItemId == guid
+                            select new SyncDataPackage(a.SyncItemVersion, b.SyncItemVersion, c.SyncItemVersion, d.SyncItemVersion)
+                            {
+                                SyncItemId = a.SyncItemId,
+                            };
+                var result = query.FirstOrDefault().SyncItemVersion;
+                return result;
+            }
+        }
+
+        public byte[] UpdateItem(Guid guid, ISyncDataObject mergedData, int companyId, string storeId)
+        {
+            var temp = mergedData as Package;
+            using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+            {
+                var orders = temp.GetEntities<SaleOrders>();
+
+                var order = db.SaleOrders.FirstOrDefault(o => o.SyncItemId == guid);
+                var tempOrder = orders.FirstOrDefault();
+                order.State = tempOrder.State;
+                db.SaveChanges();
+                var result = db.SaleOrders.FirstOrDefault(o => o.SyncItemId == guid).SyncItemVersion;
+                return result;
+            }
+        }
+
+        public void DeleteItem(Guid syncItemId, int companyId, string storeId)
+        {
+            throw new SyncException("销售数据包不允许删除远程数据");
+        }
+
+        public ISyncDataObject Merge(ISyncDataObject syncDataObject1, ISyncDataObject syncDataObject2, int companyId, string storeId)
+        {
+            return syncDataObject1;
+        }
+    }
+}

@@ -1,0 +1,45 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos
+{
+    /// <summary>
+    /// 设备设置
+    /// </summary>
+    public class MachinesSettings
+    {
+        static MachinesSettings()
+        {
+            Mode = DataAdapterMode.Remote;
+            CachePath = Path.Combine(System.Web.HttpRuntime.AppDomainAppPath, "Cache");
+        }
+        /// <summary>
+        /// 数据源模式（默认启动远程模式）
+        /// </summary>
+        public static DataAdapterMode Mode { get; set; }
+
+        /// <summary>
+        /// 缓存文件路径
+        /// </summary>
+        public static string CachePath { get; set; }
+
+
+        public static void RegisterDevice(string storeId, string machineSn, string deviceSn, DeviceType type)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn);
+            dataAdapter.RegisterDevice(deviceSn, type);
+        }
+
+
+        public static bool HasRegister(string storeId, string machineSn, string deviceSn, DeviceType type) 
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn);
+             return  dataAdapter.HasRegister(deviceSn, type);
+        }
+    }
+}

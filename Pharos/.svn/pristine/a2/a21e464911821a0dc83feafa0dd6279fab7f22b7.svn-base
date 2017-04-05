@@ -1,0 +1,62 @@
+﻿@model Pharos.Logic.OMS.Entity.SysPositions
+@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-form" width="100%" height="200px">
+                <tr>
+                    <td class="name">适用部门：</td>
+                    <td class="input" colspan="3">@Html.DropDownListFor(o => o.DeptId, ViewBag.depts as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo',editable:false,required:true,mode:'remote',valueField:'DeptId',textField:'Title',width:400" })</td>
+                </tr>
+                <tr>
+                    <td class="name">职位代码：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Code, new { @class = "easyui-textbox", data_options = "validType:'length[1,30]'" })</td>
+                    <td class="name">职位名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:'length[1,50]'" })</td>
+                </tr>
+                
+            </table>
+        </div>
+        
+    }
+</div>
+<script type="text/javascript">
+    var comboload=function (param, success, error) {
+        var q = param.q || "";
+        if (q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url:"@Url.Action("GetInput", "DepartMent")",
+            type:"post",
+            data:{
+                //传值，还是JSON数据搜索
+                searchName: q
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType:"json",
+            success: function (data) {
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function(item){
+                    return { DeptId: item.DeptId, Title:item.PDeptTitle+ item.Title };
+                });
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    function SaveBefore() {
+        if ($("#DeptId").combobox("getValue") == $("#DeptId").combobox("getText")) {
+            $.messager.alert("提示", "部门不存在！");
+            return false;
+        }
+        return true;
+    }
+</script>

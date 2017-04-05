@@ -1,0 +1,57 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using System.Collections.Generic;
+
+namespace Pharos.POS.Retailing.Models.DTOs
+{
+    public class AccountCheckingDto : BaseObservable
+    {
+        private AccountCheckingDAO accountCheckingDAO;
+        public AccountCheckingDto()
+            : this(new AccountCheckingDAO())
+        {
+        }
+        public AccountCheckingDto(AccountCheckingDAO accountCheckingDAO)
+        {
+            // TODO: Complete member initialization
+            this.accountCheckingDAO = accountCheckingDAO;
+            OnPropertyChanged("DepositMoney");
+            OnPropertyChanged("TotalSales");
+            OnPropertyChanged("AllPayWayStatistics");
+            OnPropertyChanged("TakeOutMoney");
+            OnPropertyChanged("SurplusCash");
+
+
+        }
+        /// <summary>
+        /// 入款
+        /// </summary>
+        public decimal DepositMoney { get { return accountCheckingDAO.DepositMoney; } }
+        /// <summary>
+        /// 销售总额
+        /// </summary>
+        public decimal TotalSales { get { return accountCheckingDAO.TotalSales; } }
+        /// <summary>
+        /// 换货 
+        /// </summary>
+        public decimal ChangingSales { get { return accountCheckingDAO.ChangingSales; } }
+
+        /// <summary>
+        /// 退货
+        /// </summary>
+        public decimal ReturnSales { get { return accountCheckingDAO.ReturnSales; } }
+
+        /// <summary>
+        /// 支付方式
+        /// </summary>
+        public IEnumerable<KeyValuePair<string, decimal>> AllPayWayStatistics { get { return accountCheckingDAO.AllPayWayStatistics; } }
+        /// <summary>
+        /// 出款
+        /// </summary>
+        public decimal TakeOutMoney { get { return accountCheckingDAO.TakeOutMoney; } }
+        /// <summary>
+        /// 剩余现金
+        /// </summary>
+        public decimal SurplusCash { get { return accountCheckingDAO.SurplusCash; } }
+    }
+
+}

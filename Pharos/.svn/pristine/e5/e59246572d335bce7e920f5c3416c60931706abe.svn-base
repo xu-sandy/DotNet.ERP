@@ -1,0 +1,52 @@
+﻿using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class ProductCategorySerivce : BaseGeneralService<ProductCategory, EFDbContext>
+    {
+        public static IEnumerable<CategoryDAO> GetStoreCategories(string storeId)
+        {
+            try
+            {
+                var result = CurrentRepository._context.Database.SqlQuery<CategoryDAO>(@"with cte as
+                (
+                    select l.CategoryPSN,l.CategorySN,l.Title,r.StoreId,l.OrderNum,l.Grade,0 as lvl from ProductCategory l
+                    right join Warehouse r on  ','+r.CategorySN+',' like '%,'+ convert(varchar(200),l.CategorySN) +',%' 
+	                where   r.StoreId=@p0
+                    union all
+                    select d.CategoryPSN,d.CategorySN,d.Title,c.StoreId,d.OrderNum,d.Grade,lvl+1 from cte c 
+	                inner join ProductCategory d on c.CategorySN = d.CategoryPSN
+                )
+                select CategoryPSN,CategorySN,Title,OrderNum,Grade  from cte ", storeId).ToList();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public static IEnumerable<CategoryDAO> GetLastDepthStoreCategories(string storeId, int category, int depth)
+        {
+            var result = CurrentRepository._context.Database.SqlQuery<CategoryDAO>(@"with cte as
+            (
+                select l.CategoryPSN,l.CategorySN,l.Title,r.StoreId,l.OrderNum,l.Grade,0 as lvl from ProductCategory l
+                right join Warehouse r on  ','+r.CategorySN+',' like '%,'+ convert(varchar(200),l.CategorySN) +',%' 
+	            where   r.StoreId=@p0 and (@p2 != l.Grade or (@p2 = l.Grade and l.CategorySN = @p1))
+                union all
+                select d.CategoryPSN,d.CategorySN,d.Title,c.StoreId,d.OrderNum,d.Grade,lvl+1 from cte c 
+	            inner join ProductCategory d on c.CategorySN = d.CategoryPSN
+                where  (@p2 != d.Grade or (@p2 = d.Grade and d.CategorySN = @p1))
+            )
+            select CategoryPSN,CategorySN,Title,OrderNum,Grade  from cte WHERE Grade=3", storeId, category, depth).ToList();
+            return result;
+        }
+    }
+}

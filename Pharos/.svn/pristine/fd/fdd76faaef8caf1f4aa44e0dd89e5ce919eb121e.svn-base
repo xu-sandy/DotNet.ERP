@@ -1,0 +1,271 @@
+--新增表SysPaymentSetting
+GO
+
+/****** Object:  Table [dbo].[SysPaymentSetting]    Script Date: 02/23/2016 18:09:58 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[SysPaymentSetting](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[StoreId] [varchar](300) NOT NULL,
+	[PayType] [smallint] NOT NULL,
+	[State] [smallint] NOT NULL,
+	[PartnerId] [nvarchar](200) NOT NULL,
+	[AppId] [nvarchar](200) NOT NULL,
+	[CheckKey] [nvarchar](200) NOT NULL,
+	[NotifyUrl] [nvarchar](200) NULL,
+	[CreateDT] [datetime] NOT NULL,
+	[CreateUID] [varchar](40) NOT NULL,
+	[AlterDT] [datetime] NULL,
+	[AlterUID] [varchar](40) NULL,
+ CONSTRAINT [PK_SysPaymentSetting] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'记录ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'Id'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'适用门店（多个以逗号隔开，0表示全部）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'StoreId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'支付方式（1：支付宝，2：微信）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'PayType'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'状态（0:停用、1:可用）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'State'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'支付宝：合作身份者ID/微信：mchID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'PartnerId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'支付宝：使用当面付编码/微信：appID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'AppId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'支付宝：交易安全检验码/微信：支付密钥' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'CheckKey'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'支付通知页面' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'NotifyUrl'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'创建时间' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'CreateDT'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'创建人ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'CreateUID'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'修改时间' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'AlterDT'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'修改人ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysPaymentSetting', @level2type=N'COLUMN',@level2name=N'AlterUID'
+GO
+
+ALTER TABLE [dbo].[SysPaymentSetting] ADD  CONSTRAINT [DF_SysPaymentSetting_State]  DEFAULT ((0)) FOR [State]
+GO
+
+ALTER TABLE [dbo].[SysPaymentSetting] ADD  CONSTRAINT [DF_SysPaymentSetting_CreateDT]  DEFAULT (getdate()) FOR [CreateDT]
+GO
+
+ALTER TABLE [dbo].[SysPaymentSetting] ADD  CONSTRAINT [DF_SysPaymentSetting_AlterDT]  DEFAULT (getdate()) FOR [AlterDT]
+GO
+
+
+
+
+--新增表SysWebSetting
+GO
+
+/****** Object:  Table [dbo].[SysWebSetting]    Script Date: 02/23/2016 18:11:52 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[SysWebSetting](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[TopLogo] [nvarchar](200) NOT NULL,
+	[BottomLogo] [nvarchar](200) NOT NULL,
+	[AppIcon] [nvarchar](200) NOT NULL,
+	[AppCustomer] [nvarchar](200) NOT NULL,
+	[SysIcon] [nvarchar](200) NOT NULL,
+	[WebsiteUrl] [nvarchar](200) NOT NULL,
+	[CompanyTitle] [nvarchar](50) NOT NULL,
+	[Tel] [varchar](20) NULL,
+	[PageTitle] [nvarchar](50) NOT NULL,
+	[SMTPServer] [nvarchar](100) NOT NULL,
+	[SMTPPort] [int] NULL,
+	[SMTPShowName] [nvarchar](200) NULL,
+	[SMTPSSLPort] [int] NULL,
+	[SMTPAccount] [nvarchar](100) NOT NULL,
+	[SMTPPwd] [nvarchar](50) NOT NULL,
+	[EMReqUrlBase] [nvarchar](200) NOT NULL,
+	[EMAppId] [nvarchar](200) NOT NULL,
+	[EMAppSecret] [nvarchar](200) NOT NULL,
+	[EMAppOrg] [nvarchar](200) NOT NULL,
+	[EMAppName] [nvarchar](200) NOT NULL,
+ CONSTRAINT [PK_SysWebSetting] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'记录ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'Id'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'顶部Logo' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'TopLogo'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'底部Logo' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'BottomLogo'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'App图标' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'AppIcon'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'App首页背景图' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'AppCustomer'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'系统Icon' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'SysIcon'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'官网地址' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'WebsiteUrl'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'公司简称' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'CompanyTitle'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'公司电话' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'Tel'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'页面Title' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'PageTitle'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'SMTP发件箱服务器' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'SMTPServer'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'SMTP端口' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'SMTPPort'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'SMTP显示名称' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'SMTPShowName'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'SMTP SSL端口' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'SMTPSSLPort'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'SMTP账号' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'SMTPAccount'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'SMTP密码' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'SMTPPwd'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'APP在环信上注册的对应应用URL' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'EMReqUrlBase'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'APP在环信上注册的对应应用Id' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'EMAppId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'APP在环信上注册的对应应用Secret' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'EMAppSecret'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'APP在环信上对应的appkey的org_name部分' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'EMAppOrg'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'APP在环信上对应的appkey的app_name部分' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysWebSetting', @level2type=N'COLUMN',@level2name=N'EMAppName'
+GO
+
+
+
+
+
+--新增存储过程Sys_PaymentList：获取支付配置列表信息（含搜索条件、分页）
+GO
+/****** Object:  StoredProcedure [dbo].[Sys_PaymentList]    Script Date: 02/23/2016 18:13:32 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:cyb
+-- Create date: 2016-02-02
+-- Description: 获取支付配置列表信息（含搜索条件、分页）
+-- =============================================
+CREATE PROCEDURE [dbo].[Sys_PaymentList]
+	@PayType     	SMALLINT,		--支付类型（1：支付宝，2：微信支付）
+	@StoreId		Nvarchar(300),	--适用门店
+	@State		    SMALLINT,	    --状态
+	@CurrentPage	Int,			--当前页
+	@PageSize		Int				--页大小
+AS
+BEGIN
+	SET NOCOUNT ON;
+	
+	DECLARE @RecordStart INT;
+	DECLARE @RecordEnd INT;
+	
+	IF(@CurrentPage<=1)		
+	BEGIN
+		SET @RecordStart=1;
+		SET @RecordEnd=@PageSize;
+	END
+	ELSE
+	BEGIN
+		SET @RecordStart=((@CurrentPage-1)*@PageSize)+1;
+		SET @RecordEnd=@CurrentPage*@PageSize;
+	END
+	
+	--
+	;WITH RecordList AS 
+	(
+		SELECT (ROW_NUMBER() OVER ( ORDER BY a.CreateDT DESC)) AS RSNO,
+			(CASE WHEN (a.StoreId='0') THEN '全部' ELSE (dbo.F_TrimStrMore(STUFF((SELECT '、'+w.Title FROM dbo.Warehouse w INNER join dbo.SplitString(a.storeId,',',1) s ON s.Value=w.StoreId FOR XML PATH('')),1,1,''),60)) END) AS StoreTitle,                       
+			a.Id,a.StoreId,a.PayType,a.[State],a.PartnerId,a.AppId,a.CheckKey,a.NotifyUrl, (Select CONVERT(varchar(100), a.AlterDT, 23)) AS AlterDate,(CASE WHEN (a.State=0 ) THEN '停用' ELSE '可用' END) AS StateTitle                     
+		FROM dbo.SysPaymentSetting a 
+		WHERE 1=1 		
+			AND (@PayType !=-1 AND a.PayType=@PayType) 
+			AND (
+					(@StoreId !='-1' 
+						AND (
+								(a.StoreId not like '%,%' and a.StoreId=@StoreId) or (a.StoreId like @StoreId+',%') or (a.StoreId like '%,'+@StoreId) or (a.StoreId like '%,'+@StoreId+',%') or a.StoreId='0'
+							)
+					) 
+					OR  @StoreId = '-1'
+				)
+			AND ((@State !=-1 AND a.[State]=@State) OR @State=-1)	
+	), RecordPage AS (
+		SELECT MAX(RSNO) AS [RecordTotal]
+				,(CASE WHEN @CurrentPage>Ceiling(Convert(decimal(18,2),MAX(RSNO))/@PageSize)
+					   THEN (Ceiling(Convert(decimal(18,2),MAX(RSNO))/@PageSize)-1)*@PageSize+1
+					   ELSE @RecordStart END
+				  ) AS [RecordStart]
+				,(CASE WHEN @CurrentPage>(Convert(decimal(18,2),MAX(RSNO))/@PageSize)
+					   THEN Ceiling(Convert(decimal(18,2),MAX(RSNO))/@PageSize)*@PageSize
+					   ELSE @RecordEnd END
+				  ) AS [RecordEnd]									
+		FROM RecordList
+	) SELECT *
+	FROM RecordList AS RL, RecordPage AS RP
+	WHERE (RL.RSNO BETWEEN RP.RecordStart AND RP.RecordEnd);
+	--
+	
+END
+
+

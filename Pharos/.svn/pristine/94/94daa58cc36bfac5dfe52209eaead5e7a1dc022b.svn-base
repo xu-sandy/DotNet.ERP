@@ -1,0 +1,143 @@
+﻿using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.DTOs;
+using System;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    /// <summary>
+    /// 整单折扣
+    /// </summary>
+    public class BillDiscount : BaseObservable
+    {
+        private string inputField = string.Empty;
+        private decimal receivable;
+        /// <summary>
+        /// 应收
+        /// </summary>
+        public decimal Receivable
+        {
+            get
+            {
+                return receivable;
+            }
+            set
+            {
+                if (PosMachine.Current.BillList.Count == 0)
+                {
+                    Toast.DoShow("当前没有账单条目不能进行整单折扣！");
+                    return;
+                }
+                receivable = value;
+                OnPropertyChanged("Receivable");
+            }
+        }
+
+        private decimal rate;
+        /// <summary>
+        /// 折扣
+        /// </summary>
+        public decimal Rate
+        {
+            get { return rate; }
+            set
+            {
+                rate = value;
+
+                if (inputField != "Amount")
+                {
+                    Amount = Math.Round(Receivable * (Rate / 10), 2);
+                }
+                OnPropertyChanged("Rate");
+            }
+        }
+        private string rateStr;
+        public string RateStr
+        {
+            get { return rateStr; }
+            set
+            {
+                if (string.IsNullOrEmpty(inputField))
+                {
+                    inputField = "Rate";
+                }
+                rateStr = value.Trim();
+                if (!string.IsNullOrEmpty(rateStr) && inputField != "Amount")
+                {
+                    Rate = Convert.ToDecimal(rateStr);
+                    AmountStr = Amount.ToString();
+                }
+                OnPropertyChanged("RateStr");
+                if (inputField == "Rate")
+                {
+                    inputField = string.Empty;
+                }
+            }
+        }
+
+        private decimal amount;
+        /// <summary>
+        /// 折后
+        /// </summary>
+        public decimal Amount
+        {
+            get { return amount; }
+            set
+            {
+                amount = value;
+                OnPropertyChanged("Amount");
+            }
+        }
+
+        private string amountStr;
+        public string AmountStr
+        {
+            get { return amountStr; }
+            set
+            {
+                if (string.IsNullOrEmpty(inputField))
+                {
+                    inputField = "Amount";
+                }
+                amountStr = value.Trim();
+                if (!string.IsNullOrEmpty(amountStr) && inputField != "Rate")
+                {
+                    Amount = Convert.ToDecimal(amountStr);
+                    Rate = Math.Round(Amount / Receivable * 10, 2);
+                    RateStr = Rate.ToString();
+                }
+                OnPropertyChanged("AmountStr");
+                if (inputField == "Amount")
+                {
+                    inputField = string.Empty;
+                }
+            }
+        }
+
+        public string Password { get; set; }
+
+
+        public GeneralCommand Settlement
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    var win = o as Window;
+                    if (UserModel.Current.VerifyShopManager(Password))
+                    {
+                        var preferential = Receivable - Amount;
+                        PayWay page = new PayWay(new PayWayDto() { Receivable = Amount, Preferential = (PosMachine.Current.BillList.Preferential + preferential) });
+                        win.Hide();
+                        page.ShowDialogInScreen();
+                        win.Close();
+                    }
+                    else
+                    {
+                        Toast.DoShow("密码验证失败！", win);
+                    }
+                });
+            }
+        }
+    }
+}

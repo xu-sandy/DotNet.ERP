@@ -1,0 +1,47 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using System.Collections.Specialized;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// 交易数据Service
+    /// </summary>
+    public class TradeService:ITradeService
+    {
+        [Ninject.Inject]
+        IBaseRepository<TradeOrder> TradeOrderRepst { get; set; }
+
+        public List<Entity.TradeOrder> GetTradeDataPaging(NameValueCollection reqParams, out int totalCount)
+        {
+            //var query = from upay in TradeOrderRepst.GetQuery()
+            //            join u in UserRepository.GetQuery() on upay.CreateUID equals u.UserId into utb
+            //            from user in utb.DefaultIfEmpty()
+            //            select new PayApiExt()
+            //            {
+            //                Id = upay.Id,
+            //                ApiAlias = upay.ApiAlias,
+            //                ApiName = upay.ApiName,
+            //                ApiNo = upay.ApiNo,
+            //                Status = upay.Status,
+            //                PayType = upay.PayType,
+            //                CreateDT = upay.CreateDT,
+            //                CreateUID = upay.CreateUID,
+            //                PayMode = upay.PayMode,
+            //                TechContact = upay.TechContact,
+            //                TechPhone = upay.TechPhone,
+            //                Memo = upay.Memo,
+            //                Creater = user.FullName
+            //            };
+            var query = from upay in TradeOrderRepst.GetQuery()
+                        select upay;
+            totalCount = query.Count();
+            return query.ToPageList();
+        }
+    }
+}

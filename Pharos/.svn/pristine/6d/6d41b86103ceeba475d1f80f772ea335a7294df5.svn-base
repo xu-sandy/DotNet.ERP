@@ -1,0 +1,308 @@
+﻿using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Http;
+using Pharos.Utility.Helpers;
+using System.Net.Http;
+using System.Net;
+using System.IO;
+using System.Text;
+using Newtonsoft.Json;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS;
+using System.Security.Cryptography;
+using QCT.Api.Pay.Utils;
+using Pharos.Logic.OMS.Entity;
+
+namespace QCT.Api.Pay.Controllers
+{
+    //[RoutePrefix("api")]
+    public class PayController : ApiController
+    {
+        /// <summary>
+        /// 支付交易Service
+        /// </summary>
+        [Ninject.Inject]
+        PayTradeService PayTradeSvc { get; set; }
+        /// <summary>
+        /// 日志记录引擎
+        /// </summary>
+        [Ninject.Inject]
+        protected LogEngine LogEngine { get; set; }
+
+        #region 提供支付平台接口调用
+        [HttpPost]
+        //[Route("index")]
+        public object Index()
+        {
+            return "ddd";
+        }
+
+        // GET: /UnitPay/
+        /// <summary>
+        /// 第三方随心付支付接口调用方法
+        /// </summary>
+        /// <param name="requestParams">请求参数</param>
+        /// <returns></returns>
+        [HttpPost]
+        //[VerifySign]
+        public object QctPay([FromBody]JObject requestParams)
+        {
+            var rst = PayManager.ResultResponse(PayConst.FAILCODE);
+
+            try
+            {
+                var method = requestParams.Property("method", true);
+
+                switch (method)
+                {
+                    case PayConst.QCTTRADEPAYBUYERSCANDYNA: //买家扫码支付动态二维码
+                        var reqParams = requestParams.ToObject<PayBuyerScanDynaRequest>();
+
+                        //创建支付订单
+                        var secretKey3 = "";
+                        var mchOrder = PayTradeSvc.CreateBuildPayDynamicOrder(reqParams, out secretKey3);
+
+                        //根据SxfPay签名规则对参数进行重新签名
+                        var sxfSortDic = GetSxfBaseRequestParams(mchOrder);
+                        sxfSortDic.Add("type", "buildPayToken");
+                        sxfSortDic.Add("payOrderNo", mchOrder.OutTradeNo);
+                        sxfSortDic.Add("orderType", "1");
+                        sxfSortDic.Add("txDate", mchOrder.CreateDT.ToString("yyyyMMdd"));
+                        sxfSortDic.Add("txAmt", Convert.ToInt32(mchOrder.TotalAmount * PayConst.YUAN2CENTRATE));
+                        sxfSortDic.Add("payNotifyUrl", PayManager.SxfNotifyUrl);
+                        sxfSortDic.Add("userMobile", mchOrder.BuyerMobile);
+                        sxfSortDic.Add("goodsName", "");
+                        sxfSortDic.Add("goodDesc", "");
+                        //签名
+                        String signature = PayManager.Sign(sxfSortDic, secretKey3);
+                        sxfSortDic.Add("signature", signature);
+
+                        //转发提交给sxfpay
+                        var sxfResult = PostUrl(PayManager.SxfPayUrl, sxfSortDic);
+                        var sxfResultObj = JsonConvert.DeserializeObject<JObject>(sxfResult);
+                        var rcode = sxfResultObj.Property("rspCod", true);
+                        var rmsg = sxfResultObj.Property("rspMsg", true);
+                        if (rcode != PayConst.SUCCESSCODE)
+                        {
+                            LogEngine.WriteError(sxfResult, null, LogModule.支付交易);
+                            rst = PayManager.ResultResponse(rcode, rmsg);
+                            return rst;
+                        }
+                        else
+                        {
+                            //fishtodo:返回请求结果验证签名，并重构组装签名加密
+                            var mchId3 = sxfResultObj.Property("merchantId", true);
+                            var storeId3 = sxfResultObj.Property("shopId", true);
+
+                            var deviceId = sxfResultObj.Property("terminalId", true);
+                            var signType = sxfResultObj.Property("signType", true);
+                            var version = sxfResultObj.Property("version", true);
+                            var sign = sxfResultObj.Property("signature", true);
+
+                            var payToken = sxfResultObj.Property("payToken", true);
+                            var qrCode = sxfResultObj.Property("imageUrl", true);
+                            var outTradeNo = sxfResultObj.Property("payOrderNo", true);
+
+                            var sortDic = new SortedDictionary<string, object>();
+                            sortDic.Add("return_code", rcode);
+                            sortDic.Add("return_msg", rmsg);
+                            sortDic.Add("method", method);
+                            sortDic.Add("mch_id", mchOrder.CID);
+                            sortDic.Add("store_id", mchOrder.SID);
+                            sortDic.Add("device_id", deviceId);
+                            sortDic.Add("sign_type", signType);
+                            sortDic.Add("version", version);
+
+                            sortDic.Add("pay_token", payToken);
+                            sortDic.Add("qrcode_url", qrCode);
+                            sortDic.Add("out_trade_no", outTradeNo);
+
+                            //签名
+                            signature = PayManager.Sign(sortDic, secretKey3);
+                            sortDic.Add("signature", signature);
+                            return sortDic;
+                        }
+                    case PayConst.QCTTRADEPAYBUYERSCAN://买家扫码支付静态二维码
+                        break;
+                    case PayConst.QCTTRADEPAYMERCHANTSCAN://商家扫码支付
+                        break;
+                    case PayConst.QCTTRADEREFUND://退款
+                        break;
+                    default:
+                        break;
+                }
+                return rst;
+            }
+            catch (Exception ex)
+            {
+                LogEngine.WriteError(ex.Message, ex, LogModule.支付交易);
+                rst = PayManager.ResultResponse(PayConst.FAILCODE);
+                return rst;
+            }
+        }
+        /// <summary>
+        /// 支付结果、退款结果通知调用 fishtodo:验证签名有效性
+        /// </summary>
+        /// <param name="requestParams"></param>
+        /// <returns></returns>
+        [HttpPost]
+        //[VerifySign3]
+        public object SxfTradeNotify([FromBody]JObject requestParams)
+        {
+            var result = PayManager.ResultResponse(PayConst.FAILCODE, "");
+            var notifyParams = new SortedDictionary<string, object>();
+            var sxfResult = PayManager.SxfNotifyReturn(PayConst.FAILCODE, "");
+            try
+            {
+                var type = requestParams.Property("type", true);
+                //var queryStr = Request.Content.ToString();
+
+                switch (type)
+                {
+                    case "payNotify": //支付结果通知
+                        var sxfNotifyObj = requestParams.ToObject<SxfTradeNotify>();
+                        var tradeResult = TransToTradeResult(sxfNotifyObj);
+                        var isSucc = PayTradeSvc.SaveMchTradeResult(tradeResult);
+                        if (isSucc)
+                        {
+                            var trade = PayTradeSvc.GetTradeOrder(sxfNotifyObj.MchId3, sxfNotifyObj.OutTradeNo);
+                            var mch = PayTradeSvc.GetMchPay(trade.CID);
+                            notifyParams.Add("charset", PayConst.DEFAULTCHARSET);
+                            notifyParams.Add("method", PayConst.QCTTRADENOTIFYPAY);
+                            notifyParams.Add("mch_id", trade.CID);
+                            notifyParams.Add("store_id", trade.SID);
+                            notifyParams.Add("device_id", trade.DeviceId);
+                            notifyParams.Add("sign_type", PayConst.SXFDEFAULTSIGNTYPE);
+                            notifyParams.Add("version", PayConst.DEFAULTVERSION);
+
+                            notifyParams.Add("out_trade_no", trade.OutTradeNo);
+                            notifyParams.Add("receipt_amount", tradeResult.ReceiptAmount);
+                            notifyParams.Add("pay_result", tradeResult.ResultStatus);
+                            notifyParams.Add("pay_channel", tradeResult.PayChannel3);
+                            notifyParams.Add("trade_date", tradeResult.TradeDate);
+                            notifyParams.Add("trade_time", tradeResult.TradeTime);
+
+                            //签名
+                            var signature = PayManager.Sign(notifyParams, mch.SecretKey);
+                            notifyParams.Add("sign", signature);
+                            var resultStr = PostUrl(trade.PayNotifyUrl, notifyParams);
+                            var resultObj = JsonConvert.DeserializeObject<JObject>(resultStr);
+
+                            if (resultObj.Property("return_code", true) == PayConst.SUCCESSCODE)
+                            {
+                                return PayManager.SxfNotifyReturn(PayConst.SXFSUCCESSRETURN, "");
+                            }
+                        }
+                        return PayManager.SxfNotifyReturn(PayConst.FAILCODE, "");
+                        break;
+                    case "rfdNotify"://退款结果通知
+                        //fishtodo:存储退款结果
+                        //fishtodo:给商户发起退款返回通知请求
+
+                        //fishtodo:通知成功后给SxfPay Response
+                        return PayManager.SxfNotifyReturn(PayConst.FAILCODE, "");
+                        break;
+                    default:
+                        break;
+                }
+            }
+            catch (WebException ex)
+            {
+                LogEngine.WriteError(ex, LogModule.支付交易);
+                return PayManager.SxfNotifyReturn(PayConst.FAILCODE, "通知格式错误");
+            }
+            return null;
+        }
+
+        #region private
+        /// <summary>
+        /// 创建请求
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        private string PostUrl(string url, SortedDictionary<string, object> reqParams)
+        {
+            var paramsStr = PayHelper.GetParamsStr(reqParams);
+            var result = PayHelper.PostPayApi(url, paramsStr);
+            return result;
+        }
+        /// <summary>
+        /// 支付结果通知转为交易结果对象
+        /// </summary>
+        /// <param name="payNotify"></param>
+        /// <returns></returns>
+        private TradeResult TransToTradeResult(SxfTradeNotify payNotify)
+        {
+            var tradeResult = new TradeResult()
+            {
+                CreateDT = DateTime.Now,
+                MchId3 = payNotify.MchId3,
+                OutTradeNo = payNotify.OutTradeNo,
+                PayChannel3 = payNotify.PayChannel3,
+                ReceiptAmount = payNotify.ReceiptAmount * PayConst.CENT2YUANRATE,
+                ResultStatus = payNotify.PayResult == "S" ? (short)1 : (short)2,
+                SignType = payNotify.SignType3,
+                TradeDate = payNotify.TradeDate,
+                TradeTime = payNotify.TradeTime,
+                TradeType = 0,
+                Signature = payNotify.Signature3,
+                Version = payNotify.Version3
+            };
+
+            return tradeResult;
+        }
+        /// <summary>
+        /// 获取公共的请求参数
+        /// </summary>
+        /// <param name="order"></param>
+        /// <param name="type"></param>
+        private SortedDictionary<string, object> GetSxfBaseRequestParams(TradeOrder trade)
+        {
+            var sortDic = new SortedDictionary<string, object>();
+            //fishtodo:charSet signType 修改为实际请求时的类型
+            sortDic.Add("charSet", PayConst.SXFDEFAULTCHARSET);
+            sortDic.Add("merchantId", trade.MchId3);
+            sortDic.Add("shopId", trade.StoreId3);
+            sortDic.Add("terminalId", trade.DeviceId3);
+            sortDic.Add("signType", PayConst.SXFDEFAULTSIGNTYPE);
+            sortDic.Add("version", "1.0");
+            return sortDic;
+        }
+
+        #endregion
+        #endregion
+
+        #region 平台内部各系统间调用
+        /// <summary>
+        /// 获取支付全局提示描述支付
+        /// </summary>
+        /// <returns></returns>
+        public string GetGlobalPrompt(int type)
+        {
+            string msg = string.Empty;
+            if (type == 1)
+                msg = "支持微信扫码";
+            return msg;
+        }
+        /// <summary>
+        /// 根据商户CID获得该商户的可以通道
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("getchannelsbycid")]
+        public object GetChannelsByCID(int cid)
+        {
+
+            return new object[] { };
+        }
+        #endregion
+
+    }
+
+}

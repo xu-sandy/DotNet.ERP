@@ -1,0 +1,155 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.SalesPromotionRules;
+using Pharos.POS.Retailing.Models.SettingsPagesModels;
+using System;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models
+{
+    public class UserModel : BaseObservable
+    {
+        public UserModel() { }
+
+        public string Uid { get; private set; }
+
+        public string FullName { get; private set; }
+
+
+        private string userName;
+        public string UserName
+        {
+            get { return userName; }
+            set
+            {
+                userName = value;
+                OnPropertyChanged("UserName");
+            }
+        }
+
+        public string UserCode { get; set; }
+        private string password;
+        public string Password
+        {
+            get { return password; }
+            set
+            {
+                password = value;
+                OnPropertyChanged("Password");
+            }
+        }
+
+        private static UserModel current;
+        public static UserModel Current
+        {
+            get
+            {
+                if (current == null)
+                {
+                    current = new UserModel();
+                }
+                return current;
+            }
+        }
+        public string OperateAuth { get; set; }
+
+        public void Login(Window win)
+        {
+
+
+            SysStoreUserInfo currentEntity;
+            PosMachine.Current.Status = PosStatus.NotLogin;
+            if (Verify(UserName, Password))
+            {
+                currentEntity = SysStoreUserInfoLocalService.Find(o => (o.UserCode == userName || o.FullName == userName));
+                currentEntity.LoginDT = DateTime.Now;
+                currentEntity.HasUpdate = true;
+                UserCode = currentEntity.UserCode;
+                Uid = currentEntity.UID;
+                OperateAuth = currentEntity.OperateAuth;
+
+                FullName = currentEntity.FullName;
+                if (!VerifyAuth(currentEntity, UserAuth.Cashier, UserAuth.DataManager))
+                {
+                    Toast.DoShow("非销售人员不能登录！", win);
+                    return;
+                }
+                Password = string.Empty;
+                PosMachine.Current.Status = SaleContext.Status == SaleContextStatus.Loaded ? PosStatus.Market : PosStatus.LoadingDatas;
+                try
+                {
+                    SysStoreUserInfoLocalService.Update(currentEntity);
+                }
+                catch { }
+            }
+            else
+            {
+                Toast.DoShow("验证失败，请重新输入！", win);
+            }
+        }
+
+        public bool Verify(string userName, string password)
+        {
+            return SysStoreUserInfoLocalService.IsExist(o => (o.UserCode == userName || o.FullName == userName) && o.LoginPwd == password);
+        }
+
+        public bool Verify()
+        {
+            return Verify(UserName, Password);
+        }
+
+        public bool VerifyShopManager(string password)
+        {
+            return VerifyOperateAuth(UserAuth.ShopManager, password);
+        }
+
+        public bool VerifyOperateAuth(UserAuth auth, string password)
+        {
+            var userAuth = string.Format("{0},{1}", PosMachineInfo.Infos.StoreId, (int)auth);
+            return SysStoreUserInfoLocalService.IsExist(o =>
+                o.OperateAuth.Contains(userAuth)
+                &&
+                o.LoginPwd == password);
+        }
+
+        public bool VerifyCurrentOperateAuth(UserAuth auth)
+        {
+            var userAuth = string.Format("{0},{1}", PosMachineInfo.Infos.StoreId, (int)auth);
+            return this.OperateAuth.Contains(userAuth);
+        }
+
+        private bool VerifyAuth(SysStoreUserInfo info, params UserAuth[] reqAuth)
+        {
+
+            foreach (int i in reqAuth)
+            {
+                if (info.OperateAuth.Contains(string.Format("{0},{1}", PosMachine.Current.Infos.StoreId, ((int)i).ToString())))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    public enum UserAuth
+    {
+        /// <summary>
+        /// 店长
+        /// </summary>
+        ShopManager = 1,
+        /// <summary>
+        /// 营业员
+        /// </summary>
+        ShopAssistant = 2,
+        /// <summary>
+        /// 收银员
+        /// </summary>
+        Cashier = 3,
+        /// <summary>
+        /// 数据维护员
+        /// </summary>
+        DataManager = 4
+    }
+}

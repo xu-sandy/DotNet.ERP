@@ -1,0 +1,307 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增商户", delText: "删除商户", hideDel: false,searchHeight:87));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top:9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>业务员：</label>
+            </td>
+            <td class="input-toolbar">
+                @if (ViewBag.all == 1)
+                {
+                    @Html.DropDownList("AssignerUID", ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+                }
+                else
+                {
+                     @Form.Combobox("AssignerUID", ViewBag.user as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+                }
+            </td>
+            <td class="label-toolbar">
+                <label>客户类型：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("BusinessModeId", ViewBag.ModeId as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true,editable: false,width:120" })
+            </td>
+            <td class="label-toolbar">
+                <label>跟踪状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("TrackStautsId", ViewBag.TrackStautsId as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="label-toolbar">
+                <label>登记日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_begin" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_end" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+
+        </tr>
+
+        <tr class="s_tr">
+            <td class="label-toolbar">
+                <label>区&nbsp;&nbsp;&nbsp;域：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="Province" name="CurrentProvinceId" class="easyui-combobox" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;"></label>
+            </td>
+            <td class="input-toolbar">
+                <input id="City" name="CurrentCityId" class="easyui-combobox" />
+            </td>
+
+            <td class="label-toolbar">
+                <label>经营范围：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("BusinessScopeId", ViewBag.BusinessScopeId as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按商户号", Value = "0" }, new SelectListItem() { Text = "按客户名称", Value = "1" }, new SelectListItem() { Text = "按联系人", Value = "2" }, new SelectListItem() { Text = "按电话或手机", Value = "3" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+            </td>
+        </tr>
+
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setStatus(1)">商户审核通过</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setStatus(2)">设为无效商户</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-category'" id="TraderType">客户分类</a>
+    @Html.DropDownList("TraderTypeId", ViewBag.TraderType as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true,editable: false,width:200,onSelect:upType" })
+}
+<script type="text/javascript">
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'FullName', title: '业务员', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Title', title: '跟进状态', editor: { type: 'text', required: true }, width: 80 },
+        {
+                    field: 'Status', title: '状态', editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) {
+                        if (value == "0") {
+                            return "未审核";
+                        } else if (value == "1") {
+                            return "已审核";
+                        } else {
+                            return "无效";
+                        }
+                    }
+        },
+        { field: 'CID', title: '商户号', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'khFullTitle', title: '客户全称', editor: { type: 'text', required: true }, width: 100 }
+    ]];
+
+    pharos.manager.columns = [[
+        { field: 'khType', title: '客户类型', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'city', title: '城市', editor: { type: 'text', required: true }, width: 80 },
+        { field: 'tType', title: '客户分类', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'bCategory', title: '经营类别', editor: { type: 'text', required: true }, width: 400 },
+        { field: 'ExistStoreNum', title: '门店数量', editor: { type: 'text', required: true }, width: 120 },
+        {
+            field: 'oList', title: '采购需求', editor: { type: 'text', required: true }, width: 200, formatter: function (value, row, index) {
+                if (value == "" || value == null) {
+                    return "无";
+                }
+                else {
+                    var v = value.replace(/,/g, '<br />');
+                    return v;
+                }
+            }
+        },
+        { field: 'LinkMan', title: '联系人', editor: { type: 'text', required: true }, width: 90 },
+        { field: 'MobilePhone', title: '电话/手机', editor: { type: 'text', required: true }, width: 110 },
+        { field: 'CreateDT', title: '登记时间', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'cFullName', title: '登记人', editor: { type: 'text', required: true }, width: 90 }
+    ]];
+
+    pharos.manager.editurlNocache = function () {
+        var url = this.editurl.indexOf("?") == -1 ? this.editurl + "?" : this.editurl + "&";
+        url += "t=" + Math.random();
+        if (this.Id) url += "&Id=" + this.Id;
+        url += "&all=@ViewBag.all";
+        return url;
+    }
+
+    //是否隐藏保存
+    var ish = false;
+    var al = "@ViewBag.all";
+    //所有客户
+    //if (al != "1") {
+    //    ish = true;
+    //    pharos.manager.editText = '查看';
+    //}
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 1000, 'height': 560, hideSave: false, 'url': this.editurlNocache() });
+    };
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        var isHide = false;
+        //所有客户
+        if (al != "1") {
+            isHide = true;
+            pharos.manager.editText = '查看';
+        }
+        else {
+            //无效
+            if (row.Status == 2)
+            {
+                isHide = true;
+                pharos.manager.editText = '查看';
+            }
+        }
+        openWin({ 'title': this.editText, 'width': 1000, 'height': 560, hideSave: isHide, 'url': this.editurlNocache() });
+    }
+
+
+
+    function removeBefore(row) {
+        if (row.Status == 1) {
+            $.messager.alert("提示", "已审核状态不能删除!");
+            return false;
+        }
+        return true;
+    }
+
+    //商户审核通过、设为无效商户
+    function setStatus(status) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("setStatus")", { Ids: ids, t: Math.random(), status: status }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+    //更新客户分类
+    function upType(record) {
+        if (record.value == "" || record.value==null)
+        {
+            return;
+        }
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("upType")", { Ids: ids, t: Math.random(), TraderTypeId: record.value }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "客户归类成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "客户归类失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+    $(function () {
+        //商户分类
+        $("#TraderType").click(function () {
+            openWin({ 'title': '客户分类', 'width': 600, 'height': 350, hideSave: true, 'url': '/TraderType/Index' });
+        });
+
+        loadPCD();
+
+        //禁用业务员
+        var v = "@ViewBag.all";
+        if (v == "1") {
+            $("#AssignerUID").combobox("disable");
+            $("#AssignerUID").next("span").find("input[type=hidden]").removeAttr("disabled");
+        }
+        else {
+            $("#toolbar").html("");
+            $("#toolbar").attr("style", "padding:0px;");
+        }
+    });
+
+    //加载省份
+    function loadProvince() {
+        $('#Province').combobox({
+            url: '/Member/getProvince?defaultTitle='+encodeURIComponent('全部'),
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: false,
+            novalidate: true,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                loadCity(newValue);
+            },
+            onLoadSuccess: function () {
+                $(this).combobox('setValue', '0');
+            }
+        });
+
+    }
+
+    //加载城市
+    function loadCity(provinceKey) {
+        $('#City').combobox({
+            url: '/Member/getCity?ProvinceID=' + provinceKey + '&defaultTitle=' + encodeURIComponent('全部'),
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: false,
+            novalidate: true,
+            validType: 'requiredForCombo',
+            onLoadSuccess: function () {
+                $(this).combobox('setValue', '0');
+            }
+        });
+
+    }
+
+
+
+    //加载省市区
+    function loadPCD() {
+        loadProvince();
+        //loadCity(0);
+
+        //$('#Province').combobox('setValue', pid);
+        //$('#City').combobox('setValue', cid);
+    }
+
+</script>
+

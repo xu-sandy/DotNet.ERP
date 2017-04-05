@@ -1,0 +1,490 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Logic.BLL;
+using Pharos.Utility;
+using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+using Pharos.Logic;
+using System.IO;
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class ContractController : BaseController
+    {
+
+        #region 合同列表
+        public ActionResult Index()
+        {
+            ViewBag.states = EnumToSelect(typeof(ContractState), emptyValue: "-1", emptyTitle: "全部");
+            ViewBag.users = ListToSelect(UserInfoService.FindList(null).Select(o => new SelectListItem() { Value = o.UID, Text = o.FullName }), emptyTitle: "全部");//, Selected = o.UID == Logic.CurrentUser.UID
+
+            return View();
+        }
+
+        public ActionResult FindPageList(int state = -1, string createUID = "", string beginSigningDate = "", string endSigningDate = "")
+        {
+            var recordCount = 0;
+            var list = new ContractBLL().GetContractListBySearch(state, createUID, beginSigningDate, endSigningDate, out recordCount);
+            return ToDataGrid(list, recordCount);
+        }
+
+        /// <summary>
+        /// 操作栏_修改合同状态
+        /// </summary>
+        /// <param name="id">当前行id</param>
+        /// <param name="state">要修改成这个状态</param>
+        /// <returns>修改后的列表</returns>
+        [HttpPost]
+        public ActionResult setState_Editor(string id, short state)
+        {
+            var obj = ContractBLL.FindById(id);
+            obj.State = state;
+            var re = ContractBLL.Update(obj);
+            return new JsonNetResult(re);
+        }
+
+        #endregion
+
+        #region 新增/修改合同
+        public ActionResult AddContract(string id)
+        {
+            ViewBag.Classify = ListToSelect(SysDataDictService.GetContractClassify().Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+            ViewBag.Suppliers = ListToSelect(SupplierService.GetList().Where(o => o.BusinessType == 1 && o.MasterState == 1).Select(o => new SelectListItem() { Value = o.Id, Text = o.Title }));
+
+            var obj = new Logic.Entity.Contract();
+            obj.ContractBoths = new List<Logic.Entity.ContractBoth>() { new Logic.Entity.ContractBoth(), new Logic.Entity.ContractBoth() };
+            var curr = DateTime.Now;
+            obj.SigningDate = curr.ToString("yyyy-MM-dd");
+            //obj.ContractSN = ContractBLL.CreateContractSN();
+            ViewBag.Version = (obj.Version == 1) ? ("新增 v" + obj.Version + ".0") : ("续签 v" + obj.Version + ".0");
+
+            if (!id.IsNullOrEmpty())
+            {
+                obj = ContractSerivce.FindById(id);
+                ViewBag.Version = (obj.Version == 1) ? ("新增 v" + obj.Version + ".0") : ("续签 v" + obj.Version + ".0");
+                if (obj == null) throw new ArgumentException("传入参数不正确!");
+            }
+            return View(obj);
+        }
+
+        [HttpPost]
+        [SysPermissionValidate(Code=Sys.SysConstLimits.供应合同_新增合同)]
+        public ActionResult AddContract(Logic.Entity.Contract obj)
+        {
+            var re = new OpResult();
+
+            var relativePath = "";
+            var files = new List<Attachment>();
+            var path = Sys.SysConstPool.SaveAttachPath(ref relativePath);
+
+            for (int i = 0; i < Request.Files.Count; i++)
+            {
+                var file = Request.Files[i];
+                if (file.ContentLength <= 0) continue;
+                var filename = CommonRules.GUID + Path.GetExtension(file.FileName);
+                string fullname = path + filename;
+                file.SaveAs(fullname);
+                files.Add(new Attachment()
+                {
+                    SourceClassify = 1,
+                    Title = Path.GetFileName(file.FileName),
+                    Size = file.ContentLength / 1024,
+                    SaveUrl = relativePath + filename
+                });
+            }
+            var jia = new Logic.Entity.ContractBoth();
+            var yi = new Logic.Entity.ContractBoth();
+            var compname = Request["CompanyName"];
+            if (!compname.IsNullOrEmpty())
+            {
+                var comps = compname.Split(',');
+                jia.CompanyName = comps[0];
+                yi.CompanyName = comps[1];
+            }
+            var representative = Request["Representative"];
+            if (!representative.IsNullOrEmpty())
+            {
+                var repr = representative.Split(',');
+                jia.Representative = repr[0];
+                yi.Representative = repr[1];
+            }
+            var tel = Request["Tel"];
+            if (!tel.IsNullOrEmpty())
+            {
+                var te = tel.Split(',');
+                jia.Tel = te[0];
+                yi.Tel = te[1];
+            }
+            var fax = Request["Fax"];
+            if (!fax.IsNullOrEmpty())
+            {
+                var fa = fax.Split(',');
+                jia.Fax = fa[0];
+                yi.Fax = fa[1];
+            }
+            var taxnumber = Request["TaxNumber"];//甲方是TaxNumber，乙方是PayNumber，除此之外其余的项甲乙方都相同
+            if (!taxnumber.IsNullOrEmpty())
+            {
+                jia.TaxNumber = taxnumber;
+            }
+            var paynumber = Request["PayNumber"];//乙方是PayNumber
+            if (!paynumber.IsNullOrEmpty())
+            {
+                yi.PayNumber = paynumber;
+            }
+            var url = Request["Url"];
+            if (!url.IsNullOrEmpty())
+            {
+                var ur = url.Split(',');
+                jia.Url = ur[0];
+                yi.Url = ur[1];
+            }
+            var address = Request["Address"];
+            if (!address.IsNullOrEmpty())
+            {
+                var addr = address.Split(',');
+                jia.Address = addr[0];
+                yi.Address = addr[1];
+            }
+            var postcode = Request["PostCode"];
+            if (!postcode.IsNullOrEmpty())
+            {
+                var pcode = postcode.Split(',');
+                jia.PostCode = pcode[0];
+                yi.PostCode = pcode[1];
+            }
+            var bankname = Request["BankName"];
+            if (!bankname.IsNullOrEmpty())
+            {
+                var bname = bankname.Split(',');
+                jia.BankName = bname[0];
+                yi.BankName = bname[1];
+            }
+
+            var bankaccount = Request["BankAccount"];
+            if (!bankaccount.IsNullOrEmpty())
+            {
+                var baccount = bankaccount.Split(',');
+                jia.BankAccount = baccount[0];
+                yi.BankAccount = baccount[1];
+            }
+            if (string.IsNullOrEmpty(obj.Id))
+            {
+                obj.ContractBoths = new List<Logic.Entity.ContractBoth>();
+
+                obj.Id = CommonRules.GUID;
+                obj.CreateDT = DateTime.Now;
+                obj.CreateUID = Sys.CurrentUser.UID;               
+                obj.ContractSN = ContractBLL.CreateContractSN();
+                
+                obj.Attachments = files;
+                jia.Signatory = (int)(ContractSignatory.甲方);
+                yi.Signatory = (int)(ContractSignatory.乙方);
+                obj.ContractBoths.Add(jia);
+                obj.ContractBoths.Add(yi);
+
+                //var existContractSN = ContractBLL.Find(o => o.ContractSN == obj.ContractSN);
+                //if (existContractSN != null)
+                //{
+                //    re.Message = "该合同编号已存在！";
+                //}
+                //else
+                //{
+                //    re = ContractBLL.Add(obj);
+                //}
+                re = ContractBLL.Add(obj);
+            }
+            else
+            {
+                var contract = ContractBLL.GetObj(obj.Id);
+                //var oldContractSN = contract.ContractSN;
+                obj.Version = contract.Version;
+                obj.PId = contract.PId;
+
+                obj.ToCopyProperty(contract);
+
+                contract.Attachments.AddRange(files);
+
+                var detailId = Request["detailId"];
+                if (!detailId.IsNullOrEmpty())
+                {
+                    var detailIds = detailId.Split(',');
+                    var jiaId = int.Parse(detailIds[0]);
+                    var yiId = int.Parse(detailIds[1]);
+                    jia.Id = jiaId;
+                    yi.Id = yiId;
+                    jia.Signatory = 1;
+                    yi.Signatory = 2;
+                    var jiares = contract.ContractBoths.FirstOrDefault(o => o.Id == jiaId);
+                    var yires = contract.ContractBoths.FirstOrDefault(o => o.Id == yiId);
+                    //jia.ContractId = jiares.ContractId;
+                    //yi.ContractId = yires.ContractId;
+                    jia.ToCopyProperty(jiares);
+                    yi.ToCopyProperty(yires);
+                }
+                //var existContractSN = ContractBLL.FindList(o => o.ContractSN == contract.ContractSN);
+                //if (existContractSN.Count > 0 && oldContractSN != obj.ContractSN)
+                //{
+                //    re.Message = "该合同编号已存在！";
+                //}
+                //else
+                //{
+                //    re = ContractBLL.Update(contract);
+                //}    
+                re = ContractBLL.Update(contract);
+            }
+            return Content(re.ToJson());
+        }
+
+        /// <summary>
+        /// 删除附件 
+        /// </summary>
+        /// <param name="Id">合同Id</param>
+        /// <param name="fileId">附件Id</param>
+        /// <returns>操作结果</returns>      
+        [HttpPost]
+        public ActionResult DeleteFile(string Id, int fileId)
+        {
+            var files = AttachService.Find(o => o.Id == fileId && o.SourceClassify == 1);
+            var re = AttachService.Delete(files);
+            return new JsonNetResult(re);
+        }
+
+        #endregion
+
+        #region 合同续签
+        /// <summary>
+        /// 合同续签
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public ActionResult EntendContract(string id)
+        {
+            ViewBag.Classify = ListToSelect(SysDataDictService.GetContractClassify().Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+            ViewBag.Suppliers = ListToSelect(SupplierService.GetList().Where(o => o.BusinessType == 1 && o.MasterState == 1).Select(o => new SelectListItem() { Value = o.Id, Text = o.Title }));
+
+            var obj = new Logic.Entity.Contract();
+            var curr = DateTime.Now;
+            Contract oldContract = ContractBLL.FindById(id);
+            oldContract.ToCopyProperty(obj);
+            obj.Id = CommonRules.GUID;
+            obj.Version = (short)(oldContract.Version + 1);
+            ViewBag.Version = "续签 v" + obj.Version + ".0";
+            if (obj.Version == 2)
+            {
+                obj.ContractSN = oldContract.ContractSN + "-" + obj.Version;
+                //obj.PId = oldContract.Id;
+            }
+
+            if (obj.Version > 2)
+            {
+                string st = oldContract.ContractSN;
+                string[] sArray = st.Split(new char[] { '-' });
+                obj.ContractSN = sArray[0] + "-" + obj.Version;
+                //obj.PId = oldContract.PId;
+            }
+
+            obj.PId = id;
+            obj.SigningDate = curr.ToString("yyyy-MM-dd");
+            obj.CreateUID = Sys.CurrentUser.UID;
+            obj.CreateDT = DateTime.Now;
+            obj.StartDate = DateTime.Parse(oldContract.EndDate).AddDays(1).ToString("yyyy-MM-dd");
+
+            var oldStartDate = DateTime.Parse(oldContract.StartDate);
+            var oldEndDate = DateTime.Parse(oldContract.EndDate);
+            TimeSpan ts = oldEndDate - oldStartDate;
+            var duringDate = ts.Days;
+
+            obj.EndDate = DateTime.Parse(obj.StartDate).AddDays(duringDate).ToString("yyyy-MM-dd");
+
+            obj.ContractBoths = oldContract.ContractBoths;
+
+            return View(obj);
+        }
+
+        [HttpPost]
+        [SysPermissionValidate(Code = Sys.SysConstLimits.供应合同_续签合同)]
+        public ActionResult EntendContract(Contract obj)
+        {
+            var re = new OpResult();
+
+            var relativePath = "";
+            var files = new List<Attachment>();
+            var path = Sys.SysConstPool.SaveAttachPath(ref relativePath);
+
+            for (int i = 0; i < Request.Files.Count; i++)
+            {
+                var file = Request.Files[i];
+                if (file.ContentLength <= 0) continue;
+                var filename = CommonRules.GUID + Path.GetExtension(file.FileName);
+                string fullname = path + filename;
+                file.SaveAs(fullname);
+                files.Add(new Attachment()
+                {
+                    SourceClassify = 1,
+                    Title = Path.GetFileName(file.FileName),
+                    Size = file.ContentLength / 1024,
+                    SaveUrl = relativePath + filename
+                });
+            }
+
+            var jia = new Logic.Entity.ContractBoth();
+            var yi = new Logic.Entity.ContractBoth();
+            var compname = Request["CompanyName"];
+            if (!compname.IsNullOrEmpty())
+            {
+                var comps = compname.Split(',');
+                jia.CompanyName = comps[0];
+                yi.CompanyName = comps[1];
+            }
+            var representative = Request["Representative"];
+            if (!representative.IsNullOrEmpty())
+            {
+                var repr = representative.Split(',');
+                jia.Representative = repr[0];
+                yi.Representative = repr[1];
+            }
+            var tel = Request["Tel"];
+            if (!tel.IsNullOrEmpty())
+            {
+                var te = tel.Split(',');
+                jia.Tel = te[0];
+                yi.Tel = te[1];
+            }
+            var fax = Request["Fax"];
+            if (!fax.IsNullOrEmpty())
+            {
+                var fa = fax.Split(',');
+                jia.Fax = fa[0];
+                yi.Fax = fa[1];
+            }
+            var taxnumber = Request["TaxNumber"];//甲方是TaxNumber，乙方是PayNumber，除此之外其余的项甲乙方都相同
+            if (!taxnumber.IsNullOrEmpty())
+            {
+                jia.TaxNumber = taxnumber;
+            }
+            var paynumber = Request["PayNumber"];//乙方是PayNumber
+            if (!paynumber.IsNullOrEmpty())
+            {
+                yi.PayNumber = paynumber;
+            }
+            var url = Request["Url"];
+            if (!url.IsNullOrEmpty())
+            {
+                var ur = url.Split(',');
+                jia.Url = ur[0];
+                yi.Url = ur[1];
+            }
+            var address = Request["Address"];
+            if (!address.IsNullOrEmpty())
+            {
+                var addr = address.Split(',');
+                jia.Address = addr[0];
+                yi.Address = addr[1];
+            }
+            var postcode = Request["PostCode"];
+            if (!postcode.IsNullOrEmpty())
+            {
+                var pcode = postcode.Split(',');
+                jia.PostCode = pcode[0];
+                yi.PostCode = pcode[1];
+            }
+            var bankname = Request["BankName"];
+            if (!bankname.IsNullOrEmpty())
+            {
+                var bname = bankname.Split(',');
+                jia.BankName = bname[0];
+                yi.BankName = bname[1];
+            }
+
+            var bankaccount = Request["BankAccount"];
+            if (!bankaccount.IsNullOrEmpty())
+            {
+                var baccount = bankaccount.Split(',');
+                jia.BankAccount = baccount[0];
+                yi.BankAccount = baccount[1];
+            }
+            if (!string.IsNullOrEmpty(obj.Id))
+            {
+                Contract oldContract = ContractBLL.FindById(obj.Id);
+                obj.ContractBoths = new List<Logic.Entity.ContractBoth>();
+
+                obj.Version = (short)(oldContract.Version + 1);
+                ViewBag.Version = "续签 v" + obj.Version + ".0";
+                if (obj.Version == 2)
+                {
+                    obj.ContractSN = oldContract.ContractSN + "-" + obj.Version;
+                    //obj.PId = oldContract.Id;
+                }
+
+                //var cSN = Request["ContractSN"];
+                //obj.ContractSN = cSN;
+
+                if (obj.Version > 2)
+                {
+                    string st = oldContract.ContractSN;
+                    string[] sArray = st.Split(new char[] { '-' });
+                    obj.ContractSN = sArray[0] + "-" + obj.Version;
+                    //obj.PId = oldContract.PId;
+                }
+                obj.PId = oldContract.Id;
+
+                obj.Id = CommonRules.GUID;
+                obj.CreateDT = DateTime.Now;
+                obj.CreateUID = Sys.CurrentUser.UID;
+
+                obj.Attachments = files;
+                jia.Signatory = (int)(ContractSignatory.甲方);
+                yi.Signatory = (int)(ContractSignatory.乙方);
+                obj.ContractBoths.Add(jia);
+                obj.ContractBoths.Add(yi);
+
+                //var existContractSN = ContractBLL.Find(o => o.ContractSN == obj.ContractSN);
+                //if (existContractSN != null)
+                //{
+                //    re.Message = "该合同编号已存在！";
+                //}
+                //else
+                //{
+                //    re = ContractBLL.Add(obj);
+                //}
+
+                re = ContractBLL.Add(obj);
+            }
+            return Content(re.ToJson());
+        }
+        #endregion
+
+        #region 查看合同详情
+        //查看合同（合同状态为已审核、已中止、已结束状态）
+        public ActionResult ContractDetail(string id)
+        {
+            var obj = ContractSerivce.FindById(id);
+            obj.IsNullThrow();
+            ViewBag.Version = (obj.Version == 1) ? ("新增 v" + obj.Version + ".0") : ("续签 v" + obj.Version + ".0");
+
+            var supp = SupplierService.Find(o => o.Id == obj.SupplierId);
+            if (supp != null)
+                obj.SupplierTitle = supp.Title;
+
+            var classify = SysDataDictService.Find(o => o.DicSN == obj.ClassifyId);
+            if (classify != null) ViewData["Classify"] = classify.Title;
+            return View(obj);
+        }
+        #endregion
+
+        #region 删除合同
+        [HttpPost]
+        [SysPermissionValidate(Code = Sys.SysConstLimits.供应合同_删除合同)]
+        public ActionResult Delete(string[] Ids)
+        {
+            var re = ContractBLL.Delete(Ids);
+            return new JsonNetResult(re);
+        }
+        #endregion
+
+    }
+
+}

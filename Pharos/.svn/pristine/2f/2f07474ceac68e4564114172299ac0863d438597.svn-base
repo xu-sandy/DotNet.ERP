@@ -1,0 +1,149 @@
+﻿using Pharos.Logic.MemberDomain.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+
+namespace Pharos.Logic.MemberDomain
+{
+    /// <summary>
+    /// 基础积分规则提供程序
+    /// </summary>
+    /// <typeparam name="TScene"></typeparam>
+    public abstract class BaseIntegralRuleProvider<TScene, TMember> : IIntegralRuleProvider
+        where TScene : IScene<TMember>, new()
+        where TMember : class,new()
+    {
+        /// <summary>
+        /// 提供程序ID
+        /// </summary>
+        public virtual int ProviderId
+        {
+            get { return GetProviderId(); }
+        }
+        /// <summary>
+        /// 获取规则数据
+        /// </summary>
+        /// <param name="info">参数信息</param>
+        /// <returns>提供程序的规则</returns>
+        public abstract IEnumerable<IIntegralRule> GetRuleDatas(object info = null);
+        /// <summary>
+        /// 获取提供程序ID
+        /// </summary>
+        public abstract int GetProviderId();
+        /// <summary>
+        /// 获取规则数据
+        /// </summary>
+        /// <param name="info">参数信息</param>
+        /// <returns>提供程序的规则</returns>
+        public IEnumerable<IIntegralRule> GetRules(object info = null)
+        {
+            return GetRuleDatas(info);
+        }
+        /// <summary>
+        /// 获取所有计量方式
+        /// </summary>
+        /// <param name="providerRules">规则</param>
+        /// <returns>所有计量方式</returns>
+        public virtual IEnumerable<int> GetMeteringModes(IEnumerable<IIntegralRule> providerRules)
+        {
+            return providerRules.Select(o => o.MeteringMode).Distinct();
+        }
+        /// <summary>
+        /// 验证规则有效性
+        /// </summary>
+        /// <param name="providerRules">规则</param>
+        /// <param name="scene">场景数据</param>
+        /// <returns>有效规则</returns>
+        public virtual IIntegralRule VerifyRule(IIntegralRule providerRule, TScene scene)
+        {
+            var rule = (IIntegralRule<TScene>)providerRule;
+            if (rule.VerifyExpression.Compile()(scene))
+            {
+                return rule;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        /// <summary>
+        /// 验证规则有效性
+        /// </summary>
+        /// <param name="providerRules">规则</param>
+        /// <param name="scene">场景数据</param>
+        /// <returns>有效规则</returns>
+        public virtual IIntegralRule VerifyRule(IIntegralRule providerRule, IScene scene)
+        {
+            return VerifyRule(providerRule, (TScene)scene);
+        }
+        /// <summary>
+        /// 计算积分规则
+        /// </summary>
+        /// <param name="efficientRules">有效积分规则</param>
+        /// <param name="scene">场景数据</param>
+        /// <returns>规则积分</returns>
+        public virtual KeyValuePair<IIntegralRule, decimal> RunExpression(IIntegralRule efficientRule, TScene scene)
+        {
+            var rule = (IIntegralRule<TScene>)efficientRule;
+            var integral = IntegralRound(rule.IntegralExpression.Compile()(scene), scene, rule);
+            return new KeyValuePair<IIntegralRule, decimal>(rule, integral);
+        }
+        /// <summary>
+        /// 计算积分规则
+        /// </summary>
+        /// <param name="efficientRules">有效积分规则</param>
+        /// <param name="scene">场景数据</param>
+        /// <returns>规则积分</returns>
+        public KeyValuePair<IIntegralRule, decimal> RunExpression(IIntegralRule efficientRule, IScene scene)
+        {
+            return RunExpression(efficientRule, (TScene)scene);
+        }
+        /// <summary>
+        /// 初始化场景数据
+        /// </summary>
+        /// <param name="channelMessage">通道消息</param>
+        /// <param name="providerRule">提供程序规则</param>
+        /// <returns>场景数据</returns>
+        public abstract TScene GetTScene(object channelMessage, IIntegralRule rule, TMember member);
+        /// <summary>
+        /// 初始化场景数据
+        /// </summary>
+        /// <param name="channelMessage">通道消息</param>
+        /// <param name="providerRule">提供程序规则</param>
+        /// <param name="member">会员信息</param>
+        /// <returns>场景数据</returns>
+        public IScene GetScene(object channelMessage, IIntegralRule rule, object member)
+        {
+            return GetTScene(channelMessage, rule, (TMember)member);
+
+        }
+
+        /// <summary>
+        /// 积分进制
+        /// </summary>
+        /// <param name="integral">积分</param>
+        /// <param name="channelMessage">通道消息</param>
+        /// <param name="member">会员信息</param>
+        /// <param name="rule">提供程序规则</param>
+        /// <returns>进制积分</returns>
+        public virtual decimal IntegralRound(decimal integral, IScene scene, IIntegralRule rule)
+        {
+            var integralModulo = (integral % 1m);
+            var integralExact = (int)(integral / 1m);
+            if (integralModulo < 0.5m && integralModulo > 0)
+            {
+                return integralExact + 0.5m;
+            }
+            else if (integralModulo > 0.5m)
+            {
+                return integralExact + 1m;
+            }
+            else
+            {
+                return integral;
+            }
+        }
+    }
+}

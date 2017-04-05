@@ -1,0 +1,177 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增初盘明细",editText:"复盘", hideDel:true,searchHeight:80,firstLoadData:false));
+    var hideReSave = !CurrentUser.HasPermiss(SysConstLimits.库存管理_复盘录入);
+}
+
+@section search{
+    <table class="table-toolbar" style="margin-left:1px;">
+    <tr>
+        <td class="label-toolbar">
+            <label>盘点门店:</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("storeId", ViewBag.shops as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "width:140,onSelect:storeSelect,validType:'requiredForCombo'" })
+        </td>
+        <td class="label-toolbar">
+            <label>盘点批次:</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("checkBatch", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" } }, new { @class = "easyui-combobox datacontrol", data_options = "width:120,validType:'requiredForCombo',editable:false" })
+        </td>
+        <td class="label-toolbar">
+            <label>盘点员:</label>
+        </td>
+        <td class="input-toolbar">
+            @Form.UserCombobox("userId", dataOptions: "width:80")
+        </td>
+        <td class="label-toolbar">
+            <label>关键词:</label><input type="hidden" name="State" value="0" />
+        </td>
+        <td class="input-toolbar">
+            <input type="text" class="datacontrol easyui-textbox" name="searchText" data-options="prompt:'品名/条码',width:150" />
+        </td>
+    </tr>
+    <tr>
+        <td class="label-toolbar">
+            <label>实盘日期:</label>
+        </td>
+        <td class="input-toolbar">
+            <input name="date1" class="datacontrol Wdate" style="width:130px" />
+        </td>
+        <td style="float:left;margin-left:7px;margin-right:7px;line-height:28px;">-</td>
+        <td class="input-toolbar">
+            <input name="date2" class="datacontrol Wdate" style="width:130px" />
+        </td>
+        <td class="label-toolbar">@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "全部盘点", Value = "", Selected = true }, new SelectListItem() { Text = "仅显示未盘点", Value = "1" } }, "ActualFlag")</td>
+    </tr>
+</table>
+}
+@section toolbar
+{
+    @if (CurrentUser.HasPermiss(SysConstLimits.库存管理_库存锁定))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" id="btnlock" data-options="iconCls:'icon-add'" onclick="addLock()">新增库存锁定</a>
+    }
+    @if (!hideReSave)
+    { 
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" id="btnlock" data-options="iconCls:'icon-add'" onclick="openDialog('批量复盘', '@Url.Action("ReSaveList")',w,h,true,btns)">批量复盘</a>
+    }
+    @if (CurrentUser.HasPermiss(SysConstLimits.库存管理_导入盘点文件))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="openDialog('导入盘点', '@Url.Action("Import")',600,350,true,btnups);">选择导入盘点文件</a>
+    }
+    @if (CurrentUser.HasPermiss(SysConstLimits.库存管理_导出空盘报表))
+    {
+    <a href="#" class="easyui-linkbutton cus4 linkbtn" id="btnExcel" data-options="iconCls:'icon-export'" onclick="expExcel()">导出空白清单</a>
+    }
+}
+
+<script type="text/javascript">
+    var w = 1000, h = 560;
+    $(function () {
+        $("#btnlock").insertBefore($("#toolbar").find("a:first"));
+        $("#btnExcel").insertAfter($("#searchBtn"));
+        //w = $(window.parent).width() - 80;
+        //h = $(window.parent).height() - 80;
+    });
+    pharos.manager.showFooter = true;
+    //pharos.manager.sortName = "CategoryTitle";
+    //pharos.manager.sortOrder = "asc";
+    pharos.manager.columns = [[
+    { field: 'Id', checkbox: true, hidden: true },
+    { field: 'StoreTitle', title: '盘点门店', width: 120 },
+    { field: 'CheckBatch', title: '盘点批次', width: 100 },
+    { field: 'ProductCode', title: '货号', width: 100,hidden:true },
+    {
+        field: 'Barcode', title: '条码', width: 130, formatter: function (value, row) {
+            var val = value;
+            if (row.Barcodes) {
+                val += "<br/><font color='blue' title='一品多码'>" + row.Barcodes.replace(/,/g, "<br/>") + "</font>";
+            }
+            return val;
+        }
+    },
+    { field: 'CategoryTitle', title: '品类', width: 140 },
+    { field: 'Title', title: '品名', width: 150 },
+    { field: 'BrandTitle', title: '品牌', width: 100 },
+    { field: 'SubUnit', title: '单位', width: 60 },
+    { field: 'ActualNumber', title: '实盘数量', width: 80 },
+    { field: 'FullName', title: '盘点员', width: 80 },
+    { field: 'LockDate', title: '实盘日期', width: 100 },
+    { field: 'CreateName', title: '录入员', width: 80 }
+    ]];
+    var btns = [{
+        text: '保存并继续',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.$('#isadd').val("1");
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+        }
+    }, {
+        text: '保存并关闭',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.$('#isadd').val("");
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+        }
+    }];
+    var btnups = [{
+        text: '覆盖上传',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.$('#over').val("1");
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+        }
+    }, {
+        text: '新增上传',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.$('#over').val("0");
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+        }
+    }];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        //openWin({ 'title': this.addText,'url': this.editurlNocache(),buttons:btns });
+        openDialog(this.addText, this.editurlNocache(), w, h, true, btns);
+    }
+    pharos.manager.editItem = function (Id, row) {
+        this.Id = Id;
+        if (row.State == 0) {
+            //openDialog(this.addText, "@Url.Action("ReSave")?id=" + Id, 800, 500, true, btns);
+            @if(!hideReSave)
+            {
+            @:openDialog600(this.editText, "@Url.Action("ReSave")?id=" + Id + "&ActualNumber=" + row.ActualNumber);
+            }
+        }
+    }
+    function expExcel() {
+        var storeId = $("#checkBatch").combobox("getValue");
+        if (!storeId) {
+            $.messager.alert("提示", "请选择导出门店和盘点批次"); return;
+        }
+        var url = "@Url.Action("Export")?" + $('#frmsearch').serialize();
+        window.location.href = url;
+    }
+    function storeSelect(record) {
+        if (!record.value) {
+            $("#checkBatch").combobox("clear").combobox("loadData", [record]);
+            return;
+        }
+        $.post("@Url.Action("StoreSelect")", { storeId: record.value, state: 0, t: Math.random() }, function (data) {
+            $("#checkBatch").combobox("clear").combobox("loadData", data.batchs);
+        }, "json");
+    }
+    function addLock() {
+        openDialog1000('库存锁定', '@Url.Action("StockLock")', true);
+        window.top.$('#lbsave .l-btn-text').width(100).html('下一步');
+        window.top.$('#lbadd').hide().find(".l-btn-text").width(100).html('上一步');
+    }
+
+</script>

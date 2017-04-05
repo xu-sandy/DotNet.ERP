@@ -1,0 +1,112 @@
+﻿@using Pharos.Utility.Helpers;
+@{
+    ViewBag.Title = "Menus";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增项", delText: "删除产品", editText: "修改项", hideDel: true, hideSearch: true, hideAdd: !CurrentUser.HasPermiss(238), hideEdit: !CurrentUser.HasPermiss(238)));
+}
+
+<script type="text/javascript">
+    $(function(){
+        $dg=pharos.manager.$dg;
+    });
+    pharos.manager.geturl = "@Url.Action("FindPageList",Request.QueryString.ToRouteValueDictionary())";
+    pharos.manager.editurl = "@Url.Action("Save", Request.QueryString.ToRouteValueDictionary())";
+    pharos.manager.sortName = "Id";
+    pharos.manager.sortOrder = "asc";
+    pharos.manager.pagination = false;
+    pharos.manager.columns = [[
+        { field: 'Id',hidden:true },
+        { field: 'DicSN', title: '编号', width: 60 },
+        { field: 'Title', title: '子项值', width: 200,editor:{type:'textbox',options:{disabled:false}} },
+        { field: 'HasChild', title: '有无下级', width: 100,editor:{type:'combobox',options:{data:pharos.dropdown['childs'],valueField:'Value',textField:'Text',editable:false}}, formatter: function (value, row, index) { return value == 1 ? "有" : "无"; } },
+        { field: 'Status', title: '状态', width: 60,editor:{type:'combobox',options:{data:pharos.dropdown['status'],valueField:'Value',textField:'Text',editable:false}}, formatter: function (value, row, index) { return value == 1 ? "显示" : "隐藏"; } },
+        {
+            field: 'Editor', title: '操作', width: 200, formatter: function (value, row, index) {
+                var operat = "";
+                operat +=String.format( "<div editsn='{0}'>",[row.Id]);
+
+                if (row.Index == 0)
+                    operat += "<a style='color:#555'>[上移]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveItem(1,\"" + row.DicSN + "\")'>[上移]</a>&nbsp;&nbsp;";
+
+                if (row.Index == row.Count-1)
+                    operat += "<a style='color:#555'>[下移]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveItem(2,\"" + row.DicSN + "\")'>[下移]</a>&nbsp;&nbsp;";
+                @if (CurrentUser.HasPermiss(238))
+                {
+                    <text> 
+                    if (row.HasChild)
+                        operat += "<a style='color:#555'>[移除]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a href='javascript:removeData(\"" + row.DicSN + "\")'>[移除]</a>&nbsp;&nbsp;";
+                    </text>
+                }
+                
+                @if (CurrentUser.HasPermiss(239))
+                {
+                    @:if (row.Status==1)
+                        @:operat += "<a href='javascript:setState(\"" + row.DicSN + "\",0)'>[关闭]</a>&nbsp;&nbsp;";
+                    @:else
+                        @:operat += "<a href='javascript:setState(\"" + row.DicSN + "\",1)'>[显示]</a>&nbsp;&nbsp;</div>";
+                }
+                return operat;
+            }
+        }
+    ]];
+    pharos.manager.loadSuccess=function(data){
+
+    }
+    pharos.manager.addItem = function () {
+        openDialog420(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (id,row) {
+        openDialog420(this.editText, this.editurlNocache() + "&sn=" + row.DicSN);
+    }
+    function moveItem(mode, menuId) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, sn: menuId,t:Math.random() },
+            url: "@Url.Action("MoveItem")",
+            success: function (data) {
+                firstLoad=true;
+                pharos.manager.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "菜单移动失败！", "info");
+            }
+        });
+    }
+
+    function removeData(id) {
+        $.messager.confirm('提示', "是否确定移除该项?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { sn: id,t:Math.random() },
+                url: "@Url.Action("RemoveData")",
+                success: function (data) {
+                    firstLoad=true;
+                    pharos.manager.gridReload();
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除字典失败！", "info");
+                }
+            });
+        });
+    }
+    function setState(id,state) {
+        $.ajax({
+            type: 'post',
+            data: { sn: id,state:state,t:Math.random() },
+            url: "@Url.Action("SetState")",
+            success: function (data) {
+                firstLoad=true;
+                pharos.manager.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "状态修改失败！", "info");
+            }
+        });
+    }
+</script>

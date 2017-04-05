@@ -1,0 +1,147 @@
+﻿
+----- 移除存储过程 dbo.Rpt_OrderSaleDetailDay （原 订单销售明细日报表）-----
+drop proc Rpt_OrderSaleDetailDay
+
+----- 新增 销售员日结报表-----
+
+CREATE PROCEDURE [dbo].[Rpt_CashierSaleOrderDay]
+    @date VARCHAR(10),
+    @storeId VARCHAR(100)='',
+    @chshier VARCHAR(500)='',
+    @saler VARCHAR(500)='',
+    @sortField VARCHAR(20)='Date',
+    @CurrentPage	INT=1,			--当前页
+	@PageSize		INT=20,				--页大小,
+	@ispage SMALLINT=1  --是否分页
+AS
+    BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+        SET NOCOUNT ON;
+        DECLARE @Sql Nvarchar(Max);
+        DECLARE @where NVARCHAR(3000);
+        
+		SET @where = ' CONVERT(VARCHAR(10),CreateDT,120)='''+@date+''' AND CreateUID=tb.CreateUID'
+        
+        SET @Sql='
+        SELECT '''+@date+''' AS Date,(UserCode+'' ''+FullName) Cashier,dbo.F_UserNameById(Salesman) Saler,MIN(CreateDT) FirstTime,MAX(CreateDT) LastTime,
+		COUNT(PaySN) XSCount,SUM(TotalAmount) XSMoney,
+		SUM(CASE WHEN ZSAmount is not null THEN 1 ELSE 0 END) ZSCount,ISNULL(SUM(ZSAmount),0) ZSMoney,
+		(SELECT COUNT(1) FROM SalesReturns rr
+		WHERE (rr.ReturnType=0 or rr.ReturnType=2) and '+@where+') AS TUICount,
+		(SELECT ISNULL(SUM(rd.Number*rd.TradingPrice),0) FROM SalesReturns rr inner join SalesReturnsDetailed rd ON rd.ReturnId=rr.ReturnId
+		WHERE (rr.ReturnType=0 or rr.ReturnType=2) and '+@where+') AS TUIMoney,
+		(SELECT COUNT(1) FROM SaleOrders oo
+		WHERE oo.Type=1 and '+@where+') AS HUANCount,
+		(SELECT ISNULL(SUM(oo.TotalAmount),0) FROM SaleOrders oo
+		WHERE oo.Type=1 and '+@where+') AS HUANMoney,
+		(SELECT COUNT(1) FROM SaleOrders oo inner join WipeZero wz ON oo.PaySN=wz.PaySN
+		WHERE wz.Number>0 and '+@where+') AS MLCount,
+		(SELECT ISNULL(SUM(wz.Number),0) FROM SaleOrders oo inner join WipeZero wz ON oo.PaySN=wz.PaySN
+		WHERE wz.Number>0 and '+@where+') AS MLMoney
+		FROM
+		(SELECT o.PaySN,o.CreateDT,o.CreateUID,o.Salesman,o.TotalAmount,ZSAmount,u.UserCode,u.FullName FROM SaleOrders o
+		LEFT JOIN
+		(SELECT oo.PaySN AS ZSPaySN,SUM(od.PurchaseNumber*od.SysPrice) AS ZSAmount FROM SaleOrders oo INNER JOIN SaleDetail od ON od.PaySN=oo.PaySN
+		WHERE oo.Type=0 and od.ActualPrice=0 GROUP BY oo.PaySN) ZS ON ZS.ZSPaySN=o.PaySN
+		LEFT JOIN SysUserInfo u on u.UID=o.CreateUID
+		WHERE 1=1 and CONVERT(VARCHAR(10),o.CreateDT,120)='''+@date+''''
+                     
+        IF(LEN(@storeId)>0)
+        BEGIN
+			SET @sql+=' AND EXISTS(SELECT 1 FROM dbo.SplitString('''+@storeId+''','','',1) WHERE Value=StoreId)'
+        END
+        IF(LEN(@chshier)>0)
+        BEGIN
+			SET @sql+=' AND EXISTS(SELECT 1 FROM dbo.SplitString('''+@chshier+''','','',1) WHERE Value=o.CreateUID)'
+        END
+        IF(LEN(@saler)>0)
+        BEGIN
+			SET @sql+=' AND EXISTS(SELECT 1 FROM dbo.SplitString('''+@saler+''','','',1) WHERE Value=Salesman)'
+        END
+        set @sql+=') tb GROUP BY CreateUID,Salesman,UserCode,FullName'
+		
+        IF(@ispage<>1)
+			BEGIN
+				EXECUTE sys.sp_executesql @Sql
+			END
+        ELSE
+			BEGIN
+				SET @sql='SELECT * from(select (ROW_NUMBER() OVER ( ORDER BY '+@sortField+')) AS RSNO,* from ('+@Sql+') td) t';
+				EXEC dbo.Comm_PageList @SqlStr = @Sql, -- nvarchar(max)
+					@CurrentPage = @CurrentPage, -- int
+					@PageSize = @PageSize -- int
+			END
+    END
+GO
+
+
+
+-----新增 门店日结报表 存储过程-----
+
+CREATE PROCEDURE [dbo].[Rpt_StoreSaleOrderDay]
+	-- Add the parameters for the stored procedure here
+	@startDate VARCHAR(20),
+	@endDate VARCHAR(20),
+    @storeId VARCHAR(100)='',
+    @sortField VARCHAR(20)='Date desc',
+    @CurrentPage	INT=1,			--当前页
+	@PageSize		INT=20,				--页大小,
+	@ispage SMALLINT=1  --是否分页
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+    DECLARE @Sql Nvarchar(Max);
+    DECLARE @where NVARCHAR(2000);
+    
+	SET @where = ' (CreateDT BETWEEN '''+@startDate+''' AND '''+@endDate+''' ) AND StoreId=tb.StoreId AND CONVERT(VARCHAR(10),CreateDT,120)=CONVERT(VARCHAR(10),tb.CreateDT,120)'
+    
+    SET @Sql='
+	SELECT CONVERT(VARCHAR(10),CreateDT,120) AS Date,dbo.F_StoreNameById(StoreId) Store,MIN(CreateDT) FirstTime,MAX(CreateDT) LastTime,
+	CAST((SUM(TotalAmount)/COUNT(PaySN)) AS DECIMAL(18,2)) SaleOrderAverage,
+	COUNT(PaySN) XSCount,SUM(TotalAmount) XSMoney,
+	SUM(CASE WHEN ZSAmount is not null THEN 1 ELSE 0 END) ZSCount,ISNULL(SUM(ZSAmount),0) ZSMoney,
+	(SELECT COUNT(1) FROM SalesReturns rr
+	WHERE (rr.ReturnType=0 or rr.ReturnType=2) and '+@where+') AS TUICount,
+	(SELECT ISNULL(SUM(rd.Number*rd.TradingPrice),0) FROM SalesReturns rr inner join SalesReturnsDetailed rd ON rd.ReturnId=rr.ReturnId
+	WHERE (rr.ReturnType=0 or rr.ReturnType=2) and '+@where+') AS TUIMoney,
+	(SELECT COUNT(1) FROM SaleOrders oo
+	WHERE oo.Type=1 and '+@where+') AS HUANCount,
+	(SELECT ISNULL(SUM(oo.TotalAmount),0) FROM SaleOrders oo
+	WHERE oo.Type=1 and '+@where+') AS HUANMoney,
+	(SELECT COUNT(1) FROM SaleOrders oo inner join WipeZero wz ON oo.PaySN=wz.PaySN
+	WHERE wz.Number>0 and '+@where+') AS MLCount,
+	(SELECT ISNULL(SUM(wz.Number),0) FROM SaleOrders oo inner join WipeZero wz ON oo.PaySN=wz.PaySN
+	WHERE wz.Number>0 and '+@where+') AS MLMoney
+	FROM
+	(SELECT o.PaySN,CONVERT(VARCHAR(10),o.CreateDT,120) CreateDate,o.CreateDT,o.StoreId,o.TotalAmount,ZSAmount FROM SaleOrders o
+	LEFT JOIN
+	(SELECT oo.PaySN AS ZSPaySN,SUM(od.PurchaseNumber*od.SysPrice) AS ZSAmount FROM SaleOrders oo INNER JOIN SaleDetail od ON od.PaySN=oo.PaySN
+	WHERE oo.Type=0 and od.ActualPrice=0 GROUP BY oo.PaySN) ZS ON ZS.ZSPaySN=o.PaySN
+	WHERE 1=1 AND o.CreateDT BETWEEN '''+@startDate+''' AND '''+@endDate+''''
+                 
+    IF(LEN(@storeId)>0)
+    BEGIN
+		SET @sql+=' AND EXISTS(SELECT 1 FROM dbo.SplitString('''+@storeId+''','','',1) WHERE Value=StoreId)'
+    END
+    set @sql+=') tb GROUP BY StoreId,CONVERT(VARCHAR(10),CreateDT,120)'
+            
+	--EXECUTE sys.sp_executesql @Sql
+	
+    IF(@ispage<>1)
+		BEGIN
+			EXECUTE sys.sp_executesql @Sql
+		END
+    ELSE
+		BEGIN
+			SET @sql='SELECT * from(select (ROW_NUMBER() OVER ( ORDER BY '+@sortField+')) AS RSNO,* from ('+@Sql+') td) t';
+			EXEC dbo.Comm_PageList @SqlStr = @Sql, -- nvarchar(max)
+				@CurrentPage = @CurrentPage, -- int
+				@PageSize = @PageSize -- int
+		END
+	
+END
+GO
+

@@ -1,0 +1,470 @@
+﻿
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Web.Mvc;
+using System.Xml;
+using Aop.Api;
+using Aop.Api.Request;
+using Aop.Api.Response;
+using Pharos.Utility;
+using qrcode = Pharos.Component.qrcode;
+using Pharos.Utility.Helpers;
+using ThoughtWorks.QRCode.Codec;
+namespace Pharos.Api.Retailing.Controllers.Pay
+{
+    public class QrcodeController : Controller
+    {
+        int retryCount = 10;//循环次数
+        #region 扫码即时到帐
+        public ActionResult QrcodePay(string paySN, decimal totalPrice)
+        {
+            var op = new OpResult();
+            if (paySN.IsNullOrEmpty())
+                op.Message = "订单编号不能为空！";
+            else
+            {
+                string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                //动作
+                string method = "add";
+                //创建商品二维码
+                //业务类型
+                string biz_type = "10";
+                //json数据
+                string biz_data = GetBizData(paySN, totalPrice);
+
+                //把请求参数打包成数组
+                SortedDictionary<string, string> sParaTemp = new SortedDictionary<string, string>();
+                sParaTemp.Add("service", "alipay.mobile.qrcode.manage");
+                sParaTemp.Add("partner", qrcode._1.Config.Partner);
+                sParaTemp.Add("_input_charset", qrcode._1.Config.Input_charset.ToLower());
+                sParaTemp.Add("timestamp", timestamp);
+                sParaTemp.Add("method", method);
+                sParaTemp.Add("biz_type", biz_type);
+                sParaTemp.Add("biz_data", biz_data);
+                string _sign = "";
+                foreach (var item in sParaTemp.OrderBy(s => s.Key))
+                {
+                    _sign = appendParam(_sign, item.Key, item.Value);
+                }
+                //签名
+                string sign = qrcode._1.AlipayMD5.Sign(_sign, qrcode._1.Config.Key, qrcode._1.Config.Input_charset.ToLower());
+                sParaTemp.Add("sign_type", qrcode._1.Config.Sign_type);
+                sParaTemp.Add("sign", sign);
+                try
+                {
+                    //建立请求
+                    string sHtmlText = qrcode._1.Submit.BuildRequest(sParaTemp);
+                    //请在这里加上商户的业务逻辑程序代码
+                    XmlDocument xmlDoc = new XmlDocument();
+                    xmlDoc.LoadXml(sHtmlText);
+                    XmlNode root = xmlDoc.DocumentElement;//返回的根节点
+                    string is_success = root.SelectSingleNode("is_success").InnerText;
+                    if (is_success == "T")
+                    {
+                        string result_code = root.SelectSingleNode("/alipay/response/alipay/result_code").InnerText;
+                        if (result_code == "SUCCESS")
+                        {
+                            string codeUrl = root.SelectSingleNode("/alipay/response/alipay/qrcode").InnerText;//二维码地址
+                            //string qrcode_img_url = root.SelectSingleNode("/alipay/response/alipay/qrcode_img_url").InnerText;//二维码图片地址
+                            var createUrl = Url.Action("GenerateQrcode", new { codeUrl = codeUrl });
+                            //op.Message = Request.Url.Scheme + "://" + Request.Url.Authority + Url.Action("CreateQRCode", new { url = createUrl, paySN = paySN, price = totalPrice });
+                            op.Message = Request.Url.Scheme + "://" + Request.Url.Authority + createUrl;
+                            op.Successed = true;
+                        }
+                        else
+                        {
+                            op.Message = "业务处理失败！";
+                        }
+                    }
+                    else
+                    {
+                        op.Message = "请求失败！";
+                    }
+                }
+                catch(Exception ex)
+                {
+                    op.Message = ex.Message;
+                    new Sys.LogEngine().WriteError("支付宝扫码支付失败!", ex);
+                }
+                Pharos.Component.qrcode.Log.Debug(this.GetType().Name, "支付宝扫码," + op.Message);           
+            }
+            return new JsonNetResult(op);
+        }
+        /// <summary>
+        /// 获取json数据
+        /// </summary>
+        /// <param name="orderModel"></param>
+        /// <returns></returns>
+        private string GetBizData(string OrderNo, decimal price)
+        {
+            StringBuilder sbJson = new StringBuilder();
+            //有些数据不必传
+            sbJson.Append("{");
+            sbJson.AppendFormat("\"need_address\":\"{0}\",", "F");//是否需要收货地址：T需要，F不需要
+            sbJson.AppendFormat("\"trade_type\":\"{0}\",", "1");//交易类型，1 即时到账
+            sbJson.AppendFormat("\"notify_url\":\"{0}\",", qrcode._1.Config.Notify_url);
+            //sbJson.Append("\"ext_info\":{\"pay_timeout\":\"5\"},");
+            string goods = "\"goods_info\":{\"id\":\"" + OrderNo + "\",\"name\":\"订单编号" + OrderNo + "\",\"price\":\"" + price + "\",\"expiry_date\":\"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "|" + DateTime.Now.AddMinutes(10).ToString("yyyy-MM-dd HH:mm:ss") + "\"}";
+            sbJson.Append(goods);
+            sbJson.Append("}");
+            return sbJson.ToString();
+        }
+        private string appendParam(string returnStr, string paramId, string paramValue)
+        {
+            if (returnStr != "")
+            {
+                if (paramValue != "")
+                {
+                    returnStr += "&" + paramId + "=" + paramValue;
+                }
+            }
+            else
+            {
+                if (paramValue != "")
+                {
+                    returnStr = paramId + "=" + paramValue;
+                }
+            }
+            return returnStr;
+        }
+        private SortedDictionary<string, string> GetRequestPost()
+        {
+            int i = 0;
+            var sArray = new SortedDictionary<string, string>();
+            var coll = Request.Form;
+            String[] requestItem = coll.AllKeys;
+            for (i = 0; i < requestItem.Length; i++)
+            {
+                sArray.Add(requestItem[i], Request.Form[requestItem[i]]);
+            }
+            return sArray;
+        }
+        #endregion
+
+        #region 支付宝当面付
+        IAopClient client = new DefaultAopClient(qrcode._2.Config.serverUrl, qrcode._2.Config.appId, qrcode._2.Config.merchant_private_key, "", qrcode._2.Config.version,
+            qrcode._2.Config.sign_type, qrcode._2.Config.alipay_public_key, qrcode._2.Config.charset);
+        public ActionResult MicroPay(string autoCode, string paySN, decimal totalPrice)
+        {
+            var op = new OpResult();
+            AlipayTradePayResponse payResponse = null;
+            try
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append("{\"out_trade_no\":\"" + paySN + "\",");
+                sb.Append("\"scene\":\"bar_code\",");
+                sb.Append("\"auth_code\":\"" + autoCode + "\",");
+                sb.Append("\"total_amount\":\"" + totalPrice + "\",\"discountable_amount\":\"0.00\",");
+                sb.Append("\"subject\":\"订单编号 "+paySN+"\",\"body\":\"\",");
+                string expire_time = System.DateTime.Now.AddHours(1).ToString("yyyy-MM-dd HH:mm:ss");
+                sb.Append("\"time_expire\":\"" + expire_time + "\"}");
+                AlipayTradePayRequest payRequst = new AlipayTradePayRequest();
+                payRequst.BizContent = sb.ToString();
+
+                Dictionary<string, string> paramsDict = (Dictionary<string, string>)payRequst.GetParameters();
+                payResponse = client.Execute(payRequst);
+                switch (payResponse.Code)
+                {
+                    case qrcode._2.ResultCode.SUCCESS:
+                        op.Message = payResponse.TradeNo;
+                        op.Successed = true;
+                        break;
+                    case qrcode._2.ResultCode.INRROCESS:
+                        StringBuilder sb1 = new StringBuilder();
+                        sb1.Append("{\"out_trade_no\":\"" + paySN + "\"}");
+
+                        //返回支付处理中，需要进行轮询
+                        AlipayTradeQueryResponse queryResponse = LoopQuery(sb1.ToString());
+                        if (queryResponse != null)
+                        {
+                            op.Message = queryResponse.TradeNo;
+                            op.Successed = true;
+                        }
+                        else
+                            throw new Exception(payResponse.SubMsg+","+payResponse.Msg);
+
+                        break;
+
+                    case qrcode._2.ResultCode.FAIL:
+                        StringBuilder sb2 = new StringBuilder();
+                        sb2.Append("{\"out_trade_no\":\"" + paySN + "\"}");
+                        Cancel(sb2.ToString());
+                        op.Message = payResponse.SubMsg + "," + payResponse.Msg;
+                        break;
+                    default:
+                        op.Message = payResponse.SubMsg + "," + payResponse.Msg;
+                        break;
+                }
+                
+            }
+            catch(Exception ex)
+            {
+                op.Message = ex.Message;
+                new Sys.LogEngine().WriteError("支付宝当面付失败!" + payResponse.Body, ex);
+            }
+            Pharos.Component.qrcode.Log.Debug(this.GetType().Name, "支付宝当面付," + payResponse.Body);            
+            return new JsonNetResult(op);
+        }
+        private AlipayTradeCancelResponse Cancel(string biz_content)
+        {
+            AlipayTradeCancelRequest cancelRequest = new AlipayTradeCancelRequest();
+            cancelRequest.BizContent = biz_content;
+            AlipayTradeCancelResponse cancelResponse = client.Execute(cancelRequest);
+            if (null != cancelResponse)
+            {
+                if (cancelResponse.Code == qrcode._2.ResultCode.FAIL && cancelResponse.RetryFlag == "Y")
+                {
+                    for (int i = 0; i < retryCount; ++i)
+                    {
+                        Thread.Sleep(3000);
+                        cancelResponse = client.Execute(cancelRequest);
+
+                        if (null != cancelResponse)
+                        {
+                            if (cancelResponse.Code == qrcode._2.ResultCode.FAIL)
+                            {
+                                //if (cancelResponse.Body.Contains("\"retry_flag\":\"N\""))		
+                                if (cancelResponse.RetryFlag == "N")
+                                {
+                                    break;
+                                }
+                            }
+                            if ((cancelResponse.Code == qrcode._2.ResultCode.SUCCESS))
+                            {
+                                break;
+                            }
+                        }
+
+                        if (i == retryCount - 1)
+                        {
+                            throw new Exception("撤销订单失败！");
+                        }
+
+                    }
+                }
+            }
+            return cancelResponse;
+        }
+        private AlipayTradeQueryResponse LoopQuery(string biz_content)
+        {
+
+            AlipayTradeQueryRequest payRequst = new AlipayTradeQueryRequest();
+            payRequst.BizContent = biz_content;
+
+            Dictionary<string, string> paramsDict = (Dictionary<string, string>)payRequst.GetParameters();
+            AlipayTradeQueryResponse payResponse = null;
+
+            for (int i = 0; i < retryCount; i++)
+            {
+                Thread.Sleep(3000);
+
+                payResponse = client.Execute(payRequst);
+                if (string.Compare(payResponse.Code, qrcode._2.ResultCode.SUCCESS, false) == 0)
+                {
+                    if (payResponse.TradeStatus == "TRADE_FINISHED"
+                        || payResponse.TradeStatus == "TRADE_SUCCESS"
+                        || payResponse.TradeStatus == "TRADE_CLOSED")
+                        return payResponse;
+                }
+
+            }
+            payResponse = null;
+            Cancel(biz_content);
+
+            return payResponse;
+
+        }
+        #endregion
+
+        #region 微信支付
+        public ActionResult WxQrcodePay(string paySN, decimal totalPrice)
+        {
+            var data = new qrcode.wx.WxPayData();
+            data.SetValue("body", "订单编号" + paySN);//商品描述
+            data.SetValue("attach", paySN);//附加数据
+            data.SetValue("out_trade_no", qrcode.wx.WxPayApi.GenerateOutTradeNo());//随机字符串
+            data.SetValue("total_fee", Convert.ToInt32(totalPrice * 100));//总金额
+            data.SetValue("time_start", DateTime.Now.ToString("yyyyMMddHHmmss"));//交易起始时间
+            data.SetValue("time_expire", DateTime.Now.AddMinutes(10).ToString("yyyyMMddHHmmss"));//交易结束时间
+            data.SetValue("goods_tag", "");//商品标记
+            data.SetValue("trade_type", "NATIVE");//交易类型
+            data.SetValue("product_id", paySN);//商品ID
+            var op = new OpResult();
+            try
+            {
+                var result = qrcode.wx.WxPayApi.UnifiedOrder(data);//调用统一下单接口
+
+                if (Convert.ToString(result.GetValue("result_code")) == "SUCCESS" && Convert.ToString(result.GetValue("return_code")) == "SUCCESS")
+                {
+                    string createUrl = result.GetValue("code_url").ToString();//获得统一下单接口返回的二维码链接
+                    createUrl = Url.Action("GenerateQrcode", new { codeUrl = createUrl });
+                    //op.Message = Request.Url.Scheme + "://" + Request.Url.Authority + Url.Action("CreateQRCode", new { url = createUrl, paySN = paySN, price = totalPrice });
+                    op.Message = Request.Url.Scheme + "://" + Request.Url.Authority + createUrl;
+                    op.Successed = true;
+                }
+                else if (Convert.ToString(result.GetValue("return_code")) == "SUCCESS")
+                    op.Message = result.GetValue("err_code_des").ToString();
+                else
+                    op.Message = Convert.ToString(result.GetValue("return_msg"));
+
+            }
+            catch (Exception ex)
+            {
+                qrcode.Log.Error(this.GetType().Name, "微信扫码," + ex.Message);
+                op.Message = ex.Message;
+                new Sys.LogEngine().WriteError("微信扫码支付失败!", ex);
+            }
+            return new JsonNetResult(op);
+        }
+        #endregion
+
+        #region 微信当面付
+        public ActionResult WxMicroPay(string autoCode,string paySN, decimal totalPrice)
+        {
+            var data = new qrcode.wx.WxPayData();
+            data.SetValue("auth_code", autoCode);//授权码
+            data.SetValue("body", "订单编号 " + paySN);//商品描述
+            data.SetValue("total_fee", Convert.ToInt32(totalPrice * 100));//总金额
+            data.SetValue("out_trade_no", qrcode.wx.WxPayApi.GenerateOutTradeNo());//产生随机的商户订单号
+            var op = new OpResult();
+            qrcode.wx.WxPayData result = null;
+            try
+            {
+                if (autoCode.IsNullOrEmpty() || paySN.IsNullOrEmpty() || totalPrice == 0)
+                    throw new ArgumentException("参数传入为空!");
+                result = qrcode.wx.WxPayApi.Micropay(data, 10); //提交被扫支付，接收返回结果
+
+                //如果提交被扫支付接口调用失败，则抛异常
+                if (!result.IsSet("return_code") || result.GetValue("return_code").ToString() == "FAIL")
+                    throw new Exception("支付接口调用失败!returnCode:FAIL," + result.GetValue("return_msg"));
+               
+                //签名验证
+                result.CheckSign();
+                //刷卡支付直接成功
+                if (result.GetValue("return_code").ToString() == "SUCCESS" &&
+                    result.GetValue("result_code").ToString() == "SUCCESS")
+                {
+                    op.Message = result.GetValue("transaction_id").ToString();
+                    op.Successed = true;
+                }
+                else
+                {
+                    /******************************************************************
+                     * 剩下的都是接口调用成功，业务失败的情况
+                     * ****************************************************************/
+                    //1）业务结果明确失败
+                    if (result.GetValue("err_code").ToString() != "USERPAYING" &&
+                    result.GetValue("err_code").ToString() != "SYSTEMERROR")
+                    {
+                        throw new Exception("业务处理失败!" + result.GetValue("err_code_des"));
+                    }
+
+                    //2）不能确定是否失败，需查单
+                    //用商户订单号去查单
+                    string out_trade_no = data.GetValue("out_trade_no").ToString();
+
+                    //确认支付是否成功,每隔一段时间查询一次订单，共查询10次
+
+                    for (int i = 0; i < retryCount; i++)
+                    {
+                        int succResult = 0;//查询结果
+                        var queryResult = qrcode.wx.WxPayApi.Query(out_trade_no, out succResult);
+                        //如果需要继续查询，则等待2s后继续
+                        if (succResult == 2)
+                        {
+                            Thread.Sleep(3000);
+                            continue;
+                        }
+                        //查询成功,返回订单查询接口返回的数据
+                        else if (succResult == 1)
+                        {
+                            op.Message = queryResult.GetValue("transaction_id").ToString();
+                            op.Successed = true;
+                            break;
+                        }
+                        //订单交易失败，直接返回刷卡支付接口返回的结果，失败原因会在err_code中描述
+                        else
+                        {
+                            throw new Exception("订单交易失败!" + result.GetValue("err_code_des"));
+                        }
+                    }
+                    //确认失败，则撤销订单
+                    if (!op.Successed && !qrcode.wx.WxPayApi.Cancel(out_trade_no))
+                    {
+                        throw new Exception("撤销订单失败！");
+                    }
+                }
+
+            }catch(Exception ex)
+            {
+                qrcode.Log.Error(this.GetType().Name, "微信当面付,"+ex.Message);
+                op.Message = ex.Message;
+                new Sys.LogEngine().WriteError("微信当面付失败,返回信息:" + result.ToXml(), ex);
+
+            }
+            return new JsonNetResult(op);
+        }
+
+        #endregion
+
+        #region 生成二维码
+        public void GenerateQrcode(string codeUrl)
+        {
+            QRCodeEncoder qrCodeEncoder = new QRCodeEncoder();
+            qrCodeEncoder.QRCodeEncodeMode = QRCodeEncoder.ENCODE_MODE.BYTE;
+            qrCodeEncoder.QRCodeErrorCorrect = QRCodeEncoder.ERROR_CORRECTION.M;
+            qrCodeEncoder.QRCodeVersion = 0;
+            qrCodeEncoder.QRCodeScale = 7;
+
+            //将字符串生成二维码图片
+            Bitmap image = qrCodeEncoder.Encode(codeUrl, Encoding.Default);
+            //保存为PNG到内存流  
+            MemoryStream ms = new MemoryStream();
+            image.Save(ms, ImageFormat.Png);
+
+            //输出二维码图片
+            Response.BinaryWrite(ms.GetBuffer());
+            Response.End();
+        }
+        public ActionResult CreateQRCode(string url, string paySN, decimal? price)
+        {
+            ViewBag.URL = url;
+            return View();
+        }
+        #endregion
+
+        #region 获取支付状态
+
+        public int GetStatus(int apiCode, string paySn)
+        {
+            var entity = Pharos.Logic.BLL.PayNotifyResultService.Find(o => o.ApiCode == apiCode && o.PaySN == paySn);
+            if (entity == null)
+            {
+                return 0;
+            }
+            else if (entity.State == "Success")
+            {
+                return 1;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        #endregion 获取支付状态
+
+        #region 客户端连接测试不可去掉
+        public bool OnlineTest()
+        {
+            return true;
+        }
+        #endregion 客户端连接测试不可去掉
+    }
+}
+

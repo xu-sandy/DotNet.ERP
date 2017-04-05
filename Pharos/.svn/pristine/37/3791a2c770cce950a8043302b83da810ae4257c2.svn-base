@@ -1,0 +1,194 @@
+﻿using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class CashPayViewModel : BaseViewModel
+    {
+        public CashPayViewModel(decimal _amount, PayAction _mode, int reason = 0)
+        {
+            IsOperatEnabled = true;
+            Amount = _amount;//抹零前
+            WipeZeroAfter = Math.Round(_amount, 1, MidpointRounding.AwayFromZero);//摸零后
+            WipeZero = _amount - WipeZeroAfter;//摸零金额
+            //if (WipeZero < 0)
+            //{
+            //    WipeZero = 0;
+            //}
+            Mode = _mode;
+            Reason = reason;
+            if (WipeZeroAfter < 0)
+            {
+                PayTitle = "现金退款：";
+                PayAmountReadOnly = true;
+                Cash = WipeZeroAfter;
+            }
+            else {
+                PayTitle = "现金收款：";
+                PayAmountReadOnly = false;
+
+            }
+            this.OnPropertyChanged(o => o.PayTitle);
+            this.OnPropertyChanged(o => o.PayAmountReadOnly);
+        }
+        public bool PayAmountReadOnly { get; set; }
+        public string PayTitle { get; set; }
+        int Reason { get; set; }
+
+        private decimal wipeZeroAfter;
+
+        public decimal WipeZeroAfter
+        {
+            get { return wipeZeroAfter; }
+            set { wipeZeroAfter = value; this.OnPropertyChanged(o => o.WipeZeroAfter); }
+        }
+
+        private PayAction mode;
+
+        public PayAction Mode
+        {
+            get { return mode; }
+            set { mode = value; this.OnPropertyChanged(o => o.Mode); }
+        }
+
+        /// <summary>
+        /// 订单金额
+        /// </summary>
+        private decimal amount;
+
+        public decimal Amount
+        {
+            get { return amount; }
+            set { amount = value; this.OnPropertyChanged(o => o.Amount); }
+        }
+        /// <summary>
+        /// 现金收款
+        /// </summary>
+        private decimal cash;
+
+        public decimal Cash
+        {
+            get { return cash; }
+            set
+            {
+                cash = value;
+                this.OnPropertyChanged(o => o.Cash);
+                Change = Cash - WipeZeroAfter;
+            }
+        }
+        /// <summary>
+        /// 找零
+        /// </summary>
+        private decimal change;
+
+        public decimal Change
+        {
+            get { return change; }
+            set { change = value; this.OnPropertyChanged(o => o.Change); }
+        }
+        /// <summary>
+        /// 抹零
+        /// </summary>
+        private decimal wipeZero;
+
+        public decimal WipeZero
+        {
+            get { return wipeZero; }
+            set
+            {
+                wipeZero = value;
+                this.OnPropertyChanged(o => o.WipeZero);
+            }
+        }
+
+
+        /// <summary>
+        /// 现金支付确认事件
+        /// </summary>
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    IsOperatEnabled = false;
+                    this.OnPropertyChanged(o => o.IsOperatEnabled);
+                    if (Cash >= WipeZeroAfter)
+                    {
+                        Task.Factory.StartNew(() =>
+                        {
+                            var _machinesInfo = Global.MachineSettings.MachineInformations;
+                            List<PayWay> payWay = new List<PayWay>();
+                            PayWay _payWay = new PayWay()
+                            {
+                                Amount = WipeZeroAfter,
+                                Receive = Cash,
+                                Change = Change,
+                                Type = PayMode.CashPay,
+                                WipeZero = WipeZero
+                            };
+                            payWay.Add(_payWay);
+                            ApiPayParams _params = new ApiPayParams()
+                            {
+                                StoreId = _machinesInfo.StoreId,
+                                MachineSn = _machinesInfo.MachineSn,
+                                CompanyToken = _machinesInfo.CompanyToken,
+                                Mode = Mode,
+                                Receivable = WipeZeroAfter,
+                                OrderAmount = Amount,
+                                Payway = payWay,
+                                Reason = Reason,
+                                OldOrderSn = (RefundChangeViewModel.Current!=null? RefundChangeViewModel.Current.RefundOrder.PaySn:"")
+
+                            };
+                            var result = ApiManager.Post<ApiPayParams, ApiRetrunResult<object>>(@"api/Pay", _params);
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                if (result.Code == "200")
+                                {
+                                    ZhiFuWanCheng page = new ZhiFuWanCheng(WipeZeroAfter, Cash, Change, "现金", Mode, (DateTime)result.Result);
+                                    page.Owner = Application.Current.MainWindow;
+
+                                    CurrentWindow.Hide();
+                                    page.ShowDialog();
+                                    CurrentWindow.Close();
+                                }
+                                else
+                                {
+                                    Toast.ShowMessage(result.Message, CurrentWindow);
+                                }
+                                IsOperatEnabled = true;
+                            }));
+                        });
+                    }
+                    else
+                    {
+                        Toast.ShowMessage("现金收款 不得低于 应收金额！", CurrentWindow);
+                        IsOperatEnabled = true;
+                    }
+                });
+            }
+        }
+
+
+        bool _IsOperatEnabled = true;
+
+        public bool IsOperatEnabled
+        {
+            get { return _IsOperatEnabled; }
+            set
+            {
+                _IsOperatEnabled = value;
+                this.OnPropertyChanged(o => o.IsOperatEnabled);
+            }
+        }
+    }
+}

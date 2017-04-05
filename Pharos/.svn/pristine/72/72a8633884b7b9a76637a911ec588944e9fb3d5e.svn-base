@@ -1,0 +1,84 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Payment
+{
+    public abstract class BasePay : IPay
+    {
+        internal BasePay() { }
+        public BasePay(int apiCode, PayMode mode)
+        {
+            ApiCode = apiCode;
+            ApiCodes = apiCode.ToString();
+            var dataAdapter = DataAdapterFactory.DefualtDataAdapter;
+            var settings = dataAdapter.GetApiSettings(ApiCode);
+            ApiUrl = settings.ApiUrl;
+            Title = settings.Title;
+            Enable = Convert.ToBoolean(settings.State);
+            EnableIcon = settings.ApiIcon;
+            DisableIcon = settings.ApiCloseIcon;
+            Mode = mode;
+        }
+        [JsonIgnore]
+        public Action<IPay> CallBack { get; set; }
+        public string Title { get; set; }
+
+        [JsonIgnore]
+        public int ApiCode { get; set; }
+
+        [JsonIgnore]
+        public string ApiUrl { get; set; }
+
+        public bool Enable { get; set; }
+
+        public string EnableIcon { get; set; }
+        public string DisableIcon { get; set; }
+
+        public PayMode Mode { get; set; }
+
+
+        [JsonIgnore]
+        public PayDetails PayDetails { get; set; }
+
+        public virtual void SetComplete()
+        {
+            if (PayDetails == null || string.IsNullOrEmpty(PayDetails.StoreId) || string.IsNullOrEmpty(PayDetails.MachineSn))
+            {
+                throw new PosException("支付信息不全，无法支付！");
+            }
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, PayDetails.StoreId, PayDetails.MachineSn, PayDetails.CompanyToken);
+            dataAdapter.RecordPayment(PayDetails.PaySn, PayDetails.Amount, ApiCode,PayDetails.Change,PayDetails.Receive, PayDetails.ApiOrderSn, PayDetails.CardNo);
+            //保存抹零数据
+            if (PayDetails.WipeZero != 0)
+            {
+                dataAdapter.AddWipeZero(PayDetails.CompanyToken, PayDetails.PaySn, PayDetails.WipeZero);
+            }
+
+            if (CallBack != null)
+            {
+                CallBack(this);
+            }
+        }
+
+
+        public virtual void RefreshStatus()
+        {
+            // var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn);
+            var dataAdapter = DataAdapterFactory.DefualtDataAdapter;
+            var settings = dataAdapter.GetApiSettings(ApiCode);
+            ApiUrl = settings.ApiUrl;
+            Title = settings.Title;
+            Enable = Convert.ToBoolean(settings.State);
+            EnableIcon = settings.ApiIcon;
+            DisableIcon = settings.ApiCloseIcon;
+        }
+
+
+        public string ApiCodes { get; set; }
+    }
+}

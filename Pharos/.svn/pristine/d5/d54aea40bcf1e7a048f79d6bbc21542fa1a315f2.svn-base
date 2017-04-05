@@ -1,0 +1,227 @@
+﻿using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels.Pay;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class PayItem : BaseViewModel
+    {
+        public PayItem() 
+        {
+            IsOperatEnabled = true;
+            this.OnPropertyChanged(o => o.IsOperatEnabled);
+        }
+        MachineInformations _machineInfo = Global.MachineSettings.MachineInformations;
+        public string Title { get; set; }
+
+        public bool Enable { get; set; }
+
+        string _EnableIcon;
+        public string EnableIcon
+        {
+            get
+            {
+                return _EnableIcon;
+            }
+            set
+            {
+                _EnableIcon = value;
+                this.OnPropertyChanged(o => o.Icon);
+            }
+        }
+        string _DisableIcon;
+        public string DisableIcon
+        {
+            get
+            {
+                return _DisableIcon;
+            }
+            set
+            {
+                _DisableIcon = value;
+                this.OnPropertyChanged(o => o.Icon);
+            }
+        }
+
+        public string ApiCodes { get; set; }
+
+        public PayMode Mode { get; set; }
+
+        public decimal Amount { get; set; }
+        public PayAction Action { get; set; }
+
+        internal int Reason { get; set; }
+        public ImageSource Icon
+        {
+            get
+            {
+                if (Enable)
+                {
+                    return new BitmapImage(new Uri(EnableIcon));
+                }
+                else
+                {
+                    return new BitmapImage(new Uri(DisableIcon));
+
+                }
+            }
+        }
+
+        public GeneralCommand<object> DoPayCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (!Enable) { return; }
+                    IsOperatEnabled = false;
+                    this.OnPropertyChanged(o => o.IsOperatEnabled);
+                    switch (Mode)
+                    {
+                        case PayMode.CashPay:
+                            //现金支付
+                            XianJinZhiFu cash = new XianJinZhiFu(Amount, Action, Reason);
+                            cash.Owner = Application.Current.MainWindow;
+
+                            CurrentWindow.Hide();
+                            cash.ShowDialog();
+                            CurrentWindow.Close();
+                            break;
+                        case PayMode.Weixin://微信扫码支付
+                            //直接调支付接口
+                            //接口参数
+                            Task.Factory.StartNew(() =>
+                            {
+                                List<PayWay> payWay = new List<PayWay>();
+                                PayWay _payWay = new PayWay()
+                                {
+                                    Amount = Amount,
+                                    Change = 0,
+                                    Receive = Amount,
+                                    Type = PayMode.Weixin
+                                };
+                                payWay.Add(_payWay);
+                                ApiPayParams _params = new ApiPayParams()
+                                {
+                                    StoreId = _machineInfo.StoreId,
+                                    MachineSn = _machineInfo.MachineSn,
+                                    CompanyToken = _machineInfo.CompanyToken,
+                                    Mode = Action,
+                                    Receivable = Amount,
+                                    Payway = payWay,
+                                    OrderAmount = Amount,
+                                    Reason = Reason
+                                };
+                                var result = ApiManager.Post<ApiPayParams, ApiRetrunResult<ApiPayResult>>(@"api/Pay", _params);
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    if (result.Code == "200")
+                                    {
+                                        //返回成功则打开微信支付界面
+                                        WeiXinZhiFu page = new WeiXinZhiFu(result.Result.Url, result.Result.PaySN, Amount, Action);
+                                        page.Owner = Application.Current.MainWindow;
+
+                                        CurrentWindow.Hide();
+                                        page.ShowDialog();
+                                        CurrentWindow.Close();
+                                    }
+                                    else
+                                    {
+                                        Toast.ShowMessage(result.Message, CurrentWindow);
+                                    }
+                                }));
+                            });
+                            break;
+                        case PayMode.Zhifubao:
+                            //支付宝扫码支付
+                            Task.Factory.StartNew(() =>
+                            {
+                                List<PayWay> payWay = new List<PayWay>();
+                                PayWay _payWay = new PayWay()
+                                {
+                                    Amount = Amount,
+                                    Change = 0,
+                                    Receive = Amount,
+                                    Type = PayMode.Zhifubao
+                                };
+                                payWay.Add(_payWay);
+                                ApiPayParams _params = new ApiPayParams()
+                                {
+                                    StoreId = _machineInfo.StoreId,
+                                    MachineSn = _machineInfo.MachineSn,
+                                    CompanyToken = _machineInfo.CompanyToken,
+                                    Mode = Action,
+                                    Receivable = Amount,
+                                    Payway = payWay,
+                                    OrderAmount = Amount,
+                                    Reason = Reason
+                                };
+                                var result = ApiManager.Post<ApiPayParams, ApiRetrunResult<ApiPayResult>>(@"api/Pay", _params);
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    if (result.Code == "200")
+                                    {
+                                        //返回成功则打开微信支付界面
+                                        ZhiFuBaoZhiFu page = new ZhiFuBaoZhiFu(result.Result.Url, result.Result.PaySN, Amount, Action);
+                                        page.Owner = Application.Current.MainWindow;
+
+                                        CurrentWindow.Hide();
+                                        page.ShowDialog();
+                                        CurrentWindow.Close();
+                                    }
+                                    else
+                                    {
+                                        Toast.ShowMessage(result.Message, CurrentWindow);
+                                    }
+                                }));
+                            });
+                            break;
+                        case PayMode.UnionPay:
+                            //银联支付
+                            YinLianZhiFu yinlian = new YinLianZhiFu(Amount, Action, Reason);
+                            yinlian.Owner = Application.Current.MainWindow;
+
+                            CurrentWindow.Hide();
+                            yinlian.ShowDialog();
+                            CurrentWindow.Close();
+                            break;
+                        case PayMode.ScanWeixin://微信扫码付
+                            WeiXinFuKuan weixin2 = new WeiXinFuKuan(Amount, Action,Reason);
+                            weixin2.Owner = Application.Current.MainWindow;
+
+                            CurrentWindow.Hide();
+                            weixin2.ShowDialog();
+                            CurrentWindow.Close();
+                            break;
+                        case PayMode.ScanZhifubao://支付宝扫码付
+                            ZhiFuBaoFuKuan aliPay2 = new ZhiFuBaoFuKuan(Amount, Action, Reason);
+                            aliPay2.Owner = Application.Current.MainWindow;
+
+                            CurrentWindow.Hide();
+                            aliPay2.ShowDialog();
+                            CurrentWindow.Close();
+                            break;
+                        case PayMode.CashCoupon:
+                            DaiJinQuan cashCoupon = new DaiJinQuan(Amount, Action, Reason);
+                            cashCoupon.Owner = Application.Current.MainWindow;
+                            CurrentWindow.Hide();
+                            cashCoupon.ShowDialog();
+                            CurrentWindow.Close();
+                            break;
+                    }
+                });
+            }
+        }
+
+        public bool IsOperatEnabled { get; set; }
+    }
+}

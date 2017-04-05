@@ -1,0 +1,56 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">
+    #win .datagrid-row-selected{ background-color:white!important;}
+    .datagrid .panel-header{text-align:center;}
+</style>
+<div class="default-form">
+    <div class="content">
+        <div class="formbox">
+            <table class="table-form" width="100%" height="80px">
+                <tr>
+                    <td class="name">订货单号：</td>
+                    <td class="input">@Html.DisplayText("IndentOrderId")</td>
+                    <td class="name">订货门店：</td>
+                    <td class="input">@Html.RadioButtonList(ViewBag.companys as List<SelectListItem>, "StoreId")</td>
+                    <td class="name">下 单 人：</td>
+                    <td class="input">@Html.DisplayText("creator")</td>
+                    <td class="name">应交货日期：</td>
+                    <td class="input">@Html.DisplayText("DeliveryDate", "{0:yyyy-MM-dd}")</td>
+                </tr>
+                <tr>
+                    <td class="name">供货单位：</td>
+                    <td class="input">@Html.RadioButtonList(ViewBag.suppliers as List<SelectListItem>, "SupplierID")</td>
+                    <td class="name">收 货 人：</td>
+                    <td class="input">@Html.DisplayText("reciptor")</td>
+                    <td class="name">收货地址：</td>
+                    <td class="input">@Html.DisplayText("ShippingAddress")</td>
+                    <td class="name">联系电话：</td>
+                    <td class="input">@Html.DisplayText("Phone")</td>
+                    <td class="name">配送批次：</td>
+                    <td class="input">@Html.DisplayText("DistributionBatch")</td>
+                </tr>
+            </table>
+        </div><br />
+        <table class="easyui-datagrid" id="grid2"
+               data-options="url:'@Url.Action("LoadDetailList")',queryParams:{orderId:'@Request["IndentOrderId"]'},showFooter:true,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,title:'订 货 单',onLoadError:loadError">
+            <thead>
+                <tr>
+                    <th data-options="field:'ProductCode',editor:{type:'textbox',options:{disabled:true}}" width="100">货号</th>
+                    <th data-options="field:'Barcode'" width="150">条形码</th>
+                    <th data-options="field:'Title',editor:{type:'textbox',options:{disabled:true}}" width="150">品名</th>
+                    <th data-options="field:'SubUnit',editor:{type:'textbox',options:{disabled:true}}" width="80">单位</th>
+                    <th data-options="field:'Price',editor:{type:'textbox',options:{disabled:true}}" width="70">进价</th>
+                    <th data-options="field:'SysPrice',editor:{type:'textbox',options:{disabled:true}}" width="80">系统售价</th>
+                    <th data-options="field:'IndentNum',editor:{type:'numberbox',options:{required:true,min:1}}" width="60">数量</th>
+                    <th data-options="field:'Subtotal',formatter:function(value, row, index){return '￥'+value.toFixed(2);}" width="100">小计</th>
+                    <th data-options="field:'Detail',editor:{type:'textbox',options:{readonly:true}}" width="300">赠品</th>
+                    <th data-options="field:'Memo',editor:{type:'textbox'}" width="250">备注</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    
+</div>

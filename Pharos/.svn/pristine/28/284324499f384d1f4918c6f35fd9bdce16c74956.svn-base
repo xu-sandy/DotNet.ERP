@@ -1,0 +1,44 @@
+﻿// --------------------------------------------------
+// Copyright (C) 2015 版权所有
+// 创 建 人：蔡少发
+// 创建时间：2015-05-26
+// 描述信息：公共规则统一调用入口
+// --------------------------------------------------
+
+using System;
+using System.Linq;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System.Collections.Generic;
+using Pharos.Sys.BLL;
+namespace Pharos.Sys
+{
+    /// <summary>
+    /// 公共规则统一调用入口
+    /// todo：以下规则具体实现待系统功能开发中期再统一实现，属性名已定。
+    /// </summary>
+    public partial class SysCommonRules
+    {
+        /// <summary>
+        /// 生成新的GUID
+        /// </summary>
+        public static string GUID
+        {
+            get { return Guid.NewGuid().ToString().Replace("-", ""); }
+        }
+        public static string UserCode
+        {
+            get {
+                var usercode = new SysUserInfoBLL().GetNewUserCode().ToString();
+                var len = usercode.Length;
+                if (len < 4)
+                {
+                    for (int i = 0; i < 4-len; i++)
+                    {
+                        usercode += "0" + usercode;
+                    }
+                }
+                return new SysUserInfoBLL().GetNewUserCode().ToString(); }
+        }
+    }
+}

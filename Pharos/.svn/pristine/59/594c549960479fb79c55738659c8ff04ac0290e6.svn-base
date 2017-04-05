@@ -1,0 +1,115 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{6C84B851-267D-48E0-8BEB-6E25B8EC121F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Pharos.SyncService</RootNamespace>
+    <AssemblyName>Pharos.SyncService</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\EntityFramework.6.1.3\lib\net40\EntityFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\EntityFramework.6.1.3\lib\net40\EntityFramework.SqlServer.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Synchronization, Version=2.1.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Synchronization.Files, Version=2.1.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Synchronization.MetadataStorage, Version=2.1.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Synchronization.SimpleProviders, Version=2.1.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Exceptions\SyncException.cs" />
+    <Compile Include="Helpers\EntityHelper.cs" />
+    <Compile Include="LocalDataServices\ApiLibrarySyncLocalService.cs" />
+    <Compile Include="LocalDataServices\DeviceRegInfoSyncLocalService.cs" />
+    <Compile Include="LocalDataServices\NoticeSyncLocalService.cs" />
+    <Compile Include="LocalDataServices\SysStoreUserInfoSyncLocalService.cs" />
+    <Compile Include="LocalSyncContext.cs" />
+    <Compile Include="RemoteDataServices\ApiLibrarySyncRemoteService.cs" />
+    <Compile Include="RemoteDataServices\NoticeSyncRemoteService.cs" />
+    <Compile Include="RemoteDataServices\SysStoreUserInfoSyncRemoteService.cs" />
+    <Compile Include="SyncController.cs" />
+    <Compile Include="SyncEntities\ApiLibrary.cs" />
+    <Compile Include="SyncEntities\DeviceRegInfo.cs" />
+    <Compile Include="SyncEntities\Notice.cs" />
+    <Compile Include="SyncEntities\SysStoreUserInfo.cs" />
+    <Compile Include="SyncEntities\SyncDataObject.cs" />
+    <Compile Include="SyncProviders\CachedChangeDataRetriever.cs" />
+    <Compile Include="SyncProviders\ISyncContext.cs" />
+    <Compile Include="SyncProviders\ISyncDataObject.cs" />
+    <Compile Include="SyncProviders\ISyncDataService.cs" />
+    <Compile Include="RemoteSyncContext.cs" />
+    <Compile Include="WcfServices\IPosServerDbSyncService.cs" />
+    <Compile Include="SyncProviders\PosDbSyncProvider.cs" />
+    <Compile Include="WcfServices\PosServerDbSyncService.cs" />
+    <Compile Include="WcfServices\PosServerDbSyncServiceClient.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WcfServices\RemoteProviderProxy.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="WcfServices\SingleSyncDataObjectDataContractResolver.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <None Include="App.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Pharos.Logic.Local\Pharos.Logic.Local.csproj">
+      <Project>{62b3334d-30e8-48a8-bef0-bc545a88ee1f}</Project>
+      <Name>Pharos.Logic.Local</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Pharos.Sys\Pharos.Sys.csproj">
+      <Project>{efb916a9-b7f8-405e-bd0a-bf70ba664626}</Project>
+      <Name>Pharos.Sys</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

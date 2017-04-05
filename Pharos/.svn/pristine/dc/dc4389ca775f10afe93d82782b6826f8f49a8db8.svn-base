@@ -1,0 +1,66 @@
+﻿using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.BLL
+{
+    public class WarehouseService : BaseService<Warehouse>
+    {
+        public static List<Warehouse> GetList(bool isAll = false)
+        {
+            if (isAll)
+            {
+                var all = FindList(null);
+                all.ForEach(a => { if (a.State == 0) a.Title = "*" + a.Title; });
+                return all.OrderByDescending(a => a.State).ThenBy(a => a.Title).ToList();
+            }
+            return FindList(o => o.State == 1).OrderBy(o => o.Title).ToList();
+        }
+        /// <summary>
+        /// 用于datagrid列表
+        /// </summary>
+        /// <param name="nvl">传递条件</param>
+        /// <param name="recordCount">返回总行数</param>
+        /// <returns>list</returns>
+        public static object FindStoragePageList(NameValueCollection nvl, out int recordCount)
+        {
+            var query = CurrentRepository.QueryEntity;
+            var state = nvl["State"].IsNullOrEmpty() ? -1 : short.Parse(nvl["State"]);
+            if (state != -1)
+                query = query.Where(o => o.State == state);
+            recordCount = query.Count();
+            var list = query.ToList();
+            var parentTypes = ProductCategoryService.GetParentTypes();
+            var ls = list.Select(o => new
+            {
+                o.Id,
+                o.State,
+                o.Title,
+                o.StoreId,
+                o.CategorySN,
+                CategoryTitle = GetCategoryTitle(parentTypes, o.CategorySN),
+                StateTitle = Enum.GetName(typeof(EnableState), o.State)
+            }).ToList();
+            return ls;
+        }
+        public static string MaxSn
+        {
+            get
+            {
+                var dal = new Pharos.Logic.DAL.StoreDAL();
+                return dal.MaxSn().ToString();
+            }
+        }
+        static string GetCategoryTitle(List<ProductCategory> categorys, string sn)
+        {
+            if (sn.IsNullOrEmpty()) return "";
+            var sns = sn.Split(',').Where(o => !o.IsNullOrEmpty()).Select(o => int.Parse(o));
+            var titles = categorys.Where(o => sns.Contains(o.CategorySN)).Select(o => o.Title);
+            return string.Join(",", titles);
+        }
+    }
+
+}

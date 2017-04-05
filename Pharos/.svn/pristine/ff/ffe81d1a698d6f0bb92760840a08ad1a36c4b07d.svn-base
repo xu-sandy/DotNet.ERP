@@ -1,0 +1,56 @@
+﻿using Pharos.POS.Retailing.Models.ChildPagesModels;
+using Pharos.POS.Retailing.Models.Payment;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// Weixin.xaml 的交互逻辑
+    /// </summary>
+    public partial class Weixin : Window
+    {
+        public Weixin(BasePay payWay)
+        {
+            InitializeComponent();
+            this.InitPublicSettings();
+            CurrentViewModel = new UnionpayModel() { Receivable = payWay.ThePayDetails.MoneyNeedPay };
+            this.DataContext = CurrentViewModel;
+            CurrentPayWay = payWay;
+            
+        }
+        BasePay CurrentPayWay { get; set; }
+        UnionpayModel CurrentViewModel { get; set; }
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            this.Hide();
+            WeixinScan page = new WeixinScan(CurrentPayWay as WeixinPay);
+            page.ShowDialogInScreen(this, (o) =>
+            {
+                if (o ?? true)
+                {
+                    this.Close();
+                }
+                else
+                {
+                    this.Show();
+                }
+            });
+
+        }
+        private void btnBack_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+    }
+}

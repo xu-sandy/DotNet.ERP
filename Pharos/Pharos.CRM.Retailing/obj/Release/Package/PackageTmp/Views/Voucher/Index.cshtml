@@ -1,0 +1,122 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewBag.addText = "新增单据";
+    ViewBag.editText = "修改单据";
+    ViewBag.delText = "删除单据";
+    //ViewBag.hideDel = true;
+    //ViewBag.hideAdd=false;
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类别：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("CategoryId", ViewBag.types as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "" })
+            </td>
+            <td class="label-toolbar">
+                <label>本公司交单人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("CreateId", ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "" })
+            </td>
+            <td class="label-toolbar">
+                <label>供应商交单人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("SupplierId", ViewBag.suppliers as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "" })
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("State", ViewBag.states as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "" })
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-ok'" onclick="auditPass()">审核通过</a>
+    @if(Request["store"]==null)
+    { 
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-category'" onclick="voucherType()">单据类别</a>
+    }
+}
+
+<script type="text/javascript">
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'SourceTitle', title: '来源', width: 80 },
+        { field: 'CategoryTitle', title: '类别', width: 120 },
+        { field: 'CreateDT', title: '交单日期', width: 150 },
+        { field: 'Pages', title: '张数', width: 60 },
+        { field: 'Number', title: '单据编号', width: 100 },
+        { field: 'Amount', title: '单据金额', width: 100 },
+        { field: 'Title', title: '抬头', width: 150 },
+        { field: 'Memo', title: '备注', width: 150 },
+        { field: 'CreateTitle', title: '交单人', width: 100 },
+        { field: 'StateTitle', title: '状态', width: 80 }
+    ]];
+    function closeDialog() {
+        $.post("@Url.Action("GetList", "VoucherType")", {t:Math.random()}, function (data) {
+            $("#CategoryId").combobox("loadData", data);
+        }, "json");
+    }
+    function voucherType() {
+        openDialog("单据类别", "@Url.Action("Save", "VoucherType")",600,350,true);
+
+    }
+    function removeBefore(row) {
+        if (row.StateTitle == "已审核") {
+            $.messager.alert("提示", "已审核不能删除!", "warning");
+            return false;
+        }
+        return true;
+    }
+    function editBefore(row) {
+        if (row.StateTitle == "已审核") {
+            //$.messager.alert("提示", "已审核不能修改!", "warning");
+            openDialog("查看详情", "@Url.Action("Detail")?id=" + row.Id + "&t=" + Math.random(), 600, 350, true);
+            return false;
+        }
+        return true;
+    }
+    function auditPass() {
+        var rows= pharos.manager.$dg.datagrid("getChecked");
+        if (!rows || rows.length == 0) {
+            $.messager.alert('提示', '请选择要审批的项');
+            return;
+        }
+        var ids= $.map(rows, function (row) {
+            return row.Id;
+        }).join(",");
+        $.post("@Url.Action("Auditor")", {ids:ids,t:Math.random()}, function (d) {
+            if (d.successed) {
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "审批失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog(this.addText, this.editurlNocache(), 680, 400);
+    }
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        openDialog(this.editText, this.editurlNocache(), 680, 400);
+    }
+
+    //pharos.manager.addItem = function () {
+    //    openDialog420(this.addText, this.editurlNocache());
+    //}
+    //pharos.manager.editItem = function (Id) {
+    //    this.Id = Id;
+    //    openDialog420(this.editText, this.editurlNocache());
+    //}
+</script>

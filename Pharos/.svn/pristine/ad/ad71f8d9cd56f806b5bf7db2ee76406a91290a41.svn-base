@@ -1,0 +1,54 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Sys;
+using Pharos.Utility;
+
+namespace Pharos.Logic.BLL
+{
+    /// <summary>
+    /// 卡类型Bll
+    /// </summary>
+    public class CardInfoBLL
+    {
+        CardInfoService _service = new CardInfoService();
+        /// <summary>
+        /// 查询现有卡类型
+        /// </summary>
+        /// <returns></returns>
+        public object FindMemberCardTypeList(out int count)
+        {
+            return _service.FindMemberCardTypeList(out count);
+        }
+        /// <summary>
+        /// 新建卡类型
+        /// </summary>
+        /// <param name="cardInfo"></param>
+        /// <returns></returns>
+        public OpResult CreateMemberCardType(CardInfo cardInfo)
+        {
+            cardInfo.CardTypeId = SysCommonRules.GUID;
+            cardInfo.CreateDT = DateTime.Now;
+            cardInfo.CreateUID = Sys.CurrentUser.UID;
+            cardInfo.CompanyId = CommonService.CompanyId;
+            return _service.CreateMemberCardType(cardInfo);
+        }
+        /// <summary>
+        /// 设置卡类型状态
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public OpResult UpdateCardState(short state, string ids)
+        {
+            return _service.UpdateState(state, ids);
+        }
+
+        public List<CardInfo> GetAllMemberCardType()
+        {
+            return _service.GetAllMemberCardType();
+        }
+    }
+}

@@ -1,0 +1,133 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.活动推送_编辑推送);
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.活动推送_移除推送);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增推送", delText: "移除推送", hideDel: hideDel, hideAdd: hideAdd));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol font-12" placeholder="内容" />
+            </td>
+        </tr>
+    </table>
+}
+
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-released'" onclick="pushNow()">设为已推送</a>
+}
+<script>
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true, width: 30 },
+        { field: 'Type', title: '推送方式', width: 200 },
+        { field: 'Content', title: '推送消息', width: 589 },
+        { field: 'CreateDT', title: '创建时间', width: 150 },
+        {
+            field: 'State', title: '状态', width: 100, formatter: function (value, row) {
+                switch (value) {
+                    case 1: return '已推送';
+                    case 0: return '未推送';
+                    default: return '';
+                }
+            }
+        },
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = '';
+        openWin({ 'title': '新增推送', 'width': 640, 'height': 300, 'url': this.editurlNocache(), buttons: btns });
+    };
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        openWin({ 'title': '修改推送', 'width': 640, 'height': 300, 'url': this.editurlNocache(), buttons: btns });
+    }
+
+    var btns = [{
+        text: '推送',
+        iconCls: 'icon-ok',
+        id: "lbsave",
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form #State').val(1);
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+        }
+    }, {
+        text: '保存',
+        iconCls: 'icon-save',
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+        }
+    },
+    {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () { pharos.easyui.dialog.topClose("formDiv"); }
+    }]
+
+    //根据推送发送状态改变打开编辑或详情框
+    function editBefore(row) {
+        if (row.State === 1) {
+            openDialogNew('推送详情', '@Url.Action("Detail")?id=' + row.Id, 640, 565, true, true);
+            return false;
+        }
+        @if(hideAdd)
+        {
+        @:return false;
+        }
+        return true;
+    }
+
+    function removeBefore(row) {
+        if (row.State != 0) {
+            $.messager.alert('提示', '只能移除未推送的消息！', 'info');
+            return false;
+        }
+        return true;
+    }
+
+    function pushNow() {
+        var rows = $("#grid").datagrid('getChecked');
+        if (!rows || rows.length == 0) {
+            $.messager.alert('提示', '请选择要推送的项！');
+            return false;
+        }
+        else {
+            var ids = [];
+            $.each(rows, function (i, r) {
+                if (r.State != 0) {
+                    $.messager.alert('提示', '只能推送未推送的项！');
+                    return false;
+                }
+                ids.push(r.Id);
+            });
+            $.messager.confirm('提示', "是否确定推送这些消息？", function (r) {
+                if (!r) {
+                    return r;
+                }
+                $.ajax({
+                    url: '@Url.Action("PushNow")',
+                    data: { Ids: ids, t: Math.random() },
+                    type: "POST",
+                    traditional: true, //使用数组
+                    dataType: "json",
+                    success: function (d) {
+                        if (d.successed) {
+                            $.messager.alert("提示", "已处理！", "info");
+                            pharos.manager.gridReload();
+                        } else {
+                            $.messager.alert("提示", "处理失败！" + d.message, "error");
+                        }
+                    },
+                    error: function () {
+                        $.messager.alert("错误", "处理失败！", "error");
+                    }
+                });
+            });
+        }
+    }
+</script>

@@ -1,0 +1,53 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.Logic.DAL;
+using Pharos.SyncService.Exceptions;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.SyncService.RemoteDataServices
+{
+    public class MemberIntegralPageageSyncRemoteService : ISyncDataService
+    {
+        public Microsoft.Synchronization.SyncDirectionOrder SyncDirectionOrder
+        {
+            get { return Microsoft.Synchronization.SyncDirectionOrder.Download; }
+        }
+
+        public IEnumerable<ISyncDataObject> GetSyncObjects(int companyId, string storeId)
+        {
+            throw new SyncException("用户积分数据不允许删除远程数据");
+        }
+
+        public ISyncDataObject GetItem(Guid guid, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+            {
+               
+                throw new SyncException("获取销售数据包失败！");
+            }
+        }
+
+        public byte[] CreateItem(ISyncDataObject data, Guid guid, int companyId, string storeId)
+        {
+            throw new SyncException("用户积分数据不允许删除远程数据");
+        }
+
+        public byte[] UpdateItem(Guid guid, ISyncDataObject mergedData, int companyId, string storeId)
+        {
+            throw new SyncException("用户积分数据不允许删除远程数据");
+        }
+
+        public void DeleteItem(Guid syncItemId, int companyId, string storeId)
+        {
+            throw new SyncException("用户积分数据不允许删除远程数据");
+        }
+
+        public ISyncDataObject Merge(ISyncDataObject syncDataObject1, ISyncDataObject syncDataObject2, int companyId, string storeId)
+        {
+            return syncDataObject1;
+        }
+    }
+}

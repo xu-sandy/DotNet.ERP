@@ -1,0 +1,72 @@
+﻿@model Pharos.Logic.Entity.MembershipCard
+@{
+    ViewBag.Title = "CreateRecharge";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">卡号：</td>
+                    <td class="input"><input type="text" id="cardNo" class="easyui-textbox" value="@Model.CardSN" /></td>
+                    <td class="name">批次：</td>
+                    <td class="input"><label id="batch"> @Model.BatchSN</label></td>
+
+                </tr>
+                <tr>
+                    <td class="name">持卡人：</td>
+                    <td class="input"><input id="memberId" name="memberId" /></td>
+                    <td class="name">押金：</td>
+                    <td class="input"><input type="text" name="Deposit" id="deposit" class="easyui-textbox" value="@Model.Deposit" /></td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+
+        $("#cardNo").textbox({
+            onChange: function (n, o) {
+                if (n.length == 19) {
+                    $.post("@Url.Action("GetMembersCardByCardSn")", { cardSn: n }, function (data) {
+                        if (data == undefined || data == "") {
+                            $.messager.alert("提示", "未找到该会员卡信息！", "info");
+                            return false;
+                        }
+                        $("#batch").html(data.Batch);
+                        $("#memberId").combobox("setValue", data.RealName);
+                        $("#deposit").textbox("setValue", data.Deposit);
+                    }, "json");
+                }
+            }
+        });
+        //选人
+        $("#memberId").combobox({
+            url: '',
+            valueField: 'MemberId',
+            textField: 'Name',
+            mode: 'remote',
+            loader: function (param, success, error) {
+                var q = param.q || "";
+                if (q.length >= 0) {
+                    $.ajax({
+                        url: '@Url.Action("GetMembersBySearch")',
+                        type: "POST",
+                        data: { param: q },
+                        dataType: "json",
+                        success: function (data) {
+                            var items = $.each(data, function (value) {
+                                return value;
+                            });
+                            success(items);
+                        }
+                    })
+                }
+            }
+        });
+    })
+</script>

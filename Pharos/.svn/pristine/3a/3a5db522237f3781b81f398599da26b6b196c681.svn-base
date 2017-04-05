@@ -1,0 +1,69 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Models.Payment
+{
+    public class MultiModePay : BasePay
+    {
+        public MultiModePay()
+        {
+            base.Title = "多方式支付";
+            base.ApiCode = -1;
+        }
+
+        public decimal UnionPay { get; set; }
+
+        public decimal CashPay { get; set; }
+
+        public decimal Zhifubao { get; set; }
+
+        public decimal Weixin { get; set; }
+
+
+        public decimal Chuzhika { get; set; }
+
+        public decimal Daijinquan { get; set; }
+
+        public string CuzhikaNo { get; set; }
+
+        public string BankCardNo { get; set; }
+        public override BasePay Pay(PayDetails info)
+        {
+            base.Pay(info);
+            //Todo:自动打开钱箱
+            //ToDo:设置打印小票
+            return this;
+        }
+
+        protected internal override void SetComplete()
+        {
+            var cashPay = new CashPay();
+            cashPay.Pay(new PayDetails()
+            {
+                MoneyNeedPay = CashPay,
+                IsReturnProduct = ThePayDetails.IsReturnProduct,
+                Remark = ThePayDetails.Remark,
+                PaySN = ThePayDetails.PaySN,
+                SaleManUid = ThePayDetails.SaleManUid,
+                Unit = "元"
+            });
+            cashPay.SaveRecord();
+
+            var unionPay = new UnionPay();
+            unionPay.Pay(new PayDetails()
+            {
+                MoneyNeedPay = UnionPay,
+                IsReturnProduct = ThePayDetails.IsReturnProduct,
+                Remark = ThePayDetails.Remark,
+                PaySN = ThePayDetails.PaySN,
+                SaleManUid = ThePayDetails.SaleManUid,
+                CardNo = BankCardNo,
+                Unit = "元"
+            });
+            unionPay.SaveRecord();
+            base.SetComplete();
+        }
+    }
+}

@@ -1,0 +1,64 @@
+﻿using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.POS.Retailing.ObjectModels;
+using System.Threading.Tasks;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    /// <summary>
+    /// 挂单清单
+    /// </summary>
+    public class HandBillList : BaseViewModel
+    {
+        public HandBillList()
+        {
+            try
+            {
+                var _machinesInfo = Global.MachineSettings.MachineInformations;
+                Task.Factory.StartNew(() =>
+                {
+                    BaseApiParams _params = new BaseApiParams() { StoreId = _machinesInfo.StoreId, MachineSn = _machinesInfo.MachineSn };
+                    var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<IEnumerable<ApiHandBillListReturn>>>(@"api/HandBillList", _params);
+
+                    Application.Current.Dispatcher.Invoke(new Action(() =>
+                     {
+                         if (result.Code == "200")
+                         {
+
+                             OrderItems = result.Result;
+
+                         }
+                         else
+                         {
+                             Toast.ShowMessage(result.Message, CurrentWindow);
+                         }
+                     }));
+                });
+            }
+            catch (Exception ex)
+            {
+                Toast.ShowMessage(ex.Message, CurrentWindow);
+            }
+
+        }
+        /// <summary>
+        /// 网格双向绑定值
+        /// </summary>
+        private IEnumerable<ApiHandBillListReturn> orderItems;
+
+        public IEnumerable<ApiHandBillListReturn> OrderItems
+        {
+            get { return orderItems; }
+            set { orderItems = value; this.OnPropertyChanged(o => o.OrderItems); }
+        }
+
+
+
+
+
+    }
+}

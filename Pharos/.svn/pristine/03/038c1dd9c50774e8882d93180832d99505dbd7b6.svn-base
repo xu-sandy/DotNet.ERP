@@ -1,0 +1,40 @@
+﻿using System;
+using System.Linq;
+using System.Collections.Generic;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.BLL
+{
+    public class ApiLibraryService : BaseService<Entity.ApiLibrary>
+    {
+        public static IEnumerable<dynamic> ApiLibraryPageList(short? apiType, string keyword, out int recordCount)
+        {
+            
+            var query = from x in CurrentRepository.QueryEntity
+                        where x.CompanyId==CommonService.CompanyId
+                        select new
+                        {
+                             ApiTypeTitle= (from y in SysDataDictService.CurrentRepository.QueryEntity
+                                           where y.DicPSN==10 && y.DicSN==x.ApiType && y.CompanyId==x.CompanyId
+                                           select y.Title).FirstOrDefault(),
+                            x.Id,
+                            x.ApiType,
+                            x.ApiCode,
+                            x.Title,
+                            x.ApiUrl,
+                            x.State
+                        };
+
+            if (apiType.HasValue)
+                query = query.Where(o => o.ApiType == apiType.Value);
+            if(!string.IsNullOrWhiteSpace(keyword))
+            {
+                int code=0;
+                int.TryParse(keyword,out code);
+                query = query.Where(o => o.Title.Contains(keyword) || o.ApiCode == code);
+            }
+            recordCount = query.Count();
+            var list= query.ToPageList();
+            return list;
+        }
+    }
+}

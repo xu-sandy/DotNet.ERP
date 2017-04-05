@@ -1,0 +1,98 @@
+﻿<Window xmlns:Retailing="clr-namespace:Pharos.POS.Retailing"  x:Class="Pharos.POS.Retailing.ChildPages.ChuRuKuanCaoZou"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:rules="clr-namespace:Pharos.POS.Retailing.Models.DataRules"
+        xmlns:Helpers="clr-namespace:Pharos.POS.Retailing.Helper"
+        
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="600" Height="420" Icon="..\Images\churukuan.png"
+        Title="出入款操作"  WindowState="Normal" WindowStyle="None"  Style="{DynamicResource SkinWindowStyle}"
+        AllowsTransparency="True"  WindowStartupLocation="CenterScreen"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" 
+        Background="Transparent" BorderBrush="Transparent"
+        Name="mainWindow">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\ChuKunCaoZouStyle.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="..\Styles\BaseStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="130"></ColumnDefinition>
+            <ColumnDefinition Width="160"></ColumnDefinition>
+            <ColumnDefinition Width="140"></ColumnDefinition>
+            <ColumnDefinition Width="160"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="10"></RowDefinition>
+            <RowDefinition Height="40"></RowDefinition>
+            <RowDefinition Height="40"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="10*"></RowDefinition>
+            <RowDefinition Height="120"></RowDefinition>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Column="0" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" TextAlignment="Center">POS机号：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <TextBlock Text="{Binding MachineId}" Style="{StaticResource txtBase}" TextAlignment="Center"></TextBlock>
+        </StackPanel>
+
+        <StackPanel Grid.Column="0" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" Grid.Column="0" Grid.Row="1">单位：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Grid.Row="2" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" TextAlignment="Center">元</TextBlock>
+        </StackPanel>
+
+        <StackPanel Grid.Column="0" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" Grid.Column="0" Grid.Row="2">金额：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Grid.Row="3" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <TextBox TabIndex="1" Width="160" Style="{StaticResource txtJine}" TextAlignment="Center" Height="30"  PreviewGotKeyboardFocus="TextBox_PreviewGotKeyboardFocus">
+                <TextBox.Text>
+                    <Binding Path="JineStr" UpdateSourceTrigger="LostFocus" ValidatesOnDataErrors="True" Converter="{StaticResource decimalStringFormatConverter}">
+                        <Binding.ValidationRules>
+                            <rules:DoubleRules MinValue="0" MinErrorInfo="出款金额不能为负数！" NaNErrorInfo="请输入正确的出款金额！" ></rules:DoubleRules>
+                        </Binding.ValidationRules>
+                    </Binding>
+                </TextBox.Text>
+            </TextBox>
+        </StackPanel>
+
+
+
+
+        <StackPanel Grid.Column="2" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" TextAlignment="Center">收银员：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="3" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <TextBlock Text="{Binding UserName}" Style="{StaticResource txtBase}" TextAlignment="Center"></TextBlock>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" Grid.Column="0" Grid.Row="1">币种：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="3" Grid.Row="2" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" TextAlignment="Center">人民币</TextBlock>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" Grid.Column="0" Grid.Row="2">日期：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="3" Grid.Row="3" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <TextBlock Text="{Binding OperatTime,StringFormat=yyyy-MM-dd}" Style="{StaticResource txtBase}" TextAlignment="Center"></TextBlock>
+        </StackPanel>
+
+        <StackPanel Grid.Column="0" Grid.Row="4" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource txtBase}" Grid.Column="0" Grid.Row="3">密码：</TextBlock>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Grid.Row="4" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <PasswordBox TabIndex="2" Height="30" Width="160" Helpers:PasswordBoxBindingHelper.IsPasswordBindingEnabled="True" Helpers:PasswordBoxBindingHelper.BindedPassword="{Binding Path=Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"></PasswordBox>
+        </StackPanel>
+        <Button Grid.Column="1" Grid.Row="6" TabIndex="3" Width="130" Height="50" Style="{StaticResource BtnOkStyle}" Command="{Binding OpeateRuKuan}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}">入款</Button>
+        <Button  Grid.Column="2" Grid.Row="6"  TabIndex="4" Width="130" Height="50" Style="{StaticResource BtnOkStyle}" Command="{Binding OpeateChuKuan}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}">出款</Button>
+    </Grid>
+</Window>

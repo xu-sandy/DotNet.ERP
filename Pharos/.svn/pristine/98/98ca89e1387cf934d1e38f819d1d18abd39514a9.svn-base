@@ -1,0 +1,121 @@
+﻿
+using Newtonsoft.Json;
+using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.Utility;
+using System;
+using System.IO;
+using System.Net;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+namespace Pharos.POS.Retailing.Models.Payment
+{
+    public delegate void PayComplete();
+    public class ZhiFuBaoPay : BasePay
+    {
+        private bool isComplete = false;
+        public ZhiFuBaoPay()
+        {
+            base.Title = "支付宝扫码";
+            base.ApiCode = 14;
+            base.ApiUrl = ApiLibraryLocalService.GetApiUrl(ApiCode);
+        }
+        public override BasePay Pay(PayDetails info)
+        {
+            base.Pay(info);
+            //Todo:自动打开钱箱
+            //ToDo:设置打印小票
+
+            return this;
+        }
+        public event PayComplete PayEnvent;
+        public string Request()
+        {
+            var request = (HttpWebRequest)WebRequest.Create(Path.Combine(ApiUrl, "Qrcode/QrcodePay"));
+
+            string msg = string.Format("paySN={0}&totalPrice={1}", ThePayDetails.PaySN, ThePayDetails.MoneyNeedPay);
+            request.Method = "POST";
+            request.ContentType = "application/x-www-form-urlencoded";
+            byte[] data = System.Text.Encoding.UTF8.GetBytes(msg);
+            request.ContentLength = data.Length;
+            var reqStream = request.GetRequestStream();
+            reqStream.Write(data, 0, data.Length);
+            reqStream.Close();
+            Wait();
+            try
+            {
+                //获取服务端返回
+                var response = (HttpWebResponse)request.GetResponse();
+                //获取服务端返回数据
+                StreamReader sr = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+                var result = sr.ReadToEnd().Trim();
+                sr.Close();
+                var op = JsonConvert.DeserializeObject<OpResult>(result);
+                if (op.Successed)
+                    return op.Message;
+                else
+                {
+                    Toast.DoShow("支付请求失败！");
+                    return "";
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Toast.DoShow("支付请求失败！");
+                return "";
+            }
+        }
+
+        private void Wait()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                while (!isComplete)
+                {
+                    Thread.Sleep(500);
+                    string url = string.Format("{0}Qrcode/GetStatus?apicode={1}&paysn={2}", PosMachineInfo.Infos.ServerUrl, base.ApiCode, ThePayDetails.PaySN);
+                    var request = (HttpWebRequest)WebRequest.Create(url);
+                    request.Method = "Get";
+                    try
+                    {
+                        //获取服务端返回
+                        var response = (HttpWebResponse)request.GetResponse();
+                        //获取服务端返回数据
+                        StreamReader sr = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+                        var result = Convert.ToInt32(sr.ReadToEnd().Trim());
+                        sr.Close();
+                        switch (result)
+                        {
+                            case 1:
+                                SetComplete();
+                                break;
+                            case -1:
+                                isComplete = true;
+                                Toast.DoShow("支付失败！");
+                                break;
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+
+                    }
+                }
+            });
+        }
+        protected internal override void SetComplete()
+        {
+            isComplete = true;
+            Application.Current.Dispatcher.Invoke(new Action(() =>
+            {
+                base.SaveRecord();
+                base.SetComplete();
+                PayEnvent();
+            }));
+
+        }
+    }
+}

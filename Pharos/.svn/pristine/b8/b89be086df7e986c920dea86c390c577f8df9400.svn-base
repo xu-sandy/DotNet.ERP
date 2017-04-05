@@ -1,0 +1,33 @@
+﻿using SuperSocket.ClientEngine.Protocol;
+using SuperSocket.ProtoBase;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.DataSynchronism.Protocol
+{
+    public abstract class BaseDataSyncReceiveFilter<TResponseInfo> : BeginEndMarkReceiveFilter<TResponseInfo> where TResponseInfo : IPackageInfo
+    {
+
+        protected TResponseInfo NullResponseInfo = default(TResponseInfo);
+
+        public BaseDataSyncReceiveFilter(byte[] beginMark, byte[] endMark)
+            : base(beginMark, endMark)
+        {
+
+        }
+
+        public override TResponseInfo ResolvePackage(IBufferStream bufferStream)
+        {
+            List<byte> buffer = new List<byte>();
+            foreach (var item in bufferStream.Buffers)
+            {
+                buffer = buffer.Concat(item.Array).ToList();
+            }
+            return ProcessMatchedRequest(buffer.ToArray(), 0, bufferStream.Length);
+        }
+
+        protected abstract TResponseInfo ProcessMatchedRequest(byte[] readBuffer, long offset, long length);
+    }
+}

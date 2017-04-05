@@ -1,0 +1,115 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Web.Mvc;
+using System.Data;
+using System.Reflection;
+
+namespace Pharos.Logic.OMS
+{
+    public static class Tool
+    {
+        /// <summary>
+        /// List转换 SelectListItem
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="t"></param>
+        /// <param name="text">文本</param>
+        /// <param name="value">值</param>
+        /// <param name="firstTitle">第一个文本</param>
+        /// <param name="emptyValue">第一个值</param>
+        /// <param name="selectValue">选中值</param>
+        /// <returns></returns>
+        public static List<SelectListItem> CreateSelect<T>(this IList<T> t, string text, string value, string firstText = "", string firstValue = "", string selectValue="")
+        {
+            List<SelectListItem> l = new List<SelectListItem>();
+            if (!String.IsNullOrEmpty(firstText))
+            {
+                l.Add(new SelectListItem { Text = firstText, Value = firstValue });
+            }
+            foreach (var item in t)
+            {
+                var propers = item.GetType().GetProperty(text);
+                var valpropers = item.GetType().GetProperty(value);
+                l.Add(new SelectListItem { Text = propers.GetValue(item, null).ToString(), Value = valpropers.GetValue(item, null).ToString(), Selected = valpropers.GetValue(item, null).ToString()==selectValue });
+            }
+            return l;
+        }
+
+        /// <summary>
+        /// DataTable转换成List
+        /// </summary>
+        /// <param name="dt"></param>
+        /// <returns></returns>
+        public static List<T> ConvertToList<T>(DataTable dt) where T : new()
+        {
+
+            // 定义集合
+            List<T> ts = new List<T>();
+
+            // 获得此模型的类型
+            Type type = typeof(T);
+            //定义一个临时变量
+            string tempName = string.Empty;
+            //遍历DataTable中所有的数据行
+            foreach (DataRow dr in dt.Rows)
+            {
+                T t = new T();
+                // 获得此模型的公共属性
+                PropertyInfo[] propertys = t.GetType().GetProperties();
+                //遍历该对象的所有属性
+                foreach (PropertyInfo pi in propertys)
+                {
+                    tempName = pi.Name;//将属性名称赋值给临时变量
+                    //检查DataTable是否包含此列（列名==对象的属性名）  
+                    if (dt.Columns.Contains(tempName))
+                    {
+                        // 判断此属性是否有Setter
+                        if (!pi.CanWrite) continue;//该属性不可写，直接跳出
+                        //取值
+                        object value = dr[tempName];
+                        //如果非空，则赋给对象的属性
+                        if (value != DBNull.Value)
+                            pi.SetValue(t, value, null);
+                    }
+                }
+                //对象添加到泛型集合中
+                ts.Add(t);
+            }
+
+            return ts;
+
+        }
+
+        /// <summary>
+        /// 获取列名
+        /// </summary>
+        /// <param name="isDelfirst">删除列</param>
+        /// <param name="dt"></param>
+        /// <returns>多个列名“，”隔开</returns>
+        public static List<string> getColumnName(DataTable dt, int[] delCol)
+        {
+            List<string> list = new List<string>();
+            if (dt.Columns.Count > 0)
+            {
+                for (int i = 0; i < dt.Columns.Count; i++)
+                {
+                    if (delCol.Contains(i))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        list.Add(dt.Columns[i].ColumnName);
+                    }
+                }
+                return list;
+            }
+            else
+            {
+                return null;
+            }
+        }
+    }
+}

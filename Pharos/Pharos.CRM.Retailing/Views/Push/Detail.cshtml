@@ -1,0 +1,106 @@
+﻿@model Push
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style>
+</style>
+
+<div>
+    <table style="margin: 10px;height: 110px;">
+        <tr>
+            <td width="60" align="right">
+                <label>推送消息：</label>
+            </td>
+            <td>
+                @Html.DisplayTextFor(a => a.Content)
+            </td>
+        </tr>
+    </table>
+    <div id="tabs" class="easyui-tabs" data-options="" style="width:100%;height:350px;">
+        <div title="手机">
+            <table id="tb1"></table>
+        </div>
+        <div title="Email">
+            <table id="tb2"></table>
+        </div>
+        <div title="微信">
+            <table id="tb3"></table>
+        </div>
+    </div>
+</div>
+
+<script>
+    var $table1 = $('#tb1');
+    var $table2 = $('#tb2');
+    var $table3 = $('#tb3');
+    $(function () {
+        $table1.datagrid({
+            url: '@Url.Action("GetPushResult")',
+            queryParams: { pushId: '@Model.PushId', typeStr: 'mobile' },
+            border: false,
+            fit: true,
+            fitColumns: true,
+            pagination: true,
+            rownumbers: true,
+            columns: [[
+                { field: 'RealName', title: '会员名称', width: 100 },
+                { field: 'MobilePhone', title: '手机号', width: 100 },
+                {
+                    field: 'State', title: '推送状态', width: 100, formatter: function (value, row) {
+                        switch (value) {
+                            case 0: return '待发送';
+                            case 1: return '成功';
+                            default: return '';
+                        }
+                    }
+                },
+            ]]
+        });
+        $table2.datagrid({
+            url: '@Url.Action("GetPushResult")',
+            queryParams: { pushId: '@Model.PushId', typeStr: 'email' },
+            border: false,
+            fit: true,
+            fitColumns: true,
+            pagination: true,
+            rownumbers: true,
+            columns: [[
+                { field: 'RealName', title: '会员名称', width: 100 },
+                { field: 'Email', title: 'Email', width: 100 },
+                {
+                    field: 'State', title: '推送状态', width: 100, formatter: function (value, row) {
+                        switch (value) {
+                            case 0: return '待发送';
+                            case 1: return '成功';
+                            default: return '';
+                        }
+                    }
+                },
+            ]]
+        });
+        $table3.datagrid({
+            url: '@Url.Action("GetPushResult")',
+            queryParams: { pushId: '@Model.PushId', typeStr: 'weixin' },
+            border: false,
+            fit: true,
+            fitColumns: true,
+            pagination: true,
+            rownumbers: true,
+            columns: [[
+                { field: 'Weixin', title: '公众号', width: 100 },
+                { field: 'RealName', title: '粉丝昵称', width: 100 },
+                {
+                    field: 'State', title: '推送状态', width: 100, formatter: function (value, row) {
+                        switch (value) {
+                            case 0: return '待发送';
+                            case 1: return '成功';
+                            default: return '';
+                        }
+                    }
+                },
+            ]]
+        });
+    })
+</script>

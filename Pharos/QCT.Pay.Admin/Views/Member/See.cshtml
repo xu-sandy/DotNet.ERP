@@ -1,0 +1,101 @@
+﻿@{
+    ViewBag.Title = "View";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideSearch:true, searchHeight: 87));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+<div>
+    <form id="frmsearch">
+        @*客户类型*@
+        <input type="hidden" name="BusinessModeId" value="@ViewBag.kh" />
+        @*跟进状态*@
+        <input type="hidden" name="TrackStautsId" value="@ViewBag.gj" />
+        @*支付类型*@
+        <input type="hidden" name="pay" value="@ViewBag.zf" />
+        @*业务员*@
+        <input type="hidden" name="AssignerUID" value="@ViewBag.UserId" />
+        @*省份*@
+        <input type="hidden" name="CurrentProvinceId" value="@ViewBag.CurrentProvinceId" />
+        @*城市*@
+        <input type="hidden" name="CurrentCityId" value="@ViewBag.CurrentCityId" />
+        @*登记日期（开始）*@
+        <input type="hidden" name="CreateDT_begin" value="@ViewBag.CreateDT_begin" />
+        @*登记日期（结束）*@
+        <input type="hidden" name="CreateDT_end" value="@ViewBag.CreateDT_end" />
+        @*经营范围*@
+        <input type="hidden" name="BusinessScopeId" value="@ViewBag.BusinessScopeId" />
+    </form>
+</div>
+}
+@section toolbar
+{
+}
+<script type="text/javascript">
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+
+    pharos.manager.frozenColumns = [[
+        { field: 'FullName', title: '业务员', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Title', title: '跟进状态', editor: { type: 'text', required: true }, width: 80 },
+        {
+                    field: 'Status', title: '状态', editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) {
+                        if (value == "0") {
+                            return "未审核";
+                        } else if (value == "1") {
+                            return "已审核";
+                        } else {
+                            return "无效";
+                        }
+                    }
+        },
+        { field: 'CID', title: '商户号', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'khTitle', title: '客户名称', editor: { type: 'text', required: true }, width: 100 }
+    ]];
+
+    pharos.manager.columns = [[
+        { field: 'khType', title: '客户类型', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'city', title: '城市', editor: { type: 'text', required: true }, width: 80 },
+        { field: 'tType', title: '客户分类', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'bCategory', title: '经营类别', editor: { type: 'text', required: true }, width: 400 },
+        { field: 'ExistStoreNum', title: '门店数量', editor: { type: 'text', required: true }, width: 120 },
+        {
+            field: 'oList', title: '采购需求', editor: { type: 'text', required: true }, width: 200, formatter: function (value, row, index) {
+                if (value == "" || value == null) {
+                    return "无";
+                }
+                else {
+                    var v = value.replace(/,/g, '<br />');
+                    return v;
+                }
+            }
+        },
+        { field: 'LinkMan', title: '联系人', editor: { type: 'text', required: true }, width: 90 },
+        { field: 'MobilePhone', title: '电话/手机', editor: { type: 'text', required: true }, width: 110 },
+        { field: 'CreateDT', title: '登记时间', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'cFullName', title: '登记人', editor: { type: 'text', required: true }, width: 90 }
+    ]];
+
+    pharos.manager.editItem = function (id, row) {
+
+    }
+
+    $(function () {
+        $("#toolbar").html("");
+        $("#toolbar").attr("style", "padding:0px;");
+    });
+
+</script>
+
+

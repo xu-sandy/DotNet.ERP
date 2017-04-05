@@ -1,0 +1,52 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using Pharos.Wpf.Extensions;
+using Pharos.POS.Retailing.ObjectModels;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// App.xaml 的交互逻辑
+    /// </summary>
+    public partial class App : Application
+    {
+        public App()
+        {
+            this.DefaultSettings();
+            this.Startup += App_Startup;
+
+        }
+
+        void App_Startup(object sender, StartupEventArgs e)
+        {
+            if (e.Args.Length == 0 || e.Args[0] != "Restart")
+            {
+                string path = System.Reflection.Assembly.GetEntryAssembly().Location;
+                var arr = System.Diagnostics.Process.GetProcessesByName("Pharos.POS.Retailing");
+                if (arr.Length > 1)
+                {
+                    Application.Current.Shutdown();
+                }
+                if (Global.MachineSettings != null && Global.MachineSettings.Enable)
+                {
+                    this.StartupUri = new Uri("Login.xaml", UriKind.Relative);
+                }
+                else
+                {
+                    this.StartupUri = new Uri("MachineSettings.xaml", UriKind.Relative);
+                }
+            }
+        }
+
+        private void Application_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            var win = Application.Current.MainWindow;
+            e.Handled = true;
+        }
+    }
+}

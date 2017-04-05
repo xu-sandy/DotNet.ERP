@@ -1,0 +1,153 @@
+﻿<div id="winpop">
+    <div class="close" onclick="$('#winpop').animate({ bottom: 0 })"></div>
+    <div class="cpm">
+        <ul class="nav">
+            <li id="stockout" data-active="stockout" class="active"><a>缺货提醒</a></li>
+            <li data-active="activity" class="nor"><a>活动提醒</a></li>
+            @*<li data-active="receive" class="nor"><a>收货提醒</a></li>*@  @*总部不需要收货提醒*@
+            <li data-active="contract" class="nor"><a>合同到期提醒</a></li>
+            <li data-active="expiration" class="nor nor-1"><a>保质到期提醒</a></li>
+        </ul>
+        <div id="remind_item_div">
+            <p class="notice-item" onclick="NoticeDetail()"></p>
+        </div>
+    </div>
+</div>
+
+<div id="noticeDetail" class="easyui-window" data-options="closed:true,title:'详情' " style="margin:0 auto; padding:20px; line-height:25px; text-align:center; ">
+    <table style="border-color:#797979; border-collapse: collapse; ">
+        <thead>
+            <tr>
+                <td class="left_td">
+                    <label></label>
+                </td>
+                <td class="right_td">
+                    <label></label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" class="right_td">
+                    <div id="remind_detail_div" style="width:400px;"></div>
+                </td>
+            </tr>
+
+        </thead>
+    </table>
+</div>
+
+<script type="text/javascript">
+    var reminDetailArry = new Array();
+    var $remindItemDiv = $("#remind_item_div");
+    $(function () {
+        $(".nav li").click(function () {
+            $(".nav li").removeClass();
+            $(".nav li").addClass("nor");
+            $(this).removeClass();
+            $(this).addClass("active");
+            loadRemindData();
+        });
+        $(".nav li").each(function (index, el) {
+            var type = $(el).attr("data-active");
+            $.ajax({
+                url: '@Url.Action("GetRemind","Home")',
+                data: { type: type },
+                async: false,
+                type: 'post',
+                success: function (remindList) {
+                    if (remindList.length == 0) {
+                        $(el).remove(); 
+                        if ($(".nav li").length == 0) {
+                            $("#winpop").css('display', 'none');
+                        }
+                    }
+                }
+            })
+
+        })
+        if ($(".nav li").length > 0) {
+            $(".nav li:first").trigger('click');
+        }
+        //轮询获得提醒(间隔10分钟)
+        window.setInterval(loadRemindData, 6000000);
+
+    });
+
+    function loadRemindData() {
+        reminDetailArry = [];
+        $remindItemDiv.html('');
+        var type = $(".active").attr("data-active");
+        //加载相应的提醒
+        if (type != "activity") {
+            $.ajax({
+                url: '@Url.Action("GetRemind","Home")',
+                data: { type: type },
+                type: 'post',
+                success: function (remindList) {
+                    $.each(remindList, function (index, remind) {
+                        if (index >= 6) return;
+                        var remindHtml = '<p class="notice-item" onclick="NoticeDetail(' + index + ')">' + remind.Title + '</p>';
+                        $remindItemDiv.html($remindItemDiv.html() + remindHtml);
+                        reminDetailArry.add(remind.Detail);
+                    });
+                }
+            });
+        } else if (type == "activity") {
+            $.ajax({
+                url: '@Url.Action("GetRemind","Home")',
+                data: { type: type },
+                type: 'post',
+                success: function (remindList) {
+                    $.each(remindList, function (index, remind) {
+                        if (index >= 6) return;
+                        var remindHtml = '<p class="notice-item" onclick="activityDetail(\''+remind.Title +'\',\''+ remind.Detail+'\')">' + remind.Title + '</p>';
+                        $remindItemDiv.html($remindItemDiv.html() + remindHtml);
+                        reminDetailArry.add(remind.Detail);
+                    });
+                }
+            });
+        }
+    }
+
+    //通知公告详情
+    function NoticeDetail(index) {
+        var $remindDetailDiv = $("#remind_detail_div");
+        $remindDetailDiv.html(reminDetailArry[index]);
+        var $nDetail;
+        $nDetail = $('#noticeDetail').window({
+            closed: true,
+            minimizable: false,
+            maximizable: false,
+            collapsible: false
+        });
+        $nDetail.window('open');
+    }
+    //活动详情
+    function activityDetail(title, id) {
+        var w = $(window.parent).width() - 80;
+        var h = $(window.parent).height() - 80;
+        var type = title.split(' ')[1];
+        var url = '';
+        switch (type) {
+            case '单品折扣':
+                url = '@Url.Action("Detail", "DanpinZhekou")' + "?isdetail=1&commodityId=" + id;
+                break;
+            case '捆绑促销':
+                url = '@Url.Action("Detail", "KunBangXiaoShou")' + "?isdetail=1&commodityId=" + id;
+                break;
+            case '组合促销':
+                url = '@Url.Action("Detail", "ZuheCuXiao")' + "?isdetail=1&id=" + id;
+                break;
+            case '买赠促销':
+                url = '@Url.Action("Detail", "MaiZengCuXiao")' + "?isdetail=1&id=" + id;
+                break;
+            case '满元促销':
+                url = '@Url.Action("Detail", "ManYuanCuXiao")' + "?isdetail=1&id=" + id;
+                break;
+        }
+        if (url != "") {
+            openDialog("活动详情", url, w, h, true);
+        }
+
+    }
+
+</script>

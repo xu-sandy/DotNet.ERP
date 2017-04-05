@@ -1,0 +1,113 @@
+﻿@model STHouseMove
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <div class="formbox">
+                <table class="table-form" width="100%" height="80px">
+                    <tr>
+                        <td class="name width-11">商品条码：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Barcode, new { @class = "easyui-combobox", style = "width:160px", data_options = "prompt:'请输入条码...',required:true,novalidate:true,mode:'remote',valueField:'barcode',textField:'title',loader:comboload,onChange:comboSelect" })</td>
+                        <td class="name width-11">商品名称：</td>
+                        <td class="input"><span id="ProductTitle">@Html.DisplayText("ProductTitle")&nbsp;</span></td>
+                    </tr>
+                    <tr>
+                        <td class="name">系统售价：</td>
+                        <td class="input" style="width:30%"><span id="SysPrice">@Html.DisplayText("SysPrice") &nbsp;</span></td>
+                        <td class="name">本店库存：</td>
+                        <td class="input" style="width:30%"><span id="StockCount">@Html.DisplayText("StockCount")&nbsp;</span></td>
+                    </tr>
+                </table>
+            </div>
+            <table class="table-form" width="100%" height="80px" style="margin:5px 0px;">
+                <tr>
+                    <td class="name">调出分店：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.OutStoreId, ViewBag.outshops as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+                    <td class="name">调入分店：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.InStoreId, ViewBag.inshops as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "required:true,editable:false,readonly:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">调拨数量：</td>
+                    <td class="input width-80">@Html.TextBoxFor(o => o.OrderQuantity, new { @class = "easyui-numberspinner width-80", data_options = "required:true,novalidate:true,min:0.1,precision:2" })</td>
+                    <td class="name">备注说明：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Memo, new { @class = "easyui-textbox" })</td>
+                </tr>
+            </table>
+            
+            <div id="loadshop"></div>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    var comboload=function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url:"@Url.Action("GetProductInput", "Product")",
+            type:"post",
+            data:{
+                //传值，还是JSON数据搜索
+                searchName: q
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType:"json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function(item){
+                    return { barcode: item.Barcode, title: item.Title };
+                });
+                //执行loader的success方法
+                success(items);
+                var val = $combo.combobox("getValue");
+                if (val) {
+                    comboSelect(val);
+                }
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    var comboRows = [];
+    function comboSelect(newValue, oldValue) {
+        var obj = getRow(newValue);
+        if (!obj) return;
+        $("#ProductTitle").html(obj.Title);
+        $("#SysPrice").html(obj.SysPrice);
+        $("#StockCount").html(obj.StockNums);
+        setTimeout(function(){
+            $("#Barcode").combobox("setText",obj.Barcode);
+        },100);
+        $("#loadshop").load("@Url.Action("ListPartial")",{barcode:obj.Barcode,t:Math.random()},function(){});
+    }
+    function getRow(cd) {
+        var obj = null;
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == cd) {
+                obj = row; return;
+            }
+        });
+        return obj;
+    }
+    function SaveBefore() {
+        var outTitle = $("#OutStoreId").combobox("getText");
+        var num = $("#OrderQuantity").numberbox("getValue");
+        var stockNum = $("#" + outTitle).attr("val");
+        if (parseInt(stockNum) < num) {
+            $.messager.alert("提示", "调拨数量大于调出分店的库存量!"); return false;
+        }
+        return true;
+    }
+</script>

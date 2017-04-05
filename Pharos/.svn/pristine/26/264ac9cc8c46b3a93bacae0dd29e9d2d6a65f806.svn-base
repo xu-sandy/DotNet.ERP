@@ -1,0 +1,133 @@
+﻿@{
+    ViewBag.Title = "ChangePriceManager";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.批发价_批发价设定);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.批发价_查看批发价) || !hideAdd;
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.批发价_移除批发价);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "批发价设置", delText: "删除设置", editText: "批发价修改", hideAdd: hideAdd, hideDel: hideDel));
+}
+@section search{
+    @Html.Hidden("CompanyId",Pharos.Logic.BLL.CommonService.CompanyId)
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>批发商：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("supplierId", ViewBag.suppliers as List<SelectListItem>, new { @class = "easyui-combobox datacontrol" })
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="datacontrol easyui-combobox" name="state" style="width:80px;" data-options="editable: false">
+                    <option selected value="">全部</option>
+                    <option value="1">已审批</option>
+                    <option value="2">已失效</option>
+                    <option value="0">未审批</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="货号/品名/条码" data-options="prompt:'货号/品名/条码',width:150" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if(CurrentUser.HasPermiss(SysConstLimits.批发价_批发价审批))
+    { 
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-ok'" onclick="changeState()">审批通过</a>
+    }
+    @if (CurrentUser.HasPermiss(SysConstLimits.批发价_批发价失效))
+    {
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState()">设为已失效</a>
+    }
+}
+<script type="text/javascript">
+    pharos.manager.editurl = "@Url.Action("TradePrice")";
+    pharos.manager.geturl = "@Url.Action("FindTradePriceList")";
+    pharos.manager.delurl = "@Url.Action("DeleteTradePrice")"
+    pharos.manager.detailurl = "@Url.Action("TradePrice")";
+    pharos.manager.sortName = "CreateDT desc,TradePriceId";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        {
+            field: 'State', title: '状态', width: 60, formatter: function (value, row, index) {
+                return value == 0 ? "未审批" : value == 1 ? "已审批" : "已失效";
+            }
+        },
+        { field: 'SupplierTitle', title: '供应商', width: 200 },
+        {
+            field: 'Barcode', title: '条码/品名', width: 110, formatter: function (value, row, index) {
+                return row.Barcode + "<br>" + row.Title;
+            }
+        },
+        { field: 'Size', title: '规格', width: 80 },
+        { field: 'BuyPrice', title: '进 价', width: 70 },
+        { field: 'SysPrice', title: '原批发价', width: 70 },
+        { field: 'TradePrice', title: '批发价', width: 70 },
+        { field: 'DateSpacing', title: '有效期', width: 140 }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialogMax(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (id) {
+        var row = pharos.manager.$dg.datagrid("selectRecord", id).datagrid("getSelected");
+        this.Id = row.TradePriceId;
+        var w = $(window.parent).width() - 80;
+        var h = $(window.parent).height() - 80;debugger;
+        if (row.State >0){
+            if(@(showDetail?"1==1":"1!=1")){
+                openDialog(this.detailText, this.editurlNocache() + "&isdetail=1", w, h, true);
+            }
+        }else if(@(hideAdd?"false":"true"))
+                openDialogMax(this.editText, this.editurlNocache());
+
+    }
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'TradePriceId', columns: ['SupplierTitle', 'State', 'Id'] });
+    }
+    function changeState() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (r) { if (r.State != 1) return r.TradePriceId; }).join();
+        if (!ids) {
+            $.messager.alert("提示", "请选择未审批记录！", "info"); return;
+        }
+        $.post("@Url.Action("AuditorTradeState")", {ids:ids,t:Math.random()}, function (json) {
+            if (json.successed) {
+                $.messager.alert("提示", "审批成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "审批失败！" + json.message, "error");
+            }
+        }, "json");
+    }
+    function setState() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (r) { if (r.State != 2) return r.TradePriceId; }).join();
+        if (!ids) {
+            $.messager.alert("提示", "请选择未失效记录！", "info"); return;
+        }
+        $.post("@Url.Action("SetTradeFlag")", {ids:ids,t:Math.random()}, function (json) {
+            if (json.successed) {
+                $.messager.alert("提示", "操作成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作失败！" + json.message, "error");
+            }
+        }, "json");
+    }
+    function removeBefore(row) {
+        if (row.State == 1) {
+            $.messager.alert("提示", "已审批记录不能删除！", "info"); return false;
+        }
+        return true;
+    }
+</script>

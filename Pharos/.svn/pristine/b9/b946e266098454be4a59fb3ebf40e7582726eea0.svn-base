@@ -1,0 +1,99 @@
+﻿using Microsoft.Synchronization;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using Microsoft.Synchronization;
+
+namespace Pharos.SyncWcfService
+{
+    public class PosServerDbSyncProvider : KnowledgeSyncProvider, IChangeDataRetriever, INotifyingChangeApplierTarget
+    {
+
+        SyncSessionContext CurrentSessionContext { get; set; }
+        PosServerDbSyncHandler _DbSyncHandler = new PosServerDbSyncHandler();
+        public override void BeginSession(SyncProviderPosition position, SyncSessionContext syncSessionContext)
+        {
+            _DbSyncHandler.BeginSession();
+            CurrentSessionContext = syncSessionContext;
+        }
+
+        public override void EndSession(SyncSessionContext syncSessionContext)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override ChangeBatch GetChangeBatch(uint batchSize, SyncKnowledge destinationKnowledge, out object changeDataRetriever)
+        {
+            ChangeBatch batch = _DbSyncHandler.GetChangeBatch(batchSize, destinationKnowledge);
+            changeDataRetriever = this; 
+            return batch;
+        }
+
+        public override FullEnumerationChangeBatch GetFullEnumerationChangeBatch(uint batchSize, SyncId lowerEnumerationBound, SyncKnowledge knowledgeForDataRetrieval, out object changeDataRetriever)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void GetSyncBatchParameters(out uint batchSize, out SyncKnowledge knowledge)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override SyncIdFormatGroup IdFormats
+        {
+            get { throw new NotImplementedException(); }
+        }
+
+        public override void ProcessChangeBatch(ConflictResolutionPolicy resolutionPolicy, ChangeBatch sourceChanges, object changeDataRetriever, SyncCallbacks syncCallbacks, SyncSessionStatistics sessionStatistics)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void ProcessFullEnumerationChangeBatch(ConflictResolutionPolicy resolutionPolicy, FullEnumerationChangeBatch sourceChanges, object changeDataRetriever, SyncCallbacks syncCallbacks, SyncSessionStatistics sessionStatistics)
+        {
+            throw new NotImplementedException();
+        }
+
+
+        public object LoadChangeData(LoadChangeContext loadChangeContext)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IChangeDataRetriever GetDataRetriever()
+        {
+            throw new NotImplementedException();
+        }
+
+        public ulong GetNextTickCount()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SaveChangeWithChangeUnits(ItemChange change, SaveChangeWithChangeUnitsContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SaveConflict(ItemChange conflictingChange, object conflictingChangeData, SyncKnowledge conflictingChangeKnowledge)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SaveItemChange(SaveChangeAction saveChangeAction, ItemChange change, SaveChangeContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void StoreKnowledgeForScope(SyncKnowledge knowledge, ForgottenKnowledge forgottenKnowledge)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryGetDestinationVersion(ItemChange sourceChange, out ItemChange destinationVersion)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

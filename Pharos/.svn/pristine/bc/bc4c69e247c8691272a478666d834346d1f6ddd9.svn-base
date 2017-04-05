@@ -1,0 +1,315 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  TradersPaySecretKey
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    //商户资料
+    Traders tra = ViewBag.Tra as Traders;
+}
+
+<style type="text/css">
+    .formbox td {
+        padding: 5px 0px;
+    }
+
+    #table_payModeList {
+        border-collapse:collapse;
+    }
+
+    #table_payModeList, #table_payModeList th, #table_payModeList td {
+        border:1px solid #ccc;
+    }
+
+    #table_payModeList td {
+            padding:7px;
+    }
+</style>
+<script src="~/Scripts/tool.js"></script>
+<script type="text/javascript">
+
+    //商户号
+    var CID = "@Model.CID";
+    if (CID == "0") {
+        CID = "";
+    }
+
+    $(function () {
+        //商户号
+        $("#CID").next().find(".combo-arrow").removeClass("combo-arrow");
+
+        var Id = getUrlParam('Id');
+        if (Id == null) {
+            loadPayManner(0);
+        }
+        else {
+            loadPayManner(@Model.ChannelNo);
+        }
+        //禁用、启用支付通道
+        disableEnable();
+        //禁用通道状态
+        $("#State").combobox("disable");
+        $('#PayManner').combobox('disableValidation');
+    });
+
+    //禁用、启用支付通道
+    function disableEnable() {
+        var l = $("#table_payModeList").find("tr[name=payModeList]").length;
+        if (l > 0) {
+            $("#ChannelNo").combobox("disable");
+        }
+        else {
+            $("#ChannelNo").combobox("enable");
+        }
+    }
+
+    function SaveBefore() {
+        $('#PayManner').combobox('disableValidation');
+        addManner();
+        $("#ChannelNo").combobox("enable");
+        return true;
+    }
+
+    function dispErr(msg, desc) {
+        disableEnable();
+    }
+
+    //删除
+    function del(d) {
+        $(d).parent().parent().remove();
+        //禁用、启用支付通道
+        disableEnable();
+    }
+
+    /*************************** 商户号开始***************************/
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        $.ajax({
+            url: "@Url.Action("GetCidWhere", "PayAccount")",
+            type: "post",
+        data: {
+            //传值，还是JSON数据搜索
+            keyword: q
+        },
+        dataType: "json",
+        success: function (data) {
+            comboRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function (item) {
+                return { CID: item.CID, CID: item.CID };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+
+    function tradersOnChange(newValue, oldValue) {
+        $.ajax({
+            url: "/PayAccount/GetEntityTraders?CID=" + encodeURIComponent(newValue),
+            type: "post",
+            async: false,
+            dataType: "json",
+            data: {},
+            success: function (data) {
+                if (data.CID != 0) {
+                    $("#FullTitle").textbox("setValue", data.FullTitle);
+                }
+                else {
+                    $("#FullTitle").textbox("setValue", "");
+                }
+            }
+        });
+    }
+
+    /*************************** 商户号结束***************************/
+
+    //支付通道
+    function ChannelOnChange(newValue, oldValue) {
+        loadPayManner(newValue);
+        $('#PayManner').combobox('disableValidation');
+    }
+
+    //加载支付方式
+    function loadPayManner(ChannelNo) {
+        if (ChannelNo == "") {
+            ChannelNo = 0;
+        }
+        $('#PayManner').combobox({
+            url: '/PayAccount/GetPayManner?ChannelNo=' + ChannelNo,
+            valueField: 'ChannelPayMode',
+            textField: 'PayManner',
+            editable: false,
+            width: 100,
+            required: true,
+            novalidate: false,
+            validType: 'requiredForCombo'
+        });
+    }
+
+    //增加支付方式
+    function addPayManner() {
+        $('#PayManner').combobox('enableValidation');
+        var isValid = $('#PayManner').combobox("isValid");
+        if (isValid) {
+
+            var payV = $.trim($('#PayManner').combobox('getValue'));
+            var payT = $.trim($('#PayManner').combobox('getText'));
+
+            var pUrl = $.trim($("tr[name=tr] td").eq(1).find("input").val());
+
+            var rUrl = $.trim($("tr[name=tr] td").eq(2).find("input").val());
+            
+            var v = '<tr name="payModeList">';
+            v = v + '<td style="text-align:center;"><span>' + payT + '</span><input type="hidden" value="' + payV + '" /></td>';
+            v = v + '<td style="text-align:center;">'+pUrl+'</td>';
+            v = v + '<td style="text-align:center;">'+rUrl+'</td>';
+            v = v + '<td style="text-align:center;"><a href="javascript:;" onclick="del(this)" class="a_del" style="color:#8cc152;">删除</a></td>';
+            v = v + '</tr>';
+
+            $("tr[name=tr]").before(v);
+        }
+        //禁用、启用支付通道
+        disableEnable();
+    }
+
+    //json支付方式
+    function addManner() {
+        var jso = "{\"TradersPayChannel\": [";
+        var tabC = 0;
+        $("#table_payModeList tr[name=payModeList]").each(function (i) {
+            //支付方式
+            var ChannelPayMode = $.trim($(this).find("td").eq(0).find("input").val());
+            //支付结果通知URL
+            var PayNotifyUrl = $.trim($(this).find("td").eq(1).html());
+            //退款结果通知URL
+            var RfdNotifyUrl = $.trim($(this).find("td").eq(2).html());
+
+            if (tabC == 0) {
+                jso = jso + "{ \"ChannelPayMode\":\"" + ChannelPayMode + "\" , \"PayNotifyUrl\":\"" + PayNotifyUrl + "\", \"RfdNotifyUrl\":\"" + RfdNotifyUrl + "\"}";
+            }
+            else {
+                jso = jso + "," + "{ \"ChannelPayMode\":\"" + ChannelPayMode + "\" , \"PayNotifyUrl\":\"" + PayNotifyUrl + "\", \"RfdNotifyUrl\":\"" + RfdNotifyUrl + "\"}";
+            }
+            tabC = tabC + 1;
+        });
+        jso = jso + "]}";
+        $("#h_PayManner").val(jso);
+    }
+
+    function errorMsg(msg) {
+        return msg;
+    }
+
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+
+            <div class="formbox" >
+
+                <table class="table-form" width="100%">
+
+                    <tr>
+                        <td class="name" style=" width:10%;">指派人：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AssignUID, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name" style="width:15%;">商户号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.CID, new { @class = "easyui-combobox", data_options = "required:true,prompt:'请输入',width:120,editable:true,mode:'remote',valueField:'CID',textField:'CID',loader:comboload,onChange:tradersOnChange,value:CID" })</td>
+                        <td class="name" style="width:15%;">客户全称：</td>
+                        <td class="input">@Html.TextBox("FullTitle", @tra.FullTitle, new { @class = "easyui-textbox", data_options = "required:false,prompt:'自动获取',width:230,readonly:true" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">通道状态：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.State, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "未审核", Value = "0" }, new SelectListItem() { Text = "可用", Value = "1" }, new SelectListItem() { Text = "暂停", Value = "2" }, new SelectListItem() { Text = "注销", Value = "3" }, new SelectListItem() { Text = "无效", Value = "4" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name">支付安全Key：</td>
+                        <td class="input" colspan="3">@Html.TextBoxFor(o => o.SecretKey, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',width:531,validType:'length[0,200]',readonly:true" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">支付通道：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.ChannelNo, ViewBag.ClNo as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120,onChange:ChannelOnChange" })</td>
+                        <td class="name">第三方商户号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.MchId3, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:120,validType:'length[0,100]'" })</td>
+                        <td class="name">第三方平台Key：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.SecretKey3, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:231,validType:'length[0,200]'" })</td>
+                    </tr>
+
+                </table>
+
+            </div>
+
+            <div class="formbox" style="padding-top:15px; border-bottom:0px;">
+                <table class="table-form" width="100%" id="table_payModeList">
+
+                    <input type="hidden" id="h_payModeList" name="h_payModeList" value="" />
+
+                    <tr style="background-color:#eff4fb;">
+                        <td style="width:10%;text-align:center;">支付方式</td>
+                        <td style="text-align:center;width:40%;">支付结果通知URL</td>
+                        <td style="text-align:center; width:40%;">退款结果通知URL</td>
+                        <td style="text-align:center;">操作</td>
+                    </tr>
+
+                    <input id="h_PayManner" name="h_PayManner" type="hidden" value="" />
+
+                    @foreach (var v in ViewBag.Channel as List<TradersPayChannel>)
+                    {
+                        <tr name="payModeList">
+                            <td style="text-align:center;">
+                                @if (v.ChannelPayMode == 1)
+                                {
+                                     <span>扫码支付</span>
+                                }
+                                else if (v.ChannelPayMode == 2)
+                                {
+                                    <span>网站支付</span>
+                                }
+                                else if (v.ChannelPayMode == 3)
+                                {
+                                    <span>刷卡支付</span>
+                                }
+                                <input type="hidden" value="@v.ChannelPayMode" />
+                            </td>
+                            <td style="text-align:center;">@v.PayNotifyUrl</td>
+                            <td style="text-align:center;">@v.RfdNotifyUrl</td>
+                            <td style="text-align:center;"><a href="javascript:;" onclick="del(this)" class="a_del" style="color:#8cc152;">删除</a></td>
+                        </tr>
+                    }
+
+                    <tr name="tr">
+                        <td style="text-align:center;">
+                            <input id="PayManner" name="PayManner" class="easyui-combobox datacontrol" />
+                        </td>
+                        <td style="text-align:center;">
+                            <input type="text" style=" width:95%;" value="" maxlength="500" class="easyui-validatebox" data-options="required:false" id="pUrl" />
+                        </td>
+                        <td style="text-align:center;">
+                            <input type="text" style=" width:95%;" value="" maxlength="500" class="easyui-validatebox" data-options="required:false" id="rUrl" />
+                        </td>
+
+                        <td style="text-align:center;">
+                            <a href="javascript:;" class="easyui-linkbutton" onclick="addPayManner()">添加</a>
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+
+        </div>
+    }
+</div>
+
+

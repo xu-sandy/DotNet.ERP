@@ -1,0 +1,137 @@
+﻿using Common.Logging;
+using Pharos.Api.Retailing;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.ServiceProcess;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.ClientService
+{
+    class Program
+    {
+        private static string[] tempArgs;
+        static void Main(string[] args)
+        {
+            tempArgs = args;
+            string exeArg = string.Empty;
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
+            if (!Environment.UserInteractive)//MonoService
+            {
+                RunAsService();
+                return;
+            }
+
+            if (args == null || args.Length < 1)
+            {
+                Console.WriteLine("Welcome to POSClientService!");
+
+                Console.WriteLine("Please press a key to continue...");
+                Console.WriteLine("-[r]: Run this application as a console application;");
+                Console.WriteLine("-[w]: Run this web api application as a console application;");
+                Console.WriteLine("-[i]: Install this application as a Windows Service;");
+                Console.WriteLine("-[u]: Uninstall this Windows Service application;");
+
+                while (true)
+                {
+                    exeArg = Console.ReadKey().KeyChar.ToString();
+                    Console.WriteLine();
+
+                    if (Run(exeArg, null))
+                        break;
+                }
+            }
+            else
+            {
+                exeArg = args[0];
+
+                if (!string.IsNullOrEmpty(exeArg))
+                    exeArg = exeArg.TrimStart('-');
+
+                Run(exeArg, args);
+            }
+        }
+
+        static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+            var ex = (e.ExceptionObject as Exception);
+            logger.Error(ex.Message, ex);
+            //DO Log ;
+        }
+        static void RunAsService()
+        {
+            ServiceBase[] servicesToRun;
+
+            servicesToRun = new ServiceBase[] { new MainService() };
+
+            ServiceBase.Run(servicesToRun);
+        }
+        private static bool Run(string exeArg, string[] startArgs)
+        {
+            switch (exeArg.ToLower())
+            {
+                case ("i"):
+                    SelfInstaller.InstallMe();
+                    return true;
+
+                case ("u"):
+                    SelfInstaller.UninstallMe();
+                    return true;
+
+                case ("r"):
+                    RunAsConsole();
+                    return true;
+                case ("w"):
+                    RunAsConsole(false);
+                    return true;
+                default:
+                    Console.WriteLine("Invalid argument!");
+                    return false;
+            }
+        }
+        static void RunAsConsole(bool isRunSync = true)
+        {
+            // create the cancellation token source
+            var tokenSource = new CancellationTokenSource();
+            // create the cancellation token
+            var token = tokenSource.Token;
+            Task task = null;
+            if (isRunSync)
+                task = SyncServiceClientStartup.AutoSync(token);
+
+            var webServer = WebApiStartup.RunWebServer();
+            while (true)
+            {
+                Console.WriteLine("Exit it! plase press 'Q'!");
+                var key = Console.ReadKey();
+                if (key.KeyChar.ToString().ToUpper() == "Q")
+                {
+                    if (task != null && !task.IsCanceled && !task.IsCompleted && !task.IsFaulted)
+                    {
+                        tokenSource.Cancel();
+                        Console.WriteLine("正在等待最后一次同步，可能需要数十分钟或者更久！请不要关机！");
+                        try
+                        {
+                            task.Wait();
+                        }
+                        catch { }
+                        finally
+                        {
+                            task.Dispose(); task = null;
+                        }
+                    }
+                    if (webServer != null)
+                    {
+                        webServer.Dispose();
+                    }
+                    return;
+                }
+            }
+        }
+    }
+}

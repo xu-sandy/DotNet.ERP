@@ -1,0 +1,62 @@
+﻿@model MemberIntegralSet
+@{
+    ViewBag.Title = "PayIntegral";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">.content{margin:30px auto;width:600px;}</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o=>o.Nature)
+        <div class="content">
+            <table class="table-form" height="220px">
+                <tr>
+                    <td class="name">有效期：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>@Html.TextBoxFor(o => o.StartDate, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", data_options = "required:true,novalidate:true" })</td>
+                                <td style="padding-left:5px;padding-right:5px;line-height:28px;">-</td>
+                                <td>@Html.TextBoxFor(o => o.EndDate, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", data_options = "" })</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">适用客户：</td>
+                    <td class="input choose">@Html.CheckBoxListFor(o => o.CustomerObj, ViewBag.customers as List<SelectListItem>, new { data_options = "required:true,novalidate:true,missingMessage:'必勾选一项'", @class = "easyui-validatebox", id = "customer" }, 10)</td>
+                </tr>
+                <tr>
+                    <td class="name">积分比例：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Scale, new { @class="easyui-numberbox"})  <span style="margin-left:10px">(即消费XX元人民币自动兑换成1个积分,默认:10元=1积分)</span></td>
+                </tr>
+                <tr>
+                    <td class="name"></td>
+                    <td class="input">@Html.CheckBoxFor(o => o.Promotion) <label for="Promotion">是否包含促销</label> <span style="margin-left:90px">(即促销商品也计算积分)</span></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td><a class="send_Button easyui-linkbutton cus1 linkbtn" onclick="$('form').submit()">保 存</a></td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    $(function () {
+        $("[name='CustomerObj']").click(function () {
+            customerRequired();
+        });
+        customerRequired();
+    });
+    function customerRequired() {
+        if ($("[name='CustomerObj']:checked").size() <= 0)
+            $("#customer").validatebox("enableValidation");
+        else
+            $("#customer").validatebox("disableValidation");
+    }
+    function Refresh() {
+        $.messager.alert('提示', '操作成功！', "info");
+    }
+</script>

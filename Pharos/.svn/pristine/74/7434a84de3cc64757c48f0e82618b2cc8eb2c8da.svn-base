@@ -1,0 +1,24 @@
+﻿using Pharos.Logic.MemberDomain.Interfaces;
+using System.Collections.Generic;
+
+namespace Pharos.Logic.MemberDomain.QuanChengTaoProviders
+{
+    public class QuanChengTaoIntegralRuleFlowProvider : IIntegralRuleFlowProvider
+    {
+        public QuanChengTaoIntegralRuleFlowProvider(int companyId)
+        {
+            CompanyId = companyId;
+        }
+
+        public int CompanyId { get; private set; }
+        public IDictionary<IIntegralRule, decimal> DoFlow(object channelMessage, IIntegralRuleProvider ruleProvider)
+        {
+            var allRules = ruleProvider.GetRules(CompanyId);
+            var meteringModes = ruleProvider.GetMeteringModes(allRules);
+            var scene = ruleProvider.GetScene(channelMessage, meteringModes);
+            var efficientRules = ruleProvider.VerifyRules(allRules, scene);
+            var integrals = ruleProvider.RunExpression(efficientRules, scene);
+            return integrals;
+        }
+    }
+}

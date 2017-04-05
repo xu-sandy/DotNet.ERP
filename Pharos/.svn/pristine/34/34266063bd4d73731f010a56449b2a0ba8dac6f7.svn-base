@@ -1,0 +1,261 @@
+﻿@{
+    ViewBag.Title = "ProductWeighList";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: true, hideDel: true, hideSearch: true));
+}
+<div id="tt1" class="easyui-tabs" data-options="onSelect:function(title,index){}" style="height:auto;">
+    <div title="选择锁盘商品">
+        <div id="toolbar">
+            <table>
+                <tr>
+                    <td class="label-toolbar">
+                        <label>关键字：</label>
+                    </td>
+                    <td class="input-toolbar">
+                        <input name="searchText" id="searchText" class="datacontrol easyui-textbox font-12" placeholder="货号/品名/条码" data-options="prompt:'货号/品名/条码',width:150" />
+                    </td>
+                    <td>
+                        <a href="#" id="searchBtn" class="easyui-linkbutton cus4 linkbtn" data-options="iconCls:'icon-search'" onclick="$dg.datagrid('options').url = url + '&searchText=' + $('#searchText').val(); $dg.datagrid('reload');">查询</a>
+                    </td>
+                    <td class="label-toolbar">已选条数: <b style="color:red;font-size:14px;" id="selcount">0</b></td>
+                    <td>
+                        <div class="default-form">
+                            <form id="frm" action="@Url.Action("StockLock")" method="post">
+                                <input type="hidden" name="selectBarcodes" id="selectBarcodes" />
+                                <input type="hidden" name="LockStoreID" id="store" value="@Request["store"]" />
+                                <input type="hidden" name="CheckBatch" id="ExportType" value="@Request["CheckBatch"]" />
+                                <input type="hidden" name="selectCategorySN" value="@Request["parentType"]" />
+                                <input type="hidden" name="supplierId" value="@Request["supplierId"]" />
+                                <input type="hidden" name="brandsn" value="@Request["brandsn"]" />
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <table id="grid1"></table>
+    </div>
+    <div title="已选择商品记录">
+        <table id="grid2"></table>
+    </div>
+</div>
+<script type="text/javascript">
+    var $dg,$dg2,url="@Url.Action("FindPageList","Product")?1=1&@Html.Raw(Request.QueryString)";
+    $(function(){
+        $dg= $("#grid1");
+        $dg2= $("#grid2");
+        window.top.$('#lbsave .l-btn-text').width(80).html('确定');
+        window.top.$('#lbadd').show();
+        var tj = 0;
+        var intid = null;
+        $('form').form({
+            //url: saveUrl,
+            ajax: true,
+            onSubmit: function () {
+                var isValid = SaveBefore();
+                if (isValid) isValid = $(this).form('validate');
+                if (tj == 1) isValid = false;//不允许重复提交
+                if (isValid) {
+                    $.messager.progress({ title: "请稍候", msg: "正在保存数据...", interval: 0 });
+                    tj = 1;
+                    intid = setInterval(function () {
+                        var progressBar = $.messager.progress("bar");
+                        var vl = progressBar.progressbar('getValue');
+                        vl += 5;
+                        if (vl >= 95) { clearInterval(intid); }
+                        progressBar.progressbar('setValue', vl);
+                    }, 1000)
+                }
+                return isValid;
+            },
+            success: function (data) {
+                clearInterval(intid);
+                $.messager.progress('close');
+                tj = 0;
+                var json = $.parseJSON(data);
+                if (json.successed) {
+                    pharos.easyui.dialog.topClose("formDiv");
+                    pharos.easyui.dialog.curJquery("formDiv")("#grid").datagrid("reload").datagrid("clearSelections").datagrid("clearChecked");
+                } else {
+                    var msg = json.descript ? "" : json.message;
+                    $.messager.alert('错误', '操作失败！' + msg, "error", function () {
+
+                    });
+                }
+            }
+        });
+
+        $dg.datagrid({
+            toolbar: '#toolbar',
+            url:url,
+            columns:[[
+                { field: 'Id', checkbox: true },
+                {
+                    field: 'Barcode', title: '条码', width: 100, formatter: function (value, row) {
+                        var val = value;
+                        if (row.Barcodes) {
+                            val += "<br/><font color='blue' title='一品多码'>" + row.Barcodes.replace(/,/g,"<br/>") + "</font>";
+                        }
+                        return val;
+                    }
+                },
+                { field: 'CategoryTitle', title: '品类', width: 120 },
+                { field: 'Title', title: '品名', width: 120 },
+                { field: 'Size', title: '规格', width: 80 },
+                { field: 'BrandTitle', title: '品牌', width: 60 },
+                { field: 'SubUnit', title: '单位', width: 40 },
+                { field: 'SysPrice', title: '系统售价', width: 80 }
+            ]],
+            idField: "Id",
+            sortName: "CategoryTitle",
+            rownumbers: true,
+            singleSelect: false,
+            checkOnSelect: true,
+            striped: true,
+            nowrap:false,
+            fitColumns:true,
+            pagination:true,
+            fit:false,
+            pageList:[20,50, 100],
+            pageSize:50,
+            onCheck: function (index, row) {
+                getSelectCount();
+            },
+            onUncheck: function (index, row) {
+                $dg2.datagrid("selectRecord", row.Id);
+                row = $dg2.datagrid("getSelected")
+                index = $dg2.datagrid("getRowIndex", row);
+                $dg2.datagrid("deleteRow", index);
+
+                getSelectCount();
+            },
+            onCheckAll: function (rows) {
+                getSelectCount();
+            },
+            onUncheckAll: function (rows) {
+                getSelectCount();
+
+                $.each(rows, function (i, r) {
+                    $dg2.datagrid("selectRecord", r.Id);
+                    var row = $dg2.datagrid("getSelected")
+                    var index = $dg2.datagrid("getRowIndex", row);
+                    $dg2.datagrid("deleteRow", index);
+                })
+            },
+            onLoadSuccess: function (data) {
+                var rows = $dg2.datagrid("getRows");
+                $.each(rows, function (i, r) {
+                    if (existsSelect(data.rows, r.Barcode).exists == true) {
+                        $dg.datagrid("selectRecord", r.Id);
+                        var row = $dg.datagrid("getSelected")
+                        var index = $dg.datagrid("getRowIndex", row);
+                        $dg.datagrid("checkRow", index);
+                    }
+                });
+            }
+        });
+
+        $dg2.datagrid({
+            url:"",
+            columns:[[
+                {
+                    field: 'Barcode', title: '条码', width: 100, formatter: function (value, row) {
+                        var val = value;
+                        if (row.Barcodes) {
+                            val += "<br/><font color='blue' title='一品多码'>" + row.Barcodes.replace(/,/g, "<br/>") + "</font>";
+                        }
+                        return val;
+                    }
+                },
+                { field: 'CategoryTitle', title: '品类', width: 120 },
+                { field: 'Title', title: '品名', width: 120 },
+                { field: 'Size', title: '规格', width: 80 },
+                { field: 'BrandTitle', title: '品牌', width: 60 },
+                { field: 'SubUnit', title: '单位', width: 40 },
+                { field: 'SysPrice', title: '系统售价', width: 80 },
+                //{
+                //    field: 'Editor', title: '操作', width: 60, formatter: function (value, row, index) {
+                //        return "<a href='javascript:' onclick=\"removeItem('"+row.Id+"')\">删除</a>"
+                //    }
+                //}
+            ]],
+            idField: "Id",
+            rownumbers: true,
+            singleSelect: false,
+            striped: true,
+            nowrap:false,
+            fitColumns:true,
+            pagination:false,
+            fit:false,
+            pageList: [20, 50, 100],
+            pageSize: 50
+        });
+        $("body").keydown(function () {
+            if (event.keyCode == 13)
+                $("#searchBtn").click();
+        })
+    });
+    function removeItem(id) {
+        $dg2.datagrid("selectRecord", id);
+        var row = $dg2.datagrid("getSelected")
+        var index = $dg2.datagrid("getRowIndex", row);
+        $dg2.datagrid("deleteRow", index);
+
+        $dg.datagrid("selectRecord", id);
+        row = $dg.datagrid("getSelected")
+        index = $dg.datagrid("getRowIndex", row);
+        $dg.datagrid("uncheckRow", index);
+    }
+    function existsSelect(rows, cd) {
+        var result = { exists: false, index: -1 };
+        $.each(rows, function (idx, row) {
+            if (row.Barcode == cd) {
+                result.exists = true;
+                result.index = idx;
+                return;
+            }
+        });
+        return result;
+    }
+    function getSelectCount() {
+        var rows = $dg.datagrid("getChecked");
+        $("#selcount").html(rows.length);
+        var rows2 = $dg2.datagrid("getRows");
+        var approw = [];
+        $.each(rows, function (i, r) {
+            if (existsSelect(rows2, r.Barcode).exists == false)
+                approw.add(r);
+        });
+        $.each(approw,function(i,r){
+            $dg2.datagrid("appendRow", r);
+        })
+    }
+    function delSel(){
+        var rows = $dg2.datagrid("getChecked");
+        if (!rows || rows.length <= 0) {
+            $.messager.alert("提示", "请先选择记录!"); return false;
+        }
+        var bars= $.map(rows,function(r){
+            return r.Barcode;
+        }).join();
+        var batchId=rows[0].BatchId;
+        $.post("@Url.Action("RemoveBatchList")",{batchId:batchId,bars:bars,t:Math.random()},function(d){
+            if (d.successed) {
+                $.messager.alert("提示", "删除成功！", "info");
+                $dg2.datagrid("clearChecked").datagrid('reload');
+            } else {
+                $.messager.alert("提示", "删除失败！" + d.message, "error");
+            }
+        });
+    }
+    function SaveBefore() {
+        if($("#hidadd").val()=="1"){
+            window.location.href="@Url.Action("StockLock")?@Html.Raw(Request.QueryString)";
+            return false;
+        }
+        var rows = $dg2.datagrid("getRows");
+        var bars2 = $.map(rows, function (r, i) { return r.Barcode; });
+        $("#selectBarcodes").val(bars2.join());
+        return true;
+    }
+</script>

@@ -1,0 +1,55 @@
+﻿using Pharos.Logic.ApiData.Mobile.EaseMob;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Mobile.Services
+{
+    public class ChatService
+    {
+        private EmChat emChat;
+
+        public ChatService(string easeAppClientID, string easeAppClientSecret, string easeAppOrgName, string easeAppName)
+        {
+            emChat = new EmChat(easeAppClientID, easeAppClientSecret, easeAppOrgName, easeAppName);
+        }
+
+        /// <summary>
+        /// 创建用户
+        /// </summary>
+        /// <param name="userName">账号</param>
+        /// <param name="password">密码，经过 MD5 加密后的</param>
+        /// <returns>创建成功的用户JSON字符串</returns>
+        public string AccountCreate(string userName, string password)
+        {
+            StringBuilder _build = new StringBuilder();
+            _build.Append("{");
+            _build.AppendFormat("\"username\": \"{0}\",\"password\": \"{1}\"", userName, password);
+            _build.Append("}");
+
+            return emChat.AccountCreate(_build.ToString());
+        }
+
+        //用户后台登录，返回其对应的环信Id
+        public string LogIn(string userName, string password)
+        {
+            try
+            {
+                var user = UserInfoService.Login(userName, password);
+
+                //new Sys.CurrentUser().Login(user, user.RememberMe);
+
+                return user.UserCode;
+            }
+            catch (Exception ex)
+            {
+                return ex.ToString();
+            }
+        }
+
+        //用户后台登出，客户端再登出环信服务器
+        public void LogOut() { }
+
+    }
+}

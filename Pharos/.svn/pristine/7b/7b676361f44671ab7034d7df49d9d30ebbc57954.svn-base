@@ -1,0 +1,174 @@
+﻿using Pharos.Sys.Entity;
+using Pharos.Sys.EntityExtend;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.Sys.DAL
+{
+    internal class SysRolesDAL : BaseSysEntityDAL<SysRoles>
+    {
+        public SysRolesDAL() : base("SysRoles") { }
+
+        /// <summary>
+        /// 获取角色列表数据
+        /// </summary>
+        /// <returns></returns>
+        internal DataTable GetList()
+        {
+            //string sql = "select Id,RoleId,Title,LimitsIds,Memo,[Status] from SysRoles";
+            var result = DbHelper.DataTable("Sys_RoleList", null);
+            return result;
+        }
+
+        public DataTable GetBuRoleOd(int roleId)
+        {
+            StringBuilder sql = new StringBuilder();
+            sql.Append("select * from SysRoles where RoleId="+roleId);
+            var list = DbHelper.DataTableText(sql.ToString(), null);
+            return list;
+        }
+
+        /// <summary>
+        /// 根据roleid获取sysrole
+        /// </summary>
+        /// <param name="roleid"></param>
+        /// <returns></returns>
+        public DataTable GetRoleLimitsByUId(string uid)
+        {
+            SqlParameter[] parms = { new SqlParameter("@UID", uid) };
+
+            var objs = DbHelper.DataTable("Sys_LimitIdsByUID",parms);
+            return objs;
+        }
+        /// <summary>
+        /// 根据roleid获取sysrole
+        /// </summary>
+        /// <param name="roleid"></param>
+        /// <returns></returns>
+        public DataTable GetRoleLimitsByRoleId(string roleid)
+        {
+            SqlParameter[] parms = { new SqlParameter("@RoleId", roleid) };
+
+            var objs = DbHelper.DataTable("Sys_LimitIdsByRoleId", parms);
+            return objs;
+        }
+        /// <summary>
+        /// 获取所有的角色列表
+        /// </summary>
+        /// <returns></returns>
+        public List<SysRoles> GetRoleList()
+        {
+            StringBuilder sql = new StringBuilder();
+            sql.Append("select * from SysRoles where ShowView=1");
+            var list = DbHelper.DataTableText<SysRoles>(sql.ToString(), null);
+            return list;
+        }
+        /// <summary>
+        /// 新增角色
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal int Insert(SysRoles model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@RoleId", model.RoleId),
+                    new SqlParameter("@Title", model.Title),
+                    new SqlParameter("@Memo", model.Memo),
+                    new SqlParameter("@Status", model.Status)};
+
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("insert into {0} (", TableName);
+            sql.Append("RoleId,Title,Memo,[Status])");
+            sql.Append(" values (@RoleId,@Title,@Memo,@Status)");
+            sql.Append(";select @@IDENTITY");
+
+            object obj = DbHelper.ExecuteScalarText(sql.ToString(), parms);
+
+            return (obj == null) ? 0 : Convert.ToInt32(obj);
+        }
+        /// <summary>
+        /// 更新角色
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal bool Update(SysRoles model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@Id", model.Id),
+                    new SqlParameter("@Title", model.Title),
+                    new SqlParameter("@LimitsIds", model.LimitsIds),
+                    new SqlParameter("@Memo", model.Memo),
+                    new SqlParameter("@Status", model.Status)};
+
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("update {0} set ", TableName);
+            sql.Append("Title=@Title,");
+            sql.Append("Memo=@Memo,");
+            sql.Append("Status=@Status");
+            sql.Append(" where Id=@Id");
+
+            int rows = DbHelper.ExecuteNonQueryText(sql.ToString(), parms);
+
+            return rows > 0 ? true : false;
+        }
+        /// <summary>
+        /// 更新角色状态
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal bool UpdateStatus(SysRoles model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@id", model.Id),
+                    new SqlParameter("@status", model.Status)};
+
+            string sql = string.Format("update {0} set status=@status where id=@id", TableName);
+
+            int rows = DbHelper.ExecuteNonQueryText(sql, parms);
+            return rows > 0 ? true : false;
+        }
+        /// <summary>
+        /// 获得所有权限列表
+        /// </summary>
+        /// <returns></returns>
+        internal List<SysLimitsExt> GetAllLimitList()
+        {
+            var objs = DbHelper.DataTable<SysLimitsExt>("Sys_AllLimitList");
+
+            return objs;
+        }
+        internal bool ExistsTitle(int roleid, string title)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@roleid" , roleid),
+					new SqlParameter("@title" , title)};
+
+            string sql = string.Format("select count(1) from {0} where [roleid]<>@roleid and Title=@title", TableName);
+
+            var obj = DbHelper.ExecuteScalarText(sql, parms);
+
+            return (obj == null) ? false : Convert.ToInt32(obj) > 0;
+        }
+        /// <summary>
+        /// 保存权限
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        internal bool UpdateLimitsId(SysRoles model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@Id", model.Id),
+                    new SqlParameter("@LimitsIds", model.LimitsIds)};
+
+            var sql = string.Format("update {0} set LimitsIds=@LimitsIds where Id=@Id;",TableName);
+            int rows = DbHelper.ExecuteNonQueryText(sql.ToString(), parms);
+
+            return rows > 0 ? true : false;
+        }
+    }
+}

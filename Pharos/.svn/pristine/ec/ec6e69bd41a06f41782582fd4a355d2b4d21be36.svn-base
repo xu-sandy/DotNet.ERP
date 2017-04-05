@@ -1,0 +1,186 @@
+﻿@model Pharos.Logic.OMS.Entity.SysRoles
+@{
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增主菜单", delText: "删除产品", editText: "修改主菜单", hideDel: true, hideSearch: true, hideAdd: true, hideEdit: true));
+}
+@section toolbar
+{
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.DeptId)
+        @Html.HiddenFor(o => o.Type)
+        @Html.Hidden("MenuIds")
+        @Html.Hidden("LimitIds")
+        <table class="table-form">
+            <tr>
+                <td class="name" valign="top">角色名称：</td>
+                <td class="input" valign="top">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,validType:'length[1,30]',width:150" })</td>
+                <td class="name" valign="top">&nbsp;&nbsp; 描述说明：</td>
+                <td class="input">@Html.TextAreaMaxLenFor(o => o.Memo, 500, new { @class = "easyui-validatebox", data_options = "", style = "width:500px;min-height:53px;" })</td>
+            </tr>
+        </table>
+    }
+</div>
+}
+
+<script type="text/javascript">
+    pharos.managertree.geturl = "@Url.Action("FindMenuList", new { roleId = Request["roleId"] })";
+    pharos.managertree.editurl = "@Url.Action("Save")";
+    pharos.managertree.sortName = "Id";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "Title";
+    pharos.managertree.pagination = false;
+    pharos.managertree.checkOnSelect = true;
+    pharos.managertree.columns = [[
+        { field: 'Id', checkbox: true, hidden: true },
+        { field: 'MenuId', title: '编号', width: 60 },
+        {
+            field: 'Title', title: '菜单名称', width: 200, formatter: function (value, row) {
+                var html = String.format("<input type=\"checkbox\" name=\"menus\" id=\"menu_{0}\"  menuid='{0}' pmenuid='{2}' style='vertical-align:middle;' onclick='checkMenu(this)'/><label style='vertical-align:middle;' for=\"menu_{0}\">{1}</label>", [row.MenuId, row.Title, row.PMenuId]);
+                return html;
+            }
+        },
+        {
+            field: 'Editor', title: '菜单顺序', width: 120, formatter: function (value, row, index) {
+                var operat = "";
+                if (row.Index == 0)
+                    operat += "<a style='color:#555'>[上移]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveMenuItem(1,\"" + row.MenuId + "\")'>[上移]</a>&nbsp;&nbsp;";
+                var childcount = 0;
+                if (row.ParentId > 0) {
+                    var po = pharos.managertree.$dg.treegrid("find", row.ParentId);
+                    childcount = po.children.length - 1;
+                } else {
+                    childcount = pharos.managertree.$dg.treegrid("getData").length - 1;
+                }
+                if (row.Index == childcount)
+                    operat += "<a style='color:#555'>[下移]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveMenuItem(2,\"" + row.MenuId + "\")'>[下移]</a>&nbsp;&nbsp;";
+                return operat;
+            }
+        },
+        {
+            field: 'Limitids', title: '子功能权限', width: 250, formatter: function (value, row) {
+                var operat = "";
+                if (value) {
+                    var html = "<input type=\"checkbox\" name=\"limits\" id=\"limit_{0}\" style='vertical-align:middle;'  limitid='{0}' plimitid='{2}' /><label style='vertical-align:middle;padding-left:3px;' for=\"limit_{0}\">{1}</label>";
+                    var count = 0;
+                    $.each(value.split(','), function (i, r) {
+                        count++;
+                        var ts= r.split(':');
+                        operat += "<span style=\"display:inline-block;width:150px;\">" + String.format(html, [ts[1],"["+ts[1]+"] "+ ts[0], row.MenuId]) + "</span>";
+                        if (count == 2) {
+                            operat += "<br>";
+                            count = 0;
+                        }
+                    })
+                }
+                return operat;
+            }
+        },
+    ]];
+    var datas = [], limitSelects = "";
+    pharos.managertree.loadSuccess = function (row, data) {
+        datas = data;
+        limitSelects = "";
+        if (data && data.length > 0) {
+            var rd = data[0];
+            var lids = [];
+            if (rd.LimitSelects) {
+                $.each(rd.LimitSelects.split(','), function (i, r) {
+                    $(":checkbox[limitid=" + r + "]").attr("checked", true);
+                    lids.push(Number( r));
+                });
+            }
+            if (rd.MenuIdSelects) {
+                $.each(rd.MenuIdSelects.split(','), function (i, r) {
+                    $(":checkbox[menuid=" + r + "]").attr("checked", true);
+                    lids.push(Number(r));
+                });
+            }
+            lids.sort(compare());
+            limitSelects = lids.join();
+        }
+    }
+
+    $('.default-form form').form({
+        //url: saveUrl,
+        ajax: true,
+        onSubmit: function () {
+            var menuids= $.map($("input[name='menus']:checked"), function (r, i) {
+                return Number( $(r).attr("menuid"));
+            });
+            $("#MenuIds").val(menuids.join());
+            var limitids = $.map($("input[name='limits']:checked"), function (r, i) {
+                return Number( $(r).attr("limitid"));
+            });
+            $("#LimitIds").val(limitids.join());
+            limitids=limitids.concat(menuids);
+            limitids.sort(compare());
+            limitSelects = limitids.join();
+            return $(this).form('validate');
+        },
+        success: function (data) {
+            var json = $.parseJSON(data);
+            if (json.successed) {
+                $.messager.alert("提示", "保存成功", "info");
+                roleId = json.data.roleId;
+                $("#Id").val(json.data.id);
+                pharos.managertree.geturl = "@Url.Action("FindMenuList")?roleId="+roleId;
+            } else {
+                $.messager.alert('错误', '保存失败！' + json.message, "error", function () { });
+            }
+        }
+    });
+    function checkMenu(obj) {
+        var menuid = $(obj).attr("menuid");
+        var cbs = $(":checkbox[pmenuid=" + menuid + "]");
+        if (cbs.size() <= 0) cbs = $(":checkbox[plimitid=" + menuid + "]");
+        cbs.each(function (i, r) {
+            r.checked = obj.checked;
+            menuid = $(r).attr("menuid");
+            $(":checkbox[plimitid=" + menuid + "]").each(function (j, k) {
+                k.checked = obj.checked;
+            })
+        });
+    }
+    var roleId = "@Request["roleId"]";
+    function moveMenuItem(mode, menuId) {
+        if (!roleId) {
+            $.messager.alert("提示", "请先保存角色信息", "info"); return;
+        }
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, menuId: menuId, roleId: roleId, t: Math.random() },
+            url: "@Url.Action("MoveMenuItem")",
+            success: function (data) {
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "菜单移动失败！", "info");
+            }
+        });
+    }
+    function checkClose() {
+        var limitids = $.map($("input[name='limits']:checked"), function (r, i) {
+            return Number( $(r).attr("limitid"));
+        });
+        var menuids = $.map($("input[name='menus']:checked"), function (r, i) {
+            return Number( $(r).attr("menuid"));
+        });
+        limitids= limitids.concat(menuids);
+        limitids.sort(compare());
+        if (limitids.join() == limitSelects) {
+            return true;
+        }
+        return confirm("未保存操作，是否放弃?");
+    }
+    function compare() {
+        return function (a, b) {
+            return a - b;
+        }
+    }
+</script>

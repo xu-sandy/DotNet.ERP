@@ -1,0 +1,272 @@
+﻿@{
+    ViewBag.Title = "Menus";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var verId = Request["verId"] ?? Guid.NewGuid().ToString("n");
+    var hide = Request["detail"] == "1";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增主菜单", delText: "删除产品", editText: "修改主菜单", hideDel: true, hideSearch: true, hideAdd: true, hideEdit: true));
+    var status = new List<SelectListItem>()
+    {
+        new SelectListItem(){Text="显示",Value="1"},
+        new SelectListItem(){Text="隐藏",Value="0"}
+    }.ToJson();
+    var hasChilds = new List<SelectListItem>()
+    {
+        new SelectListItem(){Text="无下级",Value="0"},
+        new SelectListItem(){Text="有下级",Value="1"}
+    }.ToJson();
+}
+@section toolbar
+{
+    <span id="movebtn" style="margin-right:400px">
+        所属系统：@Request["product"]
+        &nbsp;&nbsp; 状态版本：@(Request["state"])
+        &nbsp;&nbsp; 父级分类：@Request["parentTitle"]
+    </span> 
+}
+<script type="text/javascript">
+    $(function(){
+        $dg=pharos.manager.$dg;
+    });
+    pharos.dropdown['status']=@Html.Raw(status);
+    pharos.dropdown['childs']=@Html.Raw(hasChilds);
+    pharos.manager.geturl = "@Html.Raw(Url.Action("DataList", new { verId = verId, psn=Request["psn"] }))";
+    pharos.manager.editurl = "@Url.Action("SaveData")";
+    pharos.manager.sortName = "Id";
+    pharos.manager.sortOrder = "asc";
+    pharos.manager.pagination = false;
+    pharos.manager.columns = [[
+        { field: 'Id',hidden:true },
+        { field: 'DicSN', title: '编号', width: 60 },
+        { field: 'Title', title: '子项值', width: 200,editor:{type:'textbox',options:{disabled:false}} },
+        { field: 'HasChild', title: '有无下级', width: 100,editor:{type:'combobox',options:{data:pharos.dropdown['childs'],valueField:'Value',textField:'Text',editable:false}}, formatter: function (value, row, index) { return value == 1 ? "有" : "无"; } },
+        { field: 'Status', title: '状态', width: 60,editor:{type:'combobox',options:{data:pharos.dropdown['status'],valueField:'Value',textField:'Text',editable:false}}, formatter: function (value, row, index) { return value == 1 ? "显示" : "隐藏"; } },
+        {
+            field: 'Editor', title: '操作', width: 200,hidden:@hide.ToString().ToLower(), formatter: function (value, row, index) {
+                var operat = "";
+                if (opadd) {
+                    opadd = false;
+                    operat= "<a href='javascript:void(0)' onclick='appendRow()'>添加</a>";
+                } else{
+                    operat +=String.format( "<div style='display:none' savesn='{0}'>",[row.Id]);
+                    operat += "<a href='javascript:saveData(\"" + row.Id + "\",\"" + index + "\")'>[保存]</a>&nbsp;&nbsp;&nbsp;";
+                    operat += "<a href='javascript:cancelData(\"" + index + "\")'>[取消]</a>&nbsp;</div>";
+                    operat +=String.format( "<div editsn='{0}'>",[row.Id]);
+
+                    if (row.Index == 0)
+                        operat += "<a style='color:#555'>[上移]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a  href='javascript:moveItem(1,\"" + row.DicSN + "\")'>[上移]</a>&nbsp;&nbsp;";
+
+                    if (row.Index == row.Count-1)
+                        operat += "<a style='color:#555'>[下移]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a  href='javascript:moveItem(2,\"" + row.DicSN + "\")'>[下移]</a>&nbsp;&nbsp;";
+
+                    if (row.HasChild)
+                        operat += "<a style='color:#555'>[移除]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a href='javascript:removeData(\"" + row.DicSN + "\")'>[移除]</a>&nbsp;&nbsp;";
+
+                    if (row.Status==1)
+                        operat += "<a href='javascript:setState(\"" + row.DicSN + "\",0)'>[关闭]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a href='javascript:setState(\"" + row.DicSN + "\",1)'>[显示]</a>&nbsp;&nbsp;</div>";
+
+                }
+                return operat;
+            }
+        }
+    ]];
+    var datas=[];
+    pharos.manager.loadSuccess=function(data){
+        datas=data.rows;
+        if(firstLoad){
+            firstLoad=false;
+            setTimeout(function(){
+                opadd = true;
+                $dg.datagrid('appendRow', { Title:'',HasChild:"0",Status: 1});
+                editIndex = datas.length - 1;
+                $dg.datagrid('selectRow', editIndex).datagrid('beginEdit',editIndex);
+            }, 500);
+        }
+    }
+    var firstLoad = true,editIndex = undefined,opadd = false,$dg=undefined;
+    function endEditing() {
+        if (editIndex == undefined) { return true }
+        if ($dg.datagrid('validateRow', editIndex)) {
+            var ed = $dg.datagrid('getEditor', { index: editIndex, field: 'Title' });
+            if (ed) {
+                var vl =$.trim( $(ed.target).textbox('getValue'));
+                if(!vl){
+                    $.messager.alert("提示", "请输入分类名称", "info");
+                    return false;
+                }
+                if(vl.length>15){
+                    $.messager.alert("提示", "分类名称不能大于15个字", "info");
+                    return;
+                }
+                var data = $dg.datagrid("getRows");
+                if (isExists(data, vl)) {
+                    $.messager.alert("提示", "该分类名称已存在", "warning", function () {
+
+                    });
+                    return false;
+                }
+                ed = $dg.datagrid('getEditor', {index: editIndex, field: 'Status' });
+                var status= $(ed.target).combobox('getValue');
+                ed = $dg.datagrid('getEditor', {index: editIndex, field: 'HasChild' });
+                var hasChild= $(ed.target).combobox('getValue')=="1";
+
+                var result=true;
+                $.ajax({
+                    type: 'post',
+                    async:false,
+                    data: { title: vl,verId:"@verId",productId:"@Request["productId"]",status:status,hasChild:hasChild,psn:@Request["psn"],t:Math.random() },
+                    url: "@Url.Action("AppendData")",
+                    dataType:"json",
+                    success: function (data) {
+                        if(data.successed){
+                            firstLoad=true;
+                            pharos.manager.gridReload();
+                        }else{
+                            $.messager.alert("提示", "添加失败！"+data.message, "info");
+                            result= false;
+                        }
+                    }, error: function (data) {
+                        $.messager.alert("提示", "添加失败！", "info");
+                        result= false;
+                    }
+                });
+                if(!result) return false;
+            }
+            $dg.datagrid('endEdit', editIndex);
+            editIndex = undefined;
+            return true;
+        }
+        return false;
+    }
+    function appendRow() {
+        if (endEditing()) {
+            //opadd = true;
+            //mId=guidGenerator()+"";
+            //try
+            //{
+            //    $dg.datagrid('append', { parent:'',data:[{ id:mId, Title:'',Status: 1}]});
+            //}catch(e){}
+            //editIndex = $dg.datagrid('getData').length - 1;
+            //$dg.datagrid('beginEdit',mId);
+        }
+    }
+    function saveData(id,index){
+        var ed = $dg.datagrid('getEditor', { index: index, field: 'Title' });
+        if (ed) {
+            var vl =$.trim( $(ed.target).textbox('getValue'));
+            if(!vl){
+                $.messager.alert("提示", "请输入分类名称", "info");
+                return;
+            }
+            if(vl.length>15){
+                $.messager.alert("提示", "分类名称不能大于15个字", "info");
+                return;
+            }
+            ed = $dg.datagrid('getEditor', { index: index, field: 'HasChild' });
+            var hasChild= $(ed.target).combobox('getValue');
+            $.ajax({
+                type: 'post',
+                async:false,
+                data: { title: vl,hasChild:hasChild==1,id:id,t:Math.random() },
+                url: "@Url.Action("SaveData")",
+                dataType:"json",
+                success: function (data) {
+                    if(data.successed){
+                        firstLoad=true;
+                        pharos.manager.gridReload();
+                    }else{
+                        $.messager.alert("提示", "保存失败！"+data.message, "error");
+                    }
+                }, error: function (data) {
+                    $.messager.alert("提示", "保存失败！", "error");
+                }
+            });
+    }
+    }
+    function cancelData(index){
+        $dg.datagrid('cancelEdit', index);
+    }
+    function editBefore(row, field, index, value){
+        if(field=="Title" || field=="HasChild"){
+            $dg.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: 'Title,HasChild' });
+            $("div[editsn="+row.Id+"]").hide();
+            $("div[savesn="+row.Id+"]").show("slow");
+            ed = $dg.datagrid('getEditor', { index: index, field: 'HasChild' });
+            //var cvl= $(ed.target).combobox('getValue');
+            //$(ed.target).combobox('select','false');
+        }
+        return false;
+    }
+    function guidGenerator() {
+        //debugger;
+        var rows = $dg.datagrid("getData");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? Number(row.Id) : 0;
+        });
+        var maxId = Math.max.apply(null, ids);
+        if (maxId == -Infinity) maxId = 0;
+        return maxId + 1;
+    }
+    function isExists(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.Title == cd) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+    function moveItem(mode, menuId) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, sn: menuId,verId:"@verId",t:Math.random() },
+            url: "@Url.Action("MoveItem")",
+            success: function (data) {
+                firstLoad=true;
+                pharos.manager.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "菜单移动失败！", "info");
+            }
+        });
+    }
+
+    function removeData(id) {
+        $.messager.confirm('提示', "是否确定移除该项?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { sn: id,verId:"@verId",t:Math.random() },
+                url: "@Url.Action("RemoveData")",
+                success: function (data) {
+                    firstLoad=true;
+                    pharos.manager.gridReload();
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除字典失败！", "info");
+                }
+            });
+        });
+    }
+    function setState(id,state) {
+        $.ajax({
+            type: 'post',
+            data: { sn: id,verId:"@verId",state:state,t:Math.random() },
+            url: "@Url.Action("SetState")",
+            success: function (data) {
+                firstLoad=true;
+                pharos.manager.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "状态修改失败！", "info");
+            }
+        });
+    }
+</script>

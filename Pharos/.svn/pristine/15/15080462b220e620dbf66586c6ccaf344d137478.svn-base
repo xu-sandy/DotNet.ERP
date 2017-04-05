@@ -1,0 +1,30 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+
+namespace Pharos.Logic.BLL
+{
+    public class ReaderService:BaseService<Reader>
+    {
+        /// <summary>
+        /// 类型,1-公告,2-订单新审批,3-供应商新订单
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="userCode"></param>
+        /// <param name="ids">mainIds</param>
+        public static void Add(short type,string userCode,List<int> ids)
+        {
+            var list = BaseService<Reader>.FindList(o => o.Type == type && ids.Contains(o.MainId));
+            var readers = new List<Reader>();
+            ids.ForEach(id =>
+            {
+                if (!list.Any(i => i.MainId == id && i.ReadCode == userCode))
+                    readers.Add(new Reader() { MainId = id, ReadCode = userCode, Type = type });
+            });
+            if(readers.Any())
+                BaseService<Reader>.AddRange(readers);
+        }
+    }
+}

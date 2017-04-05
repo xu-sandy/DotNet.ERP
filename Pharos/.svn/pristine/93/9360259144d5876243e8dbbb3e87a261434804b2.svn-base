@@ -1,0 +1,33 @@
+﻿using SuperSocket.ClientEngine.Protocol;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.DataSynchronism.Protocol
+{
+    public class ClientCommandReader<TCommand> : ClientCommandReader
+        where TCommand : ICommand
+    {
+        public TCommand GetCommandInfo(ICommandInfo route)
+        {
+            return (TCommand)cmdDict.FirstOrDefault(o => o.Name == route.Key);
+        }
+
+        public ClientCommandReader<TCommand> NextCommandReader
+        {
+            get { return new ClientCommandReader<TCommand>(); }
+        }
+
+
+    }
+
+    public class ClientCommandReader
+    {
+        protected static List<ICommand> cmdDict = new List<ICommand>();
+        public static void Register(ICommand command)
+        {
+            cmdDict.Add(command);
+        }
+    }
+}

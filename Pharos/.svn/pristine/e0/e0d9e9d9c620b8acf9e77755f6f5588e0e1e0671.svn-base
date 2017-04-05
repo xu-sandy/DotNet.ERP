@@ -1,0 +1,198 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    public class RemoveBill : BaseObservable
+    {
+        public RemoveBill()
+        {
+            OldProducts = new ObservableCollection<RemoveProduct>();
+            var defualt = ChangingSelectItem.FirstOrDefault();
+            if (defualt != null)
+                Reason = defualt.DicSN;
+            Current = this;
+        }
+
+
+        public static RemoveBill Current { get; set; }
+        internal Window CurrentWindow { get; set; }
+
+        public ObservableCollection<RemoveProduct> OldProducts { get; set; }
+
+
+        //订单流水号
+        private string orderId;
+        /// <summary>
+        /// 订单流水号
+        /// </summary>
+        public string OrderId
+        {
+            get { return orderId; }
+            set
+            {
+                var result = SaleDetailLocalService.GetOrderDetails(value);
+                if (result.Count == 0)
+                {
+                    Toast.DoShow("流水号不存在！", CurrentWindow);
+                    OnPropertyChanged("OrderId");
+                    return;
+                }
+                OldProducts.Clear();
+                foreach (var item in result)
+                {
+                    var product = new RemoveProduct()
+                    {
+                        Barcode = item.Barcode,
+                        Number = item.Number,
+                        ProductCode = item.ProductCode,
+                        SalePrice = item.SalePrice,
+                        SysPrice = item.SysPrice,
+                        Title = item.Title,
+                        Total = item.SalePrice * item.Number
+                    };
+                    OldProducts.Add(product);
+                }
+                OnPropertyChanged("OldProducts");
+                var sale = SaleOrdersLocalService.Find(o => o.PaySN == value);
+                Premium = sale.TotalAmount;
+                orderId = value;
+                OnPropertyChanged("OrderId");
+            }
+        }
+
+
+        //换货下拉列表项
+        public List<SysDataDictionary> ChangingSelectItem
+        {
+            get
+            {
+                var dict = SysDataDictionaryLocalService.Find(p => p.DicSN == 8);
+                if (dict != null)
+                {
+                    var psn = dict.DicSN;
+                    return SysDataDictionaryLocalService.FindList(o => o.DicPSN == psn);
+                }
+                return new List<SysDataDictionary>();
+            }
+        }
+        //退货原因
+        private int reason;
+        public int Reason
+        {
+            get { return reason; }
+            set
+            {
+                reason = value;
+                OnPropertyChanged("Reason");
+            }
+        }
+        //差价
+        private decimal premium;
+        public decimal Premium
+        {
+            get { return premium; }
+            set
+            {
+
+                premium = value;
+                OnPropertyChanged("Premium");
+            }
+        }
+
+        public GeneralCommand Save
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    if (this.OldProducts.Count == 0)
+                    {
+                        Toast.DoShow("没有退货，不允许操作！");
+                        return;
+                    }
+                    var win = o as Window;
+                    VerifyPassword vp = new VerifyPassword(() =>
+                    {
+                        string returnId = Guid.NewGuid().ToString().Replace("-", "");
+                        SalesReturns salesReturn = new SalesReturns()
+                        {
+                            CreateDT = DateTime.Now,
+                            CreateUID = UserModel.Current.Uid,
+                            ReasonId = Current.Reason,
+                            ReturnId = returnId,
+                            ReturnPrice = Current.Premium,
+                            ReturnType = 2,
+                            State = 2,
+                            StoreId = PosMachine.Current.Infos.StoreId,
+                            NewPaySN = "",
+                            MachineSN = PosMachine.Current.Infos.MachineId,
+                            IsUpload = true
+                        };
+                        SalesReturnsLocalService.Add(salesReturn);
+                        List<SalesReturnsDetailed> details = new List<SalesReturnsDetailed>();
+                        foreach (var item in Current.OldProducts)
+                        {
+                            details.Add(new SalesReturnsDetailed()
+                            {
+                                Barcode = item.Barcode,
+                                Number = item.Number,
+                                Price = item.SysPrice,
+                                ReceiptsNumber = Current.OrderId,
+                                ReturnId = returnId,
+                                TradingPrice = item.SalePrice,
+                                CreateDT = DateTime.Now,
+                                IsUpload = true
+                            });
+                        }
+                        SalesReturnsDetailedLocalService.AddRange(details);
+                        var sale = SaleOrdersLocalService.Find(p => p.PaySN == OrderId);
+                        sale.State = 1;
+                        sale.ReturnId += "," + returnId;
+                        sale.IsUpload = true;
+                        SaleOrdersLocalService.Update(sale);
+                        Toast.DoShow("退货成功！");
+                        win.Close();
+                    }, true);
+                    vp.ShowDialogInScreen();
+                });
+            }
+        }
+    }
+    public class RemoveProduct : BaseObservable
+    {
+        public string Barcode { get; set; }
+        public string ProductCode { get; set; }
+
+        public string Title { get; set; }
+
+        private decimal number;
+        public decimal Number
+        {
+            get { return number; }
+            set
+            {
+                number = value;
+                OnPropertyChanged("Number");
+            }
+        }
+
+
+        public Visibility NotChangeVisibility { get; set; }
+        public Visibility ChangeVisibility { get; set; }
+
+        public decimal SysPrice { get; set; }
+
+        public decimal SalePrice { get; set; }
+
+        public decimal Total { get; set; }
+
+    }
+}

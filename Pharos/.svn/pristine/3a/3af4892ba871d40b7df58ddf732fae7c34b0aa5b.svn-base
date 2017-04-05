@@ -1,0 +1,296 @@
+﻿using Pharos.Logic.BLL.DataSynchronism;
+using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.BLL.LocalServices.DataSync;
+using Pharos.POS.Retailing.Models.DataSync;
+using Pharos.POS.Retailing.Models.SalesPromotionRules;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.Models
+{
+    /// <summary>
+    /// 数据同步
+    /// </summary>
+    public class DataSynchronization : IDisposable
+    {
+        System.Timers.Timer timer;
+        private static string SERVERURL;
+        private static HttpClient client = new HttpClient();
+        internal const string UPLOADURL = "api/DataSynchronism/UpLoad";
+        internal const string DOWNLOADURL = "api/DataSynchronism/Download";
+        internal const string TESTCONNECT = "api/DataSynchronism/TestConnect";
+        public DataSynchronization()
+        {
+            timer = new System.Timers.Timer(DataSyncConfigManage.Current.Interval * 60000);
+            timer.Enabled = DataSyncConfigManage.Current.AutoDataSync;
+            timer.AutoReset = true;
+            timer.Elapsed += timer_Elapsed;
+            PosMachineInfo.ReadConfig();
+            client.Timeout = new TimeSpan(0, 2, 0);
+            SERVERURL = PosMachineInfo.Infos.ServerUrl;
+            if (!string.IsNullOrEmpty(SERVERURL))
+            {
+                client.BaseAddress = new Uri(SERVERURL);
+            }
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        }
+        /// <summary>
+        /// 处理回调
+        /// </summary>
+        public static Action GetProgressInfo { get; set; }
+
+
+        public static bool IsManualSync { get; set; }
+
+        void timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            EnableConnectToServer(((o) =>
+            {
+
+                if (bool.Parse(o))
+                {
+                    IsManualSync = false;
+                    UpdateContent();
+                }
+            }));
+        }
+
+        /// <summary>
+        /// 手动在线更新
+        /// </summary>
+        public static Task DataAsyn()
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                EnableConnectToServer(((o) =>
+                {
+                    if (bool.Parse(o))
+                    {
+                        IsManualSync = true;
+                        UpdateContent();
+                    }
+                }));
+            });
+        }
+        /// <summary>
+        /// 启动
+        /// </summary>
+        public static void Start()
+        {
+            DataSynchronization model = new DataSynchronization();
+            model.StartTask();
+            if (DataSyncConfigManage.Current.AutoDataSync)
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    EnableConnectToServer(((o) =>
+                    {
+                        if (bool.Parse(o))
+                        {
+                            IsManualSync = false;
+                            UpdateContent();
+                        }
+                        else
+                        {
+                            Task.Factory.StartNew(() =>
+                            {
+                                Thread.Sleep(100);
+                                SaleContext.LoadDiscout();
+                            });
+                        }
+                    }));
+                });
+            }
+
+        }
+        private static void UpdateContent()
+        {
+            try
+            {
+                SqliteTrap.PushAction((o) =>
+                {
+                    UploadServerDB();
+                    PositiveUpdate();
+                }, new object());
+
+
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 是否可以连接到服务器
+        /// </summary>
+        /// <returns></returns>
+        public static void EnableConnectToServer(Action<string> SuccessCallback)
+        {
+            try
+            {
+                client.PostAsJsonAsync(TESTCONNECT, string.Empty).ContinueWith(
+                (t) =>
+                {
+                    if (t.IsFaulted || t.Result == null || !t.Result.IsSuccessStatusCode)
+                    {
+                        SuccessCallback("false");
+                        return;
+                    }
+                    t.Result.Content.ReadAsAsync<string>().ContinueWith((o) =>
+                    {
+                        if (o.IsFaulted)
+                        {
+                            SuccessCallback("false");
+                            return;
+                        }
+                        SuccessCallback(o.Result);
+                    });
+                });
+            }
+            catch (Exception)
+            {
+                SuccessCallback("false");
+            }
+        }
+
+
+        /// <summary>
+        /// POST 请求
+        /// </summary>
+        public static bool PostRequery<T, R>(string url, T data, Action<R> SuccessCallback)
+        {
+            try
+            {
+                bool result = true;
+                client.PostAsJsonAsync(url, data).ContinueWith(
+                    (t) =>
+                    {
+                        if (t.IsFaulted || !t.Result.IsSuccessStatusCode)
+                        {
+                            result = false;
+                            return;
+                        }
+                        t.Result.Content.ReadAsAsync<R>().ContinueWith((o) =>
+                        {
+                            if (o.IsFaulted)
+                            {
+                                result = false;
+                                return;
+                            }
+                            SuccessCallback(o.Result);
+                        });
+                    });
+                return result;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+        internal static void Update(UpdateFormData datas)
+        {
+            Update(datas, null);
+        }
+        internal static void Update(UpdateFormData datas, Action completeCallback = null)
+        {
+            PostRequery(DOWNLOADURL, datas, new Action<UpdateFormData>((o) =>
+            {
+                if (o != null)
+                {
+                    BaseLocalDataSyncService.UpdateFromServer(o, () =>
+                    {
+                        if (completeCallback != null)
+                        {
+                            completeCallback();
+                        }
+                        if (GetProgressInfo != null)
+                        {
+                            GetProgressInfo();
+                        }
+                    });
+
+                }
+                else
+                {
+                    if (GetProgressInfo != null)
+                    {
+                        GetProgressInfo();
+                    }
+                }
+
+
+            }));
+        }
+        /// <summary>
+        /// 定时更新
+        /// </summary>
+        internal static void PositiveUpdate()
+        {
+            try
+            {
+                var ranges = DataSyncResources.UpdateRanges.Where(o => !o.IsUpload);
+                foreach (var item in ranges)
+                {
+                    if ((!IsManualSync || (IsManualSync && item.IsChecked)) && !item.Title.Contains("销售信息"))
+                        item.UpdateAction(item.Datas());
+                }
+            }
+            catch { }
+        }
+        /// <summary>
+        /// 更新服务器数据
+        /// </summary>
+        internal static void UploadServerDB()
+        {
+            try
+            {
+                var ranges = DataSyncResources.UpdateRanges.Where(o => o.IsUpload);
+                foreach (var item in ranges)
+                {
+                    if ((!IsManualSync || (IsManualSync && item.IsChecked)) && !item.Title.Contains("销售信息"))
+                        item.UpdateAction(item.Datas());
+                }
+            }
+            catch
+            {
+                Console.Write("");
+
+            }
+        }
+
+        internal static bool HasUpdate(Dictionary<string, IEnumerable<dynamic>> dict)
+        {
+
+            foreach (var item in dict)
+            {
+                if (item.Value.Count() > 0)
+                {
+                    if (GetProgressInfo != null)
+                    {
+                        GetProgressInfo();
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public void StartTask()
+        {
+            timer.Start();
+        }
+
+        public void Dispose()
+        {
+            if (timer != null)
+            {
+                timer.Stop();
+                timer.Dispose();
+            }
+        }
+    }
+}

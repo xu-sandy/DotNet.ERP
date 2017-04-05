@@ -1,0 +1,42 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.SalesPromotionRules.Discount;
+using System;
+using System.Linq;
+using System.Windows.Data;
+
+namespace Pharos.POS.Retailing.Converters
+{
+    public class GroupItemConverterForGift : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            var gift = BaseDiscount.PendingGift.FirstOrDefault(o => o.Id == (string)value);
+            switch (parameter as string)
+            {
+                case "DiscountTitle":
+                    return string.Format("{0}", gift.DiscountTitle);
+                case "GiftNumber":
+                    return "赠送数量:" + gift.GiftNumber;
+                case "AddMoney":
+                    return gift.AddMoney > 0 ? "加" + gift.AddMoney.ToString("C") + "赠送" : string.Empty;
+                case "ProductToGiftNum":
+                    //var info = BaseDiscount.PendingGift.FirstOrDefault(o => o.Id == (string)value);
+                    var key = (string)value;
+                    if (!BaseDiscount.pendingGiftCountDict.Keys.Contains(key))
+                        BaseDiscount.pendingGiftCountDict.Add(key, PosMachine.Current.BillList.Where(p => p.GiftPromotionIdOrGiftId == key).Sum(p => p.Num));
+                    else
+                    {
+                        BaseDiscount.pendingGiftCountDict[key] = PosMachine.Current.BillList.Where(p => p.GiftPromotionIdOrGiftId == key).Sum(p => p.Num);
+                    }
+                    var num = BaseDiscount.pendingGiftCountDict.Keys.Contains(key) ? BaseDiscount.pendingGiftCountDict[key] : 0;
+                    return "已赠送" + num + "件";
+            }
+            return "未知信息";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return null;
+        }
+    }
+}

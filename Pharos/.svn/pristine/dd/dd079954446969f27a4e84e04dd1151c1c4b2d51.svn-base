@@ -1,0 +1,360 @@
+﻿using Newtonsoft.Json;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.SalesPromotionRules.Discount;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Linq;
+using System.Threading;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models
+{
+    /// <summary>
+    /// 购物清单
+    /// </summary>
+    public class BuyList : ObservableCollection<Product>
+    {
+        public BuyList()
+        {
+            this.CollectionChanged += BuyList_CollectionChanged;
+            DiscountPreferential = new Dictionary<string, decimal>();
+        }
+
+        void BuyList_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            // GoodsCount = this.Count;
+            var product1 = this.Where(o => o.Status != ProductStatus.POSWeighGift && o.Status != ProductStatus.WeighProduct);
+            var product2 = this.Where(o => o.Status == ProductStatus.POSWeighGift || o.Status == ProductStatus.WeighProduct);
+            var countNum = 0m;
+            if (product1.Count() > 0)
+            {
+                countNum = product1.Sum(o => o.Num);
+            }
+            countNum += product2.Count();
+
+            GoodsCount = Convert.ToInt32(countNum);
+            Total = this.Sum(o => o.Price * o.Num);
+            Receivable = this.Sum(o => o.Total);
+            Preferential = Total - Receivable;
+        }
+
+        public Action SetViewScrollToEnd { get; set; }
+
+        private decimal total;
+
+        /// <summary>
+        /// 合计
+        /// </summary>
+        public decimal Total
+        {
+            get { return total; }
+            set
+            {
+                total = value;
+                OnPropertyChanged(new PropertyChangedEventArgs("Total"));
+            }
+        }
+
+
+        private decimal preferential;
+        /// <summary>
+        /// 优惠额度
+        /// </summary>
+        public decimal Preferential
+        {
+            get { return preferential; }
+            set
+            {
+                if (value < 0)
+                    value = 0;
+                preferential = value;
+                OnPropertyChanged(new PropertyChangedEventArgs("Preferential"));
+
+            }
+        }
+        /// <summary>
+        /// 件数
+        /// </summary>
+
+        private int goodsCount;
+        public int GoodsCount
+        {
+            get { return goodsCount; }
+            set
+            {
+                goodsCount = value;
+                OnPropertyChanged(new PropertyChangedEventArgs("GoodsCount"));
+
+            }
+        }
+
+        /// <summary>
+        /// 机号
+        /// </summary>
+        public string HostId
+        {
+            get { return PosMachineInfo.Infos.MachineId; }
+        }
+
+        public Dictionary<string, decimal> DiscountPreferential { get; set; }
+
+        private decimal receivable;
+        /// <summary>
+        /// 应收
+        /// </summary>
+        public decimal Receivable
+        {
+            get
+            {
+
+                return receivable;
+            }
+            set
+            {
+                if (DiscountPreferential.Count > 0)
+                {
+                    receivable = value - DiscountPreferential.Values.Sum();
+                }
+                else
+                {
+                    receivable = value;
+                }
+                OnPropertyChanged(new PropertyChangedEventArgs("Receivable"));
+            }
+        }
+
+
+        private Visibility showGiftIcon = Visibility.Hidden;
+        public Visibility ShowGiftIcon
+        {
+            get { return showGiftIcon; }
+            set
+            {
+                showGiftIcon = value;
+                OnPropertyChanged(new PropertyChangedEventArgs("ShowGiftIcon"));
+            }
+        }
+
+
+        public void UpdateId(int index = 0)
+        {
+            for (; index < this.Count; index++)
+            {
+                this[index].Id = index + 1;
+            }
+        }
+
+        private bool AddBefore(Product item)
+        {
+            var defaultGoods = this.FirstOrDefault(o => o.Code == item.Code && o.Status == item.Status && o.GiftPromotionIdOrGiftId == item.GiftPromotionIdOrGiftId);
+            if (defaultGoods != null && item.Status != ProductStatus.WeighProduct && item.Status != ProductStatus.POSWeighGift)
+            {
+                defaultGoods.Num += item.Num;
+                foreach (var productInfo in this) 
+                {
+                    productInfo.Discount();
+
+                }
+                return false;
+            }
+            item.PropertyChanged += item_PropertyChanged;
+            return true;
+        }
+
+        public new void Insert(int index, Product item)
+        {
+            if (AddBefore(item))
+            {
+                base.Insert(index, item);
+                UpdateId(index);
+            }
+            if (SetViewScrollToEnd != null)
+            {
+                SetViewScrollToEnd();
+            }
+        }
+
+        private void item_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            var goods = sender as Product;
+            if (goods != null && goods.Num == 0)
+            {
+                this.Remove(goods);
+                // DiscountReceivable = 0;
+            }
+            if (goods.IsEdit)
+            {
+                foreach (var o in this)
+                {
+                    if (o != goods && o.IsEdit)
+                        o.IsEdit = false;
+                };
+            }
+            BuyList_CollectionChanged(sender, null);
+
+        }
+        /// <summary>
+        /// 添加商品统一入口
+        /// </summary>
+        /// <param name="barcode">条码</param>
+        /// <param name="num">件数</param>
+        /// <returns></returns>
+        Queue<ProductQueueInfo> queue = new Queue<ProductQueueInfo>();
+        bool isRun = false;
+        public bool AddFromBarcode(string barcode, decimal num = 1, ProductStatus status = ProductStatus.Normal, decimal salePrice = -1, string promotionId = "")
+        {
+            //   DiscountReceivable = 0;
+            Barcode _Barcode = new Barcode(barcode, salePrice, num);
+            if (_Barcode.IsError)
+            {
+                Toast.DoShow(_Barcode.ErrorMsg, Application.Current.MainWindow);
+                return false;
+            }
+            queue.Enqueue(new ProductQueueInfo() { Barcode = _Barcode, PromotionId = promotionId, Status = status });
+            if (!isRun)
+            {
+                isRun = true;
+                ThreadPool.QueueUserWorkItem(new WaitCallback(Process));
+            }
+            return true;
+        }
+        public bool AddFromBarcode(Barcode barcode, ProductStatus status = ProductStatus.Normal, string promotionId = "")
+        {
+
+            queue.Enqueue(new ProductQueueInfo() { Barcode = barcode, PromotionId = promotionId, Status = status });
+            if (!isRun)
+            {
+                isRun = true;
+                ThreadPool.QueueUserWorkItem(new WaitCallback(Process));
+            }
+            return true;
+        }
+
+        private void Process(object o)
+        {
+            while (isRun)
+            {
+                if (queue.Count > 0)
+                {
+                    var info = queue.Dequeue();
+                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        this.Add(info.Barcode, info.Status, info.PromotionId);
+
+                    }));
+                }
+                Thread.Sleep(1);
+            }
+        }
+
+        public void Add(Barcode barcode, ProductStatus status, string promotionId = "")
+        {
+            if (AddBefore(barcode, status, promotionId))
+            {
+                var item = new Product(barcode, status, promotionId);
+                item.PropertyChanged += item_PropertyChanged;
+                item.Id = base.Count + 1;
+                base.Add(item);
+                foreach (var productInfo in this) 
+                {
+                    productInfo.Discount();
+                }
+            }
+            if (SetViewScrollToEnd != null)
+            {
+                SetViewScrollToEnd();
+            }
+        }
+        private bool AddBefore(Barcode barcode, ProductStatus status, string promotionId = "")
+        {
+            var tempStatus = status;
+            if (status == ProductStatus.Normal && PosMachine.Current.Status == PosStatus.Gift)
+            {
+                tempStatus = barcode.IsCustom ? ProductStatus.POSWeighGift : ProductStatus.POSGift;
+            }
+            var defaultGoods = this.FirstOrDefault(o => o.Code == barcode.BarcodeFromDB && o.Status == tempStatus && o.GiftPromotionIdOrGiftId == promotionId);
+            if (defaultGoods != null && status != ProductStatus.WeighProduct && status != ProductStatus.POSWeighGift)
+            {
+                defaultGoods.Num += barcode.WeightOrNum;
+                foreach (var product in this)
+                {
+                    product.Discount();
+                }
+
+                return false;
+            }
+            return true;
+        }
+        public new void Add(Product item)
+        {
+            if (AddBefore(item))
+            {
+                item.Id = base.Count + 1;
+                base.Add(item);
+            }
+            if (SetViewScrollToEnd != null)
+            {
+                SetViewScrollToEnd();
+            }
+
+        }
+
+        [JsonIgnore]
+        public new Product this[int index]
+        {
+            get
+            {
+                return base[index];
+            }
+            set
+            {
+                base[index] = value;
+                base[index].Id = index + 1;
+            }
+        }
+        public new bool Remove(Product item)
+        {
+            var index = base.IndexOf(item);
+            var isSuccess = base.Remove(item);
+            if (isSuccess)
+            {
+                UpdateId(index);
+            }
+            if (item.Status == ProductStatus.Normal)
+            {
+                BaseDiscount.Current.RemoveDiscount(item.PromotionIds, item.GiftId);
+                foreach (var i in this)
+                {
+                    i.Discount();
+                }
+            }
+
+            return isSuccess;
+        }
+        public new void Clear()
+        {
+            base.Clear();
+            DiscountPreferential = new Dictionary<string, decimal>();
+            Receivable = 0;
+            Preferential = 0;
+            ShowGiftIcon = Visibility.Hidden;
+        }
+        public new void RemoveAt(int index)
+        {
+            base.RemoveAt(index);
+            UpdateId(index);
+        }
+    }
+
+    public class ProductQueueInfo
+    {
+        public Barcode Barcode { get; set; }
+
+        public ProductStatus Status { get; set; }
+
+        public string PromotionId { get; set; }
+    }
+}

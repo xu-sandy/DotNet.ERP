@@ -1,0 +1,94 @@
+﻿using Microsoft.Synchronization;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Runtime.Serialization;
+using System.ServiceModel;
+
+namespace Pharos.SyncService
+{
+    // 注意: 使用“重构”菜单上的“重命名”命令，可以同时更改代码和配置文件中的接口名“IPosServerDbSyncService”。
+    [ServiceContract(SessionMode = SessionMode.Required)]
+    [ServiceKnownType(typeof(SyncIdFormatGroup))]
+    [ServiceKnownType(typeof(SyncId))]
+    [ServiceKnownType(typeof(SysStoreUserInfo))]
+    [ServiceKnownType(typeof(ApiLibrary))]
+    [ServiceKnownType(typeof(Notice))]
+    [ServiceKnownType(typeof(DeviceRegInfo))]
+    [ServiceKnownType(typeof(PosIncomePayout))]
+    [ServiceKnownType(typeof(Member))]
+    [ServiceKnownType(typeof(MemberIntegral))]
+    [ServiceKnownType(typeof(ProductCategory))]
+    [ServiceKnownType(typeof(ProductRecord))]
+    [ServiceKnownType(typeof(SysDataDictionary))]
+    public interface IPosServerDbSyncService
+    {
+        [OperationContract(
+            IsInitiating = true,
+            IsTerminating = false)]
+        void CreateProviderForSyncSession(int companyId, string storeId, int _SyncDirectionOrder);
+
+        [OperationContract(
+            IsInitiating = false,
+            IsTerminating = false)]
+        SyncIdFormatGroup GetIdFormats(int _SyncDirectionOrder);
+
+        [OperationContract(
+            IsInitiating = false,
+            IsTerminating = false)]
+        void BeginSession(int _SyncDirectionOrder);
+
+        [OperationContract(
+            IsInitiating = false,
+            IsTerminating = true)]
+        void EndSession(int _SyncDirectionOrder);
+
+        [OperationContract(
+            IsInitiating = false,
+            IsTerminating = false)]
+        ChangeBatch GetChangeBatch(
+            uint batchSize,
+            SyncKnowledge destinationKnowledge, int _SyncDirectionOrder,
+            out CachedChangeDataRetriever changeDataRetriever);
+
+        [OperationContract(
+            IsInitiating = false,
+            IsTerminating = false)]
+        FullEnumerationChangeBatch GetFullEnumerationChangeBatch(
+            uint batchSize,
+            SyncId lowerEnumerationBound,
+            SyncKnowledge knowledgeForDataRetrieval, int _SyncDirectionOrder,
+            out CachedChangeDataRetriever changeDataRetriever);
+
+        [OperationContract(
+            IsInitiating = false,
+            IsTerminating = false)]
+        void GetSyncBatchParameters(int _SyncDirectionOrder,
+            out uint batchSize,
+            out SyncKnowledge knowledge);
+
+        [OperationContract(
+            IsInitiating = false,
+            IsTerminating = false)]
+        byte[] ProcessChangeBatch(int _SyncDirectionOrder,
+            ConflictResolutionPolicy resolutionPolicy,
+            ChangeBatch sourceChanges,
+            CachedChangeDataRetriever changeDataRetriever,
+            byte[] changeApplierInfo);
+
+        [OperationContract(
+            IsInitiating = false,
+            IsTerminating = false)]
+        byte[] ProcessFullEnumerationChangeBatch(int _SyncDirectionOrder,
+            ConflictResolutionPolicy resolutionPolicy,
+            FullEnumerationChangeBatch sourceChanges,
+            CachedChangeDataRetriever changeDataRetriever,
+            byte[] changeApplierInfo);
+
+        #region For demo purpose, not required for RCA pattern
+        [OperationContract(
+            IsInitiating = false,
+            IsTerminating = false)]
+        void CleanupTombstones(TimeSpan timespan, int _SyncDirectionOrder);
+        #endregion
+    }
+}

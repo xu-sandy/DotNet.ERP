@@ -1,0 +1,35 @@
+﻿using StackExchange.Redis;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.MessageAgent.MessageQueues.Redis
+{
+    class RedisMessageQueue : IMessageQueue
+    {
+
+        private static Lazy<ConnectionMultiplexer> lazyConnection = new Lazy<ConnectionMultiplexer>(() =>
+        {
+            return ConnectionMultiplexer.Connect(MessageServerConfiguration.GetConfig().MessageQueueConnectionString);
+        });
+        public static ConnectionMultiplexer Connection
+        {
+            get
+            {
+                return lazyConnection.Value;
+            }
+        }
+        public void Subscribe(Data.V1.SubscribeInformaction info)
+        {
+            ISubscriber sub = Connection.GetSubscriber();
+            sub.Subscribe(info.Topic, (channel, msg) => { });
+        }
+
+        public void Pubish(Data.V1.PubishInformaction info)
+        {
+            ISubscriber sub = Connection.GetSubscriber();
+            sub.Publish(info.Topic, info.Content);
+        }
+    }
+}

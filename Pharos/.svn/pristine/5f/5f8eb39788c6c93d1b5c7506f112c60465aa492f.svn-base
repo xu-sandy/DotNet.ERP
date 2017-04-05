@@ -1,0 +1,192 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.POS.Retailing.RawInput;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// TuiHuanHuo.xaml 的交互逻辑
+    /// </summary>
+    public partial class TuiHuanHuo : DialogWindow02, IBarcodeControl
+    {
+        public TuiHuanHuo()
+            : this(0)
+        {
+        }
+        /// <summary>
+        /// 换货=0，退货=1，退单=2
+        /// </summary>
+        /// <param name="index"></param>
+        public TuiHuanHuo(int index)
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+            CurrentModel = new RefundChangeViewModel();
+            CurrentModel.Change.CurrentWindow = this;
+            CurrentModel.Refund.CurrentWindow = this;
+            CurrentModel.RefundOrder.CurrentWindow = this;
+            this.ApplyBindings(this, CurrentModel);
+            this.Closing += TuiHuanHuo_Closing;
+            this.PreviewKeyDown += TuiHuanHuo_PreviewKeyDown;
+            SetTabItemShow(index);
+            this.Loaded += TuiHuanHuo_Loaded;
+
+        }
+        private void TuiHuanHuo_Loaded(object sender, System.Windows.RoutedEventArgs e)
+        {
+            this.ThreadFilterMessage();            
+
+            Task.Factory.StartNew(() =>
+            {
+                Thread.Sleep(300);
+                Application.Current.Dispatcher.Invoke(new Action(() =>
+                {
+                    Keyboard.Focus(CurrentIInputElement);
+                }));
+            });
+           
+        }
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            //   HwndSource source = PresentationSource.FromVisual(this) as HwndSource;
+            HwndSource source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+
+            if (source != null)
+            {
+                source.AddHook(this.WndProc);
+            }
+
+            base.OnSourceInitialized(e);
+        }
+        void TuiHuanHuo_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (tabControl.SelectedIndex == 0)
+            {
+                switch (e.SystemKey)
+                {
+                    case Key.F10:
+                        switch (CurrentModel.Change.Mode)
+                        {
+                            case Models.PosModels.ChangeInputMode.New:
+                                CurrentModel.Change.Mode = Models.PosModels.ChangeInputMode.Old;
+                                break;
+                            case Models.PosModels.ChangeInputMode.Old:
+                                CurrentModel.Change.Mode = Models.PosModels.ChangeInputMode.New;
+                                break;
+                        }
+                        e.Handled = true;
+                        break;
+                    case Key.Escape:
+                        this.Close();
+                        break;
+
+                }
+            }
+        }
+
+        public System.Windows.IInputElement CurrentIInputElement { get; set; }
+        RefundChangeViewModel CurrentModel { get; set; }
+        public bool IsMonitoring { get; set; }
+
+        public RawInput.RawKeyboard KeyboardDriver { get; set; }
+
+        public System.Collections.Generic.Queue<RawInput.Win32.KeyAndState> EventQueue { get; set; }
+        private void SetTabItemShow(int index)
+        {
+            tabControl.SelectedIndex = index;
+            switch (index)
+            {
+                case 0:
+                    CurrentIInputElement = txtChangeBarcode;
+                    break;
+                case 1:
+                    CurrentIInputElement = txtRefundBarcode;
+                    break;
+                case 2:
+                    CurrentIInputElement = txtRefundAllBarcode;
+                    break;
+            }
+            if (CurrentIInputElement != null)//处理快捷键因界面刷新失效，延时处理焦点
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(100);
+                    this.Dispatcher.Invoke(new Action(() =>
+                    {
+                        Keyboard.Focus(CurrentIInputElement);
+                    }));
+                });
+            }
+        }
+
+
+        void TuiHuanHuo_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                CurrentModel.Change.Clear();
+                CurrentModel.Refund.Clear();
+            });
+
+        }
+
+
+
+
+        private void txtMode_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            switch (CurrentModel.Change.Mode)
+            {
+                case Models.PosModels.ChangeInputMode.New:
+                    CurrentModel.Change.Mode = Models.PosModels.ChangeInputMode.Old;
+                    break;
+                case Models.PosModels.ChangeInputMode.Old:
+                    CurrentModel.Change.Mode = Models.PosModels.ChangeInputMode.New;
+                    break;
+            }
+        }
+
+        private void IconTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            var ctrl = sender as TextBox;
+            if (e.Key == Key.Enter)
+            {
+                ctrl.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                Keyboard.Focus(ctrl);
+            }
+        }
+
+        private void change_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            SetTabItemShow(0);
+            e.Handled = true;
+        }
+
+        private void refund_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            SetTabItemShow(1);
+            e.Handled = true;
+        }
+
+        private void refunAll_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            SetTabItemShow(2);
+            e.Handled = true;
+        }
+
+
+
+    }
+}

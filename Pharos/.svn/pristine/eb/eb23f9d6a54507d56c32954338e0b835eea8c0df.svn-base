@@ -1,0 +1,61 @@
+﻿<control:DialogWindow02 x:Class="Pharos.POS.Retailing.ChildWin.DuoFangShiZhiFu"
+          xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"
+        Title="多方式支付" Height="600" Width="800" WindowStartupLocation="CenterScreen"
+        Icon="..\Images\ChaKuCun\search.png" Margin="0"   InputMethod.PreferredImeState="Off" InputMethod.IsInputMethodEnabled="False"  WindowStyle="None">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\DuoFangShiZhiFuStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="120"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+            <ColumnDefinition Width="120"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="90*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Border BorderBrush="Gray" BorderThickness="0,0,0,1" Grid.ColumnSpan="4">
+            <TextBlock Margin="30,0,0,0" Style="{StaticResource rightTextStyle}"><Run Text="应付金额："></Run><Run Text="￥"></Run><Run Text="{Binding Amount,StringFormat='{}{0:N2}'}"></Run></TextBlock>
+        </Border>
+        <TextBlock Grid.Column="0" Grid.Row="1" Style="{StaticResource titleStyle}" Text="现金收款："></TextBlock>
+        <control:IconTextBox Style="{StaticResource contentStyle}" Grid.Column="1" Grid.Row="1" Text="{Binding CashPay,StringFormat='{}{0:N2}'}"></control:IconTextBox>
+        <TextBlock Grid.Column="0" Grid.Row="2" Style="{StaticResource titleStyle}" Text="银联收款："></TextBlock>
+        <control:IconTextBox Style="{StaticResource contentStyle}" Grid.Column="1" Grid.Row="2" Text="{Binding UnionPay,StringFormat='{}{0:N2}'}"></control:IconTextBox>
+
+        <TextBlock Grid.Column="0" Grid.Row="3" Style="{StaticResource titleStyle}" Text="代金券："></TextBlock>
+        <control:IconTextBox Style="{StaticResource contentStyle}" Grid.Column="1" Grid.Row="3" Text="{Binding GiftCard,StringFormat='{}{0:N2}'}"></control:IconTextBox>
+
+        <TextBlock Grid.Column="0" Grid.Row="4" Style="{StaticResource titleStyle}" Text="储值卡："></TextBlock>
+        <control:IconTextBox Style="{StaticResource contentStyle}" Grid.Column="1" Grid.Row="4" Text="{Binding PrepaidCard,StringFormat='{}{0:N2}'}"></control:IconTextBox>
+
+        <TextBlock Grid.Column="2" Grid.Row="4" Style="{StaticResource titleStyle}" Text="储值卡号："></TextBlock>
+        <control:IconTextBox Style="{StaticResource contentStyle}" Grid.Column="3" Grid.Row="4" Text="{Binding PrepaidCardNo}"></control:IconTextBox>
+
+        <Border BorderBrush="Gray" BorderThickness="0,1" Grid.Row="5" Grid.RowSpan="2" Grid.ColumnSpan="4"></Border>
+
+        <TextBlock Grid.Column="0" Grid.Row="5" Style="{StaticResource titleStyle}" Text="实收金额："></TextBlock>
+        <TextBlock Grid.Column="1" Grid.Row="5" Style="{StaticResource rightTextStyle}" Text="{Binding Total,StringFormat='{}{0:N2}'}"></TextBlock>
+        <TextBlock Grid.Column="2" Grid.Row="5" Style="{StaticResource titleStyle}" Text="尚欠："></TextBlock>
+        <TextBlock Grid.Column="3" Grid.Row="5" Style="{StaticResource rightTextStyle}" Text="{Binding StillOwe,StringFormat='{}{0:N2}'}"></TextBlock>
+        <TextBlock Grid.Column="2" Grid.Row="6" Style="{StaticResource titleStyle}" Text="找零："></TextBlock>
+        <TextBlock Grid.Column="3" Grid.Row="6" Style="{StaticResource rightTextStyle}" Text="{Binding Change,StringFormat='{}{0:N2}'}"></TextBlock>
+
+
+        <control:PosButton Style="{StaticResource BtnSearchStyle}" Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="4"  HorizontalAlignment="Center" Content="完成支付" Command="{Binding ConfirmCommand}"></control:PosButton>
+
+    </Grid>
+</control:DialogWindow02>

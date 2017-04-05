@@ -1,0 +1,107 @@
+﻿<control:DialogWindow02 x:Class="Pharos.POS.Retailing.ChildWin.ChaDingDan"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:model="clr-namespace:Pharos.POS.Retailing.Models.ApiReturnResults"
+        xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"
+        Title="查订单" Height="600" Width="1024" WindowStartupLocation="CenterScreen" Icon="..\Images\ChaKuCun\search.png" Margin="0" WindowStyle="None">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\ChaDingDanStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"></ColumnDefinition>
+            <ColumnDefinition Width="200"></ColumnDefinition>
+            <ColumnDefinition Width="100"></ColumnDefinition>
+            <ColumnDefinition Width="200"></ColumnDefinition>
+            <ColumnDefinition Width="150"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <TextBlock Style="{StaticResource titleStyle}" Text="日期："></TextBlock>
+        <DatePicker TabIndex="0" Grid.Column="1" Margin="0,0,20,0"  SelectedDateFormat="Short" PreviewKeyDown="DatePicker_PreviewKeyDown" SelectedDate="{Binding SearchTime,Mode=TwoWay}" FontSize="14"    Height="35"  VerticalContentAlignment="Center"></DatePicker>
+
+        <TextBlock Style="{StaticResource titleStyle}" Grid.Column="2" Grid.Row="0" Text="收银员："></TextBlock>
+        <control:IconTextBox x:Name="cashier" Style="{StaticResource contentStyle}"  Grid.Column="3" Grid.Row="0" Text="{Binding Cashier,Mode=TwoWay}"  TabIndex="1"  ></control:IconTextBox>
+
+        <TextBlock Style="{StaticResource titleStyle}" Grid.Column="0" Grid.Row="1" Text="机号："></TextBlock>
+        <control:IconTextBox x:Name="machineSn" Style="{StaticResource contentStyle}" Grid.Row="1" Text="{Binding MachineSn,Mode=TwoWay}"  TabIndex="1"  Grid.Column="1" ></control:IconTextBox>
+
+
+        <TextBlock Style="{StaticResource titleStyle}" Grid.Column="2" Grid.Row="1" Text="流水号："></TextBlock>
+        <control:IconTextBox x:Name="txtpaysn" Style="{StaticResource contentStyle}" Grid.Row="1" Text="{Binding PaySn,Mode=TwoWay}"  TabIndex="1"  Grid.Column="3" ></control:IconTextBox>
+
+        <control:PosButton TabIndex="2" Name="m" Style="{StaticResource BtnSearchStyle}"  Grid.Column="4" Grid.Row="1"  Command="{Binding SearchCommand}"  CommandParameter="{x:Static model:Range.Local}">查询</control:PosButton>
+
+        <!--<control:PosButton Name="s" Style="{StaticResource BtnSearchStyle}" TabIndex="3"  Grid.Column="5" Visibility="Hidden"  Command="{Binding SearchCommand}" CommandParameter="{x:Static model:Range.Store}">查全店</control:PosButton>-->
+        <DataGrid Grid.Row="2" ScrollViewer.VerticalScrollBarVisibility="Visible" Grid.ColumnSpan="6" Name="DataView" ItemsSource="{Binding OrderItems,Mode=TwoWay}" BorderThickness="1" BorderBrush="#BCB4BB" Margin="0" VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserDeleteRows="True" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Binding="{Binding Index}" />
+                <DataGridTemplateColumn IsReadOnly="True" Header="流水号"  Width="150*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Height="40" Cursor="Hand" Command="{Binding CheckDetail}"  Background="Transparent" BorderBrush="Transparent" BorderThickness="0" Margin="0" Padding="0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"></ColumnDefinition>
+                                        <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding PaySn}" VerticalAlignment="Center"></TextBlock>
+                                    <Border Margin="5" Padding="1" x:Name="bstate" Grid.Column="1" Background="White" Visibility="Collapsed" BorderBrush="Red" BorderThickness="1">
+                                        <TextBlock Text="退单" Foreground="Red"></TextBlock>
+                                    </Border>
+                                    <Border Margin="5" Padding="1" x:Name="rorder" Grid.Column="1" Background="White" Visibility="Collapsed" BorderBrush="Red" BorderThickness="1">
+                                        <TextBlock Text="换货" Foreground="Red"></TextBlock>
+                                    </Border>
+                                    <Border Margin="5" Padding="1" x:Name="torder" Grid.Column="1" Background="White" Visibility="Collapsed" BorderBrush="Red" BorderThickness="1">
+                                        <TextBlock Text="退货" Foreground="Red"></TextBlock>
+                                    </Border>
+                                </Grid>
+                            </Button>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding OrderType}" Value="2">
+                                    <Setter TargetName="torder" Property="Visibility" Value="Visible"></Setter>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding OrderType}" Value="0">
+                                    <Setter TargetName="torder" Property="Visibility" Value="Collapsed"></Setter>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding OrderType}" Value="1">
+                                    <Setter TargetName="rorder" Property="Visibility" Value="Visible"></Setter>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding OrderType}" Value="0">
+                                    <Setter TargetName="rorder" Property="Visibility" Value="Collapsed"></Setter>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding OrderType}" Value="3">
+                                    <Setter TargetName="bstate" Property="Visibility" Value="Visible"></Setter>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding OrderType}" Value="0">
+                                    <Setter TargetName="bstate" Property="Visibility" Value="Collapsed"></Setter>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <!--<DataGridTextColumn Binding="{Binding PaySn}" IsReadOnly="True" Header="流水号" Width="150*"></DataGridTextColumn>-->
+                <DataGridTextColumn Binding="{Binding Number,StringFormat='{}{0:N2}'}" IsReadOnly="True" Header="商品数量" Width="60*"></DataGridTextColumn>
+                <DataGridTextColumn Binding="{Binding Amount,StringFormat='{}{0:N2}'}" IsReadOnly="True" Header="金额" Width="100*"></DataGridTextColumn>
+                <DataGridTextColumn Binding="{Binding Date}" IsReadOnly="True" Header="交易时间" Width="100*"></DataGridTextColumn>
+                <DataGridTextColumn Binding="{Binding Cashier}" IsReadOnly="True" Header="收银员" Width="100"></DataGridTextColumn>
+                <DataGridTextColumn Binding="{Binding SaleMan}" IsReadOnly="True" Header="导购" Width="100"></DataGridTextColumn>
+                <DataGridTemplateColumn IsReadOnly="True" Header="操作" Width="95">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <control:PosButton FontSize="30" Command="{Binding Print}" FontFamily="/Pharos.Wpf;component/Fonts/#FontAwesome" Content="&#xf02f;"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</control:DialogWindow02>

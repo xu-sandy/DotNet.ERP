@@ -1,0 +1,61 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL-----商户资料
+    /// </summary>
+    public class TradersService : BaseService
+    {
+        [Ninject.Inject]
+        // 商户资料
+        public IBaseRepository<Traders> TradersRepository { get; set; }
+
+        /// <summary>
+        /// 获取最大CID
+        /// </summary>
+        /// <returns></returns>
+        public int getMaxCID()
+        {
+            var Traders = TradersRepository.GetQuery();
+            int CID = Traders.OrderByDescending(o => o.CID).Select(o => o.CID).FirstOrDefault();
+            CID = CID + 1;
+            return CID;
+        }
+
+        /// <summary>
+        /// 增加、修改
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public Utility.OpResult SaveOrUpdate(Traders model)
+        {
+            if (model.Id == 0)
+            {
+                model.CID = getMaxCID();
+                TradersRepository.Add(model);
+            }
+            else
+            {
+                var source = TradersRepository.Get(model.Id);
+                model.ToCopyProperty(source);
+            }
+
+            if (TradersRepository.SaveChanges())
+            {
+                LogEngine.WriteUpdate(model.Id + "," + model.Title, LogModule.商户资料);
+            }
+            return OpResult.Success();
+        }
+    }
+}

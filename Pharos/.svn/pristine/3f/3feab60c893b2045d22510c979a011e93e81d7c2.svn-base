@@ -1,0 +1,92 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class BusinessService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<Business> BusinessRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<Traders> TraderRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<ProductBrand> BrandRepository { get; set; }
+        public Pharos.Utility.OpResult SaveOrUpdate(Business model)
+        {
+            if (BusinessRepository.GetQuery(o => o.Title == model.Title && o.Id != model.Id).Any())
+                return Utility.OpResult.Fail("该名称已存在!");
+            if(model.Id==0)
+            {
+                model.ById = CommonService.GUID;
+                model.CreateDT = DateTime.Now;
+                model.CreateUID = CurrentUser.UID;
+                model.Status = 1;
+                BusinessRepository.Add(model);
+            }
+            else
+            {
+                var source = BusinessRepository.Get(model.Id);
+                model.ToCopyProperty(source, new List<string>() { "CreateDT", "CreateUID", "Status" });
+                BusinessRepository.SaveChanges();
+            }
+            return Utility.OpResult.Success();
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = BusinessRepository.GetQuery();
+            var queryTrader = TraderRepository.GetQuery();
+            var queryBrand = BrandRepository.GetQuery();
+            var title = nvl["title"];
+            if (!title.IsNullOrEmpty())
+            {
+                query = query.Where(o => o.Title.Contains(title) || o.Byname.Contains(title));
+            }
+            var q = from x in query
+                    select new { 
+                        x.Id,
+                        x.Title,
+                        x.Byname,
+                        x.ById,
+                        x.CreateDT,
+                        x.CreateUID,
+                        x.Status,
+                        StateTitle = x.Status == 1 ? "可用" : "禁用",
+                        TraderNum = queryTrader.Count(o => ("," + o.BusinessScopeId + ",").Contains("," + x.ById + ","))
+                    };
+            recordCount = q.Count();
+            return q.ToPageList();
+        }
+        public OpResult Deletes(int[] ids)
+        {
+            var list= BusinessRepository.GetQuery(o => ids.Contains(o.Id)).ToList();
+            BusinessRepository.RemoveRange(list);
+            return Utility.OpResult.Success();
+        }
+
+        public Business GetOne(object id)
+        {
+            return BusinessRepository.Get(id);
+        }
+
+        public List<Business> GetList()
+        {
+            return BusinessRepository.GetQuery(o => o.Status == 1).ToList();
+        }
+        public OpResult SetState(string ids, short state)
+        {
+            var sId = ids.Split(',').Select(o => int.Parse(o));
+            var olist = BusinessRepository.GetQuery(o => sId.Contains(o.Id)).ToList();
+            olist.Each(o => o.Status = state);
+            return OpResult.Result(BusinessRepository.SaveChanges());
+        }
+    }
+}

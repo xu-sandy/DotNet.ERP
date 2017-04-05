@@ -1,0 +1,86 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+}
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'north',border:false" style="height:40px;">
+        <form id="frmsearch">
+            <table class="table-toolbar">
+                <tr>
+                    <td class="label-toolbar margin-top-4">
+                        <label>品类：</label>
+                    </td>
+                    <td class="input-toolbar margin-top-4-1">
+                        @*@Html.DropDownList("BigCategorySN", ViewBag.parenttypes as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,onSelect:parentSelect" })*@
+                        @Form.CategoryCombobox("parentType", showThird: true, showAll: false, panelWidth: 350, controlWidth: 200)
+                    </td>
+                    <td class="label-toolbar">&nbsp;</td>
+                    @*<td class="input-toolbar margin-top-4-1">
+                        @Html.DropDownList("SubCategorySN", new List<SelectListItem>() { new SelectListItem() { Text = "子类", Value = "", Selected = true } }, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,onSelect:childTypeSelect" })
+                    </td>*@
+                    <td class="label-toolbar margin-top-4">
+                        <label>品牌：</label>
+                    </td>
+                    <td class="input-toolbar margin-top-4-1">
+                        @Html.DropDownList("BrandSN", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "", Selected = true } }, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+                    </td>
+                    <td><a href="#" style="margin-left:4px;" id="searchBtn" class="easyui-linkbutton cus4 linkbtn" data-options="iconCls:'icon-search'" onclick="gridReload()">查询</a></td>
+                </tr>
+            </table>
+            <input type="hidden" name="supplierId" value="@Request["supplierID"]" />
+        </form>
+    </div>
+    <div data-options="region:'center',border:false">
+        <table class="easyui-datagrid" id="gridSel"
+               data-options="url:'',idField:'Id',checkOnSelect:false,border:true,rownumbers:true,fit:true,fitColumns:true,pagination:false,onLoadSuccess:loadSuccess">
+            <thead>
+                <tr>
+                    <th data-options="field:'Id',checkbox: true" width="50"></th>
+                    <th data-options="field:'BigCategoryTitle'" width="120">大类</th>
+                    <th data-options="field:'MidCategoryTitle'" width="150">中类</th>
+                    <th data-options="field:'SubCategoryTitle'" width="150">子类</th>
+                    <th data-options="field:'BrandTitle'" width="150">品牌</th>
+                    <th data-options="field:'StockNums'" width="60">库存</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+<script type="text/javascript">
+    var $dg3 = $("#gridSel");
+    function gridReload() {
+        this.$dg3.datagrid('options').url = "@Url.Action("FindTypePageList")?" + $('#frmsearch').serialize();
+        this.$dg3.datagrid('reload').datagrid("clearChecked");
+    }
+    $(function () {
+        gridReload();
+    })
+    function existsSelect(rows, cd) {
+        var result = { exists: false, index: -1 };
+        $.each(rows, function (idx, row) {
+            var text= row.CategorySN + '~' + row.BrandSN;
+            if (text==cd) {
+                result.exists = true;
+                result.index = idx;
+                return;
+            } 
+        });
+        return result;
+    }
+    function loadSuccess(data) {
+        var cds = "@Request["cds"]".split(",");
+        $.each(cds, function (index, cd) {
+            var result = existsSelect(data.rows,cd);
+            if (result.exists) {
+                $dg3.datagrid("checkRow", result.index);
+            }
+        });
+    }
+    function parentSelect(record) {
+        $.post("@Url.Action("ParentTypeSelect","Product")", { Id: record.value, showTitle: 1, t: Math.random() }, function (data) {
+            $("#SubCategorySN").combobox("clear").combobox("loadData", data);
+        }, "json");
+    }
+    function childTypeSelect(record) {
+        $("#BrandSN").combobox('reload', "@Url.Action("ChildTypeSelect", "Product")?Id=" + record.value);
+    }
+</script>

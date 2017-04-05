@@ -1,0 +1,54 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Payment
+{
+    public class MultiplyPay : BasePay
+    {
+        public static PayMode[] IgnorePayForMultiplyPay = new PayMode[] { PayMode.Weixin, PayMode.Zhifubao };
+        public MultiplyPay()
+            : base()
+        {
+            Mode = PayMode.Multiply;
+            Enable = true;
+            Title = "多方式支付";
+        }
+
+        [JsonIgnore]
+        public IDictionary<PayMode, PayDetails> AllPayDetails { get; set; }
+
+        public override void SetComplete()
+        {
+            var apiCodes = string.Empty;
+            foreach (var item in AllPayDetails)
+            {
+                if (IgnorePayForMultiplyPay.Contains(item.Key))
+                    throw new PosException("500", "多方式付款项目中存在不支持的支付方式！");
+                var details = new Dictionary<PayMode, PayDetails>();
+                details.Add(item.Key, item.Value);
+                var pay = PaymentFactory.Factory(item.Key, details, item.Value.Amount);
+                pay.SetComplete();
+                if (!string.IsNullOrEmpty(apiCodes))
+                {
+                    apiCodes += ",";
+                }
+                apiCodes += pay.ApiCodes;
+            }
+            ApiCodes = apiCodes;
+            if (CallBack != null)
+            {
+                CallBack(this);
+            }
+        }
+
+        public override void RefreshStatus(string storeId,int companytoken)
+        {
+            Enable = true;
+        }
+
+    }
+}

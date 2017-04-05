@@ -1,0 +1,365 @@
+﻿@model SaleOrders
+@{
+    ViewBag.Title = "Detail";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var hasModifyAuthority = false;//是否有修改订单权限
+    var saleTitle = Request["tuihuan"] == "1" ? "退换补价" : "销售金额";
+    var saleNum = Request["tuihuan"] == "1" ? "退换数量" : "销售数量";
+    var wipe= Pharos.Logic.BLL.BaseService<WipeZero>.Find(o => o.CompanyId == Model.CompanyId && o.PaySN == Model.PaySN && o.Number>0);
+    var zero = 0m;
+    if(wipe!=null)
+    {
+        zero = wipe.Number;
+    }
+}
+<style type="text/css">
+    #info { padding: 10px 20px; width: 100%; }
+    #info td { line-height: 25px; }
+    #info td label { display: inline-block; min-width: 70px; text-align: right; }
+
+    .table-toolbar .input-toolbar { line-height: 29px; min-width: 60px; height: 29px; }
+    .label-toolbar { float: none; margin: 0; }
+    .input-toolbar { float: none; }
+</style>
+
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'north',border:false" style="height:110px;">
+        <div class="default-form">
+            @using (Html.BeginForm())
+            {
+                @Html.Hidden("ChangedDetails")
+
+                <table id="info">
+                    @if (!string.IsNullOrEmpty(ViewBag.thirdPartyTradeNo as string))
+                    {
+                        <tr>
+                            <td width="60%" colspan="2">
+                                <div style="padding-left:22px;">
+                                <label>第三方交易号：</label>
+                                <span>@ViewBag.thirdPartyTradeNo</span>
+                                </div>
+                            </td>
+                            <td width="20%">
+                            </td>
+                            <td width="20%">
+                            </td>
+                        </tr>
+                    }
+                    <tr>
+                        <td width="30%">
+                            <label>流水号：</label>
+                            <span id="paySN_span">@Model.PaySN</span>
+                        </td>
+                        <td width="30%">
+                            <label>销售时间：</label>
+                            <span id="createDT_span">@((Model.ReturnDT?? Model.CreateDT).ToString("yyyy-MM-dd HH:mm:ss"))</span>
+                        </td>
+                        <td>
+                            <label>收银员：</label>
+                            <span id="cashier_span">@ViewBag.cashier</span>
+                        </td>
+                        <td>
+                            <label>导购员：</label>
+                            <span id="shoppingGuide_span">@ViewBag.shoppingGuide</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <label>门店：</label>
+                            <span>@ViewBag.store</span>
+                        </td>
+                        <td>
+                            <label>已优惠：</label>
+                            <span>@Model.PreferentialPrice.ToString("#0.00")</span>
+                            <input id="PreferentialPrice" name="PreferentialPrice" @*onchange="this.previousElementSibling.textContent=this.value"*@ hidden />
+                        </td>
+                        <td>
+                            <label>@saleTitle：</label>
+                            @if (hasModifyAuthority)
+                            {
+                                @Html.TextBoxFor(a => a.Receive, new { @class = "easyui-numberbox", data_options = "required: true, min: 0, precision: 2, onChange:calcOrderAmount" })
+                            }
+                            else
+                            {
+                                <span>@Model.Receive.ToString("#0.00")</span>
+                            }
+                        </td>
+                        <td>
+                            <label>抹零：</label>
+                            <span>@(zero.ToString("#0.00"))</span>
+                        </td>
+                    </tr>
+                </table>
+            }
+        </div>
+    </div>
+    <div data-options="region:'center',border:false">
+        <table class="easyui-datagrid" id="grid" data-options="url:'@Url.Action("GetSaleOrderDetails")',queryParams: { paySN: '@Model.PaySN' },singleSelect:true,border:true,rownumbers:true,fit:true,fitColumns:true,idField:'Id',showFooter:false,onLoadSuccess:function(data){ originalDetailCount=data.rows.length }">
+            <thead>
+                <tr>
+                    <th data-options="field:'ProductCode'" width="80">货号</th>
+                    <th data-options="field:'Barcode', formatter: formatBarcode" width="110">条码</th>
+                    <th data-options="field:'Title'" width="150">品名</th>
+                    <th data-options="field:'PurchaseNumber', formatter: numberToFixed" width="60">@saleNum</th>
+                    <th data-options="field:'SysPrice', formatter: numberToFixed" width="60">系统售价</th>
+                    <th data-options="field:'ActualPrice', formatter: numberToFixed" width="60">实际售价</th>
+                    <th data-options="field:'SubTotal', formatter: numberToFixed" width="70">小计</th>
+                    <th data-options="field:'SalesClassifyId', formatter: formatSalesClassifyId" width="60">销售方式</th>
+                    <th data-options="field:'Editor', hidden: @(hasModifyAuthority ? "false" : "true"), formatter: operation" width="80">操作</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    @if (hasModifyAuthority)
+    {
+        <div data-options="region:'south',border:false" style="height:40px;">
+            <table class="table-toolbar">
+                <tr>
+                    <td class="label-toolbar">条码：</td>
+                    <td class="input-toolbar">@Html.DropDownList("Barcode", new List<SelectListItem>(), new { @class = "easyui-combobox", data_options = "required:true,prompt:'请输入条码...',width:120,valueField:'barcode',textField:'title',mode:'remote',loader:comboload,onChange:comboSelect" })</td>
+                    <td class="label-toolbar">品名：</td>
+                    <td class="input-toolbar"><input type="text" class="easyui-textbox" id="Bartitle" data-options="width:130" readonly disabled /></td>
+                    <td class="label-toolbar">系统售价：</td>
+                    <td class="input-toolbar"><input type="text" class="easyui-numberbox" id="SysPrice" data-options="width:80,precision:2" readonly disabled /></td>
+                    <td class="label-toolbar">实际售价：</td>
+                    <td class="input-toolbar"><input type="text" class="easyui-numberbox" id="ActualPrice" data-options="width:80,required:true,precision:2,min:0,onChange:calculateSum" /></td>
+                    <td class="label-toolbar">数量：</td>
+                    <td class="input-toolbar"><input type="text" class="easyui-numberbox" id="ActualNumber" data-options="width:60,required:true,precision:2,min:0,onChange:calculateSum" /></td>
+                    <td class="label-toolbar">小计：</td>
+                    <td class="input-toolbar"><input type="text" class="easyui-numberbox" id="SubTotal" data-options="width:80,precision:2" readonly disabled /></td>
+                    <td class="label-toolbar">销售方式：</td>
+                    <td class="input-toolbar">@Html.DropDownList("SalesClassify", ViewBag.salesClassify as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "required:true,editable:false,width:60" })</td>
+
+                    <td>
+                        <a href="#" style="margin-left:10px;" class="easyui-linkbutton cus4 linkbtn" data-options="iconCls:'icon-ok'" onclick="insertGrid()">添加</a>
+                        <a href="#" class="easyui-linkbutton" data-options="iconCls:'icon-undo',plain:true" title="撤销" onclick="revert();"></a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    //原优惠合计
+    var originalPreferentialPrice = @Model.PreferentialPrice;
+    //原（实收）金额合计
+    var originalTotalAmount = @Model.TotalAmount;
+    //网格小计之和(扣除折扣项之后的)，-1 用于判定是否发生修改
+    var gridSumAfterZheKou = -1;
+    //网格总计之和(扣除折扣项之前的)
+    var gridSumBeforeZheKou = 0;
+    //原明细数量（修改后应与原先同样条数）
+    var originalDetailCount;
+
+    var $dg2;
+    $(function () {
+        $dg2 = $('#grid');
+    })
+
+    function numberToFixed(value) {
+        if (!isNaN(value)) {
+            return Number(value).toFixed(2);
+        }
+        return value;
+    }
+
+    var comboRows = [];
+    function comboload(param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url: "@Url.Action("GetProductInput", "Product")",
+            type: "post",
+            data: {
+                //传值，还是JSON数据搜索
+                searchName: q,
+                storeId: '@Model.StoreId'
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function (item) {
+                    return { barcode: item.Barcode, title: item.Title };
+                });
+                //执行loader的success方法
+                success(items);
+                var val = $combo.combobox("getValue");
+                if (val) {
+                    comboSelect(val);
+                }
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    function comboSelect(newValue, oldValue) {
+        var obj = getRow(newValue);
+        if (!obj) return;
+        $("#Bartitle").textbox("setValue", obj.Title);
+        $("#SysPrice").numberbox("setValue", obj.SysPrice);
+        $("#ActualPrice").numberbox("setValue", obj.SysPrice);
+        $("#SubTotal").numberbox("setValue", $("#ActualPrice").numberbox("getValue") * $('#ActualNumber').numberbox('getValue'));
+    }
+    function getRow(cd) {
+        var obj = null;
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == cd) {
+                obj = row; return;
+            }
+        });
+        return obj;
+    }
+    function calculateSum() {
+        $("#SubTotal").numberbox("setValue", $("#ActualPrice").numberbox("getValue") * $("#ActualNumber").numberbox("getValue"));
+    }
+
+    function insertGrid() {
+        var $barField = $("#Barcode");
+        var barValue = $barField.combobox("getValue");
+        var $numField = $("#ActualNumber");
+        var numValue = $numField.numberbox('getValue');
+
+        if (!$barField.combobox('isValid') || !$numField.combobox('isValid') || !$('#SalesClassify').combobox('isValid')) return;
+        if (numValue <= 0) {
+            $.messager.alert("提示", "数量必须大于零!", "info"); return;
+        }
+        var barAvailable = false;
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == barValue) {
+                barAvailable = true;
+            }
+        })
+        if (!barAvailable) {
+            $.messager.alert("提示", "输入的条码无效!", "info"); return;
+        }
+
+        var row = pharos.deepCopy(getRow(barValue));
+        row.Id = -1;
+        row.PurchaseNumber = numValue;
+        row.ActualPrice = $("#ActualPrice").numberbox("getValue");
+        row.SubTotal = $("#SubTotal").numberbox("getValue");
+        row.SalesClassifyId = $("#SalesClassify").combobox("getValue");
+        row.SalesClassify = $("#SalesClassify").combobox("getText");
+        if (row.SalesClassify == '赠送') {
+            row.ActualPrice = 0;
+            row.SubTotal = 0;
+        }
+        row.PaySN = '@Model.PaySN';
+        $dg2.datagrid("appendRow", row);
+
+        calcGridSum();
+
+        $("#Barcode").combobox("setValue", "");
+        $("#Bartitle").textbox("setValue", "");
+        $("#SysPrice").numberbox("setValue", "");
+        $("#ActualPrice").numberbox("setValue", "");
+        $("#SubTotal").numberbox("setValue", "");
+        $numField.numberbox("setValue", "");
+    }
+
+
+    function operation(value, row, index) {
+        if (row.Id == null) { //页脚
+            return "";
+        }
+        return "<a href='javascript:void(0)' onclick=\"removeItem(" + index + ")\">退掉</a>";
+    }
+    function removeItem(index) {
+        $.messager.confirm("提示", "是否确定退掉该项信息?", function (r) {
+            if (!r) return r;
+            $dg2.datagrid('deleteRow', index);
+            calcGridSum();
+        })
+    }
+
+    function SaveBefore() {
+        var changedDetails = $dg2.datagrid('getChanges');
+        if(changedDetails.length === 0){
+            $.messager.alert("提示", "订单明细未发生修改，无法保存。请点击关闭按钮。", "info");
+            return false;
+        }
+        var rows = $dg2.datagrid('getRows');
+        if (rows.length === 0){
+            $.messager.alert("提示", "修改订单的明细为空！操作违规！", "info");
+            return false;
+        }
+        //修改前后保持条数相同
+        debugger
+        if (rows.length != originalDetailCount){
+            $.messager.alert("提示", "修改订单需要保持与原单条数相等！", "info");
+            return false;
+        }
+        $('#ChangedDetails').val(JSON.stringify(changedDetails));
+
+        return true;
+    }
+
+    //计算列表小计之和
+    function calcGridSum() {
+        gridSumAfterZheKou = 0;
+        gridSumBeforeZheKou = 0;
+        $.each($dg2.datagrid('getRows'), function (i, row) {
+            gridSumAfterZheKou += parseFloat(row.SubTotal);
+            gridSumBeforeZheKou += (parseFloat(row.SysPrice) * parseFloat(row.PurchaseNumber));
+        });
+        $('.datagrid-footer').find('td[field=SubTotal]>div').text(gridSumAfterZheKou);
+        //debugger
+        calcOrderAmount();
+    }
+    //重新计算订单 金额合计、优惠合计
+    function calcOrderAmount(){
+        if (gridSumAfterZheKou != -1) {
+            var newPreferentialPrice = gridSumBeforeZheKou - $('#TotalAmount').val();
+            $('#PreferentialPrice').val(newPreferentialPrice).prev().text(newPreferentialPrice);
+        }
+    }
+
+    //撤销所有修改
+    function revert() {
+        $dg2.datagrid('rejectChanges');
+
+        $('#TotalAmount').numberbox('setValue', originalTotalAmount);
+        $('#PreferentialPrice').val(originalPreferentialPrice).prev().text(originalPreferentialPrice);
+        gridSumAfterZheKou = -1;
+        gridSumBeforeZheKou = 0;
+    }
+
+    function formatSalesClassifyId(value){
+        switch (value) {
+            case 47://正常
+                return '销售';
+                break;
+            case 48://促销
+                return '销售';
+                break;
+            case 49://赠送
+                return '赠送';
+                break;
+            case -1:
+                return '销售';
+                break;
+            default:
+                return '';
+        }
+    }
+    function formatBarcode(value, row){
+        var text = value;
+        if (row.HasTui && row.HasHuan) {
+            text+='</br><span style="color:red">已退|已换</span>';
+        }
+        else if (row.HasTui) {
+            text+='</br><span style="color:red">已退</span>';
+        }
+        else if (row.HasHuan) {
+            text+='</br><span style="color:red">已换</span>';
+        }
+        return text;
+    }
+</script>

@@ -1,0 +1,87 @@
+﻿using Pharos.POS.Retailing.ObjectModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using Pharos.POS.Retailing.Extensions;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    public class CheckInventory : BaseViewModel
+    {
+        public CheckInventory()
+        {
+            categoryTree = categoryTree.InitCategory(CurrentWindow);
+            PageIndex = 1;
+            PageSize = 50;
+        }
+        string keyword;
+        public string Keyword
+        {
+            get
+            {
+                return keyword;
+            }
+            set
+            {
+                keyword = value;
+                this.OnPropertyChanged(o => o.Keyword);
+            }
+        }
+
+        IEnumerable<InventoryItem> inventoryItems;
+        public IEnumerable<InventoryItem> InventoryItems
+        {
+            get
+            {
+                return inventoryItems;
+            }
+            set
+            {
+                inventoryItems = value;
+                this.OnPropertyChanged(o => o.InventoryItems);
+            }
+        }
+
+        IEnumerable<TreeModel> categoryTree;
+        public IEnumerable<TreeModel> CategoryTree
+        {
+            get
+            {
+                return categoryTree;
+            }
+        }
+
+        public int PageSize { get; set; }
+        public int PageIndex { get; set; }
+        public GeneralCommand<object> SearchCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        List<int> _sns = new List<int>();
+                        _sns.Add(TreeModelExtensions.GetSelectItemSN(CategoryTree));
+                        //查询本店库存
+                        GetProductStockParams _params = new GetProductStockParams() { StoreId = _machinesInfo.StoreId, MachineSn = _machinesInfo.MachineSn, CategorySns = _sns, Keyword = keyword };
+                        var result = ApiManager.Post<GetProductStockParams, ApiRetrunResult<PageResult<InventoryItem>>>(@"api/GetProductStock?pageSize=" + PageSize + "&pageIndex=" + PageIndex, _params);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                          {
+                              if (result.Code == "200")
+                              {
+                                  InventoryItems = result.Result.Datas;
+                              }
+                              else
+                              {
+                                  Toast.ShowMessage(result.Message, CurrentWindow);
+                              }
+                          }));
+                    });
+                });
+            }
+        }
+    }
+}

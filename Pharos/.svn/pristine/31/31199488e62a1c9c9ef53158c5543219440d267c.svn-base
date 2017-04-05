@@ -1,0 +1,80 @@
+﻿@using Newtonsoft.Json;
+@{
+    //ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增用户", editText: "修改用户",hideDel:true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            @*<td class="label-toolbar">
+                <span>所在机构：</span>
+            </td>
+            <td class="input-toolbar">
+                <input id="organizationId" name="organizationId" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text', url:'@Url.Action("GetOrgsEasyuiDropdown", "common")?selecttype=1', panelHeight: 'auto', editable: false,width:100,height:30,onSelect:orgSelect" />
+            </td>
+            <td class="label-toolbar">
+                <span>所在部门：</span>
+            </td>
+            <td class="input-toolbar">
+                <input id="departmentId" name="departmentId" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text', panelHeight: 'auto', editable: false,width:100,height:30" />
+            </td>
+            <td class="label-toolbar">
+                <label>隶属角色组：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="roleGroupsId" name="roleGroupsId" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text', url:'@Url.Action("GetRolesEasyuiDropdown", "common")?selecttype=1', panelHeight: 'auto', editable: false,width:100,height:30" />
+            </td>*@
+
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="keyword" name="keyword" class="datacontrol easyui-textbox" placeholder="姓名/帐号" data-options="prompt:'姓名/帐号'" />
+            </td>
+        </tr>
+    </table>
+}
+
+<script type="text/javascript">
+    var hideSave = false ;
+
+    var fmthtml = "<a href='javascript:return false;' onclick='javascript:SettingStoreRole(\"{0}\", \"{1}\")'>[门店角色设置]</a>";
+    var fmthtml1 = "&nbsp;&nbsp;<a href='javascript:return false;' onclick='javascript:delUser(\"{0}\", \"{1}\", \"{2}\")'>[删除]</a>";
+
+    pharos.manager.geturl = "@Url.Action("GetUsers")";
+    pharos.manager.editurl = "@Url.Action("UserSave")";
+    pharos.manager.delurl = "@Url.Action("DeleteUser")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'FullName', title: '员工姓名', width: 120 },
+        { field: 'LoginName', title: '登录帐号', width: 120 },
+        { field: 'IsAdmin', title: '管理员', width: 80 },
+        { field: 'Limits', title: '权限模块', width: 150 },
+        {
+            field: 'Status', title: '在职状态', width: 80, formatter: function (value, row) {
+                var result = "<span>";
+                switch (value) {
+                    case 1:
+                        result += "正常";
+                        break;
+                    case 2:
+                        result += "锁定";
+                        break;
+                    case 3:
+                        result += "注销";
+                        break;
+                }
+                result += "</span>";
+                return result;
+
+            }
+        }
+    ]];
+    function editBefore(rowData, field, index, value) {
+        if (field == "Operat") {
+            return false;
+        }
+        return true;
+    }
+</script>

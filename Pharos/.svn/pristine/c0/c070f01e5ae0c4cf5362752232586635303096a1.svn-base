@@ -1,0 +1,536 @@
+﻿@model Pharos.CRM.Retailing.Controllers.UserLogin
+@{
+    Layout = null;
+}
+
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>总部后台管理</title>
+    <script src="~/Scripts/jquery-1.11.1.min.js"></script>
+    <script src="~/Scripts/jquery.easing.1.3.js"></script>
+    <link href="~/Scripts/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <script src="~/Scripts/bootstrap/bootstrapValidator.js"></script>
+    <style type="text/css">
+        * {
+            margin: 0px;
+            padding: 0px;
+        }
+
+        img {
+            display: block;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        span {
+            display: block;
+        }
+
+
+        .bg_box {
+            background: url(/Content/mythemes/default/images/login3/bg_one.jpg) no-repeat left top;
+            background-size: cover;
+            position: absolute;
+            left: 0px;
+            top: 0px;
+            z-index: 1;
+            height: 100%;
+            width: 100%;
+            min-width: 600px;
+            _width: expression_r(document.body.clientWidth < 600 ? "600px": "auto" );
+            min-height: 750px;
+            _height: expression(this.scrollHeight < 640 ? "640px" : "auto");
+            overflow: hidden;
+            /*min-height: 680px;*/
+        }
+
+        .login_bg {
+            background: url(/Content/mythemes/default/images/login3/login_bg.png) no-repeat right top;
+            background-size: cover;
+            width: 1000px;
+            position: absolute;
+            right: 0px;
+            top: 0px;
+            opacity: 0.85;
+            z-index: 1;
+            height: 100%;
+            min-height: 750px;
+            _height: expression(this.scrollHeight < 600 ? "600px" : "auto");
+            overflow: hidden;
+        }
+
+        .login_content {
+            position: absolute;
+            right: 0px;
+            width: 380px;
+            height: 100%;
+            z-index: 2;
+            top: 0;
+        }
+
+        .password {
+            position: absolute;
+            right: 1px;
+            top: 0px;
+            z-index: 3;
+            width: 65px;
+            height: 65px;
+        }
+
+        .ma {
+            margin-left: 314px;
+        }
+
+        .logo {
+            width: 145px;
+            height: 60px;
+            padding-top: 153px;
+            margin-left: 115px;
+        }
+
+        .text {
+            margin-top: 102px;
+            margin-left: 70px;
+        }
+
+        .k1 {
+            width: 256px;
+            height: 40px;
+            border: #FFF 1px solid;
+            border-radius: 3px;
+            background-color: ffffff;
+            font-size: 14px;
+            font-family: "宋体";
+            color: #646464;
+            padding-left: 54px;
+            box-shadow: none;
+            margin-left: 16px;
+        }
+
+        .k2, .k3 {
+            width: 256px;
+            height: 40px;
+            border: #FFF 1px solid;
+            border-radius: 3px;
+            background-color: ffffff;
+            margin-top: 10px;
+            font-size: 14px;
+            font-family: "宋体";
+            color: #646464;
+            padding-left: 54px;
+            box-shadow: none;
+            margin-left:16px;
+        }
+
+        .submit {
+            width: 256px;
+            height: 40px;
+            border: #2f85c9 1px solid;
+            border-radius: 3px;
+            background-color: #2f85c9;
+            margin-top: 10px;
+            font-size: 16px;
+            font-family: "微软雅黑";
+            color: #FFFFFF;
+            /*line-height: 40px;*/
+            /*margin-left:-55px;*/
+        }
+
+        .forget {
+            margin-left: 122px;
+            float: left;
+            font-size: 12px;
+            font-family: "宋体";
+            color: #868789;
+            line-height: 14px;
+            margin-top: 10px;
+        }
+
+        .clearfix {
+            clear: both;
+        }
+
+        .phone {
+            font-size: 16px;
+            font-family: "宋体";
+            color: #868789;
+            margin-left: 120px;
+            margin-top: 44px;
+        }
+
+        .suggest {
+            font-size: 12px;
+            font-family: "微软雅黑";
+            color: #7f8081; /*margin-right:20px;  margin-bottom:20px;*/
+            position: absolute;
+            right: 30px;
+            bottom: 30px;
+        }
+
+        .radio_ddy {
+            background: url(/Content/mythemes/default/images/login3/radio_no.png) no-repeat;
+            margin-left: 70px;
+            padding-left: 20px;
+            margin-top: 10px;
+            font-size: 12px;
+            font-family: "宋体";
+            color: #868789;
+            line-height: 14px;
+            float: left;
+        }
+
+            .radio_ddy input {
+                display: none;
+            }
+
+            .radio_ddy.selected {
+                background: url(/Content/mythemes/default/images/login3/radio.png) no-repeat 0px 0px;
+                font-size: 12px;
+                font-family: "宋体";
+                color: #868789;
+                line-height: 14px;
+                float: left;
+            }
+
+        #divradio:hover {
+            cursor: pointer;
+        }
+
+        .ma:hover {
+            cursor: pointer;
+        }
+
+        .switch {
+            position: absolute;
+            right: 110px;
+            top: 344px;
+            z-index: 4;
+            width: 132px;
+            height: 156px;
+            display: none;
+        }
+
+            .switch span {
+                font-size: 14px;
+                font-family: "微软雅黑";
+                color: #646464;
+                margin-top: 5px;
+            }
+
+        .help-block {
+            /*width: 80%;*/
+            border: 1px solid #ff9e9e;
+            padding: 6px;
+            position: absolute;
+            margin-top: 6px;
+            margin-bottom: 0;
+            box-shadow: 1px 1px 3px #515151;
+            z-index: 9999;
+            background: #ffe2e2;
+            /*float:right;*/
+            left: 156px;
+            color: #ff3939;
+            border-radius: 4px;
+        }
+
+        .form-horizontal .form-group {
+            margin-right: 0;
+        }
+
+        .triangle {
+            position: absolute;
+            width: 14px;
+            height: 11px;
+            background: url("/Content/mythemes/default/images/login3/triangle.png") no-repeat center center;
+            background-size: 11px;
+            left: 170px;
+            margin-top: -3px;
+            z-index: 9999;
+        }
+
+
+
+        input:-webkit-autofill, textarea:-webkit-autofill, select:-webkit-autofill {
+            background-color: #fff;
+            background-image: none;
+            color: #333;
+            -webkit-box-shadow: 0 0 0px 1000px #fff inset;
+            -webkit-text-fill-color: #000;
+        }
+
+        .input-new {
+            border: 0;
+            width: 200px;
+            height: 38px;
+            border-radius: 3px;
+            margin-top: -6px;
+            outline: none;
+        }
+
+
+    </style>
+
+    <script type="text/javascript">
+        ; (function ($) {
+            $.fn.extend({
+                "imgFade": function (options) {
+                    //设置默认值
+                    options = $.extend({
+                        easing: "swing", //动画效果
+                        stopTime: 4000, //停留时间
+                        time: 1500, //动画时间
+                        mouseStop: true//鼠标经过停止                
+                    }, options);
+
+                    //插件实现代码 
+                    var obj = $(this);
+                    var objdiv = obj.find("div");
+                    var length = objdiv.length;
+                    var i = 0;
+                    if (length > 1) {
+                        function execute() {
+                            if (!objdiv.is(":animated")) {
+                                if (i < length - 1) {
+                                    objdiv.eq(i).fadeOut(options.time, options.easing);
+                                    objdiv.eq(i + 1).fadeIn(options.time, options.easing);
+                                    i++;
+                                } else {
+                                    objdiv.eq(i).fadeOut(options.time, options.easing);
+                                    objdiv.eq(0).fadeIn(options.time, options.easing);
+                                    i = 0;
+                                }
+                            }
+                        }
+                        var timer = setInterval(execute, options.stopTime);
+                        if (options.mouseStop == true) {
+                            objdiv.mouseover(function () {
+                                clearInterval(timer);
+                            }).mouseleave(function () {
+                                timer = setInterval(execute, options.stopTime);
+                            })
+                        }
+                    }
+                    return this;  //返回this，使方法可链。
+                }
+            });
+        })(jQuery);
+
+        $(function () {
+            $("#div_bg").imgFade({ mouseStop: false, time: 2500, stopTime: 4500 });
+
+            //CID
+            $("input[name=CID]").keyup(function () {
+                //先把非数字的都替换掉，除了数字
+                $(this).val($(this).val().replace(/[^0-9]/g, ""));
+            }).css("ime-mode", "disabled");   //CSS设置输入法不可用
+
+
+                //if (navigator.userAgent.toLowerCase().indexOf("chrome") >= 0) {
+                //    $(window).load(function () {
+                //        $('input:not(input[type=submit])').each(function () {
+                //            var outHtml = this.outerHTML;
+                //            $(this).append(outHtml);
+                //        });
+                //    });
+                //}
+                
+  
+
+        });
+        
+
+
+    </script>
+</head>
+
+<body>
+
+    <div id="div_bg">
+        <div class="bg_box" style="display:block;"></div>
+        <div class="bg_box" style="background: url(/Content/mythemes/default/images/login3/bg_1.jpg) no-repeat left top; display:none;"></div>
+        <div class="bg_box" style="background: url(/Content/mythemes/default/images/login3/bg_2.jpg) no-repeat left top; display:none;"></div>
+        <div class="bg_box" style="background: url(/Content/mythemes/default/images/login3/bg_3.jpg) no-repeat left top; display:none;"></div>
+        <div class="bg_box" style="background: url(/Content/mythemes/default/images/login3/bg_4.jpg) no-repeat left top; display:none;"></div>
+        <div class="bg_box" style="background: url(/Content/mythemes/default/images/login3/bg_5.jpg) no-repeat left top; display:none;"></div>
+        <div class="bg_box" style="background: url(/Content/mythemes/default/images/login3/bg_6.jpg) no-repeat left top; display:none;"></div>
+        <div class="bg_box" style="background: url(/Content/mythemes/default/images/login3/bg_7.jpg) no-repeat left top; display:none;"></div>
+    </div>
+
+    <div class="login_bg"><p class="suggest">为确保操作体验，建议您在Chrome、火狐、IE8或以上版本使用</p></div>
+    <form class="form form-horizontal form-signin" id="form1" action="/Account/Logins" method="post">
+        <input type="hidden" value="@ViewBag.logo" name="logo" />
+        <input type="hidden" value="@Convert.ToInt32(ViewBag.isR)" name="isReadOnly" />
+        <div class="login_content">
+            <div class="ma"><img src="/Content/mythemes/default/images/login3/password_login.png"></div>
+            <div class="logo"><img src="@ViewBag.logo"></div>
+            <div class="text">
+
+
+                <div class="form-group">
+                    <label class="text-right sr-only">CID</label>
+                    <div class="col-md-9 form-control k1" style="background:url(/Content/mythemes/default/images/login3/cid.png) no-repeat left">
+                        <input type="text" class="input-new" name="CID" placeholder="商户号" autocomplete="off" @Html.Raw(Model.CID == 0 ? "value=''" : "value=" + Model.CID) @(Html.Raw(Convert.ToInt32(ViewBag.isR) > 0 ? "readonly=\"readonly\"" : "")) />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="text-right sr-only">用户名</label>
+                    <div class="col-md-9 form-control k2" style="background:url(/Content/mythemes/default/images/login3/account.png) no-repeat left">
+                        <input type="text" class="input-new"  name="userName" placeholder="账户" autocomplete="off" value="@Model.UserName" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="text-right sr-only">密码</label>
+                    <div class="col-md-9 form-control k3" style="background:url(/Content/mythemes/default/images/login3/password.png) no-repeat left">
+                        <input type="password" class="input-new" name="userPwd" placeholder="密码" autocomplete="off" value="@Model.UserPwd" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="text-right"> </label>
+                    <div class="col-md-9">
+                        <button type="submit" id="btnSubmit" class="btn btn-primary btn-sm submit">提交</button>
+
+                    </div>
+                </div>
+
+            </div>
+            <div id="divradio">
+                <span class="radio_ddy selected">
+                    <input type="radio" name="rememberMe" value="true" checked="checked" />
+                    @*@Html.RadioButton("rememberMe", new { value = "true" })*@
+                    记住账号？
+                </span>
+                @*<span class="forget">忘记密码？</span>*@
+
+                <div style=" color:#e2315d; padding-top:40px; text-align:center;">@ViewBag.msg</div>
+                <div class="clearfix"></div>
+            </div>
+            <div class="zi">
+                <span class="phone">电话：@ViewBag.phone</span>
+            </div>
+
+        </div>
+    </form>
+    <div class="password"><img src="/Content/mythemes/default/images/login3/ma.png"></div>
+    <div class="switch">
+        <img src="/Content/mythemes/default/images/login3/ma_1.png">
+        <span>手机扫码，安全登录</span>
+    </div>
+
+
+    <script>
+        $(document).ready(function () {
+
+            //隐藏3角形
+            $("#form1 input[type=text],input[type=password]").each(function (index, item) {
+                $(item).keyup(function (e) {
+                    var keycode = e.keyCode;
+                    var pvalue = String.fromCharCode(keycode);
+                    $(this).parent().find(".triangle").hide();
+                    if ($(this).val().length < 1) {
+                        $(this).parent().find(".triangle").show();
+                    }
+                });
+            })
+            //$("#form1 input[type=password]").keypress(function (e) {
+            //    var pvalue = $(this).val() + String.fromCharCode(e.keyCode);
+            //    var uvalue = $("input[name=Email]").val();
+            //    if (pvalue != uvalue) {
+            //        $(this).parent().find(".triangle").hide();
+            //    } else {
+            //        $(this).parent().find(".triangle").show();
+            //    }
+            //});
+
+            //// Validate the form manually
+            $('#btnSubmit').click(function () {
+                // $('#form1').bootstrapValidator('validate'); //验证表单
+
+                $('#form1').bootstrapValidator({
+                    message: 'This value is not valid',
+                    fields: {
+                        CID: {
+                            validators: {
+                                notEmpty: {
+                                    message: '请输入商户号'
+                                }
+                            }
+                        },
+                        userName: {
+                            message: '账户 无效',
+                            validators: {
+                                notEmpty: {
+                                    message: '请输入账号'
+                                },
+                            }
+                        },
+
+
+                        userPwd: {
+                            validators: {
+                                notEmpty: {
+                                    message: '请输入密码'
+                                },
+                            }
+                        },
+                    }
+                }).bootstrapValidator('validate');
+
+                $("#form1 input[type=text],input[type=password]").each(function (index, item) {
+                    var val = $(item).val();
+                    if (val != "") {
+                        $(this).parent().find(".triangle").hide();
+                    }
+                })
+            });
+        });
+
+        //二维码隐藏显示
+        $("#divradio .radio_ddy").click(function () {
+            if ($(this).hasClass("selected")) {
+                $(this).removeClass("selected");
+                $(this).children("input").attr("checked", false);
+            } else {
+                $(this).addClass("selected");
+                $(this).children("input").attr("checked", true);
+            }
+        });
+
+        //$(".password").click(function () {
+        //    $(".password").hide()
+        //    $(".text").hide()
+        //    $(".phone").hide()
+        //    $("#divradio").hide()
+        //    $(".switch").show()
+        //})
+        $(".ma").click(function () {
+            $(".password").show()
+            $(".switch").hide()
+            $(".text").show()
+            $(".phone").show()
+            $("#divradio").show()
+        })
+        $(".forget").click(function () {
+            $(".password").hide()
+            $(".text").hide()
+            $(".phone").hide()
+            $("#divradio").hide()
+            $(".switch").show()
+        })
+        $(".switch").click(function () {
+            $(".password").show()
+            $(".text").show()
+            $(".phone").show()
+            $("#divradio").show()
+            $(".switch").hide()
+        })
+    </script>
+</body>
+</html>
+

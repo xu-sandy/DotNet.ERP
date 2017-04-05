@@ -1,0 +1,23 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.DAL
+{
+    public class CommonDAL
+    {
+        public string StockLockValidMsg(string storeId)
+        {
+            if (!string.IsNullOrWhiteSpace(storeId))
+            {
+                using (EFDbContext db = new EFDbContext())
+                {
+                    var sql = string.Format("SELECT dbo.F_StockLockValidMsg('{0}')", storeId);
+                    return db.Database.SqlQuery<string>(sql).FirstOrDefault();
+                }
+            }
+            return "";
+        }
+    }
+}

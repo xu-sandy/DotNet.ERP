@@ -1,0 +1,138 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.Printer;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    public class HistoryModel : BaseObservable
+    {
+        public HistoryModel()
+        {
+            try
+            {
+
+                CheckTime = DateTime.Now.Date;
+                Orders = SaleOrdersLocalService.GetLastSaleOrders(CheckTime.Date).Select(o => new OrderDetail()
+                {
+                    Amount = o.TotalAmount,
+                    PreferentialPrice = o.PreferentialPrice,
+                    CreateDT = o.CreateDT,
+                    PaySN = o.PaySN
+                }).OrderByDescending(o => o.CreateDT).Take(10).ToList();
+            }
+            catch
+            {
+                Orders = new List<OrderDetail>();
+            }
+        }
+
+        public List<OrderDetail> Orders { get; set; }
+
+        public DateTime CheckTime { get; set; }
+        public GeneralCommand Search
+        {
+            get
+            {
+                return new GeneralCommand((w) =>
+                {
+
+                    Orders = SaleOrdersLocalService.GetLastSaleOrders(CheckTime.Date).Select(o => new OrderDetail()
+                    {
+                        Amount = o.TotalAmount,
+                        PreferentialPrice = o.PreferentialPrice,
+                        CreateDT = o.CreateDT,
+                        PaySN = o.PaySN
+                    }).OrderByDescending(o => o.CreateDT).ToList();
+                    OnPropertyChanged("Orders");
+                });
+            }
+        }
+
+    }
+    public class OrderDetail
+    {
+        public GeneralCommand Print
+        {
+            get
+            {
+                return new GeneralCommand((w) =>
+                {
+                    if (PosMachine.Current.IsRunningPrinter)
+                    {
+                        var printWidthStr = ConfigurationManager.AppSettings["PrintWidth"];
+                        int printWidth = 40;
+                        if (!string.IsNullOrEmpty(printWidthStr))
+                        {
+                            try
+                            {
+                                printWidth = Convert.ToInt32(printWidth);
+                            }
+                            catch
+                            {
+                                printWidth = 40;
+                            }
+                        }
+
+                        PrintModelHelper printer = new PrintModelHelper();
+                        TicketModel ticketModel = new TicketModel();
+                        ticketModel.TicketWidth = printWidth;//发票宽度，按字符数计算，根据打印机型号有所区别(通常在30-70之间),建议系统提供配置入口
+                        ticketModel.StoreName = PosMachineInfo.Infos.StoreName;
+                        ticketModel.DeviceNumber = PosMachineInfo.Infos.MachineId;
+                        var orderDetail = SaleDetailLocalService.GetLastOrderDetails(PaySN);
+                        var pay = ConsumptionPaymentLocalService.GetPayWay(PaySN);
+                        ticketModel.SN = PaySN;
+                        ticketModel.Cashier = UserModel.Current.UserCode;
+                        var integral = MemberIntegralLocalService.GetMemberIntegral(PaySN);
+
+                        List<ProductModel> productList = new List<ProductModel>();
+                        var CountNum = 0m;
+                        foreach (var item in orderDetail)
+                        {
+                            var productinfos = ProductInfoLocalService.Find(p => p.Barcode == item.Barcode);
+                            ProductModel productModel = new ProductModel();
+                            productModel.Code = item.Barcode;
+                            productModel.Name = productinfos != null ? productinfos.Title : "未知商品";
+                            productModel.Num = item.PurchaseNumber;
+                            productModel.Price = item.ActualPrice;
+                            productModel.SubTotal = (item.ActualPrice * item.PurchaseNumber);
+                            productList.Add(productModel);
+                            if (productinfos.ValuationType == 1)
+                            {
+                                CountNum += item.PurchaseNumber;
+                            }
+                            else
+                            {
+                                CountNum += 1;
+                            }
+                        }
+                        ticketModel.ProductList = productList;
+                        ticketModel.CountNum = Convert.ToInt32(CountNum);
+                        ticketModel.TotalPrice = Amount;
+                        ticketModel.Receivable = Amount;
+                        ticketModel.Change = 0;
+                        ticketModel.PayType = pay;
+                        ticketModel.Weigh = "0 KG";
+                        List<string> footItemList = new List<string>();
+                        footItemList.Add("称重商品数量请参照条码标签");
+                        footItemList.Add("欢迎光临——服务电话：" + PosMachineInfo.Infos.StorePhone);
+                        footItemList.Add("请保留电脑小票，作为退换货凭证");
+                        footItemList.Add("重打小票");
+                        ticketModel.FootItemList = footItemList;
+                        string titleStr = string.Empty; string printStr = printer.GetPrintStr(ticketModel, out titleStr);
+                        PrintHelper.Print(printStr, titleStr);
+                    }
+                });
+            }
+        }
+
+        public string PaySN { get; set; }
+        public DateTime CreateDT { get; set; }
+        public decimal PreferentialPrice { get; set; }
+        public decimal Amount { get; set; }
+    }
+}

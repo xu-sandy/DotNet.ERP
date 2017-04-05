@@ -1,0 +1,57 @@
+﻿using System;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models
+{
+    /// <summary>
+    /// 通用命令，用与WPF命令绑定
+    /// </summary>
+    public class GeneralCommand : ICommand
+    {
+        public GeneralCommand() { }
+        public GeneralCommand(Action func)
+        {
+            Processor = func;
+        }
+
+        public GeneralCommand(Action func, string describe = "")
+        {
+            Processor = func;
+            Describe = describe;
+        }
+        public GeneralCommand(Action<object> func, string describe = "")
+        {
+            ProcessorForParameter = func;
+            Describe = describe;
+        }
+
+        public string Describe { get; set; }
+
+        public Action Processor { get; set; }
+
+        public Action<object> ProcessorForParameter { get; set; }
+
+        public bool CanExecute(object parameter)
+        {
+            if (Processor != null)
+                return true;
+            if (ProcessorForParameter != null)
+            {
+                return true;
+            }
+            return false;
+        }
+
+
+        public void Execute(object parameter)
+        {
+            if (Processor != null)
+                Processor();
+            if (ProcessorForParameter != null)
+                ProcessorForParameter(parameter);
+        }
+
+
+        public event EventHandler CanExecuteChanged;
+    }
+}

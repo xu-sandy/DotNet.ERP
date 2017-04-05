@@ -1,0 +1,95 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+namespace Pharos.Logic.OMS.BLL
+{
+    public class SysUserService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<SysUser> UserRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysPositions> PositionRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysDepartments> DepartRepository { get; set; }
+        public List<SysUser> GetList(bool normal=true)
+        {
+            var query= UserRepository.GetQuery();
+            if (normal) query = query.Where(o => o.Status == 1);
+            return query.ToList();
+        }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl,out int count)
+        {
+            var treeId = nvl["treeId"].ToType<int?>();
+            var roles = nvl["roles"];
+            var status = nvl["status"].ToType<short?>();
+            var searchField = nvl["searchField"];
+            var searchText = nvl["searchText"];
+            int userCode = 0;
+            int.TryParse(searchText,out userCode);
+            var where= DynamicallyLinqHelper.Empty<SysUser>().And(o => o.Status == status, !status.HasValue)
+                .And(o => o.DeptId == treeId,treeId==0 || !treeId.HasValue)
+                .And(o => o.FullName != null && o.FullName.Contains(searchText), searchField != "1" || searchText.IsNullOrEmpty())
+                .And(o => o.UserCode >= userCode, searchField != "2" || userCode<=0)
+                .And(o => o.LoginName != null && o.LoginName.Contains(searchText), searchField != "3" || searchText.IsNullOrEmpty());
+
+            var queryUser = UserRepository.GetQuery(where);
+            var queryPosition = PositionRepository.GetQuery();
+            var queryDept = DepartRepository.GetQuery();
+            var query = from x in queryUser
+                        select new { 
+                            x.Id,
+                            x.UserCode,
+                            x.FullName,
+                            x.LoginName,
+                            x.DeptId,
+                            x.PositId,
+                            DeptTitle = queryDept.Where(o => o.DeptId == x.DeptId).Select(o => o.Title).FirstOrDefault(),
+                            PositionTitle = queryPosition.Where(o => o.PositId == x.PositId).Select(o => o.Title).FirstOrDefault(),
+                            x.CreateDT,
+                            x.LoginDT,
+                            x.Status,
+                            x.IsSuper
+                        };
+            
+            count = query.Count();
+            return query.ToPageList();
+        }
+        public OpResult SaveOrUpdate(SysUser obj)
+        {
+            if (!obj.LoginName.IsNullOrEmpty() && UserRepository.IsExists(o => o.LoginName == obj.LoginName && o.Id != obj.Id))
+                return OpResult.Fail("登陆帐号已存在！");
+            if(!obj.LoginPwd.IsNullOrEmpty())
+                obj.LoginPwd = Security.MD5_Encrypt(obj.LoginPwd);
+            if (obj.Id == 0)
+            {
+                obj.Status = 1;
+                obj.UserCode = UserRepository.GetMaxInt(o => o.UserCode, min: 1000, max: 99999);
+                obj.CreateDT =obj.LoginDT= DateTime.Now;
+                obj.CreateUID = CurrentUser.UID;
+                UserRepository.Add(obj, false);
+            }
+            else
+            {
+                var user = Get(obj.Id);
+                obj.ToCopyProperty(user, new List<string>() { "Status", "CreateDT", "CreateUID", "LoginDT" });
+            }
+            UserRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        public SysUser Get(int id)
+        {
+            return UserRepository.Get(id);
+        }
+        public void SetState(short mode, int id)
+        {
+            var obj = Get(id);
+            obj.Status = mode;
+            UserRepository.SaveChanges();
+        }
+    }
+}

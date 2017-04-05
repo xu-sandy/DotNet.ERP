@@ -1,0 +1,372 @@
+﻿using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class SaleOrdersService : BaseGeneralService<SaleOrders, EFDbContext>
+    {
+        public static BillHistoryInfo GetBillDetailsHistory(string storeId, string machineSn, string paySn, int token, bool inTestMode)
+        {
+
+            var order = CurrentRepository.Find(o => o.PaySN == paySn && o.StoreId == storeId && o.CompanyId == token && o.IsTest == inTestMode);
+            if (order == null)
+            {
+                throw new PosException("未找到该订单！");
+            }
+            var query = (from a in SaleDetailService.CurrentRepository.Entities
+                         where a.PaySN == paySn && a.CompanyId == token
+                         select a).ToList();
+            List<BillDetails> bills = new List<BillDetails>();
+            foreach (var item in query)
+            {
+                BillDetails bill;
+                if (!string.IsNullOrEmpty(item.ProductCode))
+                {
+                    var b = ProductRecordService.CurrentRepository.Entities.FirstOrDefault(o => o.ProductCode == item.ProductCode && o.CompanyId == token);
+                    bill = new BillDetails()
+                    {
+                        ActualPrice = item.ActualPrice,
+                        Barcode = item.Barcode,
+                        Number = item.PurchaseNumber,
+                        Brand = b.BrandTitle,
+                        Size = b.Size,
+                        Title = b.Title,
+                        SysPrice = b.SysPrice,
+                        Total = item.Total,
+                        Unit = b.SubUnit
+                    };
+                }
+                else
+                {
+                    var b = BundlingService.CurrentRepository.Entities.FirstOrDefault(o => o.NewBarcode == item.Barcode && o.CompanyId == token);
+                    bill = new BillDetails()
+                    {
+                        ActualPrice = item.ActualPrice,
+                        Barcode = item.Barcode,
+                        Number = item.PurchaseNumber,
+                        Brand = "",
+                        Size = "",
+                        Title = b.Title,
+                        SysPrice = b.SysPrices,
+                        Total = item.Total,
+                        Unit = "件"
+                    };
+                }
+                if (bill != null)
+                {
+                    bills.Add(bill);
+                }
+            }
+            var apicodes = order.ApiCode.Split(",".ToArray(), StringSplitOptions.RemoveEmptyEntries).Select(o => Convert.ToInt32(o));
+            var payments = BaseGeneralService<ApiLibrary, EFDbContext>.CurrentRepository.Entities.Where(o => o.CompanyId == token && apicodes.Contains(o.ApiCode)).ToList();
+            var title = string.Empty;
+            switch (payments.Count)
+            {
+                case 0:
+                    title = "未知支付方式";
+                    break;
+                case 1:
+                    title = payments.FirstOrDefault().Title;
+                    break;
+                default:
+                    title = "多方式支付";
+                    break;
+            }
+            var cashier = SysStoreUserInfoService.Find(o => o.UID == order.CreateUID && o.CompanyId == token);
+            return new BillHistoryInfo()
+            {
+                Details = bills,
+                PreferentialAmount = order.PreferentialPrice,
+                TotalAmount = order.TotalAmount,
+                Payment = title,
+                PaySn = order.PaySN,
+                ProductCount = 0,
+                CashierId = cashier == null ? "未知" : cashier.UserCode,
+                Change = 0m,
+                MachineSn = order.MachineSN,
+                StoreId = order.StoreId,
+                OrderTime = order.CreateDT,
+                Received = 0m
+            };
+
+        }
+
+        public static IEnumerable<BillListItem> GetBills(string storeId, string machineSn, DateTime date, int token, Range range, bool inTestMode)
+        {
+            var start = date.Date;
+
+            var end = date.Date.AddDays(1);
+            IQueryable<SaleOrders> query = null;
+            if (range == Range.Local)
+            {
+                query = (CurrentRepository.Entities.Where(o => o.IsTest == inTestMode && o.CompanyId == token && o.StoreId == storeId && o.CreateDT > start && o.CreateDT < end && o.Type == 0 && o.MachineSN == machineSn));
+            }
+            else
+            {
+                query = (CurrentRepository.Entities.Where(o => o.IsTest == inTestMode && o.CompanyId == token && o.StoreId == storeId && o.CreateDT > start && o.CreateDT < end && o.Type == 0));
+            }
+            var result = query.Select(o => new BillListItem()
+             {
+                 Amount = o.TotalAmount,
+                 Date = o.CreateDT,
+                 PaySn = o.PaySN,
+                 Number = (from a in SaleDetailService.CurrentRepository.Entities.Where(p => p.PaySN == o.PaySN)
+                           from b in ProductRecordService.CurrentRepository.Entities
+                           where a.Barcode == b.Barcode || a.Barcode == b.ProductCode
+                           select (decimal?)(b.ValuationType == 1 ? a.PurchaseNumber : 1)
+                               ).Sum() ?? 0,
+             });
+            return result.ToList();
+
+        }
+        /// <summary>
+        /// 销售合计不统计换货
+        /// </summary>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <param name="userCodes"></param>
+        /// <returns></returns>
+        public static void DayMonthReport(DateTime from, DateTime to, ref DayReportResult result, string storeId, string machineSn, int token, bool inTestMode)
+        {
+            var entities = CurrentRepository.Entities.Where(o => o.CreateDT >= from && o.IsTest == inTestMode && o.CreateDT < to && o.StoreId == storeId && o.CompanyId == token);
+            if (!string.IsNullOrEmpty(machineSn))
+            {
+                entities = entities.Where(o => o.MachineSN == machineSn);
+            }
+            string huanhuoRuKuanProject = "换货入款";
+            string huanhuoChukuanProject = "换货出款";
+            string xiaoshouProject = "销售合计";
+            string tuihuoProject = "退货合计";
+            //处理支付
+            var paymants = (from a in entities
+                            from b in ConsumptionPaymentService.CurrentRepository.Entities
+                            from c in ApiLibraryService.CurrentRepository.Entities
+                            where a.PaySN == b.PaySN && c.ApiCode == b.ApiCode && a.CompanyId == b.CompanyId && b.CompanyId == c.CompanyId && c.CompanyId == token
+                            group b.Amount by new { a.CreateUID, c.Title } into g
+                            select g).ToList();
+            //抹零
+            var wipeZeros = (from a in entities
+                             from b in WipeZeroService.CurrentRepository.Entities
+                             where a.PaySN == b.PaySN && b.CompanyId == token
+                             group b.Number by a.CreateUID into g
+                             select g
+                                 ).ToDictionary(o => o.Key, o => o.Sum());
+            //用户
+            var users = (from a in entities
+                         from b in SysStoreUserInfoService.CurrentRepository.Entities
+                         where a.CreateUID == b.UID && b.CompanyId == token
+                         select new { b.UserCode, a.CreateUID, b.FullName }
+                             ).ToList();
+
+            var userOrders = entities.GroupBy(o => o.CreateUID);
+            if (userOrders.Count() > 0)
+            {
+                foreach (var item in userOrders)
+                {
+                    //销售
+                    var user = users.FirstOrDefault(o => o.CreateUID == item.Key);
+                    var userSaleOrders = item.Where(o => o.Type == 0 && o.State == 0);
+                    SalesmanDayReportResult record = new SalesmanDayReportResult()
+                    {
+                        UserCode = user.UserCode,
+                        Salesman = user.FullName,
+                        StartTime = default(DateTime),
+                        EndTime = default(DateTime),
+                        Sale = new SalesmanDayReportSaleResult()
+                        {
+                            SaleInfo = new DayReportDetailItem() { Number = 0, Amount = 0m, Project = xiaoshouProject },
+                            PayWay = new List<PayWayItem>()
+                        },
+                        Other = new List<DayReportDetailItem>()
+                    };
+                    if (userSaleOrders.Count() > 0)
+                    {
+                        record = new SalesmanDayReportResult()
+                        {
+                            UserCode = user.UserCode,
+                            Salesman = user.FullName,
+                            StartTime = userSaleOrders.Min(o => o.CreateDT),
+                            EndTime = userSaleOrders.Max(o => o.CreateDT),
+                            Sale = new SalesmanDayReportSaleResult()
+                            {
+                                SaleInfo = new DayReportDetailItem()
+                                {
+                                    Amount = userSaleOrders.Sum(o => o.Receive),
+                                    Number = userSaleOrders.Count(),
+                                    Project = xiaoshouProject
+                                }
+                            },
+                            Other = new List<DayReportDetailItem>()
+                        };
+                    }
+     
+
+                    //支付方式
+                    record.Sale.PayWay = paymants.Where(o => o.Key.CreateUID == item.Key).Select(o => new PayWayItem() { Title = o.Key.Title, Amount = o.Sum() }).ToList();
+                    var wipeZeroAmount = 0m;
+                    if (wipeZeros.ContainsKey(item.Key))
+                        wipeZeroAmount = wipeZeros[item.Key];
+                    record.Sale.PayWay.Add(new PayWayItem() { Amount = wipeZeroAmount, Title = "自动抹零" });
+                    var cach = record.Sale.PayWay.Find(o=>o.Title.Contains("现金"));
+                    if (cach != null)
+                        record.Cash = cach.Amount;
+                    //换货入款
+                    var userChangeOrders = item.Where(o => o.Type == 1 && o.TotalAmount > 0 && o.State == 0);
+                    record.Other.Add(new DayReportDetailItem()
+                    {
+                        Amount = userChangeOrders.Sum(o => o.TotalAmount),
+                        Number = userChangeOrders.Count(),
+                        Project = huanhuoRuKuanProject
+                    });
+                    //换货出款
+                    userChangeOrders = item.Where(o => o.Type == 1 && o.TotalAmount <= 0 && o.State == 0);
+                    var huanhuoChukuan = new DayReportDetailItem()
+                    {
+                        Amount =Math.Abs(userChangeOrders.Sum(o => o.TotalAmount)),
+                        Number = userChangeOrders.Count(),
+                        Project = huanhuoChukuanProject
+                    };
+                    record.Other.Add(huanhuoChukuan);
+                    record.Cash -= huanhuoChukuan.Amount;
+                    //退货
+                    var userAllReturnOrders = item.Where(o => o.Type == 0 && o.State == 1);
+
+                    var userRetrunOrders = item.Where(o => o.Type == 2 && o.State == 0);
+                    var tuihuo = new DayReportDetailItem()
+                    {
+                        Amount = userAllReturnOrders.Sum(o => o.Receive) - userRetrunOrders.Sum(o => o.Receive),
+                        Number = userRetrunOrders.Count() + userAllReturnOrders.Count(),
+                        Project = tuihuoProject
+                    };
+                    record.Other.Add(tuihuo);
+                    record.Cash -= tuihuo.Amount;
+                    result.SalesmanRecords.Add(record);
+                }
+            }
+            if (result.SalesmanRecords.Count() > 0)
+            {
+                var amount = 0m;
+                var num = 0m;
+                foreach (var item in result.SalesmanRecords)
+                {
+                    var info = item.Sale.SaleInfo;
+                    if (info != null)
+                    {
+                        amount += info.Amount;
+                        num += info.Number;
+                    }
+                }
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = amount,
+                    Number = (int)num,
+                    Project = xiaoshouProject
+                });
+            }
+            else
+            {
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = 0,
+                    Number = 0,
+                    Project = xiaoshouProject
+                });
+            }
+            if (result.SalesmanRecords.Count() > 0)
+            {
+                var amount = 0m;
+                var num = 0m;
+                foreach (var item in result.SalesmanRecords)
+                {
+                    var info = item.Other.FirstOrDefault(o => o.Project == huanhuoRuKuanProject);
+                    if (info != null)
+                    {
+                        amount += info.Amount;
+                        num += info.Number;
+                    }
+                }
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = amount,
+                    Number = (int)num,
+                    Project = huanhuoRuKuanProject
+                });
+            }
+            else
+            {
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = 0,
+                    Number = 0,
+                    Project = huanhuoRuKuanProject
+                });
+            }
+            if (result.SalesmanRecords.Count() > 0)
+            {
+                var amount = 0m;
+                var num = 0m;
+                foreach (var item in result.SalesmanRecords)
+                {
+                    var info = item.Other.FirstOrDefault(o => o.Project == huanhuoChukuanProject);
+                    if (info != null)
+                    {
+                        amount += info.Amount;
+                        num += info.Number;
+                    }
+                }
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = amount,
+                    Number = (int)num,
+                    Project = huanhuoChukuanProject
+                });
+            }
+            else
+            {
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = 0,
+                    Number = 0,
+                    Project = huanhuoChukuanProject
+                });
+            }
+            if (result.SalesmanRecords.Count() > 0)
+            {
+                var amount = 0m;
+                var num = 0m;
+                foreach (var item in result.SalesmanRecords)
+                {
+                    var info = item.Other.FirstOrDefault(o => o.Project == tuihuoProject);
+                    if (info != null)
+                    {
+                        amount += info.Amount;
+                        num += info.Number;
+                    }
+                }
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = amount,
+                    Number = (int)num,
+                    Project = tuihuoProject
+                });
+            }
+            else
+            {
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = 0,
+                    Number = 0,
+                    Project = tuihuoProject
+                });
+            }
+        }
+    }
+}

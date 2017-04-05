@@ -1,0 +1,141 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("insertolded")
+        <div class="content">
+            <table width="100%" height="50px">
+                <tr>
+                    <td width="64" class="name">流水号：</td>
+                    <td width="180">@Html.DropDownList("payno", new List<SelectListItem>(), new { @class = "easyui-combobox", data_options = "mode:'remote',valueField:'paysn',textField:'title',loader:comboload,onChange:paynoChange" })</td>
+                    <td width="64" class="name">换货理由：</td>
+                    <td width="180">@Html.DropDownList("reason", ViewBag.reasons as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+                    <td width="64" class="name">顾客补价：</td>
+                    <td class="180">@Html.TextBox("retprice", null, new { @class = "easyui-numberbox", data_options = "width:100,required:true,precision:2" })</td>
+                </tr>
+            </table>
+            <table class="easyui-datagrid" id="gridOld"
+                   data-options="url:'@Url.Action("FindOldPageList")',idField:'Barcode',checkOnSelect:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,onLoadSuccess:gridLoadSuccess">
+                <thead>
+                    <tr>
+                        <th data-options="field:'Barcode'" width="150">条码</th>
+                        <th data-options="field:'Title'" width="150">品名</th>
+                        <th data-options="field:'Number',editor:{type:'numberspinner',options:{required:true,min:1,onChange:changeRowTotal}}" width="80">数量</th>
+                        <th data-options="field:'ReturnedNumber',hidden:true,styler:function(){return 'color:red';}" width="100">已退换数量</th>
+                        <th data-options="field:'TradingPrice'" width="90">售价</th>
+                        <th data-options="field:'Total',formatter:function(value,row,index){return row.TradingPrice*row.Number;}" width="90">小计</th>
+                        <th data-options="field:'Editor',formatter:operold" width="50">操作</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    var $dgold = null;
+    $(function () {
+        $dgold = $("#gridOld");
+    });
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 1) return false;
+        $.ajax({
+            url: "@Url.Action("GetSaleOrderInput")",
+            type: "post",
+            data: {
+                //传值，还是JSON数据搜索
+                searchName: q
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function (item) {
+                    return { paysn: item.PaySN, title: item.PaySN };
+                });
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    function paynoChange(paysn, old) {
+        $.post("@Url.Action("GetSaleDetailByPaySN")", { paysn: $("#payno").combobox("getValue"), t: Math.random() }, function (json) {
+            $dgold.datagrid("loadData", json);
+        }, "json");
+    }
+    function gridLoadSuccess(data) {
+        var isReturned = false;
+        $.each(data.rows, function (i, n) {
+            if (n.HasReturned > 0) isReturned = true;
+        })
+        if (isReturned) $dgold.datagrid('showColumn', 'ReturnedNumber');
+        else $dgold.datagrid('hideColumn', 'ReturnedNumber');
+    }
+    function operold(value, row, index) {
+        return "<a href='jabascript:void(0)' onclick=\"checkToReturn(" + index + ", this)\">换货</a>"
+    }
+
+    function SaveBefore() {
+        //需保证编辑器输入时就验证正确
+        var checkedRows = $dgold.datagrid('getChecked');
+        if (checkedRows.length <= 0) {
+            $.messager.alert("提示", "退换商品信息不能为空!"); return false;
+        }
+        var field = 'Number';
+        $.each(checkedRows, function (i, n) {
+            var rowIndex = $dgold.datagrid('getRowIndex', n.Barcode);
+            var ed = $dgold.datagrid('getEditor', { index: rowIndex, field: field });
+            n.Number = parseFloat($(ed.target).numberbox('getValue'));
+        })
+        $("#insertolded").val(JSON.stringify(checkedRows));
+        return true;
+    }
+    //勾选退换项
+    function checkToReturn(index, obj) {
+        var field = 'Number';
+        var row = $dgold.datagrid('checkRow', index)
+                    .datagrid('editCell', { index: index, field: field })
+                    .datagrid("getRows")[index];
+        var ed = $dgold.datagrid('getEditor', { index: index, field: field });
+        $(ed.target).numberbox('options').max = row.ReNumber;//用numberspinner还不行了？Holy shit
+        $(obj).replaceWith("<a href='jabascript:void(0)' style='color:red;' onclick=\"cancelReturnRecord(" + index + ", this)\">取消</a>");
+    }
+    //取消退换项
+    function cancelReturnRecord(index, obj) {
+        var row = $dgold.datagrid('getRows')[index];
+        row.Number = row.ReNumber;
+        $dgold.datagrid('uncheckRow', index);
+        $dgold.datagrid('cancelEdit', index);
+        $(obj).replaceWith("<a href='jabascript:void(0)' onclick=\"checkToReturn(" + index + ", this)\">换货</a>");
+
+        retArray[index] = undefined;
+        calRetPrice();
+    }
+    var retArray = [];
+    //计算每条明细退还金额
+    function changeRowTotal(newValue, oldValue) {
+        var index = parseInt($(this).parents('tr.datagrid-row').attr('datagrid-row-index'));
+        var retRowPrice = $dgold.datagrid('getRows')[index].TradingPrice * newValue;
+        retArray[index] = retRowPrice;
+        calRetPrice();
+    }
+    //计算退还金额
+    function calRetPrice() {
+        var retprice = 0;
+        $.each(retArray, function (i, n) {
+            if (!isNaN(n)) {
+                retprice += n;
+            }
+        })
+        $("#retprice").numberbox("setValue", retprice);
+    }
+</script>

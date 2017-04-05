@@ -1,0 +1,203 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Marketings
+{
+    /// <summary>
+    /// 促销活动管理器
+    /// </summary>
+    public class MarketingManager : IDisposable
+    {
+        private bool disposable = false;
+        public MarketingManager(string storeId)
+        {
+            StoreId = storeId;
+
+            AutoRefreshInterval = MachinesSettings.ReloadMarketingInterval;
+            AutoRefresh();
+            CurrentRules = new List<MarketingRule>();
+        }
+
+        /// <summary>
+        /// 自动刷新间隔（分钟）
+        /// </summary>
+        public int AutoRefreshInterval { get; set; }
+
+        /// <summary>
+        /// 当前促销规则
+        /// </summary>
+        public IEnumerable<MarketingRule> CurrentRules { get; private set; }
+        /// <summary>
+        /// 门店促销活动缓存
+        /// </summary>
+        private IEnumerable<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> CacheRules { get; set; }
+
+        /// <summary>
+        /// 时效时间
+        /// </summary>
+        private List<DateTime> TimelinessTimes { get; set; }
+
+        /// <summary>
+        /// 时效线程
+        /// </summary>
+        private Thread TimelinessThread { get; set; }
+
+        /// <summary>
+        /// 门店Id
+        /// </summary>
+        public string StoreId { get; set; }
+        /// <summary>
+        /// 加载促销信息
+        /// </summary>
+        /// <returns></returns>
+        private IEnumerable<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> Load()
+        {
+            var defualtDataAdapter = DataAdapterFactory.DefualtDataAdapter;
+            defualtDataAdapter.StoreId = StoreId;
+            return defualtDataAdapter.GetMarketingRules();
+        }
+        /// <summary>
+        ///自动重载促销信息
+        /// </summary>
+        private void AutoRefresh()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                while (!disposable)
+                {
+                    CacheRules = Load();
+                    //刷新时效管理器
+                    if (TimelinessThread != null)
+                    {
+                        TimelinessThread.Abort();
+                        TimelinessThread = null;
+                    }
+                    TimelinessTimes.Add(DateTime.Now);
+                    TimeRangeManager();
+
+                    //等待下次更新
+                    Thread.Sleep(new TimeSpan(0, AutoRefreshInterval, 0));
+                }
+
+            });
+        }
+        /// <summary>
+        /// 匹配促销信息
+        ///促销优惠顺序 单品折扣-》买赠促销-》组合促销-》满元促销 
+        ///同等促销顺序 按最新创建日期为最优
+        /// </summary>
+        /// <param name="shoppingCart">购物车</param>
+        /// <returns>促销匹配上下文</returns>
+        public IEnumerable<MarketingContext> Match(ShoppingCart shoppingCart)
+        {
+            var tempRules = CurrentRules;//防止自动更新促销信息时，匹配促销活动方式资源争抢，造成死锁
+            var marketingGroups = tempRules.GroupBy(o => o.Type).OrderBy(p => p.Key).ToList();//促销优惠顺序 单品折扣-》买赠促销-》组合促销-》满元促销
+            List<MarketingContext> result = new List<MarketingContext>();
+            foreach (var child in marketingGroups)
+            {
+                var marketings = child.OrderByDescending(o => o.CreateRuleDate).ToList();//同等促销顺序 按最新创建日期为最优
+                foreach (var item in marketings)
+                {
+                    var context = item.Match(shoppingCart, StoreId);
+                    if (context != MarketingContext.Empty)
+                    {
+                        result.Add(context);
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 刷新促销规则托管
+        /// </summary>
+        private void RefreshHosted()
+        {
+            var cacheRules = CacheRules;
+            TimelinessTimes.Clear();
+            List<MarketingRule> rules = new List<MarketingRule>();
+            foreach (var item in cacheRules)
+            {
+                var now = DateTime.Now;
+
+                if (item.Key.StartTime <= now && item.Key.OverTime > now)
+                {
+                    var ranges = item.Key.TimeRanges;
+                    if (ranges == null || ranges.Count() == 0)//无时效约束
+                    {
+                        rules.Add(item.Value);//启动规则
+                        TimelinessTimes.Add(item.Key.OverTime);//添加过期时间
+                    }
+                    else//有时效约束
+                    {
+                        foreach (var range in ranges)
+                        {
+                            var start = DateTime.Parse(range.Key);
+                            var end = DateTime.Parse(range.Value);
+                            if (start <= now && end > now)
+                            {
+                                TimelinessTimes.Add(end);//添加时效约束
+                                rules.Add(item.Value);//启动规则
+                                TimelinessTimes.Add(item.Key.OverTime);
+
+                            }
+                            else if (start > now)
+                            {
+                                TimelinessTimes.Add(start);//添加启动规则时间
+                            }
+                        }
+                    }
+                }
+                else if (item.Key.StartTime > now)
+                {
+                    TimelinessTimes.Add(item.Key.StartTime);//添加启动规则时间
+                }
+            }
+            CurrentRules = rules;
+        }
+
+
+        /// <summary>
+        /// 活动时效管理器
+        /// </summary>
+        public void TimeRangeManager()
+        {
+            var task = Task.Factory.StartNew(() =>
+             {
+                 TimelinessThread = Thread.CurrentThread;
+                 while (!disposable)
+                 {
+                     if (TimelinessTimes != null && TimelinessTimes.Count > 0)
+                     {
+                         var dates = TimelinessTimes.OrderBy(o => o);
+                         var date = dates.FirstOrDefault();
+                         var now = DateTime.Now;
+                         var timeSpan = date - now;
+                         if (date > now)
+                             Thread.Sleep(timeSpan);
+                         RefreshHosted();
+                     }
+                     else
+                     {
+                         Thread.Sleep(1000);
+                     }
+                 }
+             });
+        }
+
+        public void Dispose()
+        {
+            disposable = true;
+            TimelinessThread.Abort();
+        }
+
+        ~MarketingManager()
+        {
+            Dispose();
+        }
+    }
+}

@@ -1,0 +1,87 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新品建档", delText: "删除商品", editText: "修改商品"));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>品类：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.CategoryCombobox("parentType", showThird: true, showAll: false, panelWidth: 350,controlWidth:180)
+            </td>
+            <td class="label-toolbar">
+                <label>品牌：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("brandsn", ViewBag.brands as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", style = "width:120px;" })
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="datacontrol easyui-combobox" name="state" style="width:70px;" data-options="editable: false">
+                    <option selected value="">全部</option>
+                    <option value="1">已上架</option>
+                    <option value="0">已下架</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="品名/条码" data-options="prompt:'品名/条码',width:150" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="openDialog600('Excel文件导入','@Url.Action("Import")');window.top.$('#lbsave .l-btn-text').width(100).html('开始导入');">导入</a>
+    <a href="#" class="easyui-menubutton" style="margin-left:0px;" data-options="menu:'#mm1',iconCls:'icon-edit'">设置上架</a>
+    <div id="mm1" style="width:150px;">
+        <div data-options="iconCls:'icon-putaway-1'" onclick="setEnable(1)">设为上架</div>
+        <div data-options="iconCls:'icon-sold-out-1'" onclick="setEnable(0)">设为下架</div>
+    </div>
+}
+<script type="text/javascript">
+    pharos.manager.columns = [[
+        { field: 'Size', title: '规格', width: 100 },
+        { field: 'BrandTitle', title: '品牌', width: 80 },
+        { field: 'SubUnit', title: '单位', width: 50 },
+        { field: 'SysPrice', title: '全国统一价', width: 70 },
+        { field: 'TraderNum', title: '商户量', width: 70 },
+        { field: 'StateTitle', title: '产品状态', width: 80 }
+    ]];
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Source', title: '来源', width: 70, formatter: function (value, row, index) { return value == 1 ? "本司" : row.CompanyTitle; } },
+        { field: 'Barcode', title: '国际条码', width: 150 },
+        { field: 'CategoryTitle', title: '品类', width: 150 },
+        {field: 'Title', title: '品名', width: 150}
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (id) {
+        this.Id = id;
+        openDialog800(this.addText, this.editurlNocache());
+    }
+    function setEnable(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+</script>

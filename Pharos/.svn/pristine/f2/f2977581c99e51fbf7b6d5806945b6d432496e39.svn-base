@@ -1,0 +1,126 @@
+﻿@model Pharos.Logic.OMS.Entity.SysPositions
+@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.Hidden("inserted")
+        @Html.Hidden("deleted")
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">职位代码：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Code, new { @class = "easyui-textbox", data_options = "validType:'length[1,30]'" })</td>
+                    <td class="name">职位名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:'length[1,50]'" })</td>
+                </tr>
+                <tr>
+                    <td colspan="4">
+                        <table class="easyui-datagrid" id="grid"
+                               data-options="url:'',data:pharos.dropdown['grid'],showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onLoadSuccess:appClick,onLoadError:loadError">
+                            <thead>
+                                <tr>
+                                    <th data-options="field:'DeptId',editor:{type:'textbox'},hidden:true" width="150">适用机构部门</th>
+                                    <th data-options="field:'Title',editor:{type:'combobox',options:{data:pharos.dropdown['depts'],panelWidth:400,panelHeight:160,valueField:'Value',textField:'Text'}}" width="250">适用机构部门</th>
+                                    <th data-options="field:'Editor',formatter:operation" width="120">操作</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+    }
+</div>
+<script type="text/javascript">
+    pharos.dropdown['depts'] = @Html.Raw(ViewBag.depts);
+    pharos.dropdown['grid']=@Html.Raw(ViewBag.datas);
+    var $dg=null, opadd = false,editIndex = undefined;
+    $(function () {
+        $dg = $("#grid");
+    })
+    function operation(value, row, index) {
+        if (opadd) {
+            opadd = false;
+            return "<a href='javascript:void(0)' onclick='append()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItem('" + row.DeptId + "')\">删除</a>";
+        }
+    }
+    function endEditing() {
+        if (editIndex == undefined) { return true }
+        if ($dg.datagrid('validateRow', editIndex)) {
+            var ed = $dg.datagrid('getEditor', { index: editIndex, field: 'Title' });
+            if (ed) {
+                var vl = $(ed.target).combobox('getValue');
+                var data = $dg.datagrid("getData");
+                if (isExists(data.rows, vl)) {
+                    $.messager.alert("提示", "该部门已存在", "warning", function () {
+                        $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                    });
+                    return false;
+                }
+                $(ed.target).combobox('setValue',$(ed.target).combobox('getText'));
+                ed = $dg.datagrid('getEditor', { index: editIndex, field: 'DeptId' });
+                $(ed.target).textbox("setValue", vl);
+            }
+            $dg.datagrid('endEdit', editIndex);
+            editIndex = undefined;
+            return true;
+        }
+        return false;
+    }
+    function isExists(rows, deptId) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.DeptId == deptId) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+    function appClick() {
+        setTimeout(function () {
+            append();
+        }, 1000);
+    }
+    function append() {
+        $dg=$dg||$("#grid");
+        if (endEditing()) {
+            opadd = true;
+            $dg.datagrid('appendRow', { DeptId:'0',Title:''});
+            editIndex = $dg.datagrid('getRows').length - 1;
+            $dg.datagrid('selectRow', editIndex)
+                .datagrid('beginEdit', editIndex);
+            changeValue();
+        }
+    }
+    function removeItem(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dg.datagrid("selectRecord", id);
+            var row = $dg.datagrid("getSelected")
+            var index = $dg.datagrid("getRowIndex", row);
+            $dg.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+    function changeValue() {
+        var inserted = $dg.datagrid('getChanges', "inserted");
+        var deleted = $dg.datagrid('getChanges', "deleted");
+        $("#inserted").val(JSON.stringify(inserted));
+        $("#deleted").val(JSON.stringify(deleted));
+        editIndex = $dg.datagrid('getRows').length - 1;
+        if (editIndex < 0) editIndex = undefined;
+    }
+    function SaveBefore() {
+
+        return true;
+    }
+</script>

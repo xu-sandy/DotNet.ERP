@@ -1,0 +1,72 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Printers.Domain.Models
+{
+    public class FunctionRegistry
+    {
+
+        public IDictionary<Type, ArrayList> Functions = new Dictionary<Type, ArrayList>();
+        public IDictionary<string, string> Descriptions = new Dictionary<string, string>();
+
+        public FunctionRegistry()
+        {
+
+        }
+
+        public void RegisterFunctions()
+        {
+        }
+
+        public void RegisterFunction(string tag, Func<object, string, string> function, string desc)
+        {
+            RegisterFunction<object>(tag, function, desc);
+        }
+
+        public void RegisterFunction<TModel>(string tag, Func<TModel, string, string> function, string desc = "", Func<TModel, bool> condition = null)
+        {
+            if (!Functions.ContainsKey(typeof(TModel)))
+            {
+                Descriptions.Add("-- " + UpperWhitespace(typeof(TModel).Name) + " Value Tags --", "");
+                Functions.Add(typeof(TModel), new ArrayList());
+            }
+            Functions[typeof(TModel)].Add(new FunctionData<TModel> { Tag = tag, Func = function, Condition = condition });
+
+            if (string.IsNullOrEmpty(desc))
+            {
+                desc = tag.Trim(new[] { '{', '}' });
+                desc = desc.Replace(":([^}]+)", ":X}");
+                desc = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(desc.ToLower());
+            }
+
+            if (!string.IsNullOrEmpty(desc))
+            {
+                var key = tag.Replace(":([^}]+)", ":X}");
+                if (!Descriptions.ContainsKey(key))
+                    Descriptions.Add(key, desc);
+            }
+        }
+
+        private static string UpperWhitespace(string value)
+        {
+            return string.Join("", value.Select(x => Char.IsUpper(x) ? " " + x : x.ToString())).Trim();
+        }
+
+        public string ExecuteFunctions<TModel>(string content, TModel model, PrinterTemplate printerTemplate)
+        {
+            content = Functions[typeof(object)]
+                .Cast<FunctionData<object>>()
+                .Aggregate(content, (current, func) => (func.GetResult(model, current, printerTemplate)));
+            if (!Functions.ContainsKey(typeof(TModel))) return content;
+            return Functions[typeof(TModel)]
+                .Cast<FunctionData<TModel>>()
+                .Aggregate(content, (current, func) => (func.GetResult(model, current, printerTemplate)));
+        }
+
+    }
+
+}

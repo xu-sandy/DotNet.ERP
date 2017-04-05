@@ -1,0 +1,84 @@
+﻿using System;
+using System.Linq;
+using System.Collections.Generic;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+namespace Pharos.Logic.BLL
+{
+    public class ApiLibraryService : BaseService<Entity.ApiLibrary>
+    {
+        public static IEnumerable<dynamic> ApiLibraryPageList(short? apiType, string keyword, out int recordCount)
+        {
+            
+            var query = from x in CurrentRepository.QueryEntity
+                        where x.CompanyId==CommonService.CompanyId
+                        select new
+                        {
+                             ApiTypeTitle= (from y in SysDataDictService.CurrentRepository.QueryEntity
+                                           where y.DicPSN==10 && y.DicSN==x.ApiType && y.CompanyId==x.CompanyId
+                                           select y.Title).FirstOrDefault(),
+                            x.Id,
+                            x.ApiType,
+                            x.ApiCode,
+                            x.Title,
+                            x.ApiUrl,
+                            x.State,
+                            x.ApiOrder
+                        };
+
+            if (apiType.HasValue)
+                query = query.Where(o => o.ApiType == apiType.Value);
+            if(!string.IsNullOrWhiteSpace(keyword))
+            {
+                int code=0;
+                int.TryParse(keyword,out code);
+                query = query.Where(o => o.Title.Contains(keyword) || o.ApiCode == code);
+            }
+            recordCount = query.Count();
+            var list= query.ToPageList();
+            return list;
+        }
+
+        public static OpResult SaveOrUpdate(Entity.ApiLibrary obj)
+        {
+            if(obj.Id==0)
+            {
+                obj.CompanyId = CommonService.CompanyId;
+                obj.ApiCode = CurrentRepository.QueryEntity.Max(o => (int?)o.ApiCode).GetValueOrDefault() + 1;
+                return Add(obj);
+            }
+            else
+            {
+                var source = FindById(obj.Id);
+                obj.ToCopyProperty(source, new List<string>() { "ApiCode", "CompanyId","ApiPwd" });
+                if (!obj.ApiPwd.IsNullOrEmpty()) source.ApiPwd = obj.ApiPwd;
+                return Update(source);
+            }
+        }
+        public static OpResult MoveItem(int mode,int id)
+        {
+            var op = OpResult.Fail("顺序移动失败!");
+            var obj = FindById(id);
+            switch (mode)
+            {
+                case 2://下移
+                    var max = CurrentRepository.QueryEntity.Max(o =>o.ApiOrder);
+                    if (max > obj.ApiOrder)
+                    {
+                        obj.ApiOrder++;
+                        op = Update(obj);
+                    }
+                    break;
+                default:
+                    var min = CurrentRepository.QueryEntity.Min(o =>o.ApiOrder);
+                    if (obj.ApiOrder > min)
+                    {
+                        obj.ApiOrder--;
+                        op = Update(obj);
+                    }
+                    break;
+            }
+            return op;
+        }
+    }
+}

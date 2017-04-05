@@ -1,0 +1,653 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
+                    xmlns:local="clr-namespace:Pharos.Wpf.Controls">
+    <!--  Button style -->
+    <Style TargetType="{x:Type Button}" x:Key="WindowButtonStyle">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ButtonBase}">
+                    <Border
+                            x:Name="Chrome"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            Margin="0"
+                            Background="{TemplateBinding Background}"
+                            Opacity="{TemplateBinding Opacity}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                Content="{TemplateBinding Content}"
+                                ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                Margin="{TemplateBinding Padding}"
+                                RecognizesAccessKey="True"
+                                SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Cursor" Value="Hand"></Setter>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Opacity"  Value="0.9"></Setter>
+        <Setter Property="FontFamily" Value="Webdings"/>
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="Foreground" Value="#ffffff" />
+        <Setter Property="Margin" Value="5,8"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="Black" />
+                <Setter Property="Background" Value="#EEEE00"></Setter>
+                <Setter Property="Opacity"  Value="1"></Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style TargetType="Image" x:Key="IconImageStyle">
+        <Setter Property="Height" Value="30"></Setter>
+        <Setter Property="Margin" Value="10,5,5,5"></Setter>
+    </Style>
+    <Style TargetType="TextBlock" x:Key="WindowTitleStyle">
+        <Setter Property="FontSize" Value="14"></Setter>
+        <Setter Property="Foreground" Value="#ffffff"></Setter>
+        <Setter Property="VerticalAlignment" Value="Center"></Setter>
+        <Setter Property="Margin" Value="3,0,0,0"></Setter>
+    </Style>
+    <!-- Window style -->
+    <Style TargetType="{x:Type local:LoginWindow}">
+        <Setter Property="WindowStyle" Value="None"/>
+        <Setter Property="ResizeMode" Value="NoResize"/>
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="AllowsTransparency" Value="True"/>
+        <Setter Property="BorderThickness" Value="20"/>
+        <Setter Property="Margin" Value="20"/>
+        <Setter Property="BorderBrush" Value="Silver"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontFamily" Value="/Pharos.Wpf;component/Fonts/#Microsoft YaHei UI"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:LoginWindow}">
+                    <Border BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent">
+                        <Border.Effect>
+                            <DropShadowEffect Color="Black" BlurRadius="16" ShadowDepth="0" Opacity="1" />
+                        </Border.Effect>
+                        <Grid Background="{TemplateBinding Background}">
+                            <Rectangle  x:Name="moveRectangle" Fill="Transparent"
+                                           Grid.Row="0" Grid.Column="0"  Cursor="SizeAll"/>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition />
+                                </Grid.RowDefinitions>
+                                <Grid ToolTip="{TemplateBinding Title}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="moveRectangleBorder" Grid.ColumnSpan="2" Cursor="SizeAll"  Background="#727275"  Opacity="0.36">
+                                    </Border>
+
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
+                                        <Image x:Name="windowIcon" Source="{TemplateBinding Icon}" Style="{StaticResource IconImageStyle}"></Image>
+                                        <TextBlock Text="{TemplateBinding Title}"  Foreground="{TemplateBinding Foreground}" Style="{StaticResource WindowTitleStyle}"></TextBlock>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                                        <Button x:Name="settingsButton"  ToolTip="设置" Style="{StaticResource WindowButtonStyle}" Command="{TemplateBinding SettingsCommand}" FontFamily="/Pharos.Wpf;component/Fonts/#FontAwesome" Content="&#xf013;"/>
+                                        <Button x:Name="minimizeButton"  ToolTip="最小化" Style="{StaticResource WindowButtonStyle}" Content="0" />
+                                        <Button x:Name="closeButton" ToolTip="关闭" Style="{StaticResource WindowButtonStyle}" Content="r" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Grid.Row="1" Margin="5,5,5,5">
+                                    <AdornerDecorator>
+                                        <ContentPresenter/>
+                                    </AdornerDecorator>
+                                </Grid>
+                            </Grid>
+                            <!-- Resize grid to be inserted here -->
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type local:DialogWindow}">
+        <Setter Property="WindowStyle" Value="None"/>
+        <Setter Property="ResizeMode" Value="NoResize"/>
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="AllowsTransparency" Value="True"/>
+        <Setter Property="BorderThickness" Value="20"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+
+        <Setter Property="BorderBrush" Value="Silver"/>
+        <Setter Property="Foreground" Value="Black"/>
+        <Setter Property="FontFamily" Value="/Pharos.Wpf;component/Fonts/#Microsoft YaHei UI"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:DialogWindow}">
+                    <Border BorderThickness="{TemplateBinding BorderThickness}" 
+                            BorderBrush="Transparent">
+                        <Border.Effect>
+                            <DropShadowEffect Color="Black" BlurRadius="16" ShadowDepth="0" Opacity="1" />
+                        </Border.Effect>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Offset="1" Color="#7891A5"></GradientStop>
+                                <GradientStop Offset="0.5" Color="#bd9c85"></GradientStop>
+                                <GradientStop Offset="0" Color="#747589"></GradientStop>
+
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid>
+                            <Rectangle x:Name="moveRectangle" Fill="Transparent" Cursor="SizeAll" 
+                                           Grid.Row="0" Grid.Column="0"/>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition />
+                                </Grid.RowDefinitions>
+                                <Grid ToolTip="{TemplateBinding Title}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="moveRectangleBorder" Grid.ColumnSpan="2" Cursor="SizeAll"   Background="#727275" Opacity="0.36">
+                                    </Border>
+
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
+                                        <Image x:Name="windowIcon" Source="{TemplateBinding Icon}" Style="{StaticResource IconImageStyle}"></Image>
+                                        <TextBlock Text="{TemplateBinding Title}" Foreground="White" Style="{StaticResource WindowTitleStyle}"></TextBlock>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                                        <Button Visibility="Hidden" x:Name="minimizeButton" ToolTip="最小化" Style="{StaticResource WindowButtonStyle}"
+                                            Content="0" />
+                                        <Button x:Name="closeButton" ToolTip="关闭" Style="{StaticResource WindowButtonStyle}"
+                                            Content="r" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Grid.Row="1" KeyboardNavigation.TabNavigation="Cycle">
+                                    <AdornerDecorator>
+                                        <ContentPresenter/>
+                                    </AdornerDecorator>
+                                </Grid>
+                            </Grid>
+                            <!-- Resize grid to be inserted here -->
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type local:ToastWindow}">
+        <Setter Property="WindowStyle" Value="None"/>
+        <Setter Property="ResizeMode" Value="NoResize"/>
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="AllowsTransparency" Value="True"/>
+        <Setter Property="BorderThickness" Value="20"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+
+        <Setter Property="BorderBrush" Value="Silver"/>
+        <Setter Property="Foreground" Value="Black"/>
+        <Setter Property="FontFamily" Value="/Pharos.Wpf;component/Fonts/#Microsoft YaHei UI"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:ToastWindow}">
+                    <Border BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent">
+                        <Border.Effect>
+                            <DropShadowEffect Color="Black" BlurRadius="16" ShadowDepth="0" Opacity="1" />
+                        </Border.Effect>
+                        <Grid>
+                            <Rectangle x:Name="moveRectangle" Fill="Transparent" Cursor="SizeAll" 
+                                           Grid.Row="0" Grid.Column="0"/>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition />
+                                </Grid.RowDefinitions>
+                                <Grid ToolTip="{TemplateBinding Title}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="moveRectangleBorder" Grid.ColumnSpan="2" Cursor="SizeAll"   Background="#727275" Opacity="0.36">
+                                    </Border>
+
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
+                                        <Image x:Name="windowIcon" Source="{TemplateBinding Icon}" Style="{StaticResource IconImageStyle}"></Image>
+                                        <TextBlock Text="{TemplateBinding Title}" Foreground="Black" FontSize="16" FontWeight="Bold" Style="{StaticResource WindowTitleStyle}"></TextBlock>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                                        <Button x:Name="closeButton" ToolTip="关闭" Style="{StaticResource WindowButtonStyle}"
+                                            Content="r" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Grid.Row="1">
+                                    <AdornerDecorator>
+                                        <ContentPresenter/>
+                                    </AdornerDecorator>
+                                </Grid>
+                            </Grid>
+                            <!-- Resize grid to be inserted here -->
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    
+    
+    <Style TargetType="{x:Type local:DialogWindow02}">
+        <Setter Property="WindowStyle" Value="None"/>
+        <Setter Property="ResizeMode" Value="NoResize"/>
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="AllowsTransparency" Value="True"/>
+        <Setter Property="BorderThickness" Value="20"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+
+        <Setter Property="BorderBrush" Value="Silver"/>
+        <Setter Property="Foreground" Value="Black"/>
+        <Setter Property="FontFamily" Value="/Pharos.Wpf;component/Fonts/#Microsoft YaHei UI"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:DialogWindow02}">
+                    <Border BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" CornerRadius="20"
+                            BorderBrush="Transparent">
+                        <Border.Effect>
+                            <DropShadowEffect ShadowDepth="0" BlurRadius="15" Opacity="0.8" Color="#80000000"></DropShadowEffect>
+                        </Border.Effect>
+                        <Grid>
+                            <Rectangle x:Name="moveRectangle" Fill="Transparent" Cursor="SizeAll" 
+                                           Grid.Row="0" Grid.Column="0"/>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition />
+                                </Grid.RowDefinitions>
+                                <Grid ToolTip="{TemplateBinding Title}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="moveRectangleBorder" Grid.ColumnSpan="2" Cursor="SizeAll"  BorderThickness="0,0,0,1" BorderBrush="#AFB3B7"  Opacity="0.36">
+                                    </Border>
+
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
+                                        <Image x:Name="windowIcon" Source="{TemplateBinding Icon}" Style="{StaticResource IconImageStyle}"></Image>
+                                        <TextBlock Text="{TemplateBinding Title}" Foreground="Black" FontSize="16" FontWeight="Bold" Style="{StaticResource WindowTitleStyle}"></TextBlock>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                                        <Button x:Name="minimizeButton" Visibility="Hidden" ToolTip="最小化" Foreground="Black" Style="{StaticResource WindowButtonStyle}"
+                                            Content="0" />
+                                        <Button x:Name="closeButton" ToolTip="关闭"  Foreground="Black" Style="{StaticResource WindowButtonStyle}"
+                                            Content="r" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Grid.Row="1">
+                                    <AdornerDecorator>
+                                        <ContentPresenter/>
+                                    </AdornerDecorator>
+                                </Grid>
+                            </Grid>
+                            <!-- Resize grid to be inserted here -->
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <SolidColorBrush x:Key="TextBox.Static.Border" Color="#FFABAdB3"/>
+    <SolidColorBrush x:Key="TextBox.MouseOver.Border" Color="#FF7EB4EA"/>
+    <SolidColorBrush x:Key="TextBox.Focus.Border" Color="#FF569DE5"/>
+
+
+
+    <LinearGradientBrush x:Key="TextBoxBorder" StartPoint="0,0" MappingMode="Absolute" EndPoint="0,20">
+        <GradientStop Color="#ABADB3" Offset="0.05"/>
+        <GradientStop Color="#E2E3EA" Offset="0.07"/>
+        <GradientStop Color="#E3E9EF" Offset="1"/>
+    </LinearGradientBrush>
+    <Style  TargetType="{x:Type local:IconTextBox}">
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+        <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TextBoxBorder}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="Padding" Value="1"/>
+        <Setter Property="AllowDrop" Value="true"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Cursor" Value="IBeam"></Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type  local:IconTextBox}">
+
+                    <Border x:Name="border" BorderBrush="Gray" BorderThickness="1" Background="White"    SnapsToDevicePixels="True" CornerRadius="3">
+                        <!--<Border.Effect>
+                            <DropShadowEffect Color="Black" BlurRadius="16" ShadowDepth="0" Opacity="1" />
+                        </Border.Effect>-->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+                            <Image x:Name="icon" Grid.Column="0" Source="{TemplateBinding Icon}"  Margin="{TemplateBinding IconMargin}" Height="{TemplateBinding IconHeight}" Width="{TemplateBinding IconWidth}"></Image>
+                            <ScrollViewer  Grid.Column="1" x:Name="PART_ContentHost" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"></ScrollViewer>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Opacity" TargetName="border" Value="0.56"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource TextBox.MouseOver.Border}"/>
+                            <Setter Property="BorderThickness" TargetName="border" Value="1"/>
+
+                        </Trigger>
+                        <Trigger Property="IsReadOnly" Value="true">
+                            <Setter TargetName="border" Property="Background" Value="#EAEAEA"></Setter>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="true">
+                            <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource TextBox.Focus.Border}"/>
+                            <Setter Property="BorderThickness" TargetName="border" Value="1"/>
+
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <Style  TargetType="{x:Type local:IconPasswordBox}">
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+        <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+        <Setter Property="BorderBrush" Value="Gray"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="1"/>
+        <Setter Property="AllowDrop" Value="true"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Cursor" Value="IBeam"></Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type  local:IconPasswordBox}">
+                    <Border x:Name="border" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="White" SnapsToDevicePixels="True" CornerRadius="3">
+                        <!--<Border.Effect>
+                            <DropShadowEffect Color="Black" BlurRadius="16" ShadowDepth="0" Opacity="1" />
+                        </Border.Effect>-->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+                            <Image x:Name="icon" Grid.Column="0" Source="{TemplateBinding Icon}"  Margin="{TemplateBinding IconMargin}" Height="{TemplateBinding IconHeight}" Width="{TemplateBinding IconWidth}"></Image>
+
+                            <PasswordBox x:Name="pwdbox" VerticalContentAlignment="Center" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" Grid.Column="1"></PasswordBox>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Opacity" TargetName="border" Value="0.56"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource TextBox.MouseOver.Border}"/>
+                            <Setter Property="BorderThickness" TargetName="border" Value="1"/>
+                        </Trigger>
+                        <Trigger SourceName="pwdbox" Property="IsKeyboardFocused" Value="true">
+                            <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource TextBox.Focus.Border}"/>
+                            <Setter Property="BorderThickness" TargetName="border" Value="1"/>
+
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <SolidColorBrush x:Key="Button.MouseOver.Border" Color="#FF7EB4EA"/>
+    <SolidColorBrush x:Key="Button.Pressed.Border" Color="#FF2C628B"/>
+    <SolidColorBrush x:Key="Button.Disabled.Border" Color="#FFADB2B5"/>
+
+
+    <Style TargetType="{x:Type local:PosButton}">
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Margin" Value="3"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:PosButton}">
+                    <Grid>
+                        <Border x:Name="border" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" SnapsToDevicePixels="true" CornerRadius="3">
+                            <!--<Border.Effect>
+                                <DropShadowEffect Color="Black" BlurRadius="16" ShadowDepth="0" Opacity="1" />
+                            </Border.Effect>-->
+                        </Border>
+                        <ContentPresenter x:Name="contentPresenter" Focusable="False" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsDefaulted" Value="true">
+                            <Setter Property="BorderBrush" TargetName="border" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.MouseOver.Border}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="true">
+                            <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.Pressed.Border}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Background" TargetName="border" Value="Gray"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type local:OfficeTabControl}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate  TargetType="{x:Type local:OfficeTabControl}">
+                    <ControlTemplate.Resources>
+                        <Style TargetType="{x:Type TabItem}">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type TabItem}">
+                                        <Grid SnapsToDevicePixels="True">
+                                            <VisualStateManager.VisualStateGroups>
+                                                <VisualStateGroup Name="CommonStates">
+                                                    <VisualState Name="MouseOver">
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="hoverShape" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:.1"/>
+                                                        </Storyboard>
+                                                    </VisualState>
+                                                    <VisualState Name="Normal">
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="hoverShape" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:.1"/>
+                                                        </Storyboard>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                                <VisualStateGroup Name="SelectionStates">
+                                                    <VisualState Name="Selected">
+                                                        <Storyboard>
+                                                            <DoubleAnimation 
+                                                    Storyboard.TargetName="buttonShape" Storyboard.TargetProperty="Opacity" 
+                                                    To="1" Duration="0:0:.3"/>
+                                                            <DoubleAnimation 
+                                                    Storyboard.TargetName="buttonBackgroundShape" 
+                                                    Storyboard.TargetProperty="Opacity" To="1" Duration="0"/>
+                                                            <DoubleAnimation 
+                                                    Storyboard.TargetName="hoverShape" Storyboard.TargetProperty="Opacity" 
+                                                    To="0" Duration="0:0:.1"/>
+                                                            <ColorAnimation 
+                                                    Storyboard.TargetName="PART_SelectedContentHost" 
+                                                    Storyboard.TargetProperty="(TextBlock.Foreground).(SolidColorBrush.Color)" 
+                                                    To="White" Duration="0:0:.1" />
+                                                        </Storyboard>
+                                                    </VisualState>
+                                                    <VisualState Name="Unselected">
+                                                        <Storyboard>
+                                                            <DoubleAnimation 
+                                                    Storyboard.TargetName="buttonShape" 
+                                                    Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:.1"/>
+                                                            <DoubleAnimation 
+                                                    Storyboard.TargetName="buttonBackgroundShape" 
+                                                    Storyboard.TargetProperty="Opacity" To="0" Duration="0"/>
+                                                            <DoubleAnimation 
+                                                    Storyboard.TargetName="hoverShape" 
+                                                    Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:.1"/>
+                                                        </Storyboard>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                            </VisualStateManager.VisualStateGroups>
+
+                                            <Border Name="hoverShape" Height="40" Margin="0,0,1,0" SnapsToDevicePixels="True" BorderThickness="0,0,1,0" BorderBrush="LightGray">
+                                                <Border BorderBrush="#FFA1B7EA" BorderThickness="0,1" Background="#FFE5EEF9" Height="40" SnapsToDevicePixels="True" />
+                                            </Border>
+                                            <Rectangle Name="buttonBackgroundShape" Stretch="Fill" Opacity="0" Fill="Transparent" Height="40" SnapsToDevicePixels="True" />
+                                            <Border Name="buttonShape" Opacity="0" BorderBrush="#FF0343A6" BorderThickness="0,2" Height="40" SnapsToDevicePixels="True">
+                                                <Path Data="M214,108 L346,108 346.125,118.125 337.75,126.125 346.375,134 346.375,143.875 214.25,144.25 z" SnapsToDevicePixels="True" Stretch="Fill" Height="40">
+                                                    <Path.Fill>
+                                                        <RadialGradientBrush GradientOrigin="0.2,0.5" RadiusX="0.8" RadiusY="0.8">
+                                                            <GradientStop Color="#FF5FA3F6" Offset="0" />
+                                                            <GradientStop Color="#FF0C55B9" Offset="1" />
+                                                        </RadialGradientBrush>
+                                                    </Path.Fill>
+                                                </Path>
+                                            </Border>
+                                            <ContentPresenter x:Name="PART_SelectedContentHost" Margin="15,0,5,0" VerticalAlignment="Center" ContentSource="Header" SnapsToDevicePixels="True" />
+                                        </Grid>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ControlTemplate.Resources>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160" />
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="#FFE9ECEF" Opacity="0.2" BorderBrush="LightGray" BorderThickness="1"  SnapsToDevicePixels="True">
+                        </Border>
+                        <StackPanel x:Name="headerPanel" IsItemsHost="True" Grid.Column="0" Margin="0,0,-1,0"  SnapsToDevicePixels="True" />
+                        <ContentPresenter x:Name="PART_SelectedContentHost" Grid.Column="1" ContentSource="SelectedContent" Margin="{TemplateBinding Padding}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+
+
+    <Style x:Key="CheckRadioFocusVisual">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Rectangle Margin="14,0,0,0" SnapsToDevicePixels="true" Stroke="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" StrokeThickness="1" StrokeDashArray="1 2"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="{x:Type local:ToggleSwitchButton}">
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:ToggleSwitchButton}">
+                    <ControlTemplate.Resources>
+                        <Storyboard x:Key="StoryboardIsChecked">
+                            <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[3].(TranslateTransform.X)" Storyboard.TargetName="CheckFlag">
+                                <EasingDoubleKeyFrame KeyTime="0" Value="0"/>
+                                <EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="14"/>
+                            </DoubleAnimationUsingKeyFrames>
+                        </Storyboard>
+                        <Storyboard x:Key="StoryboardIsCheckedOff">
+                            <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[3].(TranslateTransform.X)" Storyboard.TargetName="CheckFlag">
+                                <EasingDoubleKeyFrame KeyTime="0" Value="14"/>
+                                <EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="0"/>
+                            </DoubleAnimationUsingKeyFrames>
+                        </Storyboard>
+                    </ControlTemplate.Resources>
+                    <BulletDecorator Background="Transparent" SnapsToDevicePixels="true" VerticalAlignment="Center">
+                        <BulletDecorator.Bullet>
+                            <Border x:Name="ForegroundPanel" BorderThickness="1" Width="35" Height="25" CornerRadius="10">
+                                <Canvas>
+                                    <Border Background="White" x:Name="CheckFlag" CornerRadius="10" VerticalAlignment="Center" BorderThickness="1" Width="19" Height="22" RenderTransformOrigin="0.5,0.5">
+                                        <Border.RenderTransform>
+                                            <TransformGroup>
+                                                <ScaleTransform/>
+                                                <SkewTransform/>
+                                                <RotateTransform/>
+                                                <TranslateTransform/>
+                                            </TransformGroup>
+                                        </Border.RenderTransform>
+                                        <Border.Effect>
+                                            <DropShadowEffect ShadowDepth="1" Direction="180" />
+                                        </Border.Effect>
+                                    </Border>
+                                </Canvas>
+                            </Border>
+                        </BulletDecorator.Bullet>
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="Center"/>
+                    </BulletDecorator>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="HasContent" Value="true">
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource CheckRadioFocusVisual}"/>
+                            <Setter Property="Padding" Value="4,0,0,0"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="ForegroundPanel" Property="Background" Value="#1C86EE" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard x:Name="BeginStoryboardCheckedTrue" Storyboard="{StaticResource StoryboardIsChecked}" />
+                                <RemoveStoryboard BeginStoryboardName="BeginStoryboardCheckedFalse" />
+                            </Trigger.EnterActions>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="False">
+                            <Setter TargetName="ForegroundPanel" Property="Background" Value="Gray" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard x:Name="BeginStoryboardCheckedFalse" Storyboard="{StaticResource StoryboardIsCheckedOff}" />
+                                <RemoveStoryboard BeginStoryboardName="BeginStoryboardCheckedTrue" />
+                            </Trigger.EnterActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type local:Marquee}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:Marquee}">
+                    <ScrollViewer VerticalScrollBarVisibility="Hidden">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock  x:Name="txt" VerticalAlignment="Center" Text="{TemplateBinding Content}" FontSize="{TemplateBinding FontSize}" Foreground="{TemplateBinding Foreground}"></TextBlock>
+                        </StackPanel>
+                    </ScrollViewer>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+
+   
+
+
+
+</ResourceDictionary>

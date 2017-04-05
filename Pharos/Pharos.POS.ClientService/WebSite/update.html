@@ -1,0 +1,91 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <link href="css/global.css" rel="stylesheet" />
+    <script src="javascript/jquery-1.11.1.min.js"></script>
+    <script src="javascript/jquery.tmpl.min.js"></script>
+    <script src="javascript/common.js"></script>
+    <script src="javascript/progress.js"></script>
+    <script>
+        //进度条
+        window.onload = function () {
+
+            var result = document.getElementsByClassName('result')[0];
+
+            var pro = new progress({
+                width: 200,//进度条宽度
+                height: 50,//进度条高度
+                bgColor: "#d1d1d1",//背景颜色
+                proColor: "#2196f3",//前景颜色
+                fontColor: "#FFFFFF",//显示字体颜色
+                val: 10,//默认值
+                text: "当前进度为#*val*#%",//显示文字信息
+                showPresent: true,
+                completeCallback: function (val) {
+                    console.log('已完成');
+                    result.innerHTML = '已完成';
+                },
+                changeCallback: function (val) {
+                    console.log('当前进度为' + val + '%');
+                    result.innerHTML = '当前进度为' + val + '%';
+                }
+            });
+
+            document.getElementsByClassName('pro')[0].appendChild(pro.getBody());
+
+
+            setTimeout(function () {
+
+                pro.update(50);
+                setTimeout(function () {
+
+                    pro.update(10);
+                    setTimeout(function () {
+
+                        pro.update(100);
+                        setTimeout(function () {
+
+                            pro.update(0);
+                        }, 3000);
+                    }, 3000);
+
+                }, 3000);
+            }, 3000);
+        };
+
+
+    
+
+
+    </script>
+    <title></title>
+</head>
+<body style="background:#fff;">
+    <script type="text/javascript">
+        RegisterArea('menu.html');
+        RegisterArea('head.html');
+    </script>
+    <div class="container">
+        <div class="item">
+            <img src="images/icon_logo.png" class="logo" />
+            <p class="update-title">分店POS控制台</p>
+            <p class="update-info">
+                <span class="update-text1">当前版本：1.0.0</span>
+                <span class="update-text2">最新版本：1.0.0</span>
+            </p>
+            <p class="update-time">更新时间：2016-08-31</p>
+            <input type="button" class="btn btn-save" value="马上更新" style="display:table;margin:60px auto;"/>
+            <div class="pro" style="display:none;"></div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        //更新按钮变化
+        $(".btn-save").click(function () {
+            $(this).hide();
+            $(".pro").show();
+        });
+    </script>
+</body>
+</html>

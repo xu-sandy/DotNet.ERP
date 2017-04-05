@@ -1,0 +1,179 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增代理商", hideDel: true, searchHeight: 87));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>指派人：</label>
+            </td>
+            <td class="input-toolbar">
+                 @Form.Combobox("AssignUid", ViewBag.user as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>代理商类型：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("Type", ViewBag.ty as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true,editable: false,width:120" })
+            </td>
+            <td class="label-toolbar">
+                <label>创建时间：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_begin" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_end" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+
+        </tr>
+
+        <tr class="s_tr">
+            <td class="label-toolbar">
+                <label>区&nbsp;&nbsp;&nbsp;域：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="Province" name="CurrentProvinceId" class="easyui-combobox" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;"></label>
+            </td>
+            <td class="input-toolbar">
+                <input id="City" name="CurrentCityId" class="easyui-combobox" />
+            </td>
+
+            <td class="label-toolbar">
+                <label>经营范围：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("BusinessScopeId", ViewBag.BusinessScopeId as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按代理商编号", Value = "0" }, new SelectListItem() { Text = "按代理商名称", Value = "1" }, new SelectListItem() { Text = "按法人姓名", Value = "2" }, new SelectListItem() { Text = "按联系人", Value = "3" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+            </td>
+        </tr>
+
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-man'" onclick="">设定指派人</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="">设定主登录账号</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="">续签代理</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="StopAgents()">终止所选代理商</a>
+}
+<script type="text/javascript">
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'FullName', title: '代理商类型', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Title', title: '代理商编号', editor: { type: 'text', required: true }, width: 80 },
+        { field: 'CID', title: '代理商全称', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'khTitle', title: '代理商简称', editor: { type: 'text', required: true }, width: 100 }
+    ]];
+
+    pharos.manager.columns = [[
+        {
+            field: 'Status', title: '代理商状态', editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) {
+                if (value == "0") {
+                    return "待审";
+                } else if (value == "1") {
+                    return "正常";
+                } else if (value == "2") {
+                    return "终止";
+                }
+                else {
+                    return "到期";
+                }
+            }
+        },
+        { field: 'khType', title: '客户类型', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'city', title: '上级代理商编号', editor: { type: 'text', required: true }, width: 80 },
+        { field: 'tType', title: '到期日期', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'bCategory', title: '代理区域', editor: { type: 'text', required: true }, width: 400 },
+        { field: 'ExistStoreNum', title: '支付通道', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'LinkMan', title: '成本费率', editor: { type: 'text', required: true }, width: 90 },
+        { field: 'MobilePhone', title: '下级费率', editor: { type: 'text', required: true }, width: 110 },
+        { field: 'CreateDT', title: '通道状态', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '合同编号', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '法人姓名', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '法人身份证号', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '公司电话', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '公司地址', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '联系人', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '联系电话1', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '联系电话2', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: 'QQ', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: 'Email', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '微信号', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '创建时间', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '创建人', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '指派人', editor: { type: 'text', required: true }, width: 150 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 1000, 'height': 560, hideSave: false, 'url': this.editurlNocache() });
+    };
+
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        openWin({ 'title': this.editText, 'width': 1000, 'height': 560, hideSave: false, 'url': this.editurlNocache() });
+    }
+
+
+
+    //终止所选代理商
+    function StopAgents() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("StopAgents")", { Ids: ids, t: Math.random()}, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "终止成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "终止失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+
+    $(function () {
+        //设定主登录账号
+        $("#TraderType").click(function () {
+            openWin({ 'title': '客户分类', 'width': 600, 'height': 350, hideSave: true, 'url': '/TraderType/Index' });
+        });
+    });
+
+</script>
+
+

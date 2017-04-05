@@ -1,0 +1,71 @@
+﻿using Common.Logging;
+using Pharos.Api.Retailing;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using System.ServiceProcess;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.ClientService
+{
+    partial class MainService : ServiceBase
+    {
+        Task syncTask = null;
+        CancellationTokenSource tokenSource;
+        CancellationToken token;
+        IDisposable webServer;
+        public MainService()
+        {
+            InitializeComponent();
+        }
+
+        protected override void OnStart(string[] args)
+        {
+            try
+            {
+                // create the cancellation token source
+                tokenSource = new CancellationTokenSource();
+
+                // create the cancellation token
+                token = tokenSource.Token;
+                syncTask = SyncServiceClientStartup.AutoSync(token);
+                webServer = WebApiStartup.RunWebServer();
+            }
+            catch (Exception ex)
+            {
+                ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                logger.Error(ex.Message, ex);
+                //do log
+            }
+        }
+        protected override void OnStop()
+        {
+            try
+            {
+                // TODO:  在此处添加代码以执行停止服务所需的关闭操作。
+                if (syncTask != null && !syncTask.IsCanceled && !syncTask.IsCompleted && !syncTask.IsFaulted)
+                {
+                    tokenSource.Cancel();
+                }
+                if (webServer != null)
+                {
+                    webServer.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                //do log
+                ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                logger.Error(ex.Message, ex);
+            }
+            base.OnStop();
+
+        }
+    }
+}

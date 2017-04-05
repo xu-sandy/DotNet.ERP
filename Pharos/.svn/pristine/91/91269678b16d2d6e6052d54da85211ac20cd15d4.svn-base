@@ -1,0 +1,115 @@
+﻿using Pharos.Logic.MemberDomain.Exceptions;
+using Pharos.Logic.MemberDomain.Interfaces;
+using Pharos.Logic.MemberDomain.QuanChengTaoProviders.Scenes;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+
+namespace Pharos.Logic.MemberDomain.QuanChengTaoProviders.IntegralProviders
+{
+    /// <summary>
+    /// 条码积分规则提供程序
+    /// </summary>
+    public class BarcodeIntegralProvider : BaseIntegralRuleProvider<BarcodeScene>
+    {
+        /// <summary>
+        /// 获取规则数据
+        /// </summary>
+        /// <param name="info">输入性参数，这里是companyId</param>
+        /// <returns>积分规则</returns>
+        public override IEnumerable<IIntegralRule> GetRuleDatas(object info = null)
+        {
+            return Pharos.Logic.BLL.ReturnRulesService.GetProviderRules((int)info, ProviderId).Select(o => new CommonIntegralRule<BarcodeScene>()
+            {
+                Id = o.Id.ToString(),
+                MeteringMode = o.Mode,
+                IntegralExpression = GetIntegralExpression(o),
+                VerifyExpression = GetVerifyExpression(o)
+            }).ToList();
+        }
+        /// <summary>
+        /// 获取验证是否满足积分规则条件的表达式
+        /// </summary>
+        /// <param name="entity">数据源</param>
+        /// <returns>积分规则条件表达式</returns>
+        private Expression<Func<BarcodeScene, bool>> GetVerifyExpression(Pharos.Logic.Entity.ReturnRules entity)//注：此处Pharos.Logic.Entity.ReturnRules引用在下次底层数据访问重构时候，新建Dao进行解耦
+        {
+            var p = Expression.Parameter(typeof(BarcodeScene), "p");
+            MemberExpression propertyName = null;
+            Expression body = null;
+            switch (entity.Mode)// 计量模式（eg:金额，次数。。）
+            {
+                case (int)MeteringMode.AmountCounter:
+                    propertyName = Expression.Property(p, "Amount");
+
+                    break;
+                case (int)MeteringMode.CountCounter:
+                    propertyName = Expression.Property(p, "Count");
+                    break;
+                default:
+                    throw new IntegralRuleProviderLoadException("未知计量模式!");
+            }
+            var limitItemsExpression = Expression.Constant("," + entity.LimitItems + ",");
+            var barcodeExpression = Expression.Property(p, "Barcode");
+            var limitExpression = Expression.Call(barcodeExpression, typeof(string).GetMethod("Contains"), barcodeExpression);
+            Expression expression1 = this.GetLogicalOperationExpression(entity.LeftSign, entity.Number1, propertyName);
+            if (entity.RightSign.HasValue && entity.Number2.HasValue)
+            {
+                var expression2 = this.GetLogicalOperationExpression(entity.RightSign.Value, entity.Number2.Value, propertyName);
+                body = Expression.And(expression1, expression2);
+            }
+            else
+            {
+                body = expression1;
+            }
+            body = Expression.Add(limitExpression, body);
+            return Expression.Lambda<Func<BarcodeScene, bool>>(body, p);
+        }
+
+        /// <summary>
+        /// 获取积分表达式
+        /// </summary>
+        /// <param name="entity">数据源</param>
+        /// <returns>积分表达式</returns>
+        private Expression<Func<BarcodeScene, decimal>> GetIntegralExpression(Pharos.Logic.Entity.ReturnRules entity)//注：此处Pharos.Logic.Entity.ReturnRules引用在下次底层数据访问重构时候，新建Dao进行解耦
+        {
+            var p = Expression.Parameter(typeof(BarcodeScene), "p");
+            MemberExpression propertyName = null;
+            Expression body = null;
+            var cases = new List<SwitchCase>();
+            switch (entity.Mode)// 计量模式（eg:金额，次数。。）
+            {
+                case (int)MeteringMode.AmountCounter:
+                    propertyName = Expression.Property(p, "Amount");
+
+                    break;
+                case (int)MeteringMode.CountCounter:
+                    propertyName = Expression.Property(p, "Count");
+                    break;
+            }
+            switch (entity.OperationType) //返赠运算方式(0：按固定值；1：按固定比例；2：动态配置)
+            {
+                case 0:
+                    body = Expression.Constant(Convert.ToDecimal(entity.Expression));
+                    break;
+                case 1:
+                    var rateConstant = Expression.Constant(Convert.ToDecimal(entity.Expression));
+                    body = Expression.Multiply(rateConstant, propertyName);
+                    break;
+                case 2://TODO Call Dynamic Expression
+                    break;
+            }
+            return Expression.Lambda<Func<BarcodeScene, decimal>>(body, p);
+        }
+        /// <summary>
+        /// 获取积分规则提供程序ID
+        /// </summary>
+        /// <returns>积分规则提供程序ID</returns>
+        public override int GetProviderId()
+        {
+            return (int)IntegralProviderType.BarcodeIntegralProvider;
+        }
+    }
+}

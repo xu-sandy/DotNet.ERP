@@ -1,0 +1,91 @@
+﻿using Pharos.POS.Retailing.Models.ChildPagesModels;
+using Pharos.POS.Retailing.Models.Scanner;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// 退换货界面
+    /// </summary>
+    public partial class Changing : Window
+    {
+        ChangingModel currentChangingModel;
+        RefundModel currentRefundModel;
+       // private bool failedFocus;
+        RemoveBill removeBill;
+        public Changing(ChangingModel changingModel,RefundModel refundModel)
+        {
+            changingModel.CurrentWindow = this;
+            currentChangingModel = changingModel;
+            currentRefundModel = refundModel;
+            InitializeComponent();
+            this.InitPublicSettings();
+            changingGrid.DataContext = changingModel;
+            refundGird.DataContext = refundModel;
+            removeBill = new RemoveBill();
+            billGird.DataContext = removeBill;
+            //ScannerFactory.MonitorScanner(this, ScannerHandler);
+        }
+        public void Change(bool isChange)
+        {
+            if (isChange)
+            {
+                changeItem.IsSelected = true;
+            }
+            else 
+            {
+                refundItem.IsSelected = true;
+            }
+        }
+        public UIElement CurrentScannerNode { get; set; }
+
+        //private void ScannerHandler(string barcode, ScannerType type)
+        //{
+        //    switch (type)
+        //    {
+        //        case ScannerType.Keyboard:
+        //            {
+        //                if (txtOldBarCode.IsKeyboardFocused)
+        //                {
+        //                    CurrentScannerNode = txtOldBarCode;
+        //                }
+        //                else if (txtNewBarCode.IsKeyboardFocused)
+        //                {
+        //                    CurrentScannerNode = txtNewBarCode;
+        //                }
+        //                else 
+        //                {
+        //                    return;
+        //                }
+
+        //                failedFocus = true;
+        //                CurrentScannerNode.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+        //                failedFocus = false;
+        //                Keyboard.Focus(CurrentScannerNode);
+        //            }
+        //            break;
+        //    }
+        //}
+
+
+        //private void txtOldBarCode_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        //{
+        //    if (Keyboard.FocusedElement == txtOldBarCode && !failedFocus)
+        //    {
+        //        CurrentScannerNode = txtOldBarCode;
+        //    }
+        //}
+
+        //private void txtNewBarCode_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        //{
+        //    if (Keyboard.FocusedElement == txtNewBarCode && !failedFocus)
+        //    {
+        //        CurrentScannerNode = txtNewBarCode;
+        //    }
+        //}
+
+
+
+    }
+}

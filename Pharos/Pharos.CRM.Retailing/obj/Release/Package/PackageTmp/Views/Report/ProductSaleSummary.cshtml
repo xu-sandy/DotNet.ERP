@@ -1,0 +1,69 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: true, hideDel: true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>月份：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" value="@DateTime.Now.ToString("yyyy-MM")" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM', isShowToday: false})" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("store", ViewBag.stores as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelHeight:'auto',panelMaxHeight:200")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = '@Url.Action("QueryProductSaleSummaryPageList")';
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = true;
+    //pharos.manager.loadSuccess = function () {
+    //    $(this).prev(".datagrid-view2").children(".datagrid-body").html("<div style='width:" + $(this).prev(".datagrid-view2").find(".datagrid-header-row").width() + "px;border:solid 0px;height:1px;'></div>");
+
+    //};
+    pharos.manager.columns = [[
+        { field: 'Barcode', title: '商品编码', width: 150 },
+        { field: 'SupplierTitle', title: '供应商', width: 150 },
+        { field: 'StoreTitle', title: '门店', width: 150 },
+        { field: 'BrandTitle', title: '品牌', width: 100 },
+        { field: 'CategoryTitle', title: '大类/中类', width: 100 },
+        { field: 'Title', title: '商品名称', width: 100 },
+        { field: 'SubUnit', title: '单位', width: 100 },
+        { field: 'SysPrice', title: '系统售价', width: 100 },
+        { field: 'PurchaseNumber', title: '销售数量', width: 100 },
+        { field: 'SamePurchaseNumber', title: '同期销售数量', width: 100 },
+        { field: 'ChainPurchaseNumber', title: '环期销售数量', width: 100 },
+        { field: 'SaleTotal', title: '销售金额', width: 100 },
+        { field: 'SameSaleTotal', title: '同期销售金额', width: 100 },
+        { field: 'ChainSaleTotal', title: '环期销售金额', width: 100 },
+        { field: 'BuyPrice', title: '进价金额', width: 100 },
+        { field: 'SameBuyPrice', title: '同期进价金额', width: 100 },
+        { field: 'ChainBuyPrice', title: '环期进价金额', width: 100 },
+        { field: 'JMLL', title: '毛利率', width: 100 },
+        { field: 'SameJMLL', title: '同期毛利率', width: 100 },
+        { field: 'ChainJMLL', title: '环期毛利率', width: 100 },
+        { field: 'JML', title: '毛利额', width: 100 },
+        { field: 'SameJML', title: '同期毛利额', width: 100 },
+        { field: 'ChainJML', title: '环期毛利额', width: 100 }
+    ]];
+    function Export() {
+        var date = $("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        window.location.href = '@Url.Action("ProductSaleSummaryExport")?' + $('#frmsearch').serialize();
+    }
+</script>

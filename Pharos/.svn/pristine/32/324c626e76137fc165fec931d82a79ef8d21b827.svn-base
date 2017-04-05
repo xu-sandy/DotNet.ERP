@@ -1,0 +1,103 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+
+namespace Pharos.POS.Retailing.Models.SalesPromotionRules.Discount
+{
+    /// <summary>
+    /// 捆绑销售
+    /// </summary>
+    public class BundlingDiscount : BaseDiscount<BundlingLocalService, BundlingDAO>
+    {
+
+
+        public override void SetRestrictionBuyNum()
+        {
+            foreach (var item in temp)
+            {
+                if (item.TotalBundled > 0)
+                {
+                    var date = DateTime.Now.ToString("yyyyMMdd");
+                    if (!SalesRecordLocalService.IsExist(o => o.StoreId == PosMachineInfo.Infos.StoreId && o.CommodityId == item.CommodityPromotionId))
+                    {
+                        SalesRecordLocalService.Add(
+                            new SalesRecord()
+                            {
+                                CommodityId = item.CommodityPromotionId,
+                                CreateDT = date,
+                                StoreId = PosMachineInfo.Infos.StoreId,
+                                Number = item.TotalBundled
+                            });
+                    }
+                }
+            }
+        }
+        private IEnumerable<BundlingDAO> temp;
+        public override void CacheActivity()
+        {
+            BundlingLocalService service = new BundlingLocalService();
+            temp = service.LoadDiscount();
+            CachePool = new List<BundlingDAO>();
+        }
+        /// <summary>
+        /// 捆绑销售
+        /// </summary>
+        /// <param name="barcode">条码</param>
+        /// <param name="num">数量</param>
+        /// <param name="sysPrice">系统售价</param>
+        /// <param name="sale">折后价</param>
+        public override void Discount(string barcode, decimal num, decimal sysPrice, ref decimal sale, ref string giftId, ref List<string> promotionIds, ref decimal tempTotal)
+        {
+            IEnumerable<BundlingDAO> infos;
+            if (HasDiscount(barcode, out infos))
+            {
+                List<BundlingDAO> ValidDiscount = new List<BundlingDAO>();
+                foreach (var item in infos)
+                {
+                    //处理主表限制
+                    var hasDiscount = DiscountCommon(barcode, num, ref  sale, item);
+                    if (hasDiscount)
+                    {
+                        ValidDiscount.Add(item);
+                    }
+
+                }
+                if (ValidDiscount.Count == 0)
+                {
+                    return;
+                }
+
+                var info = ValidDiscount.FirstOrDefault();
+                sale = info.BundledPrice;
+                if (!promotionIds.Exists(o => o == info.CommodityPromotionId))
+                    promotionIds.Add(info.CommodityPromotionId);
+            }
+        }
+
+        /// <summary>
+        /// 判断是否有折扣
+        /// </summary>
+        /// <param name="barcode">条码</param>
+        /// <param name="discount">优惠规则</param>
+        /// <returns></returns>
+        public override bool HasDiscount(string barcode, out IEnumerable<BundlingDAO> discount)
+        {
+            discount = CachePool.Where(o => o.Barcode == barcode && o.EndDate >= DateTime.Now.Date && o.StartDate <= DateTime.Now.Date);
+            return discount != null && discount.Count() > 0;
+        }
+
+        /// <summary>
+        /// 判断是否有折扣
+        /// </summary>
+        /// <param name="barcode">条码</param>
+        /// <returns></returns>
+        public override bool HasDiscount(string barcode)
+        {
+            IEnumerable<BundlingDAO> info;
+            return HasDiscount(barcode, out info);
+        }
+    }
+}

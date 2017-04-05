@@ -1,0 +1,55 @@
+﻿@model ProductCategory
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using(Html.BeginForm())
+    {
+        @Html.HiddenFor(o=>o.Id)
+        @Html.HiddenFor(o=>o.CategorySN)
+        @Html.HiddenFor(o=>o.CategoryCode)
+        @Html.HiddenFor(o=>o.Grade)
+        @Html.Hidden("SelectPSN")
+        <div class="content">
+            <table class="table-form" width="100%" height="143px">
+                <tr>
+                    <td class="name">隶属分类：</td>
+                    <td class="input">@Form.CategoryCombobox("CategoryPSN",ViewBag.category as SelectListItem,empty:"请选择",showAll:false,dataOptions:Model.Id==0?"":"readonly:true")</td>
+                </tr>
+                <tr>
+                    <td class="name">分类名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true" })</td>
+                </tr>
+                @*<tr>
+                    <td class="name">排序号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.OrderNum, new { @class = "easyui-numberbox" })</td>
+                </tr>*@
+                <tr>
+                    <td class="name"></td>
+                    <td class="input">@Html.CheckBox("State", Model.State == 0, new { value="0"}) <label for="State">是否禁用</label></td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    function Refresh() {
+        //alert($("#grid")[0]);
+        //window.top.$("#grid").datagrid("reload");
+        if ($("#hidadd").val() == "1") {
+            var psns = $("[name='CategoryPSN_0']").val();
+            if (!psns) psns = $("#SelectPSN").val();
+            window.location.href = "@Url.Action("Save")?CategoryPSN=" + $("#CategoryPSN_0").combobox("getValue") + "&CategoryPSNTitle=" + $("#CategoryPSN_0").combobox("getText") + "&CategoryPSN_0=" + psns;
+        } else {
+            pharos.easyui.dialog.topClose("formDiv");
+            pharos.easyui.dialog.curJquery("formDiv")("#treegrid").treegrid("reload"); 
+        }
+    }
+    function SaveBefore() {
+        //alert($("[name='selectCategory']").join().val()); return false;
+        return true;
+    }
+</script>

@@ -1,0 +1,23 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Utility.Helpers;
+using System.Web.Http;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class OuterApiController : ApiController
+    {
+        [Ninject.Inject]
+        ProductService ProductService { get; set; }
+        [HttpGet]
+        public object Get(string barcode)
+        {
+            var obj= ProductService.GetProductByBarcode(barcode);
+            return new { obj.Barcode,obj.Title,obj.SysPrice};
+        }
+        
+    }
+}

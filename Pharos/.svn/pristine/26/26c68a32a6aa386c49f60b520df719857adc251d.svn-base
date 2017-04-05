@@ -1,0 +1,94 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.DataSynchronism.Protocol
+{
+    public class SocketReceiveFilter : BaseDataSyncReceiveFilter<ResponseInfo>
+    {
+        /// <summary>
+        /// 起始标识 '#pharos@socket@start#'
+        /// </summary>
+        public static readonly byte[] BeginMark;
+        /// <summary>
+        /// 结束标识 '#pharos@socket@end#'
+        /// </summary>
+        public static readonly byte[] EndMark;
+        /// <summary>
+        /// 静态初始化器，以初始化常量
+        /// </summary>
+        static SocketReceiveFilter()
+        {
+            BeginMark = SocketClient.defaultEncoding.GetBytes("#pharos@socket@start#");
+            EndMark = SocketClient.defaultEncoding.GetBytes("#pharos@socket@end#");
+        }
+        /// <summary>
+        /// 接收数据组包及过滤器
+        /// </summary>
+        /// <param name="commandRuleProvider">命令路由解析器</param>
+        public SocketReceiveFilter(ICommandRuleProvider commandRuleProvider)
+            : base(BeginMark, EndMark)
+        {
+            CommandRuleProvider = commandRuleProvider;
+        }
+        /// <summary>
+        /// 命令路由解析器
+        /// </summary>
+        public ICommandRuleProvider CommandRuleProvider { get; private set; }
+
+
+        /// <summary>
+        /// 初始化会话信息
+        /// </summary>
+        /// <param name="readBuffer">请求的缓存数据</param>
+        /// <param name="offset">起始位置</param>
+        /// <param name="length">长度</param>
+        /// <returns>组包后转化成DataSyncRequestInfo对象</returns>
+        protected override ResponseInfo ProcessMatchedRequest(byte[] readBuffer, long offset, long length)
+        {
+            if (length <= CommandRuleProvider.BytesLength)
+            {
+                return NullResponseInfo;
+            }
+            var startMarkLength = BeginMark.Length;
+            var endMarkLength = EndMark.Length;
+            var requestBody = new byte[readBuffer.Length - offset - endMarkLength - startMarkLength - CommandRuleProvider.BytesLength];
+            Array.Copy(readBuffer, offset + startMarkLength + CommandRuleProvider.BytesLength, requestBody, 0, requestBody.Length);
+
+            var entry = readBuffer[offset + startMarkLength];
+            var cmdCode = new byte[CommandRuleProvider.BytesLength - 1];
+            Array.Copy(readBuffer, offset + startMarkLength + 1, cmdCode, 0, cmdCode.Length);
+
+            var routeRule = new CommandRule() { Command = cmdCode, Entry = entry };
+            if (!CommandRuleProvider.Verfy(routeRule))//无效请求，路由错误
+            {
+                return NullResponseInfo;
+            }
+            var responseInfo = new ResponseInfo(new CommandInfo(routeRule, requestBody));
+            return responseInfo;
+        }
+        /// <summary>
+        /// 该方法将会在 SuperSocket 收到一块二进制数据时被执行，接收到的数据在 readBuffer 中从 offset 开始， 长度为 length 的部分
+        /// </summary>
+        /// <param name="readBuffer">接收缓冲区, 接收到的数据存放在此数组里</param>
+        /// <param name="offset">接收到的数据在接收缓冲区的起始位置</param>
+        /// <param name="length">本轮接收到的数据的长度</param>
+        /// <param name="toBeCopied">表示当你想缓存接收到的数据时，是否需要为接收到的数据重新创建一个备份而不是直接使用接收缓冲区</param>
+        /// <param name="rest">这是一个输出参数, 它应该被设置为当解析到一个为政的请求后，接收缓冲区还剩余多少数据未被解析</param>
+        /// <returns>组包后转化成DataSyncRequestInfo对象</returns>
+        public override ResponseInfo Filter(SuperSocket.ProtoBase.BufferList data, out int rest)
+        {
+            rest = 0;
+            try
+            {
+                var result = base.Filter(data, out rest);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return NullResponseInfo;
+            }
+        }
+    }
+}

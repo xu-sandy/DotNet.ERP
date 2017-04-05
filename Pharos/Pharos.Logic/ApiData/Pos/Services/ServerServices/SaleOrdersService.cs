@@ -1,0 +1,611 @@
+﻿using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Pos.Services.ServerServices;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class SaleOrdersService : BaseGeneralService<SaleOrders, EFDbContext>
+    {
+        public static BillHistoryInfo GetBillDetailsHistory(string storeId, string machineSn, string paySn, int companyId, bool inTestMode)
+        {
+
+            var order = CurrentRepository.Find(o => o.CustomOrderSn == paySn && o.StoreId == storeId && o.CompanyId == companyId && o.IsTest == inTestMode);
+            if (order == null)
+            {
+                throw new PosException("未找到该订单！");
+            }
+            var isRefundOrder = CurrentRepository.IsExist(o => o.StoreId == storeId && o.CompanyId == companyId && o.ReFundOrderCustomOrderSn == paySn);
+            var query = (from a in SaleDetailService.CurrentRepository.Entities
+                         where a.PaySN == order.PaySN && a.CompanyId == companyId
+                         select a).ToList();
+            List<BillDetails> bills = new List<BillDetails>();
+            foreach (var item in query)
+            {
+                BillDetails bill;
+                if (!string.IsNullOrEmpty(item.ProductCode))
+                {
+                    var b = ProductRecordService.CurrentRepository.Entities.FirstOrDefault(o => o.ProductCode == item.ProductCode && o.CompanyId == companyId);
+                    bill = new BillDetails()
+                    {
+                        ActualPrice = item.ActualPrice,
+                        Barcode = item.ScanBarcode,
+                        Number = item.PurchaseNumber,
+                        Brand = b.BrandTitle,
+                        Size = b.Size,
+                        Title = b.Title,
+                        SysPrice = item.SysPrice,
+                        Total = item.Total,
+                        Unit = b.SubUnit,
+                        ProductCode = b.ProductCode,
+                        SalesClassifyId = item.SalesClassifyId//SalesClassifyId08-03新增 为增加客户端显示角标
+                    };
+                }
+                else
+                {
+                    var b = BundlingService.CurrentRepository.Entities.FirstOrDefault(o => o.NewBarcode == item.Barcode && o.CompanyId == companyId);
+                    bill = new BillDetails()
+                    {
+                        ActualPrice = item.ActualPrice,
+                        Barcode = item.ScanBarcode,
+                        Number = item.PurchaseNumber,
+                        Brand = "",
+                        Size = "",
+                        Title = b.Title,
+                        SysPrice = b.SysPrices,
+                        Total = item.Total,
+                        Unit = "件",
+                        ProductCode = "捆绑商品无货号",
+                        SalesClassifyId = item.SalesClassifyId
+                    };
+                }
+                if (bill != null)
+                {
+                    bills.Add(bill);
+                }
+            }
+
+            var Pays = ConsumptionPaymentService.CurrentRepository.Entities.Where(o => o.PaySN == order.PaySN);
+            var apicodes = order.ApiCode.Split(",".ToArray(), StringSplitOptions.RemoveEmptyEntries).Select(o => Convert.ToInt32(o));
+            var payments = BaseGeneralService<ApiLibrary, EFDbContext>.CurrentRepository.Entities.Where(o => o.CompanyId == companyId && apicodes.Contains(o.ApiCode)).ToList();
+            var title = string.Empty;
+            switch (payments.Count)
+            {
+                case 0:
+                    title = "未知支付方式";
+                    break;
+                case 1:
+                    title = payments.FirstOrDefault().Title;
+                    break;
+                default:
+                    title = "多方付";
+                    break;
+            }
+            var cashier = SysStoreUserInfoService.Find(o => o.UID == order.CreateUID && o.CompanyId == companyId);
+            var saleman = SysStoreUserInfoService.Find(o => o.UID == order.Salesman && o.CompanyId == companyId);
+            //查询抹零信息
+            var wipeZero = WipeZeroService.Find(o => o.PaySN == order.PaySN && o.CompanyId == companyId);
+            List<Dictionary<string, string>> cardAndBalances = new List<Dictionary<string, string>>();
+            if (("," + order.ApiCode + ",").Contains(",16,"))
+            {
+                //查询会员卡消费时候的余额
+                var payinfos = StoredValueCardPayRecordService.FindList(o => o.OrderSn == order.PaySN);
+                foreach (var item in payinfos)
+                {
+                    Dictionary<string, string> dic = new Dictionary<string, string>();
+                    dic.Add(item.CardNo, item.Balance.ToString());
+                    cardAndBalances.Add(dic);
+                }
+            }
+            var received = 0m;
+            var change = 0m;
+            if (Pays.Count() > 0)
+            {
+                received = Pays.Sum(o => o.Received);
+                change = Pays.Sum(o => o.Change);
+
+            }
+            return new BillHistoryInfo()
+            {
+                Details = bills,
+                PreferentialAmount = order.PreferentialPrice,
+                TotalAmount = order.TotalAmount,
+                Payment = title,
+                PaySn = order.CustomOrderSn,
+                ProductCount = order.ProductCount,
+                CashierId = cashier == null ? "未知" : cashier.UserCode,
+                CashierName = cashier == null ? "未知" : cashier.FullName,
+                Change = change,
+                MachineSn = order.MachineSN,
+                StoreId = order.StoreId,
+                OrderTime = order.CreateDT,
+                Received = received,
+                OrderStatus = order.State,
+                OrderType = order.Type,
+                WipeZeroAfterTotalAmount = order.Receive,
+                SaleManName = (saleman != null ? saleman.FullName : string.Empty),
+                SaleManUserCode = (saleman != null ? saleman.UserCode : string.Empty),
+                ReturnDT = order.ReturnDT,
+                WipeZero = wipeZero == null ? 0m : wipeZero.Number,
+                OrderDiscount = order.OrderDiscount,
+                IsRefundOrder = isRefundOrder,
+                OldOrderSN = order.ReFundOrderCustomOrderSn,
+                CardAndBalances = cardAndBalances
+            };
+
+        }
+
+        public static IEnumerable<BillListItem> GetBills(string storeId, string machineSn, DateTime date, int companyId, Range range, bool inTestMode, string paySn, string cashier)
+        {
+            var start = date.Date;
+
+            var end = date.Date.AddDays(1);
+            IQueryable<SaleOrders> query = null;
+            query = (CurrentRepository.Entities.Where(o => o.IsTest == inTestMode && o.CompanyId == companyId && o.StoreId == storeId && o.CreateDT > start && o.CreateDT < end));
+            //if (range == Range.Local)
+            //{
+            //    query = (CurrentRepository.Entities.Where(o => o.IsTest == inTestMode && o.CompanyId == companyId && o.StoreId == storeId && o.CreateDT > start && o.CreateDT < end && o.MachineSN == machineSn));
+            //}
+            //else
+            //{
+            //    query = (CurrentRepository.Entities.Where(o => o.IsTest == inTestMode && o.CompanyId == companyId && o.StoreId == storeId && o.CreateDT > start && o.CreateDT < end));
+            //}
+            if (!string.IsNullOrEmpty(machineSn))
+            {
+                query = query.Where(o => o.MachineSN == machineSn);
+            }
+            if (!string.IsNullOrEmpty(paySn))
+            {
+                query = query.Where(o => o.CustomOrderSn == paySn || o.CustomOrderSn.EndsWith(paySn));
+            }
+            if (!string.IsNullOrEmpty(cashier))
+            {
+                var cashierInfo = SysStoreUserInfoService.CurrentRepository.Entities.Where(o => (o.FullName == cashier || o.UserCode == cashier) && o.CompanyId == companyId).FirstOrDefault();
+                if (cashierInfo != null)
+                {
+                    query = query.Where(o => o.CreateUID == cashierInfo.UID);
+                }
+            }
+
+
+            var result = (from a in query
+                          join b in SysStoreUserInfoService.CurrentRepository.Entities on a.CreateUID equals b.UID
+                          join c in SysStoreUserInfoService.CurrentRepository.Entities on a.Salesman equals c.UID into gx
+                          from x in gx.DefaultIfEmpty()
+                          //   where && (a.Salesman == c.UID || string.IsNullOrEmpty(a.Salesman))
+                          select new BillListItem()
+                          {
+                              Amount = a.Receive,
+                              Date = a.CreateDT,
+                              PaySn = a.CustomOrderSn,
+                              Number = a.ProductCount,
+                              OrderStatus = a.State,
+                              OrderType = a.Type,
+                              Cashier = b.FullName,
+                              SaleMan = string.IsNullOrEmpty(a.Salesman) ? "" : x.FullName
+                          });
+            return result.OrderByDescending(o => o.Date).ToList();
+
+        }
+        /// <summary>
+        /// 销售合计不统计换货
+        /// </summary>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <param name="userCodes"></param>
+        /// <returns></returns>
+        public static IEnumerable<UserDict> DayMonthReport(DateTime from, DateTime to, ref DayReportResult result, string storeId, string machineSn, int companyId, bool inTestMode)
+        {
+            var entities = CurrentRepository.Entities.Where(o => o.CreateDT >= from && o.IsTest == inTestMode && o.CreateDT < to && o.StoreId == storeId && o.CompanyId == companyId);
+            if (!string.IsNullOrEmpty(machineSn))
+            {
+                entities = entities.Where(o => o.MachineSN == machineSn);
+            }
+            string huanhuoRuKuanProject = "换货入款";
+            string huanhuoChukuanProject = "退换出款";
+            string xiaoshouProject = "销售小计";
+            string tuihuoProject = "退单小计";
+            string zhengdanrangliProject = "整单让利";
+            string hejiProject = "合计";
+            ConsumptionPaymentService.CurrentRepository._context.Database.CommandTimeout = 180;
+            //处理支付
+            //var paymants = (from a in entities
+            //                from b in ConsumptionPaymentService.CurrentRepository.Entities
+            //                from c in ApiLibraryService.CurrentRepository.Entities
+            //                where a.PaySN == b.PaySN && c.ApiCode == b.ApiCode && a.CompanyId == b.CompanyId && b.CompanyId == c.CompanyId && c.CompanyId == companyId && a.State == 0 && a.Type == 0
+            //                group b.Amount by new { a.CreateUID, c.Title } into g
+            //                select g).ToList();
+            var paymants = (from a in entities
+                            from b in ConsumptionPaymentService.CurrentRepository.Entities
+                            from c in ApiLibraryService.CurrentRepository.Entities
+                            where a.PaySN == b.PaySN && c.ApiCode == b.ApiCode && a.CompanyId == b.CompanyId && b.CompanyId == c.CompanyId && c.CompanyId == companyId
+                            group b.Amount - b.Change by new { a.CreateUID, c.Title, a.Type, a.State } into g
+                            select g).ToList();
+
+            //抹零
+            var wipeZeros = (from a in entities.Where(o => o.State == 0)
+                             from b in WipeZeroService.CurrentRepository.Entities
+                             where a.PaySN == b.PaySN && b.CompanyId == companyId
+                             group b.Number by a.CreateUID into g
+                             select g
+                                 ).ToDictionary(o => o.Key, o => o.Sum());
+            //用户
+            var users = (from b in SysStoreUserInfoService.CurrentRepository.Entities
+                         where b.CompanyId == companyId
+                         select new UserDict() { UserCode = b.UserCode, CreateUID = b.UID, FullName = b.FullName }
+                             ).ToList();
+            //总赠品
+            var gifts = (from a in entities
+                         from b in SaleDetailService.CurrentRepository.Entities
+                         where a.PaySN == b.PaySN && a.State == 0 && a.Type == 0 && a.TotalAmount == a.Receive && a.Receive == 0
+                         //where a.PaySN == b.PaySN && (b.SalesClassifyId == 49 || b.SalesClassifyId == 161)
+                         //&& SaleDetailService.CurrentRepository.Entities.Any(o=>o.PaySN==b.PaySN && o.SalesClassifyId==47)
+                         //&& a.Receive>0
+                         group b.SalesClassifyId by new { a.PaySN, a.CreateUID } into g
+                         select g
+                              ).ToList();
+
+            //明细
+            //var orderdetail = (from a in entities
+            //                   from b in SaleDetailService.CurrentRepository.Entities
+            //                   where b.PaySN == a.PaySN
+            //                   //&& giftStatus.Contains(b.SalesClassifyId)
+            //                   select new
+            //                   {
+            //                       b.SysPrice,
+            //                       b.PurchaseNumber,
+            //                       a.CreateUID,
+            //                       b.SalesClassifyId
+            //                   }).ToList();
+
+            var userOrders = entities.GroupBy(o => o.CreateUID);
+            foreach (var item in userOrders)
+            {
+                //销售
+                var user = users.FirstOrDefault(o => o.CreateUID == item.Key);
+                var userSaleOrders = item.Where(o => o.Type == 0 && o.State == 0);
+                SalesmanDayReportResult record = new SalesmanDayReportResult()
+                {
+                    UserCode = user.UserCode,
+                    Salesman = user.FullName,
+                    StartTime = DateTime.Now,
+                    EndTime = DateTime.Now,
+
+                    Sale = new SalesmanDayReportSaleResult()
+                    {
+                        SaleInfo = new DayReportDetailItem() { Number = 0, Amount = 0m, Project = xiaoshouProject },
+                        PayWay = new List<PayWayItem>()
+                    },
+                    Other = new List<DayReportDetailItem>()
+                };
+                if (userSaleOrders.Count() > 0)
+                {
+                    record = new SalesmanDayReportResult()
+                    {
+                        UserCode = user.UserCode,
+                        Salesman = user.FullName,
+                        StartTime = userSaleOrders.Min(o => o.CreateDT),
+                        EndTime = userSaleOrders.Max(o => o.CreateDT),
+                        Sale = new SalesmanDayReportSaleResult()
+                        {
+                            SaleInfo = new DayReportDetailItem()
+                            {
+                                Amount = userSaleOrders.Sum(o => o.Receive),
+                                Number = userSaleOrders.Count(),
+                                Project = xiaoshouProject
+                            }
+                        },
+                        Other = new List<DayReportDetailItem>()
+                    };
+                }
+                //支付方式
+                record.Sale.PayWay = paymants.Where(o => o.Key.CreateUID == item.Key && o.Key.State == 0 && o.Key.Type == 0).Select(o => new PayWayItem() { Title = o.Key.Title, Amount = o.Sum() }).ToList();
+                var wipeZeroAmount = 0m;
+                if (wipeZeros.ContainsKey(item.Key))
+                    wipeZeroAmount = wipeZeros[item.Key];
+                //自动抹零金额=0=隐藏
+                if (wipeZeroAmount != 0)
+                    record.Sale.PayWay.Add(new PayWayItem() { Amount = wipeZeroAmount, Title = "自动抹零" });
+                var cach = record.Sale.PayWay.Find(o => o.Title.Contains("现金"));
+                if (cach != null)
+                    record.Cash = cach.Amount;
+
+                var ranli = userSaleOrders.Where(o => o.PreferentialPrice > 0);
+                //---
+                //var giftStatus = new int[] { (int)SaleStatus.ActivityGifts, (int)SaleStatus.POSGift };
+                //var zengpin = orderdetail.Where(o => o.CreateUID == item.Key && giftStatus.Contains(o.SalesClassifyId));
+
+                //销售合计增加整单让利统计
+                var rangliAmount = userSaleOrders.Sum(p => p.OrderDiscount);
+                if (rangliAmount != 0m)
+                    record.Sale.PayWay.Add(new PayWayItem() { Title = zhengdanrangliProject, Amount = -rangliAmount });//2016-08-03:整单让利又改成负数的了
+
+                //整单让利入款
+                //record.Other.Add(new DayReportDetailItem()
+                //{
+                //    Amount = ranli.Sum(o => o.PreferentialPrice),
+                //    Number = ranli.Count(),
+                //    Project = zhengdanrangliProject
+                //});
+
+
+                //换货入款
+                var userChangeOrders = item.Where(o => o.Type == 1 && o.TotalAmount > 0 && o.State == 0);
+                //06-23:换货支付方式
+                var huanhuoPayWay = paymants.Where(o => o.Key.CreateUID == item.Key && o.Key.Type == 1 && o.Key.State == 0).Select(o => new PayWayItem() { Title = o.Key.Title, Amount = o.Where(p => p >= 0).Sum() }).ToList();
+                // huanhuoPayWay = huanhuoPayWay.Where(o => o.Amount >= 0).ToList();
+                //换货入款数量，数量=0就不显示该项
+                var userChangeOrdersCount = userChangeOrders.Count();
+                var userChangeOrdersAmount = userChangeOrders.Sum(o => o.TotalAmount);
+                if (userChangeOrdersCount != 0)
+                {
+                    var huanhuoRuKuan = new DayReportDetailItem()
+                    {
+                        Amount = userChangeOrdersAmount,
+                        Number = userChangeOrdersCount,
+                        Project = huanhuoRuKuanProject,
+                        PayWay = huanhuoPayWay
+                    };
+                    record.Other.Add(huanhuoRuKuan);
+
+                    //剩余现金-=换货支付
+                    var huanhuoCach = huanhuoRuKuan.PayWay.Find(o => o.Title.Contains("现金"));
+                    if (huanhuoCach != null)
+                        record.Cash += huanhuoCach.Amount;
+                }
+                //退换出款
+                userChangeOrders = item.Where(o => o.Type == 1 && o.TotalAmount <= 0 && o.State == 0);
+                var userRetrunOrders = item.Where(o => o.Type == 2 && o.State == 0);
+                //06-23:退货支付方式
+                var tuihuoPayWay = paymants.Where(o => o.Key.CreateUID == item.Key && o.Key.Type == 2 && o.Key.State == 0).Select(o => new PayWayItem() { Title = o.Key.Title, Amount = o.Sum() }).ToList();
+                //过滤金额
+                var huanhuochukuanPayWay = paymants.Where(o => o.Key.CreateUID == item.Key && o.Key.Type == 1 && o.Key.State == 0).Select(o => new PayWayItem() { Title = o.Key.Title, Amount = o.Where(p => p < 0).Sum() }).ToList();
+                //huanhuochukuanPayWay = huanhuochukuanPayWay.Where(o => o.Amount < 0).ToList();
+
+
+                tuihuoPayWay = tuihuoPayWay.Concat(huanhuochukuanPayWay).ToList();
+                tuihuoPayWay = tuihuoPayWay.GroupBy(o => o.Title).Select(o => new PayWayItem() { Title = o.Key, Amount = o.Sum(p => p.Amount) }).ToList();
+                //先计算出款数量=0=不显示
+                var huanhuoChuKuanCount = userChangeOrders.Count() + userRetrunOrders.Count();
+                var huanhuoChuKuanAmount = userChangeOrders.Sum(o => o.Receive) + userRetrunOrders.Sum(o => o.Receive);
+                if (huanhuoChuKuanCount != 0)
+                {
+                    var huanhuoChukuan = new DayReportDetailItem()
+                    {
+                        Amount = huanhuoChuKuanAmount,
+                        Number = huanhuoChuKuanCount,
+                        Project = huanhuoChukuanProject,
+                        PayWay = tuihuoPayWay
+                    };
+                    record.Other.Add(huanhuoChukuan);
+                    //剩余现金-=退货
+                    var tuihuoCach = huanhuoChukuan.PayWay.Find(o => o.Title.Contains("现金"));
+                    if (tuihuoCach != null)
+                        record.Cash += tuihuoCach.Amount;
+                }
+
+
+
+
+                //退单
+                var userAllReturnOrders = item.Where(o => (o.ReturnOrderUID == o.CreateUID || string.IsNullOrEmpty(o.ReturnOrderUID)) && o.Type == 3 && o.State == 1);
+                //06-23:退货支付方式
+                var tuidanPayWay = paymants.Where(o => o.Key.CreateUID == item.Key && o.Key.Type == 3 && o.Key.State == 1).Select(o => new PayWayItem() { Title = o.Key.Title, Amount = o.Sum() }).ToList();
+                //计算退单数量=0=隐藏
+                var userAllReturnOrdersCount = userAllReturnOrders.Count();
+                var tuihuoAmount = userAllReturnOrders.Sum(o => o.Receive);
+                if (userAllReturnOrdersCount != 0)
+                {
+                    var tuihuo = new DayReportDetailItem()
+                    {
+                        Amount = tuihuoAmount,
+                        Number = userAllReturnOrdersCount,
+                        Project = tuihuoProject,
+                        PayWay = tuidanPayWay
+                    };
+                    record.Other.Add(tuihuo);
+                    //剩余现金-=退单
+                    var tuidanCash = tuihuo.PayWay.Find(o => o.Title.Contains("现金"));
+                    if (tuidanCash != null)
+                        record.Cash += tuidanCash.Amount;
+                }
+
+                //销售合计里减掉退换货、退单的钱
+                //record.Sale.PayWay.ForEach();
+                //foreach (var spw in record.Sale.PayWay)
+                //{
+                //    //退还出款
+                //    foreach (var thpw in tuihuoPayWay)
+                //    {
+                //        if (spw.Title == thpw.Title)
+                //        {
+                //            spw.Amount += thpw.Amount;//销售的减掉退换的
+                //            record.Sale.SaleInfo.Amount += thpw.Amount;//销售合计里面减掉退换货的钱
+                //        }
+                //    }
+                //    //退单出款
+                //    foreach (var tdpw in tuidanPayWay)
+                //    {
+                //        if (spw.Title == tdpw.Title)
+                //        {
+                //            spw.Amount += tdpw.Amount;//销售的减掉退单的
+                //            record.Sale.SaleInfo.Amount += tdpw.Amount;//销售合计里面减掉退单的钱
+                //        }
+                //    }
+                //}
+
+
+                //统计笔数
+                var giftcount = gifts.Where(o => o.Key.CreateUID == item.Key).Select(o => new { o.Key.PaySN, isFalse = (o.Contains((int)SaleStatus.Normal) || o.Contains((int)SaleStatus.Promotion)) }).Where(o => !o.isFalse).Count();
+                //合计
+                var heji = new DayReportDetailItem()
+                {
+                    Amount = record.Sale.SaleInfo.Amount + tuihuoAmount + userChangeOrdersAmount + huanhuoChuKuanAmount,//销售+退单+换货入款+换货出款
+                    Number = record.Sale.SaleInfo.Number + userAllReturnOrdersCount + userChangeOrdersCount + huanhuoChuKuanCount - giftcount,
+                    Project = hejiProject
+                };
+                record.Other.Add(heji);
+
+                result.SalesmanRecords.Add(record);
+
+            }
+            if (result.SalesmanRecords.Count() > 0)
+            {
+                var amount = 0m;
+                var num = 0m;
+                foreach (var item in result.SalesmanRecords)
+                {
+                    var info = item.Sale.SaleInfo;
+                    if (info != null)
+                    {
+                        amount += info.Amount;
+                        num += info.Number;
+                    }
+                }
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = amount,
+                    Number = (int)num,
+                    Project = xiaoshouProject
+                });
+            }
+            else
+            {
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = 0,
+                    Number = 0,
+                    Project = xiaoshouProject
+                });
+            }
+            if (result.SalesmanRecords.Count() > 0)
+            {
+                var amount = 0m;
+                var num = 0m;
+                foreach (var item in result.SalesmanRecords)
+                {
+                    var info = item.Other.FirstOrDefault(o => o.Project == huanhuoRuKuanProject);
+                    if (info != null)
+                    {
+                        amount += info.Amount;
+                        num += info.Number;
+                    }
+                }
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = amount,
+                    Number = (int)num,
+                    Project = huanhuoRuKuanProject
+                });
+            }
+            else
+            {
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = 0,
+                    Number = 0,
+                    Project = huanhuoRuKuanProject
+                });
+            }
+            if (result.SalesmanRecords.Count() > 0)
+            {
+                var amount = 0m;
+                var num = 0m;
+                foreach (var item in result.SalesmanRecords)
+                {
+                    var info = item.Other.FirstOrDefault(o => o.Project == huanhuoChukuanProject);
+                    if (info != null)
+                    {
+                        amount += info.Amount;
+                        num += info.Number;
+                    }
+                }
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = amount,
+                    Number = (int)num,
+                    Project = huanhuoChukuanProject
+                });
+            }
+            else
+            {
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = 0,
+                    Number = 0,
+                    Project = huanhuoChukuanProject
+                });
+            }
+
+
+
+            if (result.SalesmanRecords.Count() > 0)
+            {
+                var amount = 0m;
+                var num = 0m;
+                foreach (var item in result.SalesmanRecords)
+                {
+                    var info = item.Other.FirstOrDefault(o => o.Project == tuihuoProject);
+                    if (info != null)
+                    {
+                        amount += info.Amount;
+                        num += info.Number;
+                    }
+                }
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = amount,
+                    Number = (int)num,
+                    Project = tuihuoProject
+                });
+            }
+            else
+            {
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = 0,
+                    Number = 0,
+                    Project = tuihuoProject
+                });
+            }
+
+            if (result.SalesmanRecords.Count() > 0)
+            {
+                var amount = 0m;
+                var num = 0m;
+                foreach (var item in result.SalesmanRecords)
+                {
+                    var info = item.Other.FirstOrDefault(o => o.Project == hejiProject);
+                    if (info != null)
+                    {
+                        amount += info.Amount;
+                        num += info.Number;
+                    }
+                }
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = amount,
+                    Number = (int)num,
+                    Project = hejiProject
+                });
+            }
+            else
+            {
+                result.Summary.Add(new DayReportDetailItem()
+                {
+                    Amount = 0,
+                    Number = 0,
+                    Project = hejiProject
+                });
+            }
+            return users;
+        }
+    }
+}

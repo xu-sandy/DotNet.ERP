@@ -1,0 +1,94 @@
+﻿<control:DialogWindow02 x:Class="Pharos.POS.Retailing.ChildWin.ChaJiaGe"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"
+        Title="查价格" Height="600" Width="1024" WindowStartupLocation="CenterScreen" Icon="..\Images\ChaKuCun\search.png" Margin="0" WindowStyle="None">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\ChaKuCunStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <Grid Grid.Row="0" Grid.Column="1" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="120"></ColumnDefinition>
+                <ColumnDefinition Width="180"></ColumnDefinition>
+                <ColumnDefinition Width="50"></ColumnDefinition>
+                <ColumnDefinition Width="180"></ColumnDefinition>
+                
+                
+                <ColumnDefinition Width="20"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50"></RowDefinition>
+            </Grid.RowDefinitions>
+
+            <TextBlock Style="{StaticResource titleStyle}" Grid.Column="0">系统售价(元)：</TextBlock>
+            <control:IconTextBox Style="{StaticResource contentStyle}" Text="{Binding From,Mode=TwoWay}" TabIndex="0"  Grid.Column="1" ></control:IconTextBox>
+            <TextBlock Style="{StaticResource titleStyle}" Grid.Column="2">至：</TextBlock>
+            <control:IconTextBox Style="{StaticResource contentStyle}" Text="{Binding To,Mode=TwoWay}" TabIndex="1"  Grid.Column="3" ></control:IconTextBox>
+            <control:PosButton Style="{StaticResource BtnSearchStyle}" TabIndex="2" Grid.Column="6"  Command="{Binding SearchCommand}">查询</control:PosButton>
+        </Grid>
+        <StackPanel Grid.Row="1" Grid.Column="1">
+            <DataGrid Name="DataView" ScrollViewer.VerticalScrollBarVisibility="Visible" ItemsSource="{Binding InventoryItems,Mode=OneWay}" BorderThickness="1" BorderBrush="#BCB4BB"  Height="450" Margin="10" VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserDeleteRows="True" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Binding="{Binding Barcode}" IsReadOnly="True" Header="条码" Width="190*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap"/>
+                                <Setter Property="Height" Value="auto"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Binding="{Binding Category}" IsReadOnly="True" Header="品类" Width="100">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap"/>
+                                <Setter Property="Height" Value="auto"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Binding="{Binding Title}" IsReadOnly="True" Header="品名" Width="160*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap"/>
+                                <Setter Property="Height" Value="auto"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Binding="{Binding Price,StringFormat='{}{0:N}'}" IsReadOnly="True" Header="系统售价" Width="100"></DataGridTextColumn>
+                    <DataGridTextColumn Binding="{Binding Inventory,StringFormat='{}{0:0.####}'}" IsReadOnly="True" Header="库存量" Width="100"></DataGridTextColumn>
+                    <DataGridTemplateColumn CanUserSort="False" IsReadOnly="True" Width="80" Header="操作">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition></ColumnDefinition>
+                                        <ColumnDefinition Width="30"></ColumnDefinition>
+                                    </Grid.ColumnDefinitions>
+                                    <control:PosButton FontFamily="/Pharos.Wpf;component/Fonts/#FontAwesome" Foreground="Gray" FontSize="30" Content="&#xf07a;"  Command="{Binding InShoppingCartCommand}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </StackPanel>
+        <StackPanel Grid.Column="0" Grid.Row="0" Grid.RowSpan="2">
+            <TreeView Background="White" BorderBrush="Transparent" BorderThickness="0" Height="515" ItemsSource="{Binding CategoryTree}" ItemContainerStyle="{DynamicResource TreeViewItemStyle}" ItemTemplate="{StaticResource TreeItemTemplate}"></TreeView>
+        </StackPanel>
+    </Grid>
+    </control:DialogWindow02>
+
+

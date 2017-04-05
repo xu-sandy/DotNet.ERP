@@ -1,0 +1,33 @@
+﻿using Pharos.Logic.MemberDomain.QuanChengTaoProviders;
+using Pharos.Service.Retailing.Marketing;
+using Pharos.Service.Retailing.RefreshCache;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Linq;
+using System.ServiceProcess;
+using System.Text;
+
+namespace Pharos.Service.Retailing
+{
+    partial class ERPService : ServiceBase
+    {
+        public ERPService()
+        {
+            InitializeComponent();
+        }
+
+        protected override void OnStart(string[] args)
+        {
+            MarketingManager.InitStoreMarketing();
+            ProductCacheManager.Subscribe();
+            QuanChengTaoIntegralRuleService.Run();
+        }
+
+        protected override void OnStop()
+        {
+        }
+    }
+}

@@ -1,0 +1,75 @@
+﻿using Newtonsoft.Json;
+using Pharos.MessageAgent.Agent;
+using Pharos.MessageAgent.Data.V1;
+using StackExchange.Redis;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.MessageAgent.MessageQueues.Redis
+{
+    public class RedisMessageQueue : IMessageQueue, IMessageStore
+    {
+        public readonly Action<RedisChannel, RedisValue> Handler;
+        public RedisMessageQueue()
+        {
+            Server = MessageServer.Current;
+            Handler = ((channel, msg) =>
+            {
+                Server.MessageAgent.ReceiveMessage(new PubishInformaction() { Topic = channel, Content = msg });
+            });
+        }
+        private static Lazy<ConnectionMultiplexer> lazyConnection = new Lazy<ConnectionMultiplexer>(() =>
+        {
+            return ConnectionMultiplexer.Connect(MessageServerConfiguration.GetConfig().MessageQueueConnectionString);
+        });
+        public static ConnectionMultiplexer Connection
+        {
+            get
+            {
+                return lazyConnection.Value;
+            }
+        }
+
+        public void Pubish(PubishInformaction info)
+        {
+            ISubscriber sub = Connection.GetSubscriber();
+            sub.Publish(info.Topic, info.Content);
+        }
+
+        public void Subscribe(SubscribeInformaction info, IMessageAgent messageAgent)
+        {
+
+            ISubscriber sub = Connection.GetSubscriber();
+            sub.Subscribe(info.Topic, Handler);
+        }
+
+
+        public void UnSubscribe(SubscribeInformaction info, IMessageAgent messageAgent)
+        {
+            ISubscriber sub = Connection.GetSubscriber();
+            sub.Unsubscribe(info.Topic, Handler);
+        }
+
+        public void RecordFailed(SubscribeInformaction subInfo, PubishInformaction pubInfo)
+        {
+            var db = Connection.GetDatabase();
+            db.ListRightPush(subInfo.SubscribeId + "_" + subInfo.Topic, JsonConvert.SerializeObject(pubInfo));
+        }
+        public IEnumerable<PubishInformaction> ReadFailed(SubscribeInformaction subInfo)
+        {
+            var db = Connection.GetDatabase();
+            return db.ListRange(subInfo.SubscribeId + "_" + subInfo.Topic).Select(o => JsonConvert.DeserializeObject<PubishInformaction>(o));
+        }
+
+        public MessageServer Server { get; set; }
+
+
+        public void RefreshStore(SubscribeInformaction info)
+        {
+            var db = Connection.GetDatabase();
+            db.KeyDelete(info.SubscribeId + "_" + info.Topic);
+        }
+    }
+}

@@ -1,0 +1,79 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.EntityExtend;
+using Pharos.Logic.OMS.Entity.View;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.BLL;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class StoreController : BaseController
+    {
+        //结算账户信息BLL
+        [Ninject.Inject]
+        BankCardInfoService bankCardInfoService { get; set; }
+
+        [Ninject.Inject]
+        TradersService tradersService { get; set; }
+
+        [Ninject.Inject]
+        TradersStoreService tradersStoreService { get; set; }
+
+        [Ninject.Inject]
+        TradersPaySecretKeyService tradersPaySecretKeyService { get; set; }
+
+        public ActionResult Index()
+        {
+            //指派人
+            ViewBag.user = ListToSelect(tradersService.getUserList().Select(o => new SelectListItem() { Value = o.UserId, Text = o.FullName }), emptyTitle: "全部");
+            return View();
+        }
+
+        public ActionResult Save(int? id)
+        {
+            var obj = new TradersStore
+            {
+
+            };
+            if (id.HasValue)
+            {
+                obj = tradersStoreService.GetEntityById(id.Value);
+            }
+            //指派人
+            List<SysUserInfo> list = new List<SysUserInfo>();
+            ViewBag.user = ListToSelect(list.Select(o => new SelectListItem() { Value = o.UserId, Text = o.FullName }), emptyTitle: "请选择");
+            return View(obj.IsNullThrow());
+        }
+
+        public ActionResult FindPageList()
+        {
+            var count = 0;
+            var list = tradersStoreService.GetPageList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+
+        public ActionResult QRCode(int mch_id, int store_id)
+        {
+            ViewBag.mch_id = mch_id;
+            ViewBag.store_id = store_id;
+            return View();
+        }
+
+        /// <summary>
+        /// 获取CID
+        /// </summary>
+        /// <param name="keyword"></param>
+        /// <returns></returns>
+        public ActionResult GetCidWhere(string keyword)
+        {
+            var list = tradersStoreService.GetCIDWhere(Request.Params);
+            return ToDataGrid(list, 0);
+        }
+    }
+}

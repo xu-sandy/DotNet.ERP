@@ -1,0 +1,50 @@
+﻿using Pharos.Logic.ApiData.Pos.Sale.Members;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class MembersService : BaseGeneralService<Pharos.Logic.Entity.Members, EFDbContext>
+    {
+        public static MemberInfo GetMemberInfo(string storeId, int token, string phone, string uid, string cardNo)
+        {
+            var memberInfo = new MemberInfo();
+            var member = new Members();
+            if (!string.IsNullOrEmpty(phone))
+            {
+                member = CurrentRepository.Find(o => o.MobilePhone == phone && o.CompanyId == token);
+            }
+            else if (!string.IsNullOrEmpty(cardNo))
+            {
+                var carno = Pharos.Logic.ApiData.Pos.Services.ServerServices.MembershipCardService.CurrentRepository.Find(o => o.CardSN == cardNo);
+                if (carno == null)
+                {
+                    goto NOTFOUND;
+                }
+                member = CurrentRepository.Find(o => o.CompanyId == token && o.MemberId == carno.MemberId);
+            }
+            else if (!string.IsNullOrEmpty(uid))
+            {
+                member = CurrentRepository.Find(o => o.CompanyId == token && o.MemberId == uid);
+            }
+
+            if (member != null)
+            {
+                memberInfo.MemberId = member.MemberId;
+                memberInfo.MobilePhone = member.MobilePhone;
+                memberInfo.RealName = member.RealName;
+                memberInfo.MemberCardNum = cardNo;
+                memberInfo.UsableIntegral = member.UsableIntegral;
+                return memberInfo;
+            }
+            NOTFOUND:
+            throw new Pos.Exceptions.PosException("未找到会员信息！");
+        }
+    }
+}

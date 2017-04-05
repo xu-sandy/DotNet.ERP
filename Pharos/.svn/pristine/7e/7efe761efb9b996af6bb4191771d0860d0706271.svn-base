@@ -1,0 +1,179 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.DTOs;
+using System;
+using System.Linq;
+using System.Collections;
+using System.Windows;
+using System.Collections.Generic;
+using Pharos.Logic.Entity.LocalEntity;
+using Pharos.Logic.LocalEntity;
+using System.Threading;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    public class BanjieModel : BaseObservable
+    {
+        public BanjieModel()
+        {
+            UserName = UserModel.Current.UserName;
+            MachineId = PosMachine.Current.Infos.MachineId;
+            QueryInfos = new AccountCheckingDto();
+            HasSearch = false;
+        }
+        private bool HasSearch { get; set; }
+        public string UserName { get; set; }
+
+        public string Password { get; set; }
+
+        public string MachineId { get; set; }
+
+        public AccountCheckingDto QueryInfos { get; private set; }
+
+        public GeneralCommand Search
+        {
+            get
+            {
+                return new GeneralCommand((w) =>
+                {
+                    if (UserModel.Current.Verify(UserName, Password))
+                    {
+                        var uid = SysStoreUserInfoLocalService.Find(o => o.UserCode == UserName || o.FullName == UserName).UID;
+                        var infos = PosIncomePayoutLocalService.GetUserAccountInfos(uid, MachineId);
+                        QueryInfos = new AccountCheckingDto(infos);
+                        OnPropertyChanged("QueryInfos");
+                        HasSearch = true;
+
+                    }
+                    else
+                    {
+                        QueryInfos = new AccountCheckingDto();
+                        OnPropertyChanged("QueryInfos");
+                        Toast.DoShow("账户或密码验证失败！", w as Window);
+                        HasSearch = false;
+                    }
+
+                });
+            }
+        }
+
+        public GeneralCommand BanJieAction
+        {
+            get
+            {
+                return new GeneralCommand((w) =>
+                {
+                    if (!HasSearch)
+                    {
+                        Toast.DoShow("请先查询帐目信息！", w as Window);
+                        return;
+                    }
+                    if (UserModel.Current.Verify(UserName, Password))
+                    {
+                        var date = DateTime.Now;
+                        PosCheckingLocalService.Add(new PosChecking()
+                        {
+                            CreateDT = date,
+                            Project = "现金入款",
+                            OrderId = 1,
+                            CreateUID = UserModel.Current.Uid,
+                            StoreId = PosMachine.Current.Infos.StoreId,
+                            Total = QueryInfos.DepositMoney,
+                            MachineSN = PosMachineInfo.Infos.MachineId,
+                            IsUpload = true
+                        });
+                        PosCheckingLocalService.Add(new PosChecking()
+                        {
+                            CreateDT = date,
+                            Project = "现金出款",
+                            OrderId = 2,
+                            Total = QueryInfos.TakeOutMoney,
+                            MachineSN = PosMachineInfo.Infos.MachineId,
+                            CreateUID = UserModel.Current.Uid,
+                            StoreId = PosMachine.Current.Infos.StoreId,
+                            IsUpload = true
+                        });
+                        PosCheckingLocalService.Add(new PosChecking()
+                        {
+                            CreateDT = date,
+                            Project = "换货补价",
+                            OrderId = 3,
+                            Total = QueryInfos.ChangingSales,
+                            MachineSN = PosMachineInfo.Infos.MachineId,
+                            CreateUID = UserModel.Current.Uid,
+                            StoreId = PosMachine.Current.Infos.StoreId,
+                            IsUpload = true
+                        });
+                        PosCheckingLocalService.Add(new PosChecking()
+                        {
+                            CreateDT = date,
+                            Project = "退还金额",
+                            OrderId = 4,
+                            Total = QueryInfos.ReturnSales,
+                            MachineSN = PosMachineInfo.Infos.MachineId,
+                            CreateUID = UserModel.Current.Uid,
+                            StoreId = PosMachine.Current.Infos.StoreId,
+                            IsUpload = true
+                        });
+                        PosCheckingLocalService.Add(new PosChecking()
+                        {
+                            CreateDT = date,
+                            Project = "销售总额",
+                            OrderId = 5,
+                            Total = QueryInfos.TotalSales,
+                            MachineSN = PosMachineInfo.Infos.MachineId,
+                            CreateUID = UserModel.Current.Uid,
+                            StoreId = PosMachine.Current.Infos.StoreId,
+                            IsUpload = true
+                        });
+                        PosCheckingLocalService.Add(new PosChecking()
+                        {
+                            CreateDT = date,
+                            Project = "剩余现金",
+                            OrderId = 6,
+                            Total = QueryInfos.SurplusCash,
+                            MachineSN = PosMachineInfo.Infos.MachineId,
+                            CreateUID = UserModel.Current.Uid,
+                            StoreId = PosMachine.Current.Infos.StoreId,
+                            IsUpload = true
+                        });
+                        var index = 7;
+                        foreach (var item in QueryInfos.AllPayWayStatistics)
+                        {
+                            PosCheckingLocalService.Add(new PosChecking()
+                            {
+                                CreateDT = date,
+                                Project = item.Key,
+                                Total = item.Value,
+                                OrderId = index,
+                                MachineSN = PosMachineInfo.Infos.MachineId,
+                                CreateUID = UserModel.Current.Uid,
+                                StoreId = PosMachine.Current.Infos.StoreId,
+                                IsUpload = true
+                            });
+                            index++;
+                        }
+                        HasSearch = false;
+                        while (!SqliteTrap.EnableClose)
+                        {
+                            Toast.DoShow("正在保存数据，请稍等！");
+                            Thread.Sleep(10);
+                        }
+                        //重启
+                        string path = System.Reflection.Assembly.GetEntryAssembly().Location;
+                        System.Diagnostics.Process.Start(path, "Restart");
+                        Application.Current.Shutdown();
+
+                    }
+                    else
+                    {
+                        QueryInfos = new AccountCheckingDto();
+                        OnPropertyChanged("QueryInfos");
+                        Toast.DoShow("账户或密码验证失败！", w as Window);
+                    }
+                });
+            }
+        }
+
+    }
+}

@@ -1,0 +1,11 @@
+﻿
+namespace Pharos.POS.Retailing.Models.PosModels
+{
+    public enum PayAction
+    {
+        Change = 1,
+        Sale = 2,
+        Refund,
+        RefundAll
+    }
+}

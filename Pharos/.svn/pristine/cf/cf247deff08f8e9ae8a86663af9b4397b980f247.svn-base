@@ -1,0 +1,277 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale.Barcodes;
+using Pharos.Logic.ApiData.Pos.Sale.Members;
+using Pharos.Logic.ApiData.Pos.Sale.Marketings;
+
+namespace Pharos.Logic.ApiData.Pos.Sale
+{
+    /// <summary>
+    /// 购物车
+    /// </summary>
+    public class ShoppingCart
+    {
+        /// <summary>
+        /// 初始化购物车，生成订单编号
+        /// </summary>
+        public ShoppingCart()
+        {
+            OrderList = new List<IBarcode>();
+            NewAndResetOrderSN();
+        }
+
+        #region 属性
+
+        /// <summary>
+        /// 会员Id
+        /// </summary>
+        public string MemberId { get; private set; }
+        /// <summary>
+        /// 特殊活动编号
+        /// </summary>
+        public int ActivityId { get; private set; }
+
+        /// <summary>
+        /// 购物车与结算POS机关联信息
+        /// </summary>
+        internal MachineInformation MachineInformation { get; set; }
+
+        /// <summary>
+        /// 购物车编号/订单编号
+        /// </summary>
+        public string OrderSN { get; private set; }
+
+        /// <summary>
+        /// 订单列表
+        /// </summary>
+        internal List<IBarcode> OrderList { get; set; }
+
+        /// <summary>
+        /// 件数
+        /// </summary>
+        public int RecordCount
+        {
+            get
+            {
+                var products = OrderList.Where(o => o.ProductType != ProductType.Weigh);
+                var weighProducts = OrderList.Where(o => o.ProductType == ProductType.Weigh);
+                var count = Convert.ToInt32(products.Sum(o => o.SaleNumber));
+                count += weighProducts.Count();
+                return count;
+            }
+        }
+        public decimal TotalPreferential { get; set; }
+        #endregion 属性
+
+        #region 方法
+        /// <summary>
+        /// 添加商品到订单列表
+        /// </summary>
+        /// <param name="barcode"></param>
+        public void Add(IBarcode barcode)
+        {
+            Add(barcode.CurrentString, barcode.SaleNumber, barcode.SalePrice, barcode.Details.SaleStatus, barcode.Details.GiftId, barcode.Details.GiftPromotionId);
+        }
+
+        public void AddRange(IEnumerable<IBarcode> barcodes)
+        {
+            foreach (var item in barcodes)
+            {
+                Add(item);
+            }
+        }
+
+        public void Add(string barcodeString, decimal number, decimal salePrice, SaleStatus status, string giftId, string giftPromotionId)
+        {
+            //重置促销信息，并处理单品折扣
+            foreach (var item in OrderList)
+            {
+                item.Details.SaleStatus = (item.Details.SaleStatus == SaleStatus.Promotion ? SaleStatus.Normal : item.Details.SaleStatus);
+                item.MarketingPrice = item.SalePrice;
+                item.MarketingMarks = new List<MarketingRule>();
+            }
+            if (status == SaleStatus.Promotion)
+            {
+                status = SaleStatus.Normal;
+            }
+            var groupOrders = OrderList.GroupBy(o => o.CurrentString).ToList();
+            foreach (var item in groupOrders)
+            {
+                if (item.Count() > 1)
+                {
+                    var list = OrderList.Where(o => o.VerfyEnableCombine(item.Key, status, giftId, giftPromotionId)).ToList();
+                    IBarcode barcode = list.FirstOrDefault();
+                    if (list.Count > 0)
+                    {
+                        barcode.SaleNumber = list.Sum(o => o.SaleNumber);
+                        list.Remove(barcode);
+                        OrderList.RemoveAll(o => list.Exists(p => p == o));
+                    }
+                }
+            }
+            var tempBarcode = barcodeString.Replace(" ", "").Trim();
+            IBarcode record = OrderList.FirstOrDefault(o => o.VerfyEnableCombine(tempBarcode, status, giftId, giftPromotionId));
+
+            if (record == null)
+            {
+                record = BarcodeFactory.Factory(MachineInformation.StoreId, MachineInformation.MachineSn, MachineInformation.CompanyToken, tempBarcode, status, giftId, giftPromotionId);
+                switch (status)
+                {
+                    case SaleStatus.POSGift:
+                    case SaleStatus.ActivityGifts:
+                        record.SalePrice = 0;
+                        break;
+                    case SaleStatus.ActivityAddMoneyGifts:
+                        record.SalePrice = salePrice;
+                        break;
+                }
+                record.Details.Total = record.SalePrice * record.SaleNumber;
+                record.MarketingPrice = record.SalePrice;
+                record.MarketingMarks = new List<MarketingRule>();
+                OrderList.Add(record);
+            }
+            else
+            {
+                if (number == 0 && record.Details.EnableEditNum)
+                {
+                    record.SaleNumber++;
+                }
+                else if (number > 0 && record.Details.EnableEditNum)
+                {
+                    record.SaleNumber = number;
+                }
+                else if (number == -1)
+                {
+                    OrderList.Remove(record);
+                }
+                if (salePrice > 0 && Math.Abs(record.SalePrice - salePrice) > 0.01m)// && record.Details.EnableEditPrice)
+                {
+                    record.SalePrice = salePrice;
+                    record.EnableMarketing = false;
+                }
+                record.Details.Total = record.SalePrice * record.SaleNumber;
+
+                record.MarketingPrice = record.SalePrice;
+                record.MarketingMarks = new List<MarketingRule>();
+            }
+        }
+
+        /// <summary>
+        /// 获取当前订单信息
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<IBarcode> GetOrdeList()
+        {
+            return OrderList;
+        }
+        /// <summary>
+        /// 运算促销获取总额优惠
+        /// </summary>
+        /// <returns></returns>
+        public void RunMarketings()
+        {
+            IEnumerable<MarketingContext> result;
+            TotalPreferential = StoreManager.GetMarketing(MachineInformation.CompanyToken, MachineInformation.StoreId).Match(this, out result);
+        }
+
+        /// <summary>
+        /// 获取销售清单
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<OrderItem> GetBuyList()
+        {
+            return OrderList.Select(o => new OrderItem()
+            {
+                ActualPrice = o.MarketingPrice,
+                Price = o.Details.SystemPrice,
+                Number = o.SaleNumber,
+                Barcode = o.CurrentString,
+                EnableEditNum = o.Details.EnableEditNum,
+                EnableEditPrice = o.Details.EnableEditPrice,
+                Status = o.Details.SaleStatus,
+                Title = o.Details.Title,
+                Total = o.Details.Total,
+                Unit = o.Details.Unit,
+                Category = o.Details.Category,
+                Brand = o.Details.Brand,
+                Size = o.Details.Size,
+                GiftId = o.Details.GiftId,
+                GiftPromotionId = o.Details.GiftPromotionId
+            });
+        }
+        /// <summary>
+        /// 订单统计
+        /// </summary>
+        /// <returns>统计结果</returns>
+        public SaleStatistics GetSaleStatistics()
+        {
+            var totalPreferential = TotalPreferential;
+            var total = OrderList.Sum(o => o.Details.SystemPrice * o.SaleNumber);
+            var receivable = OrderList.Sum(o => o.Details.Total) - totalPreferential;//实收
+            var preferential = total - receivable;
+            return new SaleStatistics()
+            {
+                Total = total,
+                Receivable = receivable,
+                Preferential = preferential,
+                Num = RecordCount,
+                OrderSn = OrderSN
+            };
+        }
+
+        /// <summary>
+        /// 清空订单
+        /// </summary>
+        public void Clear()
+        {
+            OrderList.Clear();
+            NewAndResetOrderSN();
+        }
+        /// <summary>
+        /// 更新订单编号，返回新订单编号
+        /// </summary>
+        /// <returns></returns>
+        public string NewAndResetOrderSN()
+        {
+            OrderSN = Pharos.Logic.ApiData.Pos.Common.PaySn.New();
+            return OrderSN;
+        }
+        /// <summary>
+        /// 设置购物车与会员关联
+        /// </summary>
+        /// <param name="phone">手机</param>
+        /// <param name="mode">会员来源模式</param>
+        public MemberInfo SetMember(string cardNo, string phone, MembersSourseMode mode)
+        {
+            var memberCardManager = new MemberCardManager();
+            var memberInfo = memberCardManager.GetMemberInfo(MachineInformation.StoreId, MachineInformation.MachineSn, MachineInformation.CompanyToken, phone, cardNo, mode, MachineInformation.CashierUid);
+            if (memberInfo != null)
+                MemberId = memberInfo.MemberId;
+            return memberInfo;
+        }
+        /// <summary>
+        /// 处理，过滤特殊活动编号
+        /// </summary>
+        /// <param name="id">活动编号</param>
+        public void SetActivityId(int id)
+        {
+            ActivityId = id;
+        }
+        #endregion 方法
+
+        /// <summary>
+        /// 记录销售信息
+        /// </summary>
+        public void Record(string apiCodes)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, MachineInformation.StoreId, MachineInformation.MachineSn, MachineInformation.CompanyToken);
+            dataAdapter.SaveOrder(this, apiCodes);
+            this.Clear();
+        }
+    }
+}

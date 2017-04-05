@@ -1,0 +1,62 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Sys.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+
+
+namespace Pharos.Logic.BLL
+{
+    public class MemberLevelService : BaseService<MemberLevel>
+    {
+        /// <summary>
+        /// 新增会员等级
+        /// </summary>
+        /// <param name="level"></param>
+        /// <returns></returns>
+        public OpResult CreateMemberLevel(MemberLevel level)
+        {
+            return MemberLevelService.Add(level);
+        }
+
+        public object FindMemberLevelByCompanyId(out int count)
+        {
+            count = CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId).Count();
+            var result = (from a in CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId)
+                          join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                          on a.CreateUID equals b.UID
+                          select new
+                          {
+                              LevelSN = a.LevelSN,
+                              LevelTitle = a.LevelTitle,
+                              CouponType = a.CouponType,
+                              Discount = a.Discount,
+                              IntegerType = a.IntegerType,
+                              AutoUpdate = a.AutoUpdate,
+                              UpgradeScore = a.UpgradeScore,
+                              Memo = a.Memo,
+                              State = a.State,
+                              CreateDT = a.CreateDT,
+                              CreateUID = b.UID
+                          }).ToPageList();
+            return result;
+        }
+
+        public bool UpdateMemberStateByIds(short state, string ids)
+        {
+            var levels = CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ",")).ToList();
+            foreach (var item in levels)
+            {
+                if (item.State != state)
+                {
+                    item.State = state;
+                }
+            }
+            var result = CurrentRepository.Update(new MemberLevel());
+            return result;
+        }
+    }
+}

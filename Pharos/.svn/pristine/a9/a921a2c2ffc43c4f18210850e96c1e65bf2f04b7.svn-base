@@ -1,0 +1,36 @@
+﻿using Pharos.SuperSocketClientProtocol;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.MessageTransferAgenClient
+{
+    public class MessageClient : SocketClient
+    {
+        public MessageClient()
+            : base(new DefaultRouteProvider(4))
+        {
+        }
+        static MessageClient current;
+        public static MessageClient Current
+        {
+            get
+            {
+                if (current == null)
+                {
+                    current = new MessageClient();
+                    current.Initialize();
+                }
+                if (!current.IsConnected)
+                {
+                    var connected = current.ConnectAsync(new IPEndPoint(IPAddress.Loopback, MessageSettings.Current.Port));
+                    connected.Wait();
+                }
+                return current;
+            }
+        }
+    }
+}

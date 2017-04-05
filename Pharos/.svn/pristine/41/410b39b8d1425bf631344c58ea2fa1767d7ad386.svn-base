@@ -1,0 +1,243 @@
+﻿using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Newtonsoft.Json;
+using System.Web.UI.HtmlControls;
+using Pharos.Logic.BLL;
+using Pharos.Logic.Entity;
+using Pharos.Logic;
+using System.Data;
+using Pharos.Sys.BLL;
+using Pharos.Sys.Entity;
+namespace Pharos.CRM.Retailing.Controllers
+{
+    //盘点管理
+    public class TakestockController : BaseController
+    {
+        //
+        // GET: /Takestock/
+        private readonly SysUserInfoBLL _userBLL = new SysUserInfoBLL();
+        public ActionResult Index()
+        {
+            ViewBag.shops = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "全部");
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindPageList()
+        {
+            int count = 0;
+            var list= TakeStockService.FindPageList(Request.Params,out count);
+            //var l = list.FirstOrDefault(o => o.CheckBatch == "2_0722_1");
+            return ToDataGrid(list, count);
+        }
+        [Obsolete]
+        public ActionResult FindStockList(string lockStoreID, string checkBatch)
+        {
+            int count = 0;
+            var list = TakeStockService.FindStockList(lockStoreID, checkBatch);
+            return ToDataGrid(list, count);
+        }
+        [HttpPost]
+        public ActionResult FindStockLogList(string checkBatch)
+        {
+            int count = 0;
+            var list = TakeStockService.FindStockLogList(checkBatch);
+            return ToDataGrid(list, count);
+        }
+        public ActionResult Save(string id)
+        {
+            ViewBag.shops = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "请选择");
+            return View(new TreasuryLocks());
+        }
+        [HttpPost]
+        public ActionResult Save(TreasuryLocks obj)
+        {
+            var op = TakeStockService.SaveOrUpdate(obj);
+            return Content(op.ToJson());
+        }
+        public ActionResult ReSave(int id)
+        {
+            var obj = TakeStockService.GetObjByid(id);
+            string storeId = Convert.ToString(obj.GetPropertyValue("LockStoreID"));
+            var users = ListToSelect(_userBLL.GetStoreUser(storeId).Select(o => new SelectListItem() { Value = o.UID, Text = o.FullName }), emptyTitle: "请选择");
+            ViewBag.users = users;
+            return View(obj);
+        }
+        [HttpPost]
+        public ActionResult ReSave(StockTaking stock)
+        {
+            var op = TakeStockService.ReSave(stock);
+            return Content(op.ToJson());
+        }
+        public ActionResult CrrectSave(int id)
+        {
+            var obj = TakeStockService.GetObjByid(id);
+            return View(obj);
+        }
+        [HttpPost]
+        public ActionResult CrrectSave(int id, decimal correctNumber)
+        {
+            var op = TakeStockService.CrrectSave(id, correctNumber);
+            return Content(op.ToJson());
+        }
+        public ActionResult StockLock()
+        {
+            ViewBag.shops = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "请选择");
+            return View(new TreasuryLocks());
+        }
+        [HttpPost]
+        public ActionResult StockLock(TreasuryLocks obj)
+        {
+            obj.LockCategorySN = Request["selectCategorySN"];
+            var op= TakeStockService.AddStockLock(obj);
+            return Content(op.ToJson());
+        }
+        public ActionResult Import()
+        {
+            ViewBag.shops = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "请选择");
+            ViewBag.users = new List<SelectListItem>() { new SelectListItem() { Text = Sys.CurrentUser.FullName, Value = Sys.CurrentUser.UID, Selected = true } };
+            var pos = new List<SelectListItem>();
+            for (int i = 65; i < 15+65; i++)
+            {
+                var val= (char)i+"";
+                pos.Add(new SelectListItem() { Text = val, Value = val });
+            }
+            ViewBag.pos = pos;
+            return View(new TreasuryLocks());
+        }
+        [HttpPost]
+        public ActionResult Import(TreasuryLocks obj, char codeCol, char countCol, int? minRow,int? maxRow,string checkUID)
+        {
+            var re = TakeStockService.Import(obj, Request.Files, codeCol, countCol, minRow.GetValueOrDefault(), maxRow.GetValueOrDefault(), checkUID);
+            return Content(re.ToJson());
+        }
+        [HttpPost]
+        public ActionResult GetBatchAndCategory(string storeId)
+        {
+            var no = TakeStockService.GetBatchAndCategory(storeId);
+            return Content(no);
+        }
+        [HttpPost]
+        public ActionResult StoreSelect(string storeId,short? state)
+        {
+            var express = DynamicallyLinqHelper.True<TreasuryLocks>().And(o => o.LockStoreID == storeId, storeId.IsNullOrEmpty())
+                .And(o => o.State == state, !state.HasValue);
+            var list = BaseService<TreasuryLocks>.FindList(express).OrderByDescending(o => o.LockDate).Select(o => new DropdownItem(o.CheckBatch)).ToList();
+            list.Insert(0, new DropdownItem("", "请选择", true));
+
+            var users = _userBLL.GetStoreUser(storeId).Select(o => new DropdownItem(o.UID,o.FullName)).ToList();
+            users.Insert(0, new DropdownItem("", "请选择", true));
+            return new JsonNetResult(new {batchs=list,users=users});
+        }
+        [HttpPost]
+        public ActionResult BatchSelect(string storeId,string batchNo)
+        {
+            var list=TakeStockService.FindBarcodesByBatch(batchNo);
+            return Json(list);
+        }
+        public ActionResult ReSaveList()
+        {
+            ViewBag.shops = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "请选择");
+            return View();
+        }
+        [HttpPost]
+        public ActionResult ReBatchSelect(string storeId, string batchNo)
+        {
+            var list = TakeStockService.FindBarcodesByBatch(batchNo,1);
+            return Json(list);
+        }
+        public ActionResult Export()
+        {
+            int count = 0;
+            var dt = TakeStockService.FindPageList(Request.Params, out count,false);
+            if (dt==null || dt.Rows.Count<=0) return RedirectAlert("Index", "无数据!");
+            //string[] fields = { "StoreTitle", "CheckBatch", "Barcode", "Title", "BrandTitle", "SubUnit", "ActualNumber"};
+            //string[] names = { "盘点门店", "盘点批次", "条码", "品名", "品牌", "单位", "实盘数量" };
+            string[] fields = { "StoreTitle", "CheckBatch", "Barcode", "Title", "BrandTitle", "SubUnit", "ActualNumber" };
+            string[] names = { "盘点门店", "盘点批次", "条码", "品名", "品牌", "单位", "实盘数量" };
+            var title = "";
+            foreach (DataRow dr in dt.Rows)
+                dr["ActualNumber"] = DBNull.Value;
+
+            int[] merger = { 0, 1 };
+             new ExportExcel() { IsBufferOutput = true, HeaderText = title }.ToExcel("盘点", dt, fields, names, merger);
+            return new EmptyResult();
+        }
+
+        public ActionResult Approval()
+        {
+            ViewBag.shops = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "请选择");
+            return View();
+        }
+        [HttpPost]
+        public ActionResult ApprovalPass(string checkBatch)
+        {
+            var op = TakeStockService.ApprovalPass(checkBatch);
+            return new JsonNetResult(op);
+        }
+        [HttpPost]
+        public ActionResult FindApprovalList(string storeId, string checkBatch)
+        {
+            int count = 0;
+            object list = null;
+            if (!storeId.IsNullOrEmpty() && !checkBatch.IsNullOrEmpty())
+                list = TakeStockService.FindPageList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+        public ActionResult Report()
+        {
+            ViewBag.shops = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "请选择");
+            return View();
+        }
+        [HttpPost]
+        public ActionResult ReportList(string storeId, string checkBatch)
+        {
+            int count = 0;
+            DataTable dt=null;
+            if(!storeId.IsNullOrEmpty() && !checkBatch.IsNullOrEmpty())
+                dt = TakeStockService.ReportList(Request.Params, out count);
+            return ToDataGrid(dt, count);
+        }
+        public ActionResult SubExport(string storeId, string checkBatch)
+        {
+            int count = 0;
+            var nl = new System.Collections.Specialized.NameValueCollection() { Request.Params };
+            nl.Add("state", "1");
+            var dt = TakeStockService.ReportList(nl, out count, false);
+            if (dt==null || dt.Rows.Count<=0) return RedirectAlert("Report", "暂无数据,请先确认是否已审核!");
+            string[] fields = { "SupplierTitle", "ProductCode", "CategoryTitle", "Barcode", "Title", "Size", "SubUnit", "LockNumber", "ActualNumber", "SubstractNum", "SubstractTotal", "ActualTotal", "SysPrice" };
+            string[] names = { "供应商", "商品编码", "类别", "商品条码", "商品名称", "规格", "单位", "锁库库存", "盘点数量", "盈亏数量", "盈亏金额", "盘点售价金额", "系统售价", };
+            var totalCols = new int[] { 7,8,9, 10, 11,12, 13 };
+            var title = "";
+            new ExportExcel() { IsBufferOutput = true, HeaderText = title }.ToExcel("盘点", dt, fields, names, null, totalCols);
+            return new EmptyResult();
+        }
+    }
+    public class TakeStock
+    {
+        public string Id { get; set; }
+        public string StockName { get; set; }
+        public string Creator { get; set; }
+        [JsonConverter(typeof(JsonShortDate))]
+        public DateTime? CreateDate { get; set; }
+        public string BatNo { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public string Unit { get; set; }
+        public string Brand { get; set; }
+        public string Cd { get; set; }
+        public int Count { get; set; }
+    }
+    public class StockLock
+    {
+        public string Id { get; set; }
+        public string ParentType { get; set; }
+        public string ChildType { get; set; }
+        public string BatNo { get; set; }
+        public DateTime? CreateDate { get; set; }
+    }
+}

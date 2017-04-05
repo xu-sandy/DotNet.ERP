@@ -1,0 +1,34 @@
+﻿using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Pos;
+using Pharos.Logic.ApiData.Pos.DataAdapter;
+
+namespace Pharos.Logic.ApiData.Pos.Sale
+{
+    public class WarehouseManager
+    {
+        public PageResult<InventoryResult> CheckedInventory(string storeId, string machineSn, IEnumerable<int> categorySns, string keyword, int pageSize, int pageIndex)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn);
+            var result = dataAdapter.CheckedInventory(categorySns, keyword, pageSize, pageIndex);
+            return result;
+        }
+
+        public PageResult<InventoryResult> CheckedPrice(string storeId, string machineSn, IEnumerable<int> categorySns, decimal from, decimal to, int pageSize, int pageIndex)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn);
+            var result = dataAdapter.CheckedPrice(categorySns, from, to, pageSize, pageIndex);
+            return result;
+        }
+
+        public IEnumerable<Announcement> Announcements(string storeId, string machineSn) 
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn);
+            var result = dataAdapter.Announcements();
+            return result;
+        }
+    }
+}

@@ -1,0 +1,61 @@
+﻿@model Pharos.Logic.Entity.MakingMembershipCard
+@{
+    ViewBag.Title = "CreateRecharge";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">新增数量：</td>
+                    <td class="input"><input type="text" name="MakeNumber" class="easyui-textbox" value="@Model.MakeNumber" placeholder="1-1000" maxlength="4" /></td>
+                    <td class="name">类型：</td>
+                    <td class="input">@Html.DropDownList("CardType", ViewBag.CardType as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "" })</td>
+                </tr>
+                @*<tr>
+                        <td class="name">编号范围：</td>
+                        <td class="input"><input type="text" name="NumberStart" class="easyui-textbox" data-options="width:70" value="@Model.NumberStart" />-<input type="text" name="NumberEnd" class="easyui-textbox" data-options="width:70" value="@Model.NumberEnd" /></td>
+
+                    </tr>*@
+                <tr>
+                    <td class="name">有效期-开始：</td>
+                    <td class="input"><input type="text" name="ExpiryStart" class="easyui-validatebox Wdate" value="@Model.ExpiryStart" /></td>
+                    <td class="name">有效期-截止：</td>
+                    <td class="input"><input type="text" name="ExpiryEnd" class="easyui-validatebox Wdate" value="@Model.ExpiryEnd" /></td>
+                </tr>
+                <tr></tr>
+                <tr>
+                    <td class="name">状态：</td>
+
+                    <td colspan="3" style="margin-top:80px;margin-left:50px">
+                        <input name="State" type="radio" value="0" />未制卡
+                        <input name="State" type="radio" value="1" />已制卡
+                        <input name="State" type="radio" value="2" />可用
+                        <input name="State" type="radio" value="3" />已作废
+                    </td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+        var state=@Model.State;
+        var radios=$("input[name=State]");
+        for (var i = 0; i < radios.length; i++) {
+            var radioVal=  $(radios[i]).val();
+            if(radioVal==state){
+                $(radios[i]).attr("checked","checked");
+            }
+        }
+
+
+        var cardType='@Model.CardType';
+        $("#CardType").combobox('setValue',cardType);
+    })
+</script>

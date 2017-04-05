@@ -1,0 +1,96 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.BLL
+{
+    public class MembersService : BaseService<Members>
+    {
+        /// <summary>
+        /// 用于datagrid列表
+        /// </summary>
+        /// <param name="searchText">传递条件</param>
+        /// <param name="recordCount">返回总行数</param>
+        /// <returns>list</returns>
+        public static IEnumerable<dynamic> FindPageList(string start,string end, string searchText, ref int recordCount,bool isPage)
+        {
+            var query = from a in CurrentRepository.QueryEntity
+                        join b in WarehouseService.CurrentRepository.QueryEntity on a.StoreId equals b.StoreId
+                        let o= from c in BaseService<Area>.CurrentRepository.QueryEntity where a.CurrentCityId==c.AreaID select c
+                        from d in o.DefaultIfEmpty()
+                        where a.CompanyId ==b.CompanyId && a.CompanyId==CommonService.CompanyId
+                        select new { 
+                            a.Id,
+                            a.ConsumerCredit,
+                            a.CreateDT,
+                            a.Email,
+                            a.MemberCardNum,
+                            a.MobilePhone,
+                            a.RealName,
+                            a.Sex,
+                            a.Birthday,
+                            a.Status,
+                            a.UsableIntegral,
+                            a.UsedIntegral,
+                            a.Weixin,
+                            a.QQ,
+                            a.CurrentCityId,
+                            a.Address,
+                            Store= b.Title,
+                            City= d.Title,
+                            StateTitle = a.Status == 1 ? "有效" : "无效"
+                        };
+
+            if (!searchText.IsNullOrEmpty())
+            {
+                searchText = searchText.Trim();
+                query = query.Where(o =>(o.MobilePhone!=null && o.MobilePhone.Contains(searchText)) || (o.RealName!=null && o.RealName.Contains(searchText)));
+            }
+            if(!start.IsNullOrEmpty())
+            {
+                var s = DateTime.Parse(start);
+                query = query.Where(o => o.CreateDT >= s);
+            }
+            if (!end.IsNullOrEmpty())
+            {
+                var e = DateTime.Parse(end).AddDays(1);
+                query = query.Where(o => o.CreateDT < e);
+            }
+            if (isPage)
+            {
+                recordCount = query.Count();
+                return query.ToPageList();
+            }
+            return query.Where(o=>o.Status==1).ToList();
+        }
+        /// <summary>
+        /// 获得新增会员数量
+        /// </summary>
+        /// <param name="beginTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public static int GetNewMemberNumber(DateTime beginTime, DateTime endTime, string storeId = "")
+        {
+            int memberNumber = 0;
+            var query = CurrentRepository.QueryEntity.Where(o => o.CreateDT >= beginTime && o.CreateDT <= endTime && o.CompanyId==CommonService.CompanyId);
+            if (!string.IsNullOrEmpty(storeId))
+                query = query.Where(o => o.StoreId == storeId);
+            var memberList = query.ToList();
+            if (memberList != null)
+                memberNumber = memberList.Count();
+            return memberNumber;
+        }
+        public static bool CheckMsg(Members obj,ref string msg)
+        {
+            return new DAL.MemberDAL().CheckMsg(obj,CommonService.CompanyId, ref msg);
+        }
+        public static List<Members> GetList()
+        {
+            return CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId).ToList();
+        }
+    }
+}

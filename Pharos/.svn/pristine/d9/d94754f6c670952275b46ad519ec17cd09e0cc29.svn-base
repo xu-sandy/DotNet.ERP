@@ -1,0 +1,151 @@
+﻿@model Pharos.Logic.OMS.Entity.DeviceAuthorize
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var months= new List<SelectListItem>(){
+        new SelectListItem(){Text="1个月",Value="1"},
+        new SelectListItem(){Text="3个月",Value="3"},
+        new SelectListItem(){Text="6个月",Value="6"},
+        new SelectListItem(){Text="1年",Value="12",Selected=true},
+        new SelectListItem(){Text="2年",Value="24"},
+        new SelectListItem(){Text="3年",Value="36"},
+        new SelectListItem(){Text="5年",Value="60"},
+        new SelectListItem(){Text="8年",Value="96"},
+        new SelectListItem(){Text="10年",Value="120"},
+        new SelectListItem(){Text="不限",Value="0"},
+    };
+}
+<div class="default-form">
+    @using(Html.BeginForm())
+    {
+        @Html.HiddenFor(o=>o.Id)
+        @Html.HiddenFor(o => o.Source)
+        <div class="content">
+        <table class="table-form" width="100%" height="250px">
+            <tr>
+                <td class="name">商户号：</td>
+                <td class="input">@Html.TextBoxFor(o => o.CID, new { @class = "easyui-combobox", data_options = "prompt:'请输入商户号或名称',required:true,editable:true,mode:'remote',valueField:'CID',textField:'CID',loader:comboload,onChange:traderChange" + (Model.Id != 0 ? ",readonly:true" : "") })</td>
+                <td class="name">所在门店：</td>
+                <td class="input">@Html.TextBoxFor(o => o.StoreName, new { @class = "easyui-textbox", data_options = "width:160" })</td>
+            </tr>
+            <tr>
+                <td class="name">客户名称：</td>
+                <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,width:160" })</td>
+                <td class="name">合同编号：</td>
+                <td class="input">@Html.TextBoxFor(o => o.ContractNo, new { @class = "easyui-textbox", data_options = "width:160,required:true" })</td>
+            </tr>
+            <tr>
+                <td class="name">设备分类：</td>
+                <td class="input">@Html.DropDownListFor(o => o.DeviceId,ViewBag.devices as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "prompt:'请输入设备名称',required:true,editable:true,mode:'remote',valueField:'DeviceId',textField:'Title',loader:comboloaddev" + (Model.Id != 0 ? ",readonly:true" : "") })</td>
+                <td class="name">设备编码：</td>
+                <td class="input">@Html.TextBoxFor(o => o.DeviceNo, new { @class = "easyui-textbox", data_options = "width:160,required:true" })</td>
+            </tr>
+            <tr>
+                <td class="name">有效期(月)：</td>
+                <td class="input">@Html.DropDownListFor(o => o.ValidityNum,months,new{@class = "easyui-combobox"})</td>
+                <td class="name">生效日期：</td>
+                <td class="input">@Html.TextBoxFor(o => o.EffectiveDT, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", data_options = "required:true" })</td>
+            </tr>
+            <tr>
+                <td class="name">指派人：</td>
+                <td class="input">@Html.DropDownListFor(o => o.AssignerUID, ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox" })</td>
+                <td class="name">可用状态：</td>
+                <td class="input">@Html.DropDownListFor(o => o.Status, new List<SelectListItem>() { new SelectListItem() { Text = "未激活", Value = "0", Selected = true }, new SelectListItem() { Text = "已激活", Value = "1" }, new SelectListItem() { Text = "已停用", Value = "2" } }, new { @class = "easyui-combobox" })</td>
+            </tr>
+        </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    var comboloaddev=function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+        $.ajax({
+            url:"@Url.Action("GetDeviceInput", "Device")",
+            type:"post",
+        data:{
+            //传值，还是JSON数据搜索
+            searchName: q
+        },
+        //重要，如果写jsonp会报转换错误，此处不写都可以
+        dataType:"json",
+        success: function (data) {
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function(item){
+                return { DeviceId: item.DeviceId, Title: item.Title };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+        $.ajax({
+            url:"@Url.Action("GetTraderInput", "Traders")",
+            type:"post",
+            data:{
+                //传值，还是JSON数据搜索
+                searchName: q
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType:"json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function(item){
+                    return { CID: item.CID, Title: item.Title };
+                });
+                traderChange(q);
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    var comboRows = [];
+    function traderChange(newValue,oldValue) {
+        var obj = getRow(newValue);
+        if (!obj) return;
+        $("#Title").textbox("setValue", obj.FullTitle);
+        $("#BusinessMode").combobox("setValue", obj.BusinessModeId);
+        if (obj.BusinessScopeId) {
+            var scopes= obj.BusinessScopeId.split(',')
+            $("#OpenScopeId_0").combobox("setValues", scopes);
+        }
+    }
+    function getRow(cd) {
+        var obj = null;
+        $.each(comboRows, function (i, row) {
+            if (row.CID == cd) {
+                obj = row; return false;
+            }
+        });
+        return obj;
+    }
+    function SaveBefore() {
+        if (!getRow($("#CID").combobox("getValue")) && $("#Id").val() == "0") {
+            $.messager.alert("提示", "商户号[" + $("#CID").combobox("getValue") + "]不存在！");
+            return false;
+        }
+        if ($("#DeviceId").combobox("getValue") == $("#DeviceId").combobox("getText")) {
+            $.messager.alert('提示', "设备分类[" + $("#DeviceId").combobox("getText") + ']不存在！');
+            return false;
+        }
+        return true;
+    }
+    $(function () {
+    });
+</script>

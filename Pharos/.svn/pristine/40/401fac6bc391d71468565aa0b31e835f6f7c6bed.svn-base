@@ -1,0 +1,62 @@
+﻿@model Pharos.Logic.OMS.Entity.SysDepartments
+@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var users = ViewBag.users as List<SelectListItem>;
+    var users2 = users.ToClone();
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.Hidden("ParentDepth")
+        <div class="content">
+            <table class="table-form" width="100%" height="250px">
+                @if (Model.PDeptId > 0)
+                {
+                    @Html.HiddenFor(o => o.PDeptId)
+                <tr>
+                    <td class="name">隶属上级：</td>
+                    <td class="input">@Html.DisplayText("Parent")</td>
+                </tr>
+                }
+                <tr>
+                    <td class="name">名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:'length[1,50]'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">代码：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.DeptCode, new { @class = "easyui-textbox", data_options = "novalidate:true,validType:'length[1,30]'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">领导：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.ManagerUId, users, new { @class = "easyui-combobox" })</td>
+                </tr>
+                <tr>
+                    <td class="name">副领导：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.DeputyUId, users2, new { @class = "easyui-combobox" })</td>
+                </tr>
+                <tr>
+                    <td class="name">状态：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.Status, new List<SelectListItem>() { new SelectListItem() { Text = "显示", Value = "True" }, new SelectListItem() { Text = "隐藏", Value = "False" } })</td>
+                </tr>
+            </table>
+        </div>
+        
+    }
+</div>
+<script type="text/javascript">
+    function Refresh() {
+        if ($("#hidadd").val() == "1") {
+            pharos.easyui.dialog.curJquery("formDiv")("#treegrid").treegrid("reload").treegrid("clearSelections").treegrid("clearChecked");
+            var src = window.top.$('.formDiv:last iframe').attr("src");
+            window.location.href = src;
+        } else {
+            pharos.easyui.dialog.curJquery("formDiv")("#treegrid").treegrid("reload").treegrid("clearSelections").treegrid("clearChecked");
+            pharos.easyui.dialog.topClose("formDiv");
+        }
+    }
+    function SaveBefore() {
+        return true;
+    }
+</script>

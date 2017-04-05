@@ -1,0 +1,113 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL-----商户资料
+    /// </summary>
+    public class TradersService : BaseService
+    {
+        [Ninject.Inject]
+        // 商户资料
+        IBaseRepository<Traders> TradersRepository { get; set; }
+
+        [Ninject.Inject]
+        //区域管理信息
+        public IBaseRepository<Area> AreaRepository { get; set; }
+
+        /// <summary>
+        /// 获取最大CID
+        /// </summary>
+        /// <returns></returns>
+        public int getMaxCID()
+        {
+            return TradersRepository.GetQuery().Max(o => (int?)o.CID).GetValueOrDefault() + 1;
+        }
+
+        /// <summary>
+        /// 增加、修改
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public Utility.OpResult SaveOrUpdate(Traders model)
+        {
+            if (model.Id == 0)
+            {
+                model.CID = getMaxCID();
+                TradersRepository.Add(model);
+            }
+            else
+            {
+                var source = TradersRepository.Get(model.Id);
+                model.ToCopyProperty(source);
+            }
+
+            if (TradersRepository.SaveChanges())
+            {
+                LogEngine.WriteUpdate(model.Id + "," + model.Title, LogModule.商户资料);
+            }
+            return OpResult.Success();
+        }
+
+        /// <summary>
+        /// 获取省
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getProvince()
+        {
+            var province = AreaRepository.GetQuery(o => o.Type == 2).ToList();
+            province.Insert(0, new Area() { AreaID = 0, Title = "请选择" });
+            return province;
+        }
+
+        /// <summary>
+        /// 获取城市
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getCity(int ProvinceID)
+        {
+            List<Area> list = new List<Area>();
+            if (ProvinceID > 0)
+            {
+                list = AreaRepository.GetQuery(o => o.AreaPID == ProvinceID).ToList();
+            }
+            list.Insert(0, new Area() { AreaID = 0, Title = "请选择" });
+            return list;
+        }
+
+        /// <summary>
+        /// 获取区县
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getDistrict(int CityID)
+        {
+            List<Area> list = new List<Area>();
+            if (CityID > 0)
+            {
+                list = AreaRepository.GetQuery(o => o.AreaPID == CityID).ToList();
+            }
+            list.Insert(0, new Area() { AreaID = 0, Title = "请选择" });
+            return list;
+        }
+        public List<Traders> GetTraderInput(string searchName)
+        {
+            if (searchName.IsNullOrEmpty()) return null;
+            int cid = 0;
+            int.TryParse(searchName, out cid);
+            var query= TradersRepository.GetQuery(o =>o.Title.Contains(searchName) || o.FullTitle.Contains(searchName));
+            if(cid>0) query=query.Where(o=>o.CID==cid);
+            return query.Take(20).ToList();
+        }
+
+    }
+}

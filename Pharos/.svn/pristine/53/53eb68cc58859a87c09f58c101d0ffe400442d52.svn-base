@@ -1,0 +1,87 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.BLL;
+using Quartz;
+
+namespace Pharos.Logic.InstalmentDomain
+{
+    /// <summary>
+    /// 返赠规则定时调度
+    /// </summary>
+    public class ReturnRulesTimerTaskJob : IJob
+    {
+        public void Execute(IJobExecutionContext context)
+        {
+            //JobDataMap dataMap = context.JobDetail.JobDataMap;
+            //int content = dataMap.GetInt("rechargeGiftsJob");
+            ReturnRulesTimerTaskJob.RefreshReturnRules();
+        }
+        /// <summary>
+        /// 定时作业
+        /// </summary>
+        /// <param name="companyId"></param>
+        /// <returns></returns>
+        public static TimeSpan RefreshReturnRules()
+        {
+            var spanTimes = new List<DateTime>();//用于作业调度
+            var datas = ReturnRulesService.GetAllActivingReturnRule();
+            if (datas == null || datas.Count() == 0)
+            {
+                goto goReturn;
+            }
+            foreach (var item in datas)
+            {
+                if (item.State == 0)
+                {//未开始 
+                    //判断是否更新状态
+                    if (item.ExpiryEnd.HasValue)
+                    {//有结束时间 
+                        if (item.ExpiryStart < DateTime.Now && DateTime.Now < item.ExpiryEnd)
+                        {
+                            ReturnRulesService.UpdateReturnRulesState(1, item.Id.ToString());
+                        }
+                        else
+                        {
+                            spanTimes.Add(item.ExpiryStart);
+                        }
+                    }
+                    else
+                    {
+                        if (item.ExpiryStart < DateTime.Now)
+                        {
+                            ReturnRulesService.UpdateReturnRulesState(1, item.Id.ToString());
+                        }
+                        else
+                        {
+                            spanTimes.Add(item.ExpiryStart);
+                        }
+                    }
+                }
+                else if (item.State == 1)
+                { //活动中
+                    if (item.ExpiryEnd.HasValue)
+                    {
+                        if (item.ExpiryEnd > DateTime.Now)
+                            spanTimes.Add((DateTime)item.ExpiryEnd);
+                        else
+                        { //设置过期
+                            ReturnRulesService.UpdateReturnRulesState(2, item.Id.ToString());
+                        }
+                    }
+                }
+            }
+            if (spanTimes.Count > 0)
+            {
+                return spanTimes.OrderBy(o => o).First() - DateTime.Now;
+            }
+            else
+            {
+                goto goReturn;
+            }
+        goReturn:
+            return default(TimeSpan);
+        }
+    }
+}

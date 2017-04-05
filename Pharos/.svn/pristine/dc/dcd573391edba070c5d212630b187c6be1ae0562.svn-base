@@ -1,0 +1,129 @@
+﻿@{
+    ViewBag.Title = "CreateIntegralRule";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%" height="180px">
+                <tr>
+                    <td class="name">有效期：</td>
+                    <td class="input">
+                        <input type="text" id="date1" name="ExpiryStart" class="easyui-validatebox Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',maxDate:'#F{$dp.$D(\'date2\')}'})" /> -
+                        <input type="text" id="date2" name="ExpiryEnd" class="easyui-validatebox Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',minDate:'#F{$dp.$D(\'date1\')}'})" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">适用客户群：</td>
+                    <td class="input"><select name="UseUsers" type="text" class="easyui-combobox"><option value="-1">请选择</option></select></td>
+                </tr>
+                <tr>
+                    <td class="name">规则方式：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>
+                                    <select name="RuleTypeId" class="easyui-combobox">
+                                        <option value="-1">请选择</option>
+                                        <option value="1">按消费金额</option>
+                                        <option value="2">按付款方式</option>
+                                        <option value="3">按指定品类</option>
+                                        <option value="4">按具体商品</option>
+                                        <option value="5">按消费次数</option>
+                                    </select>
+                                </td>
+                                <td><input type="text" class="easyui-textbox" /></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="4">
+                        <table id="grid"></table>
+                        @*<table class="easyui-datagrid" id="grid2"
+                                   data-options="url:'',queryParams:{},showFooter:false,border:true,rownumbers:true,fit:true,fitColumns:true,pagination:false,singleSelect: true,idField:'Id'">
+                                <thead>
+                                    <tr>
+                                        <th data-options="field:'ProductCode',editor:{type:'textbox',options:{disabled:true}}" width="120">货号</th>
+                                        <th data-options="field:'Barcode',editor:{type:'combobox',options:{prompt:'请输入条码...',required:true,mode:'remote',valueField:'barcode',textField:'title'}}" width="150">条码</th>
+                                        <th data-options="field:'Title',editor:{type:'textbox',options:{disabled:true}}" width="150">品名</th>
+                                        <th data-options="field:'CategoryTitle',editor:{type:'textbox',options:{disabled:true}}" width="80">品类</th>
+                                        <th data-options="field:'SubUnit',editor:{type:'textbox',options:{disabled:true}}" width="60">单位</th>
+                                        <th data-options="field:'SysPrice',editor:{type:'textbox',options:{disabled:true}}" width="80">系统售价</th>
+                                        <th data-options="field:'StockNums',editor:{type:'textbox',options:{disabled:true}}" width="120">库存</th>
+                                        <th data-options="field:'Editor',formatter:operation" width="100">操作</th>
+                                    </tr>
+                                </thead>
+                            </table>*@
+                    </td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="name">满：</td>
+                    <td class="input"><input type="text" class="easyui-textbox" name="Condition" /></td>
+                </tr>
+                <tr>
+                    <td class="name">赠送积分：</td>
+                    <td class="input"><input type="text" class="easyui-textbox" name="ReturnValue" /></td>
+                </tr>
+                <tr>
+                    <td class="name">转换比例：</td>
+                    <td class="input"><input type="text" class="easyui-textbox" /></td>
+                </tr>
+                <tr>
+                    <td class="name"></td>
+                    <td class="input">@Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "是否包含促销" } }, "InContainsPromotion")</td>
+                </tr>
+                <tr>
+                    <td class="name">状态：</td>
+                    <td class="input">@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "生效", Selected = true }, new SelectListItem() { Text = "失效" } }, "state")</td>
+                </tr>
+                <tr>
+                    <td class="name">备 注：</td>
+                    <td class="input" colspan="3">
+                        <textarea name="Memo" class="easyui-validatebox" style="width:320px;height:50px;"></textarea>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script>
+    var $dg2;
+    var editProcIndex = undefined;
+    $(function () {
+        $("#grid").datagrid({
+            columns: [[
+                { field: 'ProductCode', editor: { type: 'textbox', options: { disabled: true } }, width: 120, title: '货号' },
+                { field: 'Barcode', title: '条码', editor: { type: 'combobox', options: { prompt: '请输入条码...', required: true, mode: 'remote', valueField: 'barcode', textField: 'title' } }, width: 150 },
+                { field: 'Title', editor: { type: 'textbox', options: { disabled: true } }, width: 150, title: '品名' },
+                { field: 'CategoryTitle', editor: { type: 'textbox', options: { disabled: true } }, width: 80, title: '品类' },
+                { field: 'SubUnit', editor: { type: 'textbox', options: { disabled: true } }, width: 60, title: '单位' },
+                { field: 'SysPrice', editor: { type: 'textbox', options: { disabled: true } }, width: 80, title: '系统售价' },
+                { field: 'StockNums', editor: { type: 'textbox', options: { disabled: true } }, width: 120, title: '库存' },
+                { field: 'Editor', formatter: operation, width: 100, title: '操作' },
+            ]]
+        });
+
+        appendItemProc();
+
+    });
+
+    function appendItemProc() {
+        $dg2 = $dg2 ? $dg2 : $("#grid2");
+        $dg2.datagrid('appendRow', {});
+    }
+
+    function operation(value, row, index) {
+        if (opaddPro) {
+            opaddPro = false;
+            return "<a href='javascript:void(0)' onclick='appendItemProc()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"copyItem('" + row.Id + "')\">复制</a>&nbsp;&nbsp;<a href='javascript:void(0)' onclick=\"removeItem(" + row.Id + ")\">删除</a>";
+        }
+    }
+</script>

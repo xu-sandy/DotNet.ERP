@@ -1,0 +1,45 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity;
+using Pharos.Logic.BLL;
+using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.ApiData.Pos.Sale;
+using Pharos.ObjectModels.DTOs;
+using Pharos.ObjectModels;
+
+namespace Pharos.Logic.ApiData.Pos.Services.LocalCeServices
+{
+    public class BundlingService : BaseGeneralService<Bundling, LocalCeDbContext>
+    {
+        public static ProductInfo GetProductInfoFromBundlingByBarcode(string storeId, string barcode, int companyId)
+        {
+            try
+            {
+                var query = (from a in CurrentRepository.Entities
+                             where a.NewBarcode == barcode && a.CompanyId == companyId
+                             select new ProductInfo()
+                             {
+                                 Brand = "",
+                                 Category = "",
+                                 EnableEditNum = true,
+                                 EnableEditPrice = false,
+                                 ProductCode = "",
+                                 ProductType = ProductType.Bundling,
+                                 Size = "",
+                                 SystemPrice = a.BundledPrice,
+                                 BuyPrice = a.BuyPrices,
+                                 Title = a.Title,
+                                 Unit = "件"
+                             });
+                return query.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+    }
+}

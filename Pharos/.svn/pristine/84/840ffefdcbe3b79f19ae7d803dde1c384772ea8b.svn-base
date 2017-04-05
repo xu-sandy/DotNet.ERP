@@ -1,0 +1,289 @@
+﻿using Common.Logging;
+using Pharos.Api.Retailing;
+using Pharos.Service.Retailing.Marketing;
+using Pharos.SocketClient.Retailing.Protocol.Clients;
+using System;
+using System.Collections.Generic;
+using System.Data.SqlServerCe;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.ServiceProcess;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Pharos.POS.ClientService
+{
+    class Program
+    {
+        // private static string[] tempArgs;
+        private static IDisposable webServer = null;
+        private static PosStoreClient client = null;
+        internal static IDictionary<string, Thread> ThreadDict = new Dictionary<string, Thread>();
+        public const string WEBSERVER = "WebServer";
+        public const string SYNCSERVICECLIENT = "SyncServiceClient";
+        public const string MARKETINGMANAGER = "MarketingManager";
+        public const string SOCKETCLIENT = "SocketClient";
+        [STAThread]
+        static void Main(string[] args)
+        {
+
+            //debug 的时候加上注释
+            ConsoleHelper.hideConsole(); Run("r", null);
+
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
+            //debug 的时候把注释去掉
+
+            // tempArgs = args;
+            //  string exeArg = string.Empty;
+
+            //if (args == null || args.Length < 1)
+            //{
+            //    Console.WriteLine("Welcome to POSClientService!");
+
+            //    Console.WriteLine("Please press a key to continue...");
+            //    Console.WriteLine("-[r]: Run this application as a console application;");
+            //    Console.WriteLine("-[w]: Run this web api application as a console application;");
+            //    Console.WriteLine("-[s]: Run this sync application as a console application;");
+            //    Console.WriteLine("-[i]: Install this application as a Windows Service;");
+            //    Console.WriteLine("-[u]: Uninstall this Windows Service application;");
+
+            //    while (true)
+            //    {
+            //        exeArg = Console.ReadKey().KeyChar.ToString();
+            //        Console.WriteLine();
+
+            //        if (Run(exeArg, null))
+            //            break;
+            //    }
+            //}
+            //else
+            //{
+            //    exeArg = args[0];
+
+            //    if (!string.IsNullOrEmpty(exeArg))
+            //        exeArg = exeArg.TrimStart('-');
+
+            //    Run(exeArg, args);
+            //}
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            HideFrom Dlg = new HideFrom();
+            Dlg.Size = new System.Drawing.Size(0, 0);
+            Dlg.Show();
+            Dlg.Visible = false;
+            var context = new ApplicationContext();
+            context.ThreadExit += new EventHandler((sender, e) =>
+            {
+                Dlg.Close();
+                ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                logger.Info("程序退出！");
+            });
+            Application.Run(context);
+        }
+
+        private static void context_ThreadExit(object sender, EventArgs e)
+        {
+
+        }
+        static bool RunInThread(Action<object> callback, object state)
+        {
+            try
+            {
+                return ThreadPool.QueueUserWorkItem((data) =>
+                  {
+                      try
+                      {
+                          if (ThreadDict.ContainsKey(data.ToString()))
+                          {
+                              var th = ThreadDict[data.ToString()];
+                              if (th != null && th.IsAlive)
+                              {
+                                  th.Abort();
+                              }
+                          }
+                          callback(data);
+                          ThreadDict[data.ToString()] = Thread.CurrentThread;
+                      }
+                      catch (Exception ex)
+                      {
+                          ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                          logger.Error(ex.Message, ex);
+                      }
+                  }, state);
+            }
+            catch (Exception ex)
+            {
+                ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                logger.Error(ex.Message, ex);
+            }
+            return false;
+        }
+        static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+            var ex = (e.ExceptionObject as Exception);
+            logger.Error(ex.Message, ex);
+            //DO Log ;
+        }
+        internal static bool Run(string exeArg, string[] startArgs)
+        {
+            switch (exeArg.ToLower())
+            {
+                case ("c"):
+                    RunAsConsole(4);
+                    return true;
+                case ("m"):
+                    RunAsConsole(3);
+                    return true;
+                case ("w"):
+                    RunAsConsole(2);
+                    return true;
+                case ("s"):
+                    RunAsConsole(1);
+                    return true;
+                case ("r"):
+                    RunAsConsole();
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        internal static bool Close(string exeArg, string[] startArgs)
+        {
+            switch (exeArg.ToLower())
+            {
+                case ("c"):
+                    {
+                        if (ThreadDict.ContainsKey(SOCKETCLIENT))
+                        {
+                            client.CloseClient();
+                            var th = ThreadDict[SOCKETCLIENT];
+                            th.Abort();
+                        }
+                    }
+                    return true;
+                case ("m"):
+                    if (ThreadDict.ContainsKey(MARKETINGMANAGER))
+                    {
+                        MarketingManager.CloseStoreMarketing();
+                        var th = ThreadDict[MARKETINGMANAGER];
+                        th.Abort();
+                    }
+                    return true;
+                case ("w"):
+                    {
+                        if (ThreadDict.ContainsKey(WEBSERVER))
+                        {
+                            webServer.Dispose();
+                            var th = ThreadDict[WEBSERVER];
+                            th.Abort();
+                        }
+                    }
+                    return true;
+                case ("s"):
+                    if (ThreadDict.ContainsKey(SYNCSERVICECLIENT))
+                    {
+                        SyncServiceClientStartup.Close();
+                        var th = ThreadDict[SYNCSERVICECLIENT];
+                        th.Abort();
+                    }
+                    return true;
+                default:
+                    return false;
+            }
+        }
+        static void RunAsConsole(int mode = 0)
+        {
+
+            if (mode == 0 || mode == 1)
+            {
+                RunInThread((o) =>
+                {
+                    SyncServiceClientStartup.AutoSync();
+                }, SYNCSERVICECLIENT);
+            }
+            if (mode == 0 || mode == 2)
+            {
+                RunInThread((o) =>
+                {
+                    webServer = WebApiStartup.RunWebServer();
+                }, WEBSERVER);
+            }
+            if (mode == 0 || mode == 3)
+            {
+                RunInThread((o) =>
+                {
+                    MarketingManager.InitStoreMarketing();
+                }, MARKETINGMANAGER);
+            }
+            if (mode == 0 || mode == 4)
+            {
+                if (client != null)
+                {
+                    client.CloseClient();
+                }
+                RunInThread((o) =>
+                {
+                    client = new PosStoreClient();
+                }, SOCKETCLIENT);
+            }
+        }
+    }
+    /// <summary>  
+    /// 控制台帮助类  
+    /// </summary>  
+    public static class ConsoleHelper
+    {
+        /// <summary>  
+        /// 获取窗口句柄  
+        /// </summary>  
+        /// <param name="lpClassName"></param>  
+        /// <param name="lpWindowName"></param>  
+        /// <returns></returns>  
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        /// <summary>  
+        /// 设置窗体的显示与隐藏  
+        /// </summary>  
+        /// <param name="hWnd"></param>  
+        /// <param name="nCmdShow"></param>  
+        /// <returns></returns>  
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool ShowWindow(IntPtr hWnd, uint nCmdShow);
+
+        /// <summary>  
+        /// 隐藏控制台  
+        /// </summary>  
+        /// <param name="ConsoleTitle">控制台标题(可为空,为空则取默认值)</param>  
+        public static void hideConsole(string ConsoleTitle = "")
+        {
+            ConsoleTitle = String.IsNullOrEmpty(ConsoleTitle) ? Console.Title : ConsoleTitle;
+            IntPtr hWnd = FindWindow("ConsoleWindowClass", ConsoleTitle);
+            if (hWnd != IntPtr.Zero)
+            {
+                ShowWindow(hWnd, 0);
+            }
+        }
+
+        /// <summary>  
+        /// 显示控制台  
+        /// </summary>  
+        /// <param name="ConsoleTitle">控制台标题(可为空,为空则去默认值)</param>  
+        public static void showConsole(string ConsoleTitle = "")
+        {
+            ConsoleTitle = String.IsNullOrEmpty(ConsoleTitle) ? Console.Title : ConsoleTitle;
+            IntPtr hWnd = FindWindow("ConsoleWindowClass", ConsoleTitle);
+            if (hWnd != IntPtr.Zero)
+            {
+                ShowWindow(hWnd, 1);
+            }
+        }
+    }
+
+}

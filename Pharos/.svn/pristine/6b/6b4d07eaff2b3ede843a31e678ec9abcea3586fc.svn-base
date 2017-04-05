@@ -1,0 +1,276 @@
+﻿using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using System.Web.Mvc;
+
+namespace Pharos.Logic.BLL
+{
+    public class SaleOrdersService : BaseService<SaleOrders>
+    {
+        static readonly SaleOrderDAL saleOrderDal = new SaleOrderDAL();
+
+        /// <summary>
+        /// 销售总额
+        /// </summary>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="uid"></param>
+        /// <param name="machineSn"></param>
+        /// <returns></returns>
+        public static decimal GetTotalSales(DateTime startTime, DateTime endTime, string uid, string machineSn)
+        {
+            return CurrentRepository.FindList(o => o.CreateDT >= startTime && o.CreateDT <= endTime && o.CreateUID == uid && o.MachineSN == machineSn)
+                .Select(o => (decimal?)o.TotalAmount)
+                .Sum() ?? 0;
+        }
+        /// <summary>
+        /// 获取销售中收银员
+        /// </summary>
+        /// <returns></returns>
+        public static List<SelectListItem> GetCashiers()
+        {
+            var uids = CurrentRepository.Entities.Select(o => o.CreateUID).Distinct().ToList();
+            var list = UserInfoService.FindList(o => uids.Contains(o.UID));
+            return list.Select(o => new SelectListItem()
+            {
+                Text = o.FullName,
+                Value = o.UID
+            }).ToList();
+        }
+        /// <summary>
+        /// 获取销售中导购员
+        /// </summary>
+        /// <returns></returns>
+        public static List<SelectListItem> GetSalers()
+        {
+            var uids = CurrentRepository.Entities.Select(o => o.Salesman).Where(o => o != null || o != "").Distinct().ToList();
+            var list = UserInfoService.FindList(o => uids.Contains(o.UID));
+            return list.Select(o => new SelectListItem()
+            {
+                Text = o.FullName,
+                Value = o.UID
+            }).ToList();
+        }
+
+        /// <summary>
+        /// 获得首页销售订单数据
+        /// </summary>
+        /// <param name="beginTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public static List<SaleOrders> GetIndexSaleOrder(DateTime beginTime, DateTime endTime, string storeId = "")
+        {
+            var query = CurrentRepository.QueryEntity.Where(o => o.CreateDT >= beginTime && o.CreateDT <= endTime);
+            if (!string.IsNullOrEmpty(storeId))
+                query = query.Where(o => o.StoreId == storeId);
+            var saleOrderList = query.ToList();
+            if (saleOrderList == null)
+                saleOrderList = new List<SaleOrders>();
+            return saleOrderList;
+        }
+
+
+        #region 销售管理
+
+        public static System.Data.DataTable QuerySaleOrdersPageList(NameValueCollection nvl, out int recordCount, out object footer)
+        {
+            var nl = new NameValueCollection() { nvl };
+            if (!nl["date2"].IsNullOrEmpty())
+                nl["date2"] = DateTime.Parse(nl["date2"]).AddDays(1).ToString("yyyy-MM-dd");
+            var dt = saleOrderDal.QuerySaleOrdersPageList(nl, out recordCount);
+            decimal PurchaseNumberTotal = 0, SysPriceTotal = 0, ActualPriceTotal = 0, AmountTotal = 0, PreferentialPriceTotal = 0;
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                PurchaseNumberTotal += Convert.ToDecimal(dt.Rows[i]["PurchaseNumber"]);
+                SysPriceTotal += Convert.ToDecimal(dt.Rows[i]["SysPrice"]);
+                ActualPriceTotal += Convert.ToDecimal(dt.Rows[i]["ActualPrice"]);
+                if (i == 0)
+                {
+                    AmountTotal += Convert.ToDecimal(dt.Rows[i]["TotalAmount"]);
+                    PreferentialPriceTotal += Convert.ToDecimal(dt.Rows[i]["PreferentialPrice"]);
+                }
+                else
+                {
+                    if (dt.Rows[i]["PaySN"].ToString() != dt.Rows[i - 1]["PaySN"].ToString())
+                    {
+                        AmountTotal += Convert.ToDecimal(dt.Rows[i]["TotalAmount"]);
+                        PreferentialPriceTotal += Convert.ToDecimal(dt.Rows[i]["PreferentialPrice"]);
+                    }
+                }
+            }
+            footer = new List<object>() { 
+                new {PurchaseNumber=PurchaseNumberTotal,SysPrice=SysPriceTotal,ActualPrice=ActualPriceTotal,TotalAmount=AmountTotal,PreferentialPrice=PreferentialPriceTotal,Title="本页合计:"}
+            };
+            return dt;
+        }
+
+        public static object SaleOrderDetail(string paySN, ref object footer)
+        {
+            var query = from b in BaseService<Entity.SaleDetail>.CurrentRepository.QueryEntity
+                        join c in ProductService.CurrentRepository.QueryEntity on b.Barcode equals c.Barcode
+                        join d in BaseService<Entity.SaleOrders>.CurrentRepository.QueryEntity on b.PaySN equals d.PaySN
+
+                        join e in UserInfoService.CurrentRepository.QueryEntity on d.CreateUID equals e.UID into tmp
+                        from t in tmp.DefaultIfEmpty()
+                        join f in UserInfoService.CurrentRepository.QueryEntity on d.Salesman equals f.UID into tmp1
+                        from s in tmp1.DefaultIfEmpty()
+                        join diclist in SysDataDictService.CurrentRepository.QueryEntity on b.SalesClassifyId equals diclist.DicSN into dicTemp
+                        from dics in dicTemp.DefaultIfEmpty()
+                        where b.PaySN == paySN
+                        select new
+                        {
+                            b.Id,
+                            d.CreateDT,
+                            ShoppingGuide = s == null ? "" : s.FullName,
+                            Cashier = t == null ? "" : t.FullName,
+                            b.PaySN,
+                            b.Barcode,
+                            b.PurchaseNumber,
+                            SysPrice = b.SysPrice,
+                            ActualPrice = b.ActualPrice,
+                            c.Title,
+                            SubTotal = b.PurchaseNumber * b.ActualPrice,
+                            b.SalesClassifyId,
+                            SalesClassify = dics == null ? "" : dics.Title
+                        };
+            var query2 = from a in BaseService<Entity.Bundling>.CurrentRepository.Entities
+                         join b in BaseService<Entity.SaleDetail>.CurrentRepository.Entities on a.NewBarcode equals b.Barcode
+
+                         join diclist in SysDataDictService.CurrentRepository.QueryEntity on b.SalesClassifyId equals diclist.DicSN into dicTemp
+                         from dics in dicTemp.DefaultIfEmpty()
+                         where b.PaySN == paySN
+                         select new
+                         {
+                             b.Id,
+                             CreateDT = DateTime.Now,
+                             ShoppingGuide = "",//??
+                             Cashier = "",//??
+                             b.PaySN,
+                             b.Barcode,
+                             b.PurchaseNumber,
+                             SysPrice = b.SysPrice,
+                             ActualPrice = b.ActualPrice,
+                             a.Title,
+                             SubTotal = b.PurchaseNumber * b.ActualPrice,
+                             b.SalesClassifyId,
+                             SalesClassify = dics == null ? "" : dics.Title
+                         };
+            var list = query.Union(query2).ToList();
+            footer = new List<object>() { 
+                new {SubTotal=list.Sum(o=>o.SubTotal).ToString("N2"),ActualPrice="列表合计:"}
+            };
+            return list;
+
+        }
+
+        /// <summary>
+        /// /// 修改销售单信息
+        /// </summary>
+        /// <param name="paySN">订单流水号</param>
+        /// <param name="newPreferentialPrice">修改后的优惠合计</param>
+        /// <param name="newTotalAmount">修改后的金额合计（优惠后）</param>
+        /// <param name="changedDetailsStr">发生修改的订单明细的json字符串</param>
+        /// <param name="uid">操作者UID</param>
+        /// <returns></returns>
+        public static OpResult UpdateSaleOrder(string paySN, decimal newPreferentialPrice, decimal newTotalAmount, string changedDetailsStr, string uid)
+        {
+            var opResult = new OpResult();
+            try
+            {
+                var order = Find(o => o.PaySN == paySN && o.State == 0);
+                if (order == null)
+                {
+                    return OpResult.Fail("未查找到该订单，不允许退货！");
+                }
+
+                if (changedDetailsStr.IsNullOrEmpty())
+                {
+                    opResult = OpResult.Fail("订单未发生修改！");
+                }
+                else
+                {
+                    var returnId = CommonRules.GUID;
+                    var changedDetails = changedDetailsStr.ToObject<List<Pharos.Logic.Entity.SaleDetail>>();
+
+                    #region 更新 销售单、销售明细、退换单、退换明细
+                    BaseService<SalesReturns>.CurrentRepository.Add(new SalesReturns()
+                    {
+                        CreateDT = DateTime.Now,
+                        CreateUID = uid,
+                        MachineSN = "-1",
+                        ReasonId = 156,  // 对应字典类型“换货理由”下的“录错商品”
+                        ReturnId = returnId,
+                        ReturnPrice = 0,
+                        ReturnType = 3,
+                        Source = 1,
+                        State = 2,
+                        StoreId = order.StoreId
+                    }, false);
+
+                    var deletedDetailIds = changedDetails.Where(a => a.Id != -1).Select(a => a.Id).Distinct();
+                    if (deletedDetailIds.Any())
+                    {
+                        var deletedDetails = BaseService<SaleDetail>.FindList(a => deletedDetailIds.Contains(a.Id));
+                        if (deletedDetails.Any())
+                        {
+                            foreach (var deletedDetail in deletedDetails)
+                            {
+                                BaseService<SalesReturnsDetailed>.Add(new SalesReturnsDetailed()
+                                {
+                                    Barcode = deletedDetail.Barcode,
+                                    Number = deletedDetail.PurchaseNumber,
+                                    Price = deletedDetail.SysPrice,
+                                    TradingPrice = deletedDetail.ActualPrice,
+                                    ReceiptsNumber = deletedDetail.PaySN,
+                                    ReturnId = returnId,
+                                }, false);
+
+                                //更新 库存(回撤)
+                                InventoryService.UpdateStock(deletedDetail.Barcode, deletedDetail.PurchaseNumber, order.StoreId, deletedDetail.PaySN, 7, true);
+                            }
+                            SaleDetailService.CurrentRepository.RemoveRange(deletedDetails);
+                        }
+                    }
+
+                    var insertedDetails = changedDetails.Where(a => a.Id == -1).ToList();
+                    SaleDetailService.AddRange(insertedDetails);
+
+                    //更新 库存(扣除)
+                    foreach (var insertedDetail in insertedDetails)
+                    {
+                        InventoryService.UpdateStock(insertedDetail.Barcode, insertedDetail.PurchaseNumber, order.StoreId, insertedDetail.PaySN, 8, false);
+                    }
+                    #endregion
+
+                    BaseService<SaleOrderHistory>.Add(new SaleOrderHistory()
+                    {
+                        ReturnId = returnId,
+                        PaySN = order.PaySN,
+                        PreviousPreferentialPrice = order.PreferentialPrice,
+                        PreviousTotalAmount = order.TotalAmount
+                    }, false);
+
+                    order.PreferentialPrice = newPreferentialPrice;
+                    order.TotalAmount = newTotalAmount;
+                    order.ReturnId = order.ReturnId.IsNullOrEmpty() ? returnId : (order.ReturnId + "," + returnId);
+                    //是否要修改State字段？
+                    opResult = Update(order);
+                }
+            }
+            catch (Exception ex)
+            {
+                opResult.Message = ex.Message;
+                Log.WriteError(ex);
+            }
+            return opResult;
+        }
+        #endregion
+    }
+}

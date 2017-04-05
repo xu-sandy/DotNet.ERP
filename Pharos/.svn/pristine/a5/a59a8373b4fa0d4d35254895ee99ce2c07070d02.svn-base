@@ -1,0 +1,86 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideTrun = !CurrentUser.HasPermiss(SysConstLimits.邮件管理_转发);
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.邮件管理_删除邮件);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增", delText: "删除邮件", hideEdit: false,hideAdd:true,hideDel:hideDel));
+}
+<style type="text/css">.titbody{color:#8d8989;margin-left:10px;}</style>
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.RadioButtonList(ViewBag.states as List<SelectListItem>, "State", new { style = "height:30px;" })
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input type="text" class="datacontrol easyui-textbox" name="searchText" data-options="prompt:'主题'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if(!hideTrun)
+    { 
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="trunsfer()">转发</a>
+    }
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="setState()">标记为已读</a>
+}
+
+<script>
+    pharos.manager.geturl = "@Url.Action("InboxList")";
+    pharos.manager.editurl = "@Url.Action("Send")";
+    pharos.manager.delurl = "@Url.Action("Delete", new { type=1})"
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Attach', title: '附件', width: 50 },
+        { field: 'Sender', title: '发件人', width: 120 },
+        { field: 'Content', title: '主题', width: $(this).width() * 0.6 },
+        { field: 'StateTitle', title: '状态', width: 50 },
+        { field: 'CreateDT', title: '时间', width: 150 }
+    ]];
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        var w = $(window.parent).width() - 80;
+        var h = $(window.parent).height() - 80;
+        openDialog("查看邮件内容", this.editurlNocache() + "&read=1", w, h, true);
+    }
+    var state = 0;
+    function editBefore(rowData, field, index, value) {
+        state=rowData.State;
+        return true;
+    }
+    function closeDialog() {
+        if (state==0)
+            pharos.manager.gridReload();
+    }
+    function setState() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { ids: ids, t: Math.random()}, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "操作成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    function trunsfer() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var w = $(window.parent).width() - 80;
+        var h = $(window.parent).height() - 80;
+        openDialog("转发", pharos.manager.editurlNocache() + "&id=" + rows[0].Id + "&reback=2&read=1", w, h, true);
+    }
+</script>

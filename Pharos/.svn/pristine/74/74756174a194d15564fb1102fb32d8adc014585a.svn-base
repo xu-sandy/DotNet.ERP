@@ -1,0 +1,54 @@
+﻿using Pharos.POS.Retailing.ChildPages;
+using Pharos.Logic.BLL.LocalServices;
+using System;
+using System.Collections.Generic;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    public class AccountChecking : BaseObservable
+    {
+        public AccountChecking()
+        {
+            CheckTime = DateTime.Now;
+            UserName = UserModel.Current.UserName;
+            MachineId = PosMachine.Current.Infos.MachineId;
+            QueryInfos = new List<KeyValuePair<string, decimal>>();
+        }
+
+        public DateTime CheckTime { get; set; }
+
+        public string UserName { get; set; }
+
+        public string Password { get; set; }
+
+        public string MachineId { get; set; }
+
+        public IEnumerable<KeyValuePair<string, decimal>> QueryInfos { get; set; }
+        public GeneralCommand Search
+        {
+            get
+            {
+                return new GeneralCommand((w) =>
+                {
+                    if (UserModel.Current.Verify(UserName, Password))
+                    {
+                        var currentEntity = SysStoreUserInfoLocalService.Find(o => (o.UserCode == UserName || o.FullName == UserName));
+                        var date = CheckTime.Date;
+                        QueryInfos = PosCheckingLocalService.GetPosAccountCheck(MachineId, date, currentEntity.UID, PosMachineInfo.Infos.StoreId);
+                        OnPropertyChanged("QueryInfos");
+                    }
+                    else
+                    {
+                        QueryInfos = new List<KeyValuePair<string, decimal>>();
+                        OnPropertyChanged("QueryInfos");
+                        Toast.DoShow("账户或密码验证失败！", w as Window);
+                    }
+
+                });
+            }
+        }
+
+    }
+
+}

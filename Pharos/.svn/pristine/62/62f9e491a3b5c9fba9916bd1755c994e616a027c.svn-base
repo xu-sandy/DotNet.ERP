@@ -1,0 +1,28 @@
+﻿using Newtonsoft.Json;
+using Pharos.Infrastructure.Data.Redis;
+using Pharos.Logic.ApiData.Pos.Cache;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Service.Retailing.RefreshCache
+{
+    public class ProductCacheManager
+    {
+        public static void Subscribe()
+        {
+            RedisManager.Subscribe("RefreshProductCache", (channel, info) =>
+            {
+                try
+                {
+                   // Console.WriteLine(info);
+                    var qrefresh = JsonConvert.DeserializeObject<IEnumerable<Pharos.ObjectModels.DTOs.MemoryCacheRefreshQuery>>(info);
+                    ProductCache.RefreshProduct(qrefresh);
+                }
+                catch { }
+            });
+        }
+    }
+}

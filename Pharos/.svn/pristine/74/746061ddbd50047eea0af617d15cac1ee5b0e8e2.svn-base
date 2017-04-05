@@ -1,0 +1,35 @@
+﻿<control:DialogWindow02 x:Class="Pharos.POS.Retailing.ChildWin.ZhiFuBaoZhiFu"
+          xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:converter="clr-namespace:Pharos.Wpf.XamlConverters;assembly=Pharos.Wpf"       
+         xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"
+        Title="支付宝扫码支付" Height="600" Width="800" WindowStartupLocation="CenterScreen" Icon="..\Images\ChaKuCun\search.png" Margin="0" WindowStyle="None">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\ZhiFuBaoZhiFuStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="80"></RowDefinition>
+            <RowDefinition Height="350"></RowDefinition>
+            <RowDefinition Height="100"></RowDefinition>
+        </Grid.RowDefinitions>
+
+        <TextBlock Style="{StaticResource titleStyle}" Margin="20,0,0,0"><Run Text="收款："></Run><Run Text="￥"></Run><Run Text="{Binding Amount,StringFormat='{}{0:N2}'}"></Run></TextBlock>
+        <Border Grid.Row="1" BorderThickness="0,1" BorderBrush="Gray">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="300"></RowDefinition>
+                    <RowDefinition Height="50"></RowDefinition>
+                </Grid.RowDefinitions>
+                <Image Grid.Row="0" Width="280"  Source="{Binding ScanImage}"  Height="280" Name="scanImg"></Image>
+                <TextBlock  FontSize="18" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Text="请使用您的手机进入支付宝钱包完成付款"></TextBlock>
+            </Grid>
+        </Border>
+
+        <control:PosButton Style="{StaticResource BtnSearchStyle}" Grid.Row="3" Grid.ColumnSpan="2" Content="完成支付"></control:PosButton>
+    </Grid>
+</control:DialogWindow02>

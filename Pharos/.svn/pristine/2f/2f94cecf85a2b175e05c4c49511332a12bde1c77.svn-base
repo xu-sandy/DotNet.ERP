@@ -1,0 +1,120 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .tree-icon {
+    width :14px;
+    }
+</style>
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'center',split:false,border:false">
+        <table id="treegrid"></table>
+    </div> 
+</div>
+<script src="~/Scripts/managerlist.js"></script>
+
+<script type="text/javascript">
+    var lmtAdd = '@(CurrentUser.HasPermiss(238)?"1":"0")';
+    var lmtDel = '1';
+    var lmtStatus = '@(CurrentUser.HasPermiss(239)?"1":"0")';
+    var hideSave = (lmtAdd == "1" ? false : true);
+
+    var jqElement = $('#treegrid');
+    jqElement.treegrid({
+        toolbar: '#toolbar',
+        border: false,
+        fit: true,
+        fitColumns: true,
+        url: "@Url.Action("GetDict")",
+        rownumbers: true,
+        idField: 'DicSN',
+        singleSelect: true,
+        nowrap: false,
+        treeField: 'Title',
+        columns: [[
+            { title: '分类', field: 'Title', width: 100 },
+            { title: '子项', field: 'ItemsStr', width: 300 }, {
+                title: '状态', field: 'Status', width: 60, formatter: function (value, row) {
+
+                    return String.format("<span>{0}</span>", [_fmtStatus(value)]);
+                }
+            },
+        {
+            field: 'Id', title: '操作', width: 150, formatter: function (value, row) {
+
+                var operat = "";
+                if (lmtAdd == "1") {
+                    operat += '<a href=\'javascript:addDict(' + value + ',' + row.DicSN + ')\'>[添加]</a>&nbsp;&nbsp;&nbsp;';
+                }
+
+                if (lmtStatus == "1") {
+                    operat += '<a href=\'javascript:SwitchStatus(' + row.DicSN + ')\'>['
+                    operat += _fmtStatusSet(row.Status);
+                    operat += ']</a>&nbsp;&nbsp;&nbsp;';
+                }
+                if (lmtAdd == "1") {
+                    if (row.ItemsCount > 0) {
+                        operat += '<a href=\'javascript:showChildDict(' + value + ',' + row.DicSN + ')\'>[编辑子项]</a>&nbsp;&nbsp;&nbsp;';
+                    }
+                    else {
+                        //operat += '<a>[查看子项]</a>&nbsp;&nbsp;&nbsp;';
+                    }
+                }
+                return operat;
+            }
+        }
+        ]],
+        onClickCell: function (field, row) {
+            if (field == "Title") {
+                openWin({ 'title': '修改字典', 'width': 450, 'height': 205, hideSave: hideSave, 'url': "@Url.Action("Save")?id=" + row.Id + "&psn=" + row.DicSN });
+            }
+        }
+    });
+    function closeDialog() {
+        jqElement.treegrid('reload');
+    }
+    function showChildDict(id, psn) {
+        openWin({
+            'title': '查看子项', 'width': 800, 'height': 600, hideSave: hideSave, 'url': "@Url.Action("Show")?id=" + id + "&psn=" + psn, 'buttons': [{
+                text: '关闭',
+                iconCls: 'icon-cancel',
+                handler: function () { pharos.easyui.dialog.topClose("formDiv"); }
+            }]
+        });
+    }
+    function addDict(id, psn) {
+        var url = "@Url.Action("Save")";
+        if (psn) {
+            url += ("?psn=" + psn);
+        }
+        openWin({ 'title': '添加字典', 'width': 450, 'height': 205, hideSave: hideSave, 'url': url });
+    }
+    function SwitchStatus(sn) {
+        if (!sn) { return; }
+        $.messager.confirm('提示', "是否确定切换分类状态?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { sn: sn },
+                url: "@Url.Action("SwitchStatus")",
+                success: function (data) {
+                    jqElement.treegrid('reload');
+
+                }, error: function (data) {
+                    $.messager.alert("提示", "切换分类状态失败！", "info");
+
+
+                }
+            });
+        });
+
+    }
+    function _fmtStatus(status) {
+        return status ? '显示' : '关闭';
+    }
+    function _fmtStatusSet(status) {
+        return status ? '关闭' : '显示';
+    }
+</script>

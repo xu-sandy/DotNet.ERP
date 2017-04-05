@@ -1,0 +1,65 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using Pharos.Logic.ApiData.Pos.Extensions;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Payment
+{
+    public class PaymentFactory
+    {
+        public static IPay Factory(int token,PayMode mode, List<PayDetails> details, decimal receivable, Action<IPay> callBack = null)
+        {
+            IPay pay;
+            if (mode == PayMode.Multiply)
+            {
+                var tempPay = new MultiplyPay();
+                tempPay.AllPayDetails = details;
+                tempPay.CompanyToken = token;
+                pay = tempPay;
+            }
+            else
+            {
+                pay= GetPays().FirstOrDefault(o => o.Mode == mode);
+                if (pay== null)
+                {
+                    throw new PosException("支付方式未授权或者未开启！");
+                }
+                pay.Init(token);
+                pay.PayDetails = details.FirstOrDefault();
+            }
+            if (callBack != null)
+                pay.CallBack = callBack;
+            return pay;
+        }
+        public static IEnumerable<IPay> GetPaysStatus(string storeId, int token)
+        {
+            var pays = GetPays();
+            List<IPay> enablePays = new List<IPay>();
+            foreach (var item in pays)
+            {
+                if (item is MultiplyPay) continue;
+                item.Init(token);
+                item.RefreshStatus(storeId, token);
+                if (item.Enable)
+                {
+                    enablePays.Add(item);
+                }
+            }
+            return enablePays;
+        }
+
+        public static IEnumerable<IPay> GetPays()
+        {
+            var assemblies = new List<Assembly>();
+            if (!assemblies.Any())
+            {
+                assemblies.Add(typeof(PaymentFactory).Assembly);
+            }
+            IEnumerable<IPay> pays = assemblies.GetImplementedObjectsByInterface<IPay>();
+            return pays;
+        }
+    }
+}

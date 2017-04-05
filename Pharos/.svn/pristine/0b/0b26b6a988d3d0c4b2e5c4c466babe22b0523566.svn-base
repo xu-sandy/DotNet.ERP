@@ -1,0 +1,85 @@
+﻿using Pharos.POS.Retailing.Models.Payment;
+using System;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Threading.Tasks;
+using System.Windows.Media;
+using Pharos.POS.Retailing.Controls;
+using System.Windows.Media.Imaging;
+using Pharos.POS.Retailing.Models;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// ZhiFuBaoScan.xaml 的交互逻辑
+    /// </summary>
+    public partial class ZhiFuBaoScan : Window
+    {
+        bool enableClose;
+        public ZhiFuBaoScan(ZhiFuBaoPay pay)
+        {
+            Pay = pay;
+            Pay.PayEnvent += Pay_PayEnvent;
+            InitializeComponent();
+            info.DataContext = pay;
+            this.InitPublicSettings();
+
+            try
+            {
+                var url = Pay.Request();
+                scanImg.Source = new BitmapImage(new Uri(url));
+
+            }
+            catch { }
+
+
+
+            this.Closing += ZhiFuBaoScan_Closing;
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+
+            if (e.LeftButton == MouseButtonState.Pressed &&
+                VisualTreeHelper.HitTest(this, e.GetPosition(this)) == null)
+            {
+                DragMove();
+            }
+        }
+        void Pay_PayEnvent()
+        {
+            Application.Current.Dispatcher.Invoke(new Action(() =>
+            {
+                enableClose = true;
+                this.DialogResult = true;
+                this.Close();
+            }));
+
+        }
+        ZhiFuBaoPay Pay { get; set; }
+        void ZhiFuBaoScan_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!enableClose)
+            {
+                this.DialogResult = false;
+            }
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            enableClose = true;
+            Pay.SetComplete();
+        }
+
+        private void btnCannel_Click(object sender, RoutedEventArgs e)
+        {
+            PosMachine.Current.BillList.CannelDiscount();
+
+            enableClose = true;
+            this.DialogResult = false;
+            this.Close();
+        }
+    }
+}

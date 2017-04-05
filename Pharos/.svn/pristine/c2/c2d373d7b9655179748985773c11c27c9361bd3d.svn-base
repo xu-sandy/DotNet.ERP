@@ -1,0 +1,55 @@
+﻿@model Pharos.Logic.Entity.MembershipCard
+@{
+    ViewBag.Title = "CreateRecharge";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">卡号：</td>
+                    <td class="input"><input type="text" id="cardNo" class="easyui-textbox" value="@Model.CardSN" /></td>
+                    <td class="name">批次：</td>
+                    <td class="input"><label id="batch"> @Model.BatchSN</label></td>
+
+                </tr>
+                <tr>
+                    <td class="name">持卡人：</td>
+                    <td class="input"><input id="memberId" name="memberId" /></td>
+                    <td class="name">押金：</td>
+                    <td class="input"><input type="text" class="easyui-textbox" value="@Model.Deposit" /></td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+
+        $("#cardNo").textbox({
+            onchange: function (n, o) {
+
+            }
+        });
+
+        $("#memberId").combobox({
+            url: '',
+            valueField: 'id',
+            textField: 'text',
+            loader: function (param, success, error) {
+                var q=param.q 
+            }
+            @*onChange: function (n, o) {
+                $("#memberId").focus();
+                if (n != "" && n != undefined) {
+                    $("#memberId").combobox({
+                        url: '@Url.Action("GetMembersBySearch")' + "?param=" + n,
+                    })
+                }
+            }*@
+        });
+    })
+</script>

@@ -1,0 +1,34 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ChildPagesModels;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// ZhengJiaZheKou.xaml 的交互逻辑
+    /// </summary>
+    public partial class ZhengDanZheKou : Window
+    {
+
+        public ZhengDanZheKou(BillDiscount entity)
+        {
+            InitializeComponent();
+            currentEntity = entity;
+            this.InitPublicSettings();
+            this.DataContext = currentEntity;
+            this.Closing += ZhengDanZheKou_Closing;
+        }
+
+        void ZhengDanZheKou_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!isOk) 
+            {
+                PosMachine.Current.BillList.CannelDiscount();
+                
+            }
+        }
+        public bool isOk = false;
+        private BillDiscount currentEntity;
+
+    }
+}

@@ -1,0 +1,49 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+
+namespace QCT.Api.Pay.Utils
+{
+    /// <summary>
+    /// SxfPay 管理器
+    /// </summary>
+    public class SxfPayManager
+    {
+        /// <summary>
+        /// 请求参数构造
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="trade"></param>
+        /// <returns></returns>
+        public static T GetSxfRequest<T>(TradeOrder trade)where T:SxfBaseTradeRequest,new(){
+            SxfBaseTradeRequest obj = new T();
+            obj.CharSet = PayConst.SXFDEFCHARSET;
+            obj.MchId = trade.MchId3;
+            obj.StoreId = trade.StoreId3;
+            obj.DeviceId = trade.StoreId3;
+            obj.SignType = PayConst.SXFDEFSIGNTYPE;
+            obj.Version = PayConst.SXFDEFVERSION;
+            return obj as T;
+        }
+        /// <summary>
+        /// 获取公共的请求参数
+        /// </summary>
+        /// <param name="trade"></param>
+        /// <returns></returns>
+        public static SortedDictionary<string, object> GetSxfBaseRequest(TradeOrder trade)
+        {
+            var sortDic = new SortedDictionary<string, object>();
+            //fishtodo:charSet signType 修改为实际请求时的类型
+            sortDic.Add("charSet", PayConst.SXFDEFCHARSET);
+            sortDic.Add("merchantId", trade.MchId3);
+            sortDic.Add("shopId", trade.StoreId3);
+            sortDic.Add("terminalId", trade.DeviceId3);
+            sortDic.Add("signType", PayConst.SXFDEFSIGNTYPE);
+            sortDic.Add("version", PayConst.SXFDEFVERSION);
+            return sortDic;
+        }
+    }
+}

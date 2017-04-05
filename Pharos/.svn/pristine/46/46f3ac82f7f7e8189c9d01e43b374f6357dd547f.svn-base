@@ -1,0 +1,66 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>月份：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM', isShowToday: false})" value="@DateTime.Now.ToString("yyyy-MM")" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("store", ViewBag.stores as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false")
+            </td>
+            <td class="label-toolbar">
+                <label>品类：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.CategoryCombobox("parentType",true)
+            </td>
+            <td class="label-toolbar">
+                <label>排序：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="datacontrol easyui-combobox" name="sortField" data-options="editable: false, panelHeight: 'auto', panelMaxHeight: 200, width: 80">
+                    <option value="" selected>默认</option>
+                    <option value="SaleTotal">销售金额</option>
+                    <option value="JML">毛利额</option>
+                    <option value="SaleTotal">销售占比</option>
+                </select>
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = '@Url.Action("QueryBigCategoryStatisticsPageList")';
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = true;
+    pharos.manager.columns = [[
+        { field: 'CategoryTitle', title: '大类/中类', width: 150 },
+        { field: 'SaleTotal', title: '销售金额', width: 100 },
+        { field: 'BuyTotal', title: '进价金额', width: 100 },
+        { field: 'JMLL', title: '毛利率', width: 80 },
+        { field: 'JML', title: '毛利额', width: 80 },
+        { field: 'Percent', title: '销售占比', width: 80 }
+    ]];
+    function Export() {
+        var date = $("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        window.location.href = '@Url.Action("SaleStatisticsExport")?type=2&' + $('#frmsearch').serialize();
+    }
+</script>

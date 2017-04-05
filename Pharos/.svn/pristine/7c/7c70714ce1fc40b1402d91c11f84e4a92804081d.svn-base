@@ -1,0 +1,241 @@
+﻿using Pharos.Sys.DAL;
+using Pharos.Sys.Entity;
+using Pharos.Sys.EntityExtend;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Sys.BLL
+{
+    /// <summary>
+    /// 菜单管理业务逻辑
+    /// </summary>
+    public class SysMenuBLL
+    {
+        private SysMenusDAL _dal = new SysMenusDAL();
+        #region 首页菜单
+        /// <summary>
+        /// 获得允许用户访问的菜单列表
+        /// </summary>
+        /// <param name="uid"></param>
+        /// <returns></returns>
+        public List<Models.MenuModel> GetHomeMenusByUID(string uid,short type=0)
+        {
+            var objs = _dal.GetHomeMenusByUID(uid,type);
+            List<Models.MenuModel> models = new List<Models.MenuModel>();
+            if (objs != null && objs.Count > 0)
+            {
+                objs.Where(t => t.ParentId == "0").Each(t =>
+                {
+                    t.Level = 0;
+                    models.Add(GetMenusChildsTreeData(t, objs));
+                });
+            }
+
+            return models;
+        }
+        /// <summary>
+        /// 获得父级菜单的子节点
+        /// </summary>
+        /// <param name="model"></param>
+        /// <param name="source"></param>
+        /// <returns></returns>
+        private Models.MenuModel GetMenusChildsTreeData(Models.MenuModel model, List<Models.MenuModel> source)
+        {
+            var childs = source.Where(s => s.ParentId == model.Id);
+            if (childs.Count() > 0)
+            {
+                model.Children = new List<Models.MenuModel>();
+                childs.Each(t =>
+                {
+                    t.Level = model.Level + 1;
+                    model.Children.Add(GetMenusChildsTreeData(t, source));
+                });
+            }
+            return model;
+        }
+        #endregion
+
+        #region 菜单管理
+        /// <summary>
+        /// 查找全部数据
+        /// </summary>
+        /// <returns></returns>
+        public List<SysMenusExt> GetList()
+        {
+            return _dal.GetList();
+        }
+        /// <summary>
+        /// 根据角色或用户获取可配置菜单
+        /// </summary>
+        /// <param name="type">1-用户,2-角色</param>
+        /// <param name="objIds">roleId,userId</param>
+        /// <returns></returns>
+        public List<SysMenusExt> GetMenusTreeList(int type, string objIds)
+        {
+            return _dal.GetMenusTreeList(type, objIds);
+        }
+        /// <summary>
+        /// 移动菜单，更改菜单排序
+        /// </summary>
+        /// <param name="mode">1：上移，2：下移</param>
+        /// <param name="menuId">菜单Id</param>
+        /// <returns></returns>
+        public OpResult MoveMenuItem(int mode, int menuId)
+        {
+            var result = OpResult.Fail("菜单项排序变更失败");
+            try
+            {
+                var childrens = _dal.FindParentChilds(menuId);
+                var currentMenu = childrens.FirstOrDefault(o => o.MenuId == menuId);
+                if (currentMenu != null)
+                {
+                    switch (mode)
+                    {
+                        case 1:
+                            var minSortOrder = childrens.Min(o => o.SortOrder);
+                            if (currentMenu.SortOrder > minSortOrder)
+                            {
+                                SysMenus previousMenu = null;
+                                int i = 1;
+                                while (previousMenu == null && (currentMenu.SortOrder - i) >= minSortOrder)
+                                {
+                                    previousMenu = childrens.FirstOrDefault(o => o.SortOrder == (currentMenu.SortOrder - i));
+                                    i++;
+                                }
+                                var sortOrder = currentMenu.SortOrder;
+                                currentMenu.SortOrder = previousMenu.SortOrder;
+                                previousMenu.SortOrder = sortOrder;
+
+                                _dal.UpdateMenuOrderIndex(previousMenu);
+                                _dal.UpdateMenuOrderIndex(currentMenu);
+                            }
+                            break;
+                        case 2:
+                            var maxSortOrder = childrens.Max(o => o.SortOrder);
+                            if (currentMenu.SortOrder < maxSortOrder)
+                            {
+                                SysMenus previousMenu = null;
+                                int i = 1;
+                                while (previousMenu == null && (currentMenu.SortOrder + i) <= maxSortOrder)
+                                {
+                                    previousMenu = childrens.FirstOrDefault(o => o.SortOrder == (currentMenu.SortOrder + i));
+                                    i++;
+                                }
+                                var sortOrder = currentMenu.SortOrder;
+                                currentMenu.SortOrder = previousMenu.SortOrder;
+                                previousMenu.SortOrder = sortOrder;
+                                _dal.UpdateMenuOrderIndex(previousMenu);
+                                _dal.UpdateMenuOrderIndex(currentMenu);
+                            }
+                            break;
+                    }
+                }
+                result = OpResult.Success("数据保存成功");
+            }
+            catch (Exception e)
+            {
+                result = OpResult.Fail("菜单项排序变更失败" + e.Message);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 更改菜单状态
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public OpResult ChangeStatus(int id)
+        {
+            var result = OpResult.Fail("状态变更失败");
+            try
+            {
+                var model = _dal.GetById(id);
+                model.Status = !model.Status;
+                _dal.UpdateStatus(model);
+                result = OpResult.Success("数据保存成功");
+            }
+            catch (Exception e)
+            {
+                result = OpResult.Fail("状态变更失败" + e.Message);
+            }
+            return result;
+        }
+        /// <summary>
+        /// 根据Id获得菜单
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="pobjid"></param>
+        /// <returns></returns>
+        public SysMenusExt GetModel(int id, int pobjid)
+        {
+            SysMenusExt obj = _dal.GetExtModel(id);
+            if (obj == null)
+            {
+                obj = new SysMenusExt();
+            }
+            if (pobjid != 0)
+            {
+                var pobj = _dal.GetByColumn(pobjid, "MenuId");
+                if (pobj != null)
+                {
+                    obj.PMenuId = pobj.MenuId;
+                    obj.PTitle = pobj.Title;
+                    obj.Type = pobj.Type;
+                }
+            }
+            return obj;
+        }
+        /// <summary>
+        /// 保存菜单
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveMenu(SysMenus model)
+        {
+            var result = OpResult.Fail("数据保存失败!");
+            try
+            {//todo: Set Depth
+                model.CompanyId = Sys.SysCommonRules.CompanyId;
+                if (_dal.ExistsById(model.Id))
+                {
+                    var re = _dal.Update(model);
+                    if (re) { result = OpResult.Success("数据保存成功"); }
+                }
+                else
+                {
+                    var maxObjId = _dal.MaxVal("MenuId",SysCommonRules.CompanyId);
+                    model.MenuId = maxObjId + 1;
+                    model.SortOrder = _dal.GetMenuMaxIndex(model.PMenuId) + 1;
+                    var re = _dal.Insert(model);
+                    if (re > 0) { result = OpResult.Success("数据保存成功"); }
+                }
+            }
+            catch (Exception ex)
+            {
+                result = OpResult.Fail("数据保存失败!" + ex.Message);
+                new LogEngine().WriteError(ex);
+            }
+            return result;
+        }
+        /// <summary>
+        /// 删除菜单
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public bool Delete(int id)
+        {
+            return _dal.Delete(id);
+        }
+
+        public bool Delete(params object[] ids)
+        {
+            return _dal.Delete(ids);
+        }
+        #endregion
+    }
+}

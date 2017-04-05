@@ -1,0 +1,61 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideTrun = false;
+    var hideDel = false;
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增", delText: "删除邮件", hideEdit: false,hideAdd:true,hideDel:hideDel));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.RadioButtonList(ViewBag.states as List<SelectListItem>, "State", new { style = "height:30px;" })
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input type="text" class="datacontrol easyui-textbox" name="searchText" data-options="prompt:'主题'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if(!hideTrun)
+    { 
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="trunsfer()">转发</a>
+    }
+}
+
+<script>
+    pharos.manager.geturl = "@Url.Action("OutboxList")";
+    pharos.manager.editurl = "@Url.Action("Send")";
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Attach', title: '附件', width: 50 },
+        { field: 'Receiver', title: '收件人', width: 120 },
+        { field: 'Title', title: '主题', width: $(this).width() * 0.6 },
+        { field: 'StateTitle', title: '状态', width: 50 },
+        { field: 'CreateDT', title: '时间', width: 150 }
+    ]];
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        var w = $(window.parent).width() - 80;
+        var h = $(window.parent).height() - 80;
+        openDialog("查看邮件内容", this.editurlNocache(), w, h, true);
+    }
+    function trunsfer() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var w = $(window.parent).width() - 80;
+        var h = $(window.parent).height() - 80;
+        openDialog("转发", pharos.manager.editurlNocache() + "&id=" + rows[0].Id + "&reback=2", w, h, true);
+    }
+</script>
+
+

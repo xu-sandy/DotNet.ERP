@@ -1,0 +1,139 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Sys.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+
+
+namespace Pharos.Logic.BLL
+{
+    public class IntegralRuleService : BaseService<IntegralRule>
+    {
+        public OpResult CreateIntegralRule(IntegralRule rule)
+        {
+            return IntegralRuleService.Add(rule);
+        }
+
+        public object FindIntegralRuleList(short ruleTypeId, string value, out int count)
+        {
+            var query = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId);
+            count = query.Count();
+            if (count > 0)
+            {
+                var result = (from a in query
+                              join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                              on a.CreateUID equals b.UID
+                              select new
+                              {
+                                  Id = a.Id,
+                                  State = a.State,
+                                  ExpiryStart = a.ExpiryStart,
+                                  ExpiryEnd = a.ExpiryEnd,
+                                  UseUsers = a.UseUsers,
+                                  Condition = a.Condition,
+                                  ReturnValue = a.ReturnValue,
+                                  InContainsPromotion = a.InContainsPromotion,
+                                  RuleTypeId = a.RuleTypeId,
+                                  RuleTypeValue = a.RuleTypeValue,
+                                  CreateDT = a.CreateDT,
+                                  CreateUID = b.FullName,
+                                  ConverRatio = a.ConverRatio
+                              }).ToPageList();
+
+
+                var _list = new List<IntegralRule>();
+                foreach (var item in result)
+                {
+                    IntegralRule _rule = new IntegralRule();
+                    item.ToCopyProperty(_rule);
+                    _list.Add(_rule);
+                }
+
+
+
+
+                foreach (var item in _list)
+                {
+                    switch (item.RuleTypeId)
+                    {
+                        case 2:
+                            var apiPay = BaseService<SysDataDictionary>.CurrentRepository.Entities.Where(o => ("," + item.RuleTypeValue + ",").Contains("," + o.DicSN + ",")).ToList();
+                            if (apiPay != null)
+                            {
+                                item.RuleTypeValue = "";
+                                foreach (var itm in apiPay)
+                                {
+                                    item.RuleTypeValue += ("," + itm.Title);
+                                }
+                            }
+                            break;
+                        case 3:
+                            var category = BaseService<ProductCategory>.CurrentRepository.Entities.Where(o => (o.CategorySN.ToString() == item.RuleTypeValue)).ToList();
+                            if (category != null)
+                            {
+                                item.RuleTypeValue = "";
+                                foreach (var itm in category)
+                                {
+                                    item.RuleTypeValue += ("," + itm.Title);
+                                }
+                            }
+                            break;
+                    }
+                    item.RuleTypeValue = item.RuleTypeValue.TrimStart(',');
+
+                }
+
+
+                return _list;
+            }
+            else
+            {
+                return new IntegralRule();
+            }
+        }
+
+        public OpResult UpdateIntegralRule(string ids, short state)
+        {
+            try
+            {
+                var updateData = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ","));
+                if (updateData.Count() > 0)
+                {
+                    foreach (var item in updateData)
+                    {
+                        if (item.State != state)
+                        {
+                            item.State = state;
+                        }
+                    }
+                    var result = CurrentRepository.Update(new IntegralRule());
+                    if (result)
+                    {
+                        return new OpResult() { Successed = true, Message = "操作成功！" };
+                    }
+                    else
+                    {
+                        return new OpResult() { Successed = true, Message = "无数据更新！" };
+                    }
+                }
+                else
+                {
+                    return new OpResult() { Successed = true, Message = "未找到对应数据！" };
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        public IntegralRule GetIntegralRuleById(int id)
+        {
+            return CurrentRepository.QueryEntity.Where(o => o.Id == id).FirstOrDefault();
+        }
+    }
+}

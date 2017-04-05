@@ -1,0 +1,100 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// ZhiFuBaoZhiFu.xaml 的交互逻辑
+    /// </summary>
+    public partial class ZhiFuBaoZhiFu : DialogWindow02
+    {
+        /// <summary>
+        /// 抹零后
+        /// </summary>
+        public decimal WipeZeroAfter { get; set; }
+
+        /// <summary>
+        /// 抹零
+        /// </summary>
+        public decimal WipeZero { get; set; }
+        public ZhiFuBaoZhiFu(decimal amount, PayAction mode, int reason, PayAction _action)
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+
+            var isWipeZero = Global.MachineSettings.MachineInformations.IsNonCashWipeZero;
+            if (isWipeZero)
+            {
+                WipeZeroAfter = Math.Round(amount, 1, MidpointRounding.AwayFromZero);//摸零后
+            }
+            else
+            {
+                WipeZeroAfter = amount;
+            }
+
+            //WipeZeroAfter = Math.Round(amount, 1, MidpointRounding.AwayFromZero);//摸零后
+            WipeZero = WipeZeroAfter - amount;//摸零金额
+            Task.Factory.StartNew(() =>
+            {
+                MachineInformations _machineInfo = Global.MachineSettings.MachineInformations;
+                List<PayWay> payWay = new List<PayWay>();
+                PayWay _payWay = new PayWay()
+                {
+                    Amount = WipeZeroAfter,
+                    Change = 0,
+                    Receive = WipeZeroAfter,
+                    Type = PayMode.Zhifubao,
+                    WipeZero = WipeZero
+                };
+                payWay.Add(_payWay);
+                ApiPayParams _params = new ApiPayParams()
+                {
+                    StoreId = _machineInfo.StoreId,
+                    MachineSn = _machineInfo.MachineSn,
+                    CompanyToken = _machineInfo.CompanyToken,
+                    Mode = _action,
+                    Receivable = WipeZeroAfter,
+                    Payway = payWay,
+                    OrderAmount = amount,
+                    Reason = reason,
+                    OldOrderSn = (RefundChangeViewModel.Current!=null? RefundChangeViewModel.Current.RefundOrder.PaySn:"")
+                };
+                var result = ApiManager.Post<ApiPayParams, ApiRetrunResult<ApiPayResult>>(@"api/Pay", _params);
+                Application.Current.Dispatcher.Invoke(new Action(() =>
+                {
+                    if (result.Code == "200")
+                    {
+                        var model = new ZhiFuBaoPayViewModel(result.Result.Url, result.Result.PaySN, WipeZeroAfter, mode, result.Result.CreatDt);
+                        this.Dispatcher.Invoke(new Action(() =>
+                        {
+                            this.ApplyBindings(this, model);
+                        }));
+                        ////返回成功则打开微信支付界面
+                        //ZhiFuBaoZhiFu spage = new ZhiFuBaoZhiFu(result.Result.Url, result.Result.PaySN, Amount, Action);
+                        //spage.Owner = Application.Current.MainWindow;
+
+                        //CurrentWindow.Hide();
+                        //spage.ShowDialog();
+                        //CurrentWindow.Close();
+                    }
+                    else
+                    {
+                        Toast.ShowMessage(result.Message, Application.Current.MainWindow);
+                    }
+                }));
+
+
+            });
+        }
+    }
+}

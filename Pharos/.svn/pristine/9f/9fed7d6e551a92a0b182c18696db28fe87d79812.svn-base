@@ -1,0 +1,116 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.批发商_编辑批发商);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.批发商_查看批发商) && hideAdd;
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.批发商_移除批发商);
+    var hideType = !CurrentUser.HasPermiss(SysConstLimits.批发商_编辑分类);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增批发商", editText: "修改批发商", hideDel: true, hideAdd: hideAdd));
+}
+<style type="text/css">
+    .datagrid-cell {
+        word-wrap: break-word;
+        word-break: normal;
+    }
+</style>
+@section search{
+<table class="table-toolbar">
+    <tr>       
+        <td class="label-toolbar">
+            <label>关键词：</label>
+        </td>
+        <td class="input-toolbar">
+            <input id="Name" name="searchText" class="datacontrol easyui-textbox" placeholder="批发商名称/联系人/电话" data-options="prompt:'批发商名称/联系人/电话'" />
+        </td>
+    </tr>
+</table>
+}
+@section toolbar
+{
+@if (!hideType)
+{
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-category'" onclick="editWholesalerType()">商家分类</a>
+}
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="openDialog800('Excel文件导入','@Url.Action("Import")');window.top.$('#lbsave .l-btn-text').width(100).html('开始导入');">导入</a>
+@if (!hideType)
+{
+<select class="easyui-combobox datacontrol" id="slttype" data-options="onSelect:sltMove,url:'@Url.Action("GetList", "WholesalerType")'" style="width:180px;"></select>
+}
+}
+
+<script type="text/javascript">
+    function editWholesalerType() {
+        openWin({
+            'title': '商家分类', 'width': 600, 'height': 350, 'hideSave':true
+            , 'url': '@Url.Action("Save","WholesalerType")' + '?a=' + Math.random()
+        });
+    }
+    //pharos.dropdown['types'] = @Html.Raw(ViewBag.types)
+    function sltMove(record) {
+        //alert(record.value);
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = [];
+        $.each(rows, function (i, r) {
+            ids.push(r.Id);
+        });
+        $.post("@Url.Action("MoveType")", { ids: ids.join(), typeSn: record.value }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+                $("#slttype").combobox("setValue", "");
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        },"json");
+    }
+    function closeDialog() {
+        $("#slttype").combobox("reload");
+    }
+    pharos.manager.geturl = "@Url.Action("FindPageList")";
+    pharos.manager.editurl = "@Url.Action("Save")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ClassName', title: '分类', editor: { type: 'text', required: true }, width: 80 },
+        { field: 'Title', title: '批发商', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'MasterAccount', title: '帐号', width: 120 },
+        { field: 'Linkman', title: '联系人', width: 100 },
+        { field: 'MobilePhone', title: '手机号码', width: 100 },
+        { field: 'Tel', title: '电话号码', width: 100 },
+        { field: 'ApplyNum', title: '累计下单量', width: 80 },
+        { field: 'Designeer', title: '指派人', width: 80 },
+        {
+            title: '操作', field: 'Editor', width: 120, formatter: function (value, row, index) {
+                var html = " ";
+                if (row.ApplyNum <= 0) {
+                    html += "<a href='javascript:void(0)' onclick='pharos.manager.removeItem(\"" + row.Id + "\")'>[删除]</a>";
+                }
+                else {
+                    html += "<span style='color:#a3a3a3'>[删除]</span>";
+                }
+                return html;
+            }
+        }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 950, 'height': 450, 'url':this.editurlNocache()});
+    }
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        @if (showDetail)
+        {
+            @:openDialog(this.editText, this.editurlNocache(), 1000, 650,true);
+        }
+        else if (!hideAdd)
+        {
+            @:openDialog(this.editText, this.editurlNocache(), 1000, 650);
+        }
+    }
+    function editBefore(rowData, field, index, value) {
+        if (field == "Editor") {
+            return false;
+        }
+        return true;
+    }
+</script>

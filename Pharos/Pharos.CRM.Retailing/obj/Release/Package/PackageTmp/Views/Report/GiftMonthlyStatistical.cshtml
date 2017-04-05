@@ -1,0 +1,73 @@
+﻿@using Pharos.Utility.Helpers;
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+	ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true));
+	var storesData = ViewData["Stores"];
+}
+
+@section search{
+	<table class="table-toolbar">
+		<tr>
+			<td class="label-toolbar">
+				<label>月度：</label>
+			</td>
+			<td class="input-toolbar">
+                <input name="date" value="@DateTime.Now.ToString("yyyy-MM")" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM', isShowToday: false})" />
+			</td>
+			<td class="label-toolbar">
+				<label>供应商：</label>
+			</td>
+			<td class="input-toolbar">
+                @Form.Combobox("supplier", ViewBag.suppliers as List<SelectListItem>, dataOptions: "editable:false,panelHeight:'auto',panelMaxHeight:200")
+			</td>
+			<td class="label-toolbar">
+				<label>品类：</label>
+			</td>
+			<td class="input-toolbar">
+                @Form.CategoryCombobox("category",true)
+			</td>
+			<td class="label-toolbar">
+				<label>门店：</label>
+			</td>
+			<td class="input-toolbar">
+                @Form.Combobox("store", ViewBag.storeSelectItems as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelHeight:'auto',panelMaxHeight:200")
+			</td>
+		</tr>
+	</table>
+}
+@section toolbar
+{
+	<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出报表</a>
+}
+
+<script type="text/javascript">
+	pharos.manager.geturl = '@Url.Action("GiftMonthlyStatisticalPageList")';
+	pharos.manager.pagination = false;
+	pharos.manager.singleSelect=true;
+	pharos.manager.multiSort= false;
+	pharos.manager.fitColumns=true;
+	pharos.manager.fit=true;
+	pharos.manager.singleSelect=true;
+
+	pharos.manager.columns = [[
+		{ field: "store", title: '门店', width: 100 },
+		{ field: "riqi" , title: '日期', width: 100 },
+		{ field: "supplier" , title: '供应商名称', width: 100 },
+		{ field: "CategoryTitle", title: '品类', width: 100 },
+		{ field: "brand", title: '品牌', width: 100 },
+		{ field: "barcode", title: '条码', width: 100 },
+		{ field: "title", title: '商品名称', width: 100 },
+		{ field: "unit", title: '单位', width: 100 },
+		{ field: "num", title: '数量', width: 100 },
+		{ field: "price", title: '系统售价', width: 100 },
+		{ field: "total", title: '金额', width: 100 }
+		]];
+	function Export() {
+		var date = $("[name='date']").val();
+		if (!date) {
+			$.messager.alert("提示", "请先选择日期!"); return;
+		}
+		window.location.href = '@Url.Action("GiftMonthlyStatisticalExport")?type=1&' + $('#frmsearch').serialize();
+	}
+</script>

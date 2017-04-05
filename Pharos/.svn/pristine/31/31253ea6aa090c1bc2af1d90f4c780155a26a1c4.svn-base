@@ -1,0 +1,78 @@
+﻿using Newtonsoft.Json;
+using Pharos.Logic.ApiData.Pos.Sale.Barcodes;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Suspend
+{
+    //public class BarcodeJsonConverter : JsonConverter
+    public abstract class JsonCreationConverter<T> : JsonConverter
+    {
+        /// <summary>
+        /// Create an instance of objectType, based properties in the JSON object
+        /// </summary>
+        /// <param name="objectType">type of object expected</param>
+        /// <param name="jObject">
+        /// contents of JSON object that will be deserialized
+        /// </param>
+        /// <returns></returns>
+        protected abstract T Create(Type objectType, JObject jObject);
+
+        public override bool CanConvert(Type objectType)
+        {
+            return typeof(T).IsAssignableFrom(objectType);
+        }
+
+        public override object ReadJson(JsonReader reader,
+                                        Type objectType,
+                                         object existingValue,
+                                         JsonSerializer serializer)
+        {
+            // Load JObject from stream
+            JObject jObject = JObject.Load(reader);
+
+            // Create target object based on JObject
+            T target = Create(objectType, jObject);
+
+            // Populate the object properties
+            serializer.Populate(jObject.CreateReader(), target);
+
+            return target;
+        }
+
+        public override void WriteJson(JsonWriter writer,
+                                       object value,
+                                       JsonSerializer serializer)
+        {
+            serializer.Serialize(writer, value);
+        }
+    }
+
+    /// <summary>
+    /// 接口反序列化
+    /// </summary>
+    public class BarcodeConverter : JsonCreationConverter<IBarcode>
+    {
+        private int Token { get; set; }
+        private string StoreId { get; set; }
+        private string MachineSn { get; set; }
+        public BarcodeConverter(int token, string storeId, string machineSn)
+        {
+            Token = token;
+            StoreId = storeId;
+            MachineSn = machineSn;
+        }
+        protected override IBarcode Create(Type objectType, JObject jObject)
+        {
+            var barcodeStr = jObject["CurrentString"].ToString();
+            var saleStatus = (SaleStatus)jObject["Details"]["SaleStatus"].ToObject(typeof(SaleStatus));
+            if (saleStatus == SaleStatus.Promotion)
+                saleStatus = SaleStatus.Normal;
+            return BarcodeFactory.Factory(StoreId, MachineSn, Token, barcodeStr, saleStatus);
+        }
+    }
+}

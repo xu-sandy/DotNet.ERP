@@ -1,0 +1,133 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.BLL;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class MemberController : BaseController
+    {
+
+        [Ninject.Inject]
+        TradersService tradersService { get; set; }
+
+        [Ninject.Inject]
+        VisitTrackService visitTrackService { get; set; }
+
+        public ActionResult Index()
+        {
+            //跟踪状态
+            ViewBag.TrackStautsId = ListToSelect(tradersService.getDataList(205).Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+            return View();
+        }
+
+        public ActionResult FindPageList()
+        {
+            var count = 0;
+            var list = tradersService.GetPageList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+
+        /// <summary>
+        /// 获取省
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult getProvince()
+        {
+            var province = tradersService.getProvince();
+            return new JsonNetResult(province);
+        }
+
+        /// <summary>
+        /// 获取城市
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult getCity(int ProvinceID)
+        {
+            var city = tradersService.getCity(ProvinceID);
+            return new JsonNetResult(city);
+        }
+
+        /// <summary>
+        /// 获取区县
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult getDistrict(int CityID)
+        {
+            var district = tradersService.getDistrict(CityID);
+            return new JsonNetResult(district);
+        }
+
+        public ActionResult Save(int? id)
+        {
+
+
+            //商户分类
+            ViewBag.TraderType = ListToSelect(tradersService.getTraderTypeList().Select(o => new SelectListItem() { Value = o.TraderTypeId.ToString(), Text = o.Title }), emptyTitle: "请选择");
+
+            //经营模式
+            var ss = ListToSelect(tradersService.getDataList().Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+            ViewBag.ModeId = ListToSelect(tradersService.getDataList().Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+
+            //经营类目
+            ViewBag.BusinessScopeId = tradersService.getBusinessList();
+
+            //跟踪状态
+            ViewBag.StautsId = ListToSelect(tradersService.getDataList(205).Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+
+            var obj = new Traders{ 
+            BusinessScopeId=""
+           };
+            if (id.HasValue)
+            {
+                obj = tradersService.GetOne(id.Value);
+            }
+            obj.CreateUID = tradersService.getFullName(obj.CreateUID);
+            //采购意向清单
+            ViewBag.OrderList = tradersService.getOrderList(obj.CID);
+            //回访小结
+            ViewBag.VisitTrack = visitTrackService.getVisitTrackList(obj.CID);
+            return View(obj.IsNullThrow());
+        }
+
+        /// <summary>
+        /// 保存、修改
+        /// </summary>
+        /// <param name="traders">商户资料</param>
+        /// <param name="h_OrderList">采购意向清单</param>
+        /// <param name="h_VisitTrack">回访小结</param>
+        /// <param name="BusinessScopeId">经营类目</param>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult Save(Traders traders, string h_OrderList, string h_VisitTrack, string[] BusinessScopeId)
+        {
+            var op = tradersService.save(traders, h_OrderList, h_VisitTrack, BusinessScopeId);
+            return new OpActionResult(op);
+        }
+
+        /// <summary>
+        /// 商户审核通过、设为无效商户
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult setStatus(string ids, short status)
+        {
+            return new JsonNetResult(tradersService.setStatus(ids, status));
+        }
+
+        [HttpPost]
+        public ActionResult Delete(int[] ids)
+        {
+            return new JsonNetResult(tradersService.Deletes(ids));
+        }
+    }
+}

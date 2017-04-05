@@ -1,0 +1,142 @@
+﻿using Pharos.Api.Retailing.Models;
+using Pharos.Logic.ApiData.Pos;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.User;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Web.Http;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.ApiData.Mobile.Services;
+
+namespace Pharos.Api.Retailing.Controllers
+{
+    /// <summary>
+    /// 登陆接口
+    /// </summary>
+    public class LoginController : ApiController
+    {
+        /// <summary>
+        /// 登录
+        /// </summary>
+        /// <param name="requestParams">登录参数</param>
+        /// <returns>返回结果</returns>
+        public object POST([FromBody]LoginRequest requestParams)
+        {
+            if (requestParams == null)
+            {
+                throw new PosException("501", "请求参数为空！");
+            }
+            if (string.IsNullOrEmpty(requestParams.Password) || string.IsNullOrEmpty(requestParams.Account))
+            {
+                throw new PosException("401", "账号或者密码为空！");
+            }
+            switch (requestParams.EntryPoint)
+            {
+                case EntryPoint.PosApp:
+                    return PosLogin(requestParams);
+                case EntryPoint.Mobile:
+                    return MobileLogin(requestParams);
+                default:
+                    throw new PosException("401", "未知登录入口！");
+            }
+        }
+        /// <summary>
+        /// POS登录
+        /// </summary>
+        /// <param name="requestParams"></param>
+        /// <returns></returns>
+        private object PosLogin(LoginRequest requestParams)
+        {
+            if (!MachinesSettings.HasRegister(requestParams.StoreId, requestParams.MachineSn, requestParams.CompanyToken, requestParams.DeviceSn, requestParams.DeviceType))
+            {
+                throw new LoginExecption("400", "设备尚未注册或未授权！");
+            }
+            //初始化数据
+            // var salesclerk = new Salesclerk();
+            var _Params = new LoginParams()
+            {
+                Account = requestParams.Account,
+                Password = requestParams.Password,
+                StoreId = requestParams.StoreId,
+                MachineSn = requestParams.MachineSn,
+                CompanyToken = requestParams.CompanyToken
+            };
+            //登录验证
+            return Salesclerk.Login(_Params, requestParams.InTestMode);
+        }
+
+        private object MobileLogin(LoginRequest requestParams)
+        {
+            var user = Logic.BLL.UserInfoService.GetUserAndSup(requestParams.Account, requestParams.Password);
+            if (user == null) throw new PosException("帐号或密码错误!");
+
+            var fullName = Convert.ToString(user.GetPropertyValue("FullName"));
+            var roleId = Convert.ToString(user.GetPropertyValue("RoleIds"));
+            var type = Convert.ToString(user.GetPropertyValue("Type"));
+            var userCode = Convert.ToString(user.GetPropertyValue("UserCode"));
+            var uid = Convert.ToString(user.GetPropertyValue("UID"));
+            var photoUrl = Convert.ToString(user.GetPropertyValue("PhotoUrl"));
+            if (roleId.IsNullOrEmpty() && type == "供应商")
+            {
+                return new
+                {
+                    UserCode = userCode,
+                    FullName = fullName,
+                    Type = "供应商",
+                    Account = requestParams.Account,
+                    OperateAuth = new List<object>() { new { id = 5, name = "供应商" } },
+                    IMPassport = "",
+                    PhotoUrl = photoUrl
+                };
+            }
+            else
+            {
+                var imPassport = string.Empty;
+                if (!uid.IsNullOrEmpty())
+                {//用户为“职员”时，返回环信通行证。环信ID、环信密码均使用后台用户UID，环信(ios)昵称使用FullName
+                    imPassport = ChatService.GetIMPassport(uid);
+                }
+
+                if (!roleId.IsNullOrEmpty())
+                {
+                    var roleIds = roleId.Split(',').Where(o => !o.IsNullOrEmpty()).Select(o => int.Parse(o)).ToList();
+                    var roles = Logic.BLL.RoleInfoService.FindList(o => roleIds.Contains(o.RoleId));
+                    if (roleIds.Contains(7) || roleIds.Contains(8) || roleIds.Contains(12))//采购经理,运营经理,盘点员
+                    {
+                        var list = roles.Select(o => new { id = o.RoleId == 7 ? 2 : o.RoleId == 8 ? 3 : o.RoleId == 12 ? 4 : o.RoleId + 100, name = o.Title });
+                        return new
+                        {
+                            UserCode = userCode,
+                            FullName = fullName,
+                            Type = "职员",
+                            Account = requestParams.Account,
+                            OperateAuth = list,
+                            IMPassport = imPassport,
+                            PhotoUrl = photoUrl
+                        };
+                    }
+                }
+                return new
+                {
+                    UserCode = userCode,
+                    FullName = fullName,
+                    Type = "职员",
+                    Account = requestParams.Account,
+                    OperateAuth = new List<object>() { new { id = 1, name = "普通职员" } },
+                    IMPassport = imPassport,
+                    PhotoUrl = photoUrl
+                };
+            }
+            //todo:
+            //var user = Logic.ApiData.Mobile.Services.UserInfoService.Login(requestParams.Account, requestParams.Password);
+            //var list=new List<object>(){new{id="1",name="店长"},new{id="2",name="营业员"},new{id="3",name="收银员"},new{id="4",name="数据维护"}};
+            //return new { account = user.LoginName, fullname = user.FullName, OperateAuth = list };
+        }
+    }
+
+}

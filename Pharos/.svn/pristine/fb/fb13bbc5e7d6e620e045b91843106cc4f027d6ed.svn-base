@@ -1,0 +1,37 @@
+﻿using Common.Logging;
+using Pharos.SyncService;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.ClientService
+{
+    class SyncServiceClientStartup
+    {
+        internal static Task AutoSync(CancellationToken token)
+        {
+            SyncController controller = new SyncController();
+            controller.Start();
+
+            return Task.Factory.StartNew(() =>
+            {
+                try
+                {
+                    controller.DoSynchronize();//初次启动立即执行一次完整同步
+                    token.ThrowIfCancellationRequested();
+                    Thread.Sleep(DateTime.Now.Date.AddHours(26) - DateTime.Now);//每天凌晨2点完成一次完整同步
+                }
+                catch (Exception ex)
+                {
+                    ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                    logger.Error(ex.Message, ex);
+                    //Do Log
+                }
+            }, token);
+        }
+    }
+}

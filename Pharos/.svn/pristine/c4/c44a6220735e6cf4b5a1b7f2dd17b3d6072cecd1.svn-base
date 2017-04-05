@@ -1,0 +1,124 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增角色", delText: "删除角色", editText: "修改角色", hideAdd: !CurrentUser.HasPermiss(222), hideEdit: !CurrentUser.HasPermiss(222), hideDel: !CurrentUser.HasPermiss(223)));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类型：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "默认", Value = "0", Selected = true }, new SelectListItem() { Text = "自定义", Value = "1", Selected = true } }, "Type")
+            </td>
+            <td width="30px"></td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "可用", Value = "True", Selected = true }, new SelectListItem() { Text = "停用", Value = "False", Selected = true } }, "Status")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if(CurrentUser.HasPermiss(224))
+    { 
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(1)">设为可用</a>
+    }
+    @if (CurrentUser.HasPermiss(225))
+    {
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(0)">设为停用</a>
+    }
+    @if (CurrentUser.HasPermiss(226))
+    {
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setDept()">设置适用机构部门</a>
+    }
+    @if (CurrentUser.HasPermiss(227))
+    {
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setMenu()">调整所选角色菜单顺序</a>
+    }
+}
+<script type="text/javascript">
+    pharos.manager.pagination = false;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'RoleId', title: '编号', width: 60 },
+        { field: 'StatusTitle', title: '状态', width: 60 },
+        { field: 'TypeTitle', title: '类型', width: 60 },
+        { field: 'Title', title: '角色名称', width: 100 },
+        { field: 'UserCount', title: '用户数', width: 70 },
+        { field: 'DepartMent', title: '适用机构部门', width: 200, formatter: function (value, row, index) { return value; } },
+        { field: 'Memo', title: '描述说明', width: 150 },
+        { field: 'UpdateDT', title: '编辑时间', width: 130 },
+        { field: 'CreateDT', title: '创建时间', width: 130 }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog1000(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (id,row) {
+        this.Id = id;
+        openDialog1000(this.editText, this.editurlNocache() + "&roleId=" + row.RoleId);
+    }
+    pharos.manager.viewInfo = function (id) {
+        this.Id = id;
+        openDialog1000(this.viewText, this.viewurlNocache(), false, true);
+    }
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.ajax({
+            type: 'post',
+            data: { id: ids, t: Math.random(), state: state },
+            url: "@Url.Action("SetState")",
+            success: function (data) {
+                pharos.manager.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "修改状态失败！", "info");
+            }
+        });
+    }
+    function setDept() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.RoleId;
+        }).join();
+        openDialog600("设置适用部门", "@Url.Action("SaveDept")?roleIds=" + ids);
+    }
+    function setMenu() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.RoleId;
+        }).join();
+        openDialog800("调整菜单顺序", "@Url.Action("MoveMenu")?roleIds=" + ids);
+        top.$("#lbsave").hide();
+    }
+    function removeBefore(row) {
+        if (row.Type == 0) {
+            $.messager.alert("提示", "该类型不能删除！", "error");
+            return false;
+        }
+        if (row.UserCount > 0) {
+            $.messager.alert("提示", "已存在人员关联不能删除！", "error");
+            return false;
+        }
+        return true;
+    }
+    function closeDialog() {
+        pharos.manager.gridReload();
+    }
+    function closeDialogBefore() {
+        var win = window.top.$('.formDiv:last iframe')[0].contentWindow;
+        var result = true; 
+        if (typeof win.checkClose == "function")
+            result= win.checkClose();
+        return result;
+    }
+</script>

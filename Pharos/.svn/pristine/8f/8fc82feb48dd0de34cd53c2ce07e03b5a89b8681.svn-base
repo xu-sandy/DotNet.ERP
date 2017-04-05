@@ -1,0 +1,117 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL商家登录账号
+    /// </summary>
+    public class TradersUserService : BaseService<TradersUser>
+    {
+        // 商家门店支付通道DAL
+        [Ninject.Inject]
+        ITradersPaySecretKeyRepository pRepository { get; set; }
+
+        // DAL商家登录账号
+        [Ninject.Inject]
+        TradersUserRepository tradersUserRepository { get; set; }
+
+        //商家门店
+        [Ninject.Inject]
+        IBaseRepository<TradersStore> tradersStoreRepository { get; set; }
+
+        //BLL商户资料
+        [Ninject.Inject]
+        TradersService tradersService { get; set; }
+
+        //BLL商家门店
+        [Ninject.Inject]
+        TradersStoreService tradersStoreService { get; set; }
+
+        /// <summary>
+        /// 获取CID
+        /// </summary>
+        public List<TradersStore> GetCIDStore(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            //关键字
+            var keyword = (nvl["keyword"] ?? "").Trim();
+            if (keyword == "")
+            {
+                keyword = "-1";
+            }
+            string keyw = "'" + keyword + "%'";
+            return tradersUserRepository.getCIDStore(" and CID like " + keyw);
+        }
+
+        /// <summary>
+        /// 获取商户全称
+        /// </summary>
+        /// <param name="CID"></param>
+        /// <returns></returns>
+        public string getTradersFullTitle(int CID)
+        {
+            string TradersFullTitle = "";
+            bool isCID = tradersStoreService.isExistByWhere(o=>o.CID==CID&&o.State==1);
+            if (isCID)
+            {
+                Traders traders = tradersService.GetEntityByWhere(o => o.CID == CID);
+                if (traders != null)
+                {
+                    TradersFullTitle = traders.FullTitle;
+                }
+                else
+                {
+                    TradersFullTitle = new Traders().FullTitle;
+                }
+            }
+            return TradersFullTitle;
+        }
+
+        /// <summary>
+        /// 获取门店编号
+        /// </summary>
+        /// <param name="CID"></param>
+        /// <returns></returns>
+        public List<TradersStore> getStoreNum(int CID)
+        {
+            var list = tradersStoreService.GetListByWhere(o=>o.State==1&&o.CID==CID).OrderBy(o=>o.CID).ToList();
+            List<TradersStore> list2 = new List<TradersStore>();
+            foreach(var v in list)
+            {
+                TradersStore tradersStore = new TradersStore();
+                tradersStore.StoreNumStr = v.StoreNum.ToString();
+                list2.Add(tradersStore);
+            }
+            list2.Insert(0, new TradersStore() { StoreNumStr="请选择" });
+            return list2;
+        }
+
+        /// <summary>
+        /// 获取门店全称
+        /// </summary>
+        /// <param name="TStoreInfoId"></param>
+        /// <returns></returns>
+        public TradersStore getStoreFullTitle(string TStoreInfoId)
+        {
+            TradersStore tradersStore = tradersStoreService.GetEntityByWhere(o=>o.TStoreInfoId==TStoreInfoId&&o.State==1);
+            if (tradersStore != null)
+            {
+                return tradersStore;
+            }
+            else
+            {
+                return new TradersStore();
+            }
+        }
+
+    }
+}

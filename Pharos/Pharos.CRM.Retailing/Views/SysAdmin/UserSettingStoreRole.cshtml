@@ -1,0 +1,100 @@
+﻿@model Pharos.Sys.Entity.SysStoreUserInfo
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm("UserSettingStoreRole", "SysAdmin", FormMethod.Post))
+    {
+        <input hidden="hidden" name="UID" value="@Model.UID" />
+        <input hidden="hidden" name="OperateAuth" id="OperateAuth" value="@Model.OperateAuth" />
+        <input hidden="hidden" name="oldOperateAuth" id="oldOperateAuth" value="@Model.OperateAuth" />
+    }
+</div>
+
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'center',split:false,border:false">
+        <table id="grid"></table>
+    </div>
+</div>
+
+<script type="text/javascript">
+    var fmthtml2 = "<input class='ck_item' type='checkbox' onclick='javascript:CheckItem(\"{0}\", \"{1}\")' data-storeroleid='{1}' data-storerolename='{2}' data-storeid='{3}' id='ck_{3}_{1}' />{2}&nbsp;&nbsp;&nbsp;";
+    var $grid = $('#grid');
+    var $values = $('#OperateAuth');
+    var $oldValues = $('#oldOperateAuth');
+    $grid.datagrid({
+        toolbar: '#toolbar',
+        border: false,
+        fit: true,
+        fitColumns: true,
+        url: "@Url.Action("GetUserSettingStoreRole")",
+        rownumbers: true,
+        singleSelect: true,
+        columns: [[
+            { title: '标识', field: 'StoreId', width: 50 },
+            { title: '门店名称', field: 'Title', width: 150 },
+            {
+                title: '选择门店角色', field: 'ItemsStr', width: 450, formatter: function (value, row) {
+                    var opeart = '';
+                    if (value != "" && value != null) {
+                        var arrVals = value.split('|');
+                        for (var i = 0; i < arrVals.length; i++) {
+                            var itemVal = arrVals[i].split(',');
+                            opeart += String.format(fmthtml2, [row.Id, itemVal[0], itemVal[1], row.StoreId]);
+                        }
+                    }
+                    return opeart;
+                }
+            }
+        ]],
+        onLoadSuccess: function () {
+            var oldVals = $oldValues.val();
+            if (oldVals != "" && oldVals != "-1") {
+                var items = oldVals.split("|");
+                for (var i = 0; i < items.length; i++) {
+                    _setChecked(items[i].split(','), true);
+                }
+            }
+        }
+    });
+    function SaveBefore() {
+        var values = _getCheckeds();
+        $values.val(values);
+        return true;
+    }
+
+    //操作子项
+    function CheckItem(id, objid) {
+        var row = _getSelectRow(id);
+    }
+    //获得当前行
+    function _getSelectRow(id) {
+        $grid.datagrid('select', id);
+        return $grid.datagrid('getSelected');
+    }
+    //获取所有勾选
+    function _getCheckeds() {
+        var s = '';
+        $('.ck_item').each(function (index, node) {
+            if ($(node).is(":checked")) {
+                s += $(node).data("storeid") + "," + $(node).data("storeroleid") + "|";
+            }
+        });
+        if (s.length > 0) {
+            s = s.substring(0, s.length - 1);
+        }
+        return s;
+    }
+    //设置勾选项
+    function _setChecked(objs, isck) {
+        var obj = $("#ck_" + objs[0] + "_" + objs[1]);
+        if (isck) {
+            obj.prop("checked", true);
+        }
+        else {
+            obj.prop("checked", false);
+        }
+    }
+</script>

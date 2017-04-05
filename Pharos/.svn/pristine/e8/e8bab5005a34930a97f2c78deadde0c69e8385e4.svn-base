@@ -1,0 +1,106 @@
+﻿@{
+    ViewBag.Title = "ProductWeight";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div style="height:40px;margin-top:10px; ">
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>门 店：</label>
+            </td>
+            <td class="label-toolbar">
+                <label id="store">@ViewBag.stores</label>
+            </td>
+            <td class="label-toolbar">
+                <label>选择秤号：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("scale", ViewBag.scale as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", @editable = "false" })
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("history", ViewBag.history as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", @editable = "false" })
+            </td>
+            <td class="input-toolbar" style="margin-left:20px;">
+                <a href="#" id="searchBtn" class="easyui-linkbutton cus4 linkbtn" data-options="iconCls:'icon-ok'" onclick="">开始发送</a>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div id="tt1" class="easyui-tabs" data-options="onSelect:function(title,index){}" style="height:auto;">
+    <div title=" 商品档案">
+
+        <div class="easyui-layout" data-options="fit:true">
+            <div data-options="region:'west',width:200">
+                <ul id="tree" class="easyui-tree" data-options="url:'@Url.Action("FindTreeList")',method:'post',onSelect:treeSelect,onBeforeSelect:treeBeforeSelect,onLoadSuccess:treeSuccess"></ul>
+            </div>
+            <div data-options="region:'center'">
+                <table id="grid"></table>
+            </div>
+        </div>
+
+    </div>
+    <div title="已选商品">
+        <table id="grid2"></table>
+    </div>
+</div>
+
+<script type="text/javascript">
+
+    $(function () {
+
+
+        $("#grid").datagrid({
+            url: "",
+            columns: [[
+        { field: 'Id', hidden: true, width: 60 },
+        { field: 'Member', title: '货号', width: 120 },
+        { field: 'OrderSn', title: '条码', width: 100 },
+        { field: 'Intergal', title: '品类', width: 60 },
+        { field: 'Unit', title: '品名', width: 60 },
+        { field: 'ReturnType', title: '规格', width: 60 },
+        { field: 'Adapter', title: '品牌', width: 80 },
+        { field: 'Condition', title: '售价', width: 160 },
+        { field: 'Memo', title: '单位', width: 130 },
+            ]],
+        })
+    });
+    @*pharos.manager.geturl = "@Url.Action("ProductWeightPageList")";
+    pharos.manager.columns = [[
+        { field: 'Id', hidden: true, width: 60 },
+        { field: 'Member', title: '货号', width: 120 },
+        { field: 'OrderSn', title: '条码', width: 100 },
+        { field: 'Intergal', title: '品类', width: 60 },
+        { field: 'Unit', title: '品名', width: 60 },
+        { field: 'ReturnType', title: '规格', width: 60 },
+        { field: 'Adapter', title: '品牌', width: 80 },
+        { field: 'Condition', title: '售价', width: 160 },
+        { field: 'Memo', title: '单位', width: 130 },
+    ]];*@
+
+    function treeSelect(node) {
+
+    }
+    function treeBeforeSelect(node) {
+
+    }
+    function treeSuccess(node, data) {
+        var bigsn = $("#BigCategorySN").val();
+        var midsn = $("#MidCategorySN").val();
+        var subsn = $("#CategorySN").val();
+        var node = null;
+        if (!isNull(subsn)) {
+            node = $("#tree").tree("find", subsn);
+        } else if (!isNull(midsn)) {
+            node = $("#tree").tree("find", midsn);
+        } else {
+            node = $("#tree").tree("find", bigsn);
+        }
+        //$('#tree').tree('select', node.target).tree("expandTo", node.target);
+    }
+    function isNull(obj) {
+        if (!obj) return true;
+        if (parseFloat(obj) <= 0) return true;
+        return false;
+    }
+</script>

@@ -1,0 +1,96 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增盘点", editText: "复盘", hideDel: true,hideAdd:true,hideEdit:false));
+}
+
+@section search{
+    <table class="table-toolbar" style="margin-left:1px;">
+        <tr>
+            <td class="label-toolbar">
+                <label>盘点门店:</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("storeId", ViewBag.shops as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,width:160,onSelect:storeSelect,validType:'requiredForCombo'" })
+            </td>
+            <td class="label-toolbar">
+                <label>盘点批次:</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("searchText", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" } }, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,width:120,validType:'requiredForCombo'" })
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus4 linkbtn" id="btnExcel" data-options="iconCls:'icon-export'" onclick="auditor()">审核通过</a>
+}
+
+<script type="text/javascript">
+    $(function () {
+        $("#btnExcel").insertAfter($("#searchBtn"));
+    });
+    pharos.manager.geturl = "@Url.Action("FindApprovalList")";
+    pharos.manager.columns = [[
+    { field: 'Id', checkbox: true,hidden:true },
+    { field: 'StoreTitle', title: '盘点门店', width: 100 },
+    { field: 'CheckBatch', title: '盘点批次', width: 100 },
+    { field: 'LockDate', title: '盘点日期', width: 140 },
+    { field: 'ProductCode', title: '货号', width: 100 },
+    { field: 'Barcode', title: '条码', width: 120 },
+    { field: 'Title', title: '品名', width: 150 },
+    { field: 'BrandTitle', title: '品牌', width: 80 },
+    { field: 'SubUnit', title: '单位', width: 60 },
+    { field: 'LockNumber', title: '锁库库存', width: 80 },
+    { field: 'ActualNumber', title: '实盘数量', width: 80 },
+    { field: 'CrrectNumber', title: '库存纠正数量', width: 80 },
+    { field: 'FullName', title: '盘点员', width: 100 },
+    {
+        title: '操作', field: 'Editor', width: 80, formatter: function (value, row, index) {
+            var html = "";
+            html = "<a href='javascript:void(0)' onclick='update(\"" + row.Id + "\")'>库存纠正</a>";
+            return html;
+        }
+    }
+    ]];
+    function storeSelect(record) {
+        if (!record.value) {
+            $("#searchText").combobox("clear");
+            return;
+        }
+        $.post("@Url.Action("StoreSelect")",{storeId:record.value,state:0,t:Math.random()},function(data){
+            $("#searchText").combobox("clear").combobox("loadData", data.batchs);
+        },"json");
+    }
+    function auditor() {
+        var batch = $("#searchText").combobox("getValue");
+        if (!batch) {
+            $.messager.alert("提示", "请选择盘点批次!"); return;
+        }
+        $.messager.confirm("提示", "是否确定设为审核通过?", function (r) {
+            if (!r)  return r;
+            $.post("@Url.Action("ApprovalPass")", { checkBatch: batch, t: Math.random() }, function (d) {
+                if (d.successed) {
+                    $.messager.alert("提示", "修改成功！", "info");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "修改失败！" + d.message, "error");
+                }
+            }, "json");
+        })
+    }
+    pharos.manager.editItem = function (Id,row) {
+        this.Id = Id;
+        openDialog600(this.editText, "@Url.Action("ReSave")?id=" + Id + "&ActualNumber=" + row.ActualNumber);
+    }
+    function editBefore(rowData, field, index, value) {
+        if (field == "Editor") {
+            return false;
+        }
+        return true;
+    }
+    function update(id) {
+        openDialog600("库存纠正", "@Url.Action("CrrectSave")?id=" + id);
+    }
+</script>

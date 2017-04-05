@@ -1,0 +1,82 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows.Input;
+using Newtonsoft.Json;
+using System.Threading.Tasks;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.PosModels;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class Product : BaseViewModel
+    {
+        public string Barcode { get; set; }
+        public string Title { get; set; }
+        public string Size { get; set; }
+        public string Brand { get; set; }
+        public string Category { get; set; }
+        public string Unit { get; set; }
+        public decimal Price { get; set; }
+        public decimal ActualPrice { get; set; }
+        public decimal Number { get; set; }
+        public bool EnableEditNum { get; set; }
+        public bool EnableEditPrice { get; set; }
+        public SaleStatus Status { get; set; }
+        public decimal Total { get; set; }
+        public string GiftId { get; set; }
+        public string GiftPromotionId { get; set; }
+
+        [JsonIgnore]
+        public ICommand RemoveCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        //sale
+                        // PosViewModel.Current.OrderList
+                        var _machineInfo = Global.MachineSettings.MachineInformations;
+                        SaleParams _params = new SaleParams() { StoreId = _machineInfo.StoreId, MachineSn = _machineInfo.MachineSn, Barcode = Barcode, Number = -1, Status = Status, CompanyToken = _machineInfo.CompanyToken };
+                        var result = ApiManager.Post<SaleParams, ApiRetrunResult<ApiSaleReturn>>(@"api/Sale", _params);
+
+                        if (result.Code == "200")
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                PosViewModel.Current.OrderList = result.Result.BuyList;
+                                PosViewModel.Current.Preferential = result.Result.Statistics.Preferential;
+                                PosViewModel.Current.Receivable = result.Result.Statistics.Receivable;
+                                PosViewModel.Current.Num = result.Result.Statistics.Num;
+                            }));
+                        }
+                        else
+                        {
+                            Toast.ShowMessage(result.Message, CurrentWindow);
+                        }
+                    });
+                });
+            }
+        }
+
+        public ICommand EditCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    ProductEditor page = new ProductEditor(new ProductEdit(this));
+                    page.Owner = CurrentWindow;
+                    page.ShowDialog();
+                });
+            }
+        }
+    }
+}

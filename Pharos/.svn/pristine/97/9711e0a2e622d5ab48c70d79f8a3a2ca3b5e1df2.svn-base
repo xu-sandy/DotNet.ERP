@@ -1,0 +1,307 @@
+﻿using Pharos.Logic.ApiData.Pos.Services;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Pharos.Logic.ApiData.Pos.User;
+using Pharos.Sys.BLL;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+
+namespace Pharos.Logic.ApiData.Pos.DataAdapter
+{
+    /// <summary>
+    /// 远程数据源适配器（for Sql Server）
+    /// </summary>
+    public class SqlServerDataAdapter : IDataAdapter
+    {
+        public string StoreId { get; set; }
+
+        public string MachineSN { get; set; }
+
+        public bool Enable
+        {
+            get { return SysStoreUserInfoService.CurrentRepository._context.Database.Exists(); }
+        }
+
+
+        public UserInfo GetUser(string account)
+        {
+            var result = SysStoreUserInfoService.GetStoreUserInfo(account, StoreId);
+            return result;
+        }
+
+
+        public ProductInfo GetProductInfoByBarcode(string barcode)
+        {
+            return ProductRecordService.GetProductRecod(barcode);
+        }
+
+
+        public ProductInfo GetProductInfoByProductCode(string productCode)
+        {
+            return ProductRecordService.GetProductRecodByProductCode(productCode);
+        }
+
+
+        public PageResult<InventoryResult> CheckedInventory(IEnumerable<int> categorySns, string keyword, int pageSize, int pageIndex)
+        {
+            return WarehouseService.CheckedInventory(StoreId, MachineSN, categorySns, keyword, pageSize, pageIndex);
+        }
+
+
+        public IEnumerable<UserInfo> GetStoreManagers(StoreOperateAuth storeOperateAuth)
+        {
+            return SysStoreUserInfoService.GetStoreManagers(StoreId, storeOperateAuth);
+        }
+
+
+        public string GetMemberId(string phone, string uid)
+        {
+            return MembersService.GetMemberId(StoreId, MachineSN, phone, uid);
+        }
+
+
+        public IEnumerable<CategoryDAO> GetStoreCategory()
+        {
+            return ProductCategorySerivce.GetStoreCategories(StoreId);
+        }
+
+
+        public PageResult<InventoryResult> CheckedPrice(IEnumerable<int> categorySns, decimal from, decimal to, int pageSize, int pageIndex)
+        {
+            return WarehouseService.CheckedPrice(StoreId, MachineSN, categorySns, from, to, pageSize, pageIndex);
+        }
+
+
+        public ProductInfo GetProductInfoFromBundlingByBarcode(string barcode)
+        {
+            return BundlingService.GetProductInfoFromBundlingByBarcode(StoreId, barcode);
+        }
+
+
+        public void PosIncomePayout(string uid, decimal money, PosIncomePayoutMode mode)
+        {
+            PosIncomePayoutService.Save(StoreId, MachineSN, uid, money, mode);
+        }
+
+
+        public BillHistoryInfo GetBillDetailsHistory(string paySn)
+        {
+            return SaleOrdersService.GetBillDetailsHistory(StoreId, MachineSN, paySn);
+        }
+
+        public IEnumerable<ReasonItem> GetReason(int mode)
+        {
+            int psn = mode == 1 ? 7 : 8;
+            var result = new SysDataDictionaryBLL().GetDicListByPSN(psn).Select(o => new ReasonItem()
+            {
+                DicSN = o.DicSN,
+                Title = o.Title
+            }).ToList();
+            return result;
+        }
+
+
+        public void Refund(List<ChangeRefundItem> refundList, int reason, string paySn, decimal amount, string uid)
+        {
+            try
+            {
+                var order = SaleOrdersService.CurrentRepository.Entities.FirstOrDefault(o => o.PaySN == paySn && o.StoreId == StoreId && o.State == 0);
+                if (order == null)
+                {
+                    throw new PosException("未查找到该订单，不允许退货！");
+                }
+                var returnId = Guid.NewGuid().ToString("N");
+                SalesReturnsService.CurrentRepository.Add(new Entity.SalesReturns()
+                {
+                    CreateDT = DateTime.Now,
+                    MachineSN = MachineSN,
+                    StoreId = StoreId,
+                    ReasonId = reason,
+                    ReturnId = returnId,
+                    ReturnPrice = amount,
+                    ReturnType = 0,
+                    State = 1,
+                    CreateUID = uid
+                }, false);
+                var details = SaleDetailService.CurrentRepository.Entities.Where(o => o.PaySN == paySn).ToList();
+                var dict = refundList.ToDictionary(o => o.Barcode, o => o.Number);
+                foreach (var item in details)
+                {
+                    if (refundList.Exists(o => o.Barcode == item.Barcode))
+                    {
+                        SalesReturnsDetailedService.CurrentRepository.Add(new Entity.SalesReturnsDetailed()
+                        {
+                            Barcode = item.Barcode,
+                            ReturnId = returnId,
+                            ReceiptsNumber = paySn,
+                            Number = dict[item.Barcode],
+                            Price = item.SysPrice,
+                            TradingPrice = item.ActualPrice
+                        }, false);
+                    }
+                }
+                SaleOrdersService.CurrentRepository.Update(order);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public void RefundAll(int reason, string paySn, decimal amount, string uid)
+        {
+            try
+            {
+                var order = SaleOrdersService.CurrentRepository.Entities.FirstOrDefault(o => o.PaySN == paySn && o.StoreId == StoreId && o.State == 0);
+                if (order == null)
+                {
+                    throw new PosException("未查找到该订单，不允许退货！");
+                }
+                var returnId = Guid.NewGuid().ToString("N");
+                SalesReturnsService.CurrentRepository.Add(new Entity.SalesReturns()
+                {
+                    CreateDT = DateTime.Now,
+                    MachineSN = MachineSN,
+                    StoreId = StoreId,
+                    ReasonId = reason,
+                    ReturnId = returnId,
+                    ReturnPrice = amount,
+                    ReturnType = 0,
+                    State = 1,
+                    CreateUID = uid
+                }, false);
+                var details = SaleDetailService.CurrentRepository.Entities.Where(o => o.PaySN == paySn).ToList();
+                foreach (var item in details)
+                {
+                    SalesReturnsDetailedService.CurrentRepository.Add(new Entity.SalesReturnsDetailed()
+                    {
+                        Barcode = item.Barcode,
+                        ReturnId = returnId,
+                        ReceiptsNumber = paySn,
+                        Number = item.PurchaseNumber,
+                        Price = item.SysPrice,
+                        TradingPrice = item.ActualPrice
+                    }, false);
+                }
+                order.State = 1;
+                order.ReturnId = returnId;
+                SaleOrdersService.CurrentRepository.Update(order);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+
+        public void RecordPayment(string paySn, decimal amount, int apiCode, string apiOrderSN = null, string cardNo = null)
+        {
+            ConsumptionPaymentService.Save(paySn, amount, apiCode, apiOrderSN, cardNo);
+        }
+
+
+        public void Change(List<ChangeRefundItem> changeList, int reason, string paySn, string newPaySn, decimal amount, string uid, string apiCodes)
+        {
+            try
+            {
+                var order = SaleOrdersService.CurrentRepository.Entities.FirstOrDefault(o => o.PaySN == paySn && o.StoreId == StoreId && o.State == 0);
+                if (order == null)
+                {
+                    throw new PosException("未查找到该订单，不允许退货！");
+                }
+                var returnId = Guid.NewGuid().ToString("N");
+                SalesReturnsService.CurrentRepository.Add(new Entity.SalesReturns()
+                {
+                    CreateDT = DateTime.Now,
+                    MachineSN = MachineSN,
+                    StoreId = StoreId,
+                    ReasonId = reason,
+                    ReturnId = returnId,
+                    ReturnPrice = amount,
+                    ReturnType = 1,
+                    State = 1,
+                    CreateUID = uid
+                }, false);
+                SaleOrdersService.CurrentRepository.Add(new Entity.SaleOrders()
+                {
+                    MachineSN = MachineSN,
+                    StoreId = StoreId,
+                    CreateDT = DateTime.Now,
+                    CreateUID = uid,
+                    Memo = "换货",
+                    PaySN = newPaySn,
+                    PreferentialPrice = 0,
+                    State = 0,
+                    Salesman = null,
+                    Type = 1,
+                    TotalAmount = amount,
+                    ApiCode = apiCodes,
+                    ReturnId = returnId,
+                }, false);
+                var details = SaleDetailService.CurrentRepository.Entities.Where(o => o.PaySN == paySn).ToList();
+                var dict = changeList.ToDictionary(o => o.Barcode, o => o.Number);
+                foreach (var item in details)
+                {
+                    if (changeList.Exists(o => o.Barcode == item.Barcode))
+                    {
+                        SalesReturnsDetailedService.CurrentRepository.Add(new Entity.SalesReturnsDetailed()
+                        {
+                            Barcode = item.Barcode,
+                            ReturnId = returnId,
+                            ReceiptsNumber = paySn,
+                            Number = dict[item.Barcode],
+                            Price = item.SysPrice,
+                            TradingPrice = item.ActualPrice
+                        }, false);
+                        SaleDetailService.CurrentRepository.Add(new Entity.SaleDetail()
+                        {
+                            Barcode = item.Barcode,
+                            PaySN = newPaySn,
+                            ActualPrice = item.SysPrice,
+                            BuyPrice = item.SysPrice,
+                            PurchaseNumber = dict[item.Barcode],
+                            SysPrice = item.SysPrice,
+                            SalesClassifyId = 47
+                        }, false);
+                    }
+                }
+                SaleOrdersService.CurrentRepository.Update(order);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+
+        public Entity.ApiLibrary GetApiSettings(int apiCode)
+        {
+            return ApiLibraryService.GetApiSettings(apiCode);
+        }
+
+
+        public IEnumerable<BillListItem> GetBills(DateTime date)
+        {
+            return SaleOrdersService.GetBills(StoreId, MachineSN, date);
+        }
+
+
+        public void RegisterDevice(string deviceSn, DeviceType type)
+        {
+            DeviceRegInfoService.RegisterDevice(StoreId, MachineSN, deviceSn, type);
+        }
+
+        public bool HasRegister(string deviceSn, DeviceType type)
+        {
+            return DeviceRegInfoService.HasRegister(StoreId, MachineSN, deviceSn, type);
+
+        }
+
+        public IEnumerable<Announcement> Announcements()
+        {
+            return NoticeService.Announcements(StoreId, MachineSN);
+        }
+
+    }
+}

@@ -1,0 +1,115 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增授权",editText:"编辑授权",delText:"删除授权",hideDel:false));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>审核状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select name="state" class="easyui-combobox" style="width:150px"><option value="" selected>全部</option><option value="0" >未审</option><option value="1" >已审</option><option value="2" >注销</option></select>
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'单位编号或名称',width:150" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(1)">设为已审</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(2)">设为注销</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="generateSerial()">生成序列号</a>
+}
+<script type="text/javascript">
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.State == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'State', title: '审核状态', editor: { type: 'text', required: true }, width: 70, formatter: function (value, row, index) { return value == 0 ? "未审" : value == 1 ? "已审" : "注销"; } },
+        { field: 'Code', title: '企业ID', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Category', title: '类别', editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) { return value == 1 ? "在线" : "独立"; } },
+        { field: 'Title', title: '单位简称', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'UserNum', title: '用户数', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'StoreNum', title: '门店数', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'StoreProper', title: '分店专属后台', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'AppProper', title: 'APP手机端', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'PosMinorDisp', title: 'POS次屏显示', editor: { type: 'text', required: true }, width:90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'SupplierProper', title: '供应商专属后台', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'WholesalerProper', title: '批发商专属后台', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'CreateDT', title: '开通时间', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'EffectiveDT', title: '生效日期', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'ValidityYear', title: '有效期(年)', editor: { type: 'text', required: true }, width: 70 },
+        { field: 'ExpirationDT', title: '截止日期', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'Useable', title: '可用状态', editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache(),true);
+    };
+    pharos.manager.editItem = function (id,row) {
+        this.Id = id;
+        if (row.State == 0 || row.State == 1)
+            openDialog800(this.editText, this.editurlNocache());
+        else
+            openDialogNew(this.editText, this.editurlNocache(),800,450,true);
+    }
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.each(rows, function (i, r) {
+            if (state == 1 && r.State != 0) {
+                $.messager.alert("提示", "请选择未审的记录!"); rows = null; return false;
+            }
+            if (state == 2 && r.State == 2) {
+                $.messager.alert("提示", "请选择未注销的记录!"); rows = null; return false;
+            }
+        })
+        if (!rows) return;
+        $.messager.confirm("提示", "是否确定改状态？", function (r) {
+            if (!r) return;
+            var ids= $.map(rows, function (r) { return r.Id;}).join();
+            $.post("@Url.Action("SetState")", {ids:ids,state:state}, function (json) {
+                if (json.successed) {
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "操作失败!" + json.message);
+                }
+            },"json");
+        });
+    }
+    function generateSerial(){
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var pass = true;
+        var codes = $.map(rows, function (r) {
+            if (!r.ExpirationDT) {
+                pass = false;
+                $.messager.alert("提示", "生效日期不能为空!");
+                return false;
+            }
+            else if (r.Useable=="N") {
+                pass = false;
+                $.messager.alert("提示", "请选择为可用状态!");
+                return false;
+            }
+            else if (r.State != 1) {
+                pass = false;
+                $.messager.alert("提示", "请选择为已审状态!");
+                return false;
+            }
+            return r.Code;
+        }).join();
+        if (!pass) return;
+        openDialog("生成系列号", "@Url.Action("GenerateSerial")?codes=" + codes, 600, 370, true);
+    }
+</script>

@@ -1,0 +1,48 @@
+﻿@model Dictionary<string, string>
+@{
+    ViewBag.Title = "GenerateSerial";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using(Html.BeginForm())
+    {
+        <table>
+            <tr><th width="100">企业ID</th><th width="300">序列号</th></tr>
+            @foreach(var de in Model)
+            { 
+            <tr><td align="center">@de.Key</td><td><div style="width:430px;word-wrap: break-word;word-break: normal;">@de.Value  <a href="javascript:void(0)" class="btn icon-copy" style="width:16px;height:16px;display:inline-block" title="复制" data-clipboard-text="@de.Value"></a> </div></td></tr>
+            }
+        </table>
+    }
+</div>
+<script src="~/Scripts/clipboard.min.js"></script>
+<script type="text/javascript">
+    var clipboard = new Clipboard('.btn');
+    clipboard.on('success', function (e) {
+        //console.log(e);
+        alert('copy成功！');
+    });
+    clipboard.on('error', function (e) {
+        //console.log(e);
+    });
+    function copy_code(copyText) {
+        if (window.clipboardData) 
+        {
+            window.clipboardData.setData("Text", copyText)
+        } 
+        else 
+        {
+            var flashcopier = 'flashcopier';
+            if(!document.getElementById(flashcopier)) 
+            {
+                var divholder = document.createElement('div');
+                divholder.id = flashcopier;
+                document.body.appendChild(divholder);
+            }
+            document.getElementById(flashcopier).innerHTML = '';
+            var divinfo = '<embed src="@Url.Content("~/scripts/_clipboard.swf")" FlashVars="clipboard=' + encodeURIComponent(copyText) + '" width="0" height="0" type="application/x-shockwave-flash"></embed>';
+            document.getElementById(flashcopier).innerHTML = divinfo;
+        }
+        alert('copy成功！');
+    }
+</script>

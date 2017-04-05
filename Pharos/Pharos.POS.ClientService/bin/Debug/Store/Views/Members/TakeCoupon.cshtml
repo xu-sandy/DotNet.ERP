@@ -1,0 +1,118 @@
+﻿@model CouponCardDetail
+@{
+    ViewBag.Title = "TakeCoupon";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%" height="117px">
+                <tr>
+                    <td class="name">批次：</td>
+                    <td class="input">
+                        @Html.DropDownListFor(o => o.BatchSN, ViewBag.batchSN as List<SelectListItem>, new { id = "batchSN", @class = "easyui-combobox", data_options = "validType:'requiredForCombo',onChange:batchSNChange " })
+                        <label id="msg" style="padding-left:10px;"></label>
+                        <input id="leftNum" type="hidden" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">领取数量：</td>
+                    <td class="input">
+                        @Html.TextBox("takeNum", "", new { @class = "easyui-validatebox", id = "TakeNumber", data_options = "required:true", @title = "领取数量不能大于剩余未领数量" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">券号范围：</td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.TicketNo, new { id = "ticketNoStart", @class = "easyui-textbox", data_options = "editable:false" }) - 
+                        @Html.TextBox("ticketNoEnd","", new { id = "ticketNoEnd", @class = "easyui-textbox", data_options = "editable:false" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">派发申领人：</td>
+                    <td class="input">
+                        <label>@ViewBag.recipientTitle</label>
+                    </td>
+                </tr>
+            </table>
+            <p style="margin-top:30px;">
+                说明：<br />
+                1)必须先选择批次，再填写领取数量；<br />
+                2)领取数量不能大于剩余未领数量；<br />
+                3)系统根据批次和领取数量按券号顺序自动给出券号范围；<br />
+            </p>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    //根据批次号获取未派发的优惠券总数
+    function batchSNChange(value)
+    {
+        $("#msg").text("");
+        if (value != undefined && value.length == 8) {
+            $.post("@Url.Action("GetCouponDetailCountByBatch")", { batchSN: value }, function (result) {
+                if (result.successed) {
+                    var cdCount = result.message;
+                    $("#msg").text("剩余" + cdCount + "张未领");
+                    $("#leftNum").val(cdCount);
+                } else {
+                    $.messager.alert("提示", result.message, "warning");
+                    $("#batchSN").focus();
+                }
+            }, "json");
+        }
+        $("#leftNum").val("0");
+        $("#TakeNumber").val("");
+        $("#ticketNoStart").textbox('setValue', "");
+        $("#ticketNoEnd").textbox('setValue', "");
+    }
+
+    $(function () {
+        //必须先选择批次，然后再填写领取数量
+        $("#TakeNumber").focus(function () {
+            var batchVal = $('#batchSN').combobox('getValue');  
+            if (batchVal == "")
+            {
+                $.messager.alert("提示", "请先选择批次", "warning");
+            }
+        })
+        //领取数量不能大于剩余未领数量
+        $("#TakeNumber").blur(function () {
+            var batchVal = $('#batchSN').combobox('getValue');  
+            var leftNum = $("#leftNum").val();
+            //$("#TakeNumber").validatebox("options").validType = 'lessThanMaxVal(this.value,leftNum)';
+            var takeNum = $("#TakeNumber").val();   
+            var isNum = /^[+]?[1-9]+\d*$/i.test(takeNum);
+            if (leftNum == "0") {
+                $.messager.alert("提示", "该批次不存在！", "warning");
+                $("#TakeNumber").val("");
+                $("#batchSN").focus();
+                return;
+            }
+            if (!isNum)
+            {
+                $.messager.alert("提示", "请输入正整数", "warning");
+                return;
+            }
+            if (Number(takeNum) > Number(leftNum)) {
+                $.messager.alert("提示", "领取数量不能大于剩余未领数量", "warning");
+                return;
+            }
+            else {
+                $.post("@Url.Action("GetTicketNos")", { batchSN: batchVal, takeCount: Number(takeNum) }, function (result) {
+                    if (result.successed) {
+                        var message = result.message.split(';'); 
+                        $("#ticketNoStart").textbox('setValue', message[0]);
+                        $("#ticketNoEnd").textbox('setValue', message[1]);
+                    } else {
+                        $.messager.alert("提示", result.message, "warning");
+                        $("#batchSN").focus();
+                    }
+                }, "json");
+            }
+        })
+    })
+</script>

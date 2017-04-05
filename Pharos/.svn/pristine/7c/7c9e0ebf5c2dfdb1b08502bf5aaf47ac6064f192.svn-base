@@ -1,0 +1,55 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ChildPagesModels;
+using Pharos.POS.Retailing.Models.Payment;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// PayCash.xaml 的交互逻辑
+    /// </summary>
+    public partial class PayCash : Window
+    {
+        public PayCash(BasePay payWay)
+        {
+            InitializeComponent();
+            this.InitPublicSettings();
+            CurrentViewModel = new PayCashModel() { Receivable = payWay.ThePayDetails.MoneyNeedPay };
+            this.DataContext = CurrentViewModel;
+            CurrentPayWay = payWay;
+
+        }
+        BasePay CurrentPayWay { get; set; }
+
+        PayCashModel CurrentViewModel { get; set; }
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+
+            if (CurrentViewModel.Receivable != 0 && CurrentViewModel.Receipt == 0)
+            {
+                Toast.DoShow("请输入实收金额！", this);
+            }
+            else if (CurrentViewModel.Receivable > CurrentViewModel.Receipt)
+            {
+                Toast.DoShow("实收金额不能小于应收金额！", this);
+            }
+            else if (CurrentViewModel.VerifySaleMan())
+            {
+                CurrentPayWay.ThePayDetails.SaleManUid = CurrentViewModel.SalesmanUid;
+                CurrentPayWay.ThePayDetails.Receipt = CurrentViewModel.Receipt;
+                CurrentPayWay.ThePayDetails.Change = CurrentViewModel.Change;
+                CurrentPayWay.SetComplete();
+                this.DialogResult = true;
+                this.Close();
+            }
+        }
+
+        private void btnBack_Click(object sender, RoutedEventArgs e)
+        {
+            PosMachine.Current.BillList.CannelDiscount();
+            this.DialogResult = false;
+            this.Close();
+        }
+
+    }
+}

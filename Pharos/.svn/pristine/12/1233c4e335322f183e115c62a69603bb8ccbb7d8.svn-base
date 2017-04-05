@@ -1,0 +1,97 @@
+﻿using Newtonsoft.Json;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class ActivityViewModel : BaseViewModel
+    {
+        public ActivityViewModel()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    var _machinesInfo = Global.MachineSettings.MachineInformations;
+                    BaseApiParams _params = new BaseApiParams()
+                    {
+                        StoreId = _machinesInfo.StoreId,
+                        MachineSn = _machinesInfo.MachineSn,
+                        CompanyToken = _machinesInfo.CompanyToken
+                    };
+                    var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<IEnumerable<Activity>>>(@"api/Activities", _params);
+                    CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                    {
+                        if (result.Code == "200")
+                        {
+                            Activities = result.Result;
+                            var count = Activities.Count();
+                            for (var i = 0; i < count; i++)
+                            {
+                                var item = Activities.ElementAt(i);
+                                item.CurrentWindow = CurrentWindow;
+                                item.No = i + 1;
+                            }
+                            this.OnPropertyChanged(o => o.Activities);
+                        }
+                        else
+                        {
+                            Toast.ShowMessage(result.Message, CurrentWindow);
+                        }
+                    }));
+                });
+            });
+        }
+
+        public IEnumerable<Activity> Activities { get; set; }
+    }
+    public class Activity : BaseViewModel
+    {
+        public int No { get; set; }
+        public string Theme { get; set; }
+
+        public int Id { get; set; }
+
+        [JsonIgnore]
+        public ICommand SetCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        ActivityParams _params = new ActivityParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CompanyToken = _machinesInfo.CompanyToken,
+                            ActivityId = Id
+                        };
+                        var result = ApiManager.Post<ActivityParams, ApiRetrunResult<IEnumerable<Activity>>>(@"api/Activities", _params);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            if (result.Code == "200")
+                            {
+                                PosViewModel.Current.ActivityTitle = Theme;
+                                CurrentWindow.Close();
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }
+                        }));
+                    });
+                });
+            }
+        }
+    }
+}

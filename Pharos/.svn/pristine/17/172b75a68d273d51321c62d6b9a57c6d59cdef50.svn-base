@@ -1,0 +1,75 @@
+﻿using Pharos.DBFramework;
+using Pharos.Logic.Entity;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.DAL
+{
+    internal class MakingCouponCardDAL
+    {
+        DBHelper db = new DBHelper();
+
+        //制作优惠券列表
+        internal DataTable FindCreateCouponPageList(Paging paging, int couponType, int couponFrom, short state, string storeIds, string expiryStart, string expiryEnd, string createUID)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@CouponType", couponType),
+                    new SqlParameter("@CouponFrom", couponFrom),
+                    new SqlParameter("@State", state),
+                    new SqlParameter("@StoreIds", storeIds),
+                    new SqlParameter("@ExpiryStart", expiryStart),
+                    new SqlParameter("@ExpiryEnd", expiryEnd),
+                    new SqlParameter("@CreateUID", createUID),
+                    new SqlParameter("@CurrentPage", paging.PageIndex),
+                    new SqlParameter("@PageSize", paging.PageSize),
+                    new SqlParameter("@CompanyId",Sys.SysCommonRules.CompanyId)
+                                   };
+            var result = db.DataTable("Rpt_MakingCouponCard", parms, ref paging);
+            return result;
+        }
+
+        /// <summary>
+        /// 获取品类列表
+        /// </summary>
+        /// <returns>品类列表</returns>
+        public DataTable GetCategoryList(string ProductCode)
+        {
+//            string sql = @"SELECT Id,CategorySN,
+//                        dbo.F_ProductCategoryDescForSN(a.CategorySN,1,1) BigCategoryTitle ,
+//                        dbo.F_ProductCategoryDescForSN(a.CategorySN,2,1) MidCategoryTitle ,
+//                        dbo.F_ProductCategoryDescForSN(a.CategorySN,3,1) SubCategoryTitle 
+//                        from ProductCategory a
+//                        where Grade=3 and State=1";
+//            var dt = db.DataTableText(sql, null);
+//            return dt;
+
+//            string sql = @"SELECT a.Id,
+//					dbo.F_ProductCategoryDescForSN(a.BarcodeOrCategorySN,3,1) SubCategoryTitle ,
+//                    dbo.F_ProductCategoryDescForSN(a.BarcodeOrCategorySN,2,1) MidCategoryTitle ,
+//                    dbo.F_ProductCategoryDescForSN(a.BarcodeOrCategorySN,1,1) BigCategoryTitle ,
+//                    a.BarcodeOrCategorySN CategorySN ,
+//					a.BrandSN,
+//					dbo.F_BrandNameForSN(a.BrandSN) BrandTitle,
+//					ISNULL((SELECT SUM(AcceptNums)-SUM(PurchaseNumbers) FROM Vw_Product WHERE CategorySN=a.BarcodeOrCategorySN AND BrandSN=a.BrandSN),0) StockNums
+//                 FROM PromotionBlendList a 
+//                WHERE  CommodityId =@CommodityId AND BlendType = @BlendType";
+//            var dt = db.DataTableText(sql, new SqlParameter[] { new SqlParameter("@CommodityId", CommodityId), new SqlParameter("@BlendType", type) });
+//            return dt;
+
+
+            string sql = @"SELECT 
+	                dbo.F_ProductCategoryDescForSN(b.Value,1,1) BigCategoryTitle ,
+	                dbo.F_ProductCategoryDescForSN(b.Value,2,1) MidCategoryTitle ,
+	                dbo.F_ProductCategoryDescForSN(b.Value,3,1) SubCategoryTitle 
+   	                from dbo.SplitString('" + ProductCode + "',',',1) b ";
+            var dt = db.DataTableText(sql, null);
+            return dt;
+        }
+
+    } 
+}

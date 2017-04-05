@@ -1,0 +1,40 @@
+﻿@model Pharos.Logic.Entity.MembershipCardSetting
+@{
+    ViewBag.Title = "MembershipCardSetting";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style>
+    .align {
+        text-align: right;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-form" width="100%" height="220px">
+                <tr>
+                    <td class="align">读卡规则设置：</td>
+                    <td>
+                        磁卡前缀字符：<input type="text" name="StartChar" class="easyui-textbox" style="width:100px" value="@Model.StartChar" data-options="validType:'length[0,1]'">,
+                        磁卡后缀字符：<input type="text" name="EndChar" class="easyui-textbox" style="width:100px" value="@Model.EndChar" data-options="validType:'length[0,1]'">,默认为空表四整行读取为卡号。
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>射频卡使用扇区（1-15）：<input type="text" name="BootSector" class="easyui-numberbox" style="width:100px" data-options="min:1,max:15" value="@Model.BootSector"></td>
+                </tr>
+                <tr>
+                    <td class="align">启用防伪验证：</td>
+                    <td><input type="checkbox" name="CheckSecuritycode" value="true" @(Model.CheckSecuritycode == true ? "checked" : "") />卡片、优惠券在使用时自动校验唯一防伪码。</td>
+                </tr>
+                <tr></tr>
+                <tr>
+                    <td></td>
+                    <td><a class="easyui-linkbutton cus4 linkbtn btn" href="#" onclick="$('form').submit()">保存</a></td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>

@@ -1,0 +1,241 @@
+﻿using Pharos.Logic.ApiData.Pos.User;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System.Collections.Generic;
+using Pharos.Logic.Entity;
+using System;
+using Pharos.Logic.ApiData.Pos.Sale.Marketings;
+using Pharos.Logic.ApiData.Pos.Sale;
+using Pharos.Logic.ApiData.Pos.Sale.AfterSale;
+
+namespace Pharos.Logic.ApiData.Pos.DataAdapter
+{
+    /// <summary>
+    /// 数据适配接口
+    /// </summary>
+    public interface IDataAdapter
+    {
+        /// <summary>
+        /// 门店Id
+        /// </summary>
+        string StoreId { get; set; }
+        /// <summary>
+        /// 设备编号
+        /// </summary>
+        string MachineSN { get; set; }
+
+        /// <summary>
+        /// 公司标识
+        /// </summary>
+        int CompanyToken { get; set; }
+        /// <summary>
+        /// 数据适配器是否可用
+        /// </summary>
+        bool Enable { get; }
+
+        /// <summary>
+        /// 由条码获取商品信息
+        /// </summary>
+        /// <param name="barcode"></param>
+        /// <returns></returns>
+        ProductInfo GetProductInfoByBarcode(string barcode);
+        /// <summary>
+        /// 由货号获取商品信息
+        /// </summary>
+        /// <param name="productCode"></param>
+        /// <returns></returns>
+        ProductInfo GetProductInfoByProductCode(string productCode);
+        /// <summary>
+        /// 获取捆绑商品
+        /// </summary>
+        /// <param name="barcode"></param>
+        /// <returns></returns>
+        ProductInfo GetProductInfoFromBundlingByBarcode(string barcode);
+        /// <summary>
+        /// 获取用户
+        /// </summary>
+        /// <param name="account"></param>
+        /// <returns></returns>
+        UserInfo GetUser(string account);
+        /// <summary>
+        /// 获取店长
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        IEnumerable<UserInfo> GetStoreManagers(StoreOperateAuth storeOperateAuth);
+        /// <summary>
+        /// 查库存
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <param name="machineSn"></param>
+        /// <param name="categorySns"></param>
+        /// <param name="barcode"></param>
+        /// <param name="productCode"></param>
+        /// <param name="productName"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="pageIndex"></param>
+        /// <returns></returns>
+        PageResult<InventoryResult> CheckedInventory(IEnumerable<int> categorySns, string keyword, int pageSize, int pageIndex);
+        /// <summary>
+        /// 查库存
+        /// </summary>
+        /// <param name="categorySns"></param>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="pageIndex"></param>
+        /// <returns></returns>
+        PageResult<InventoryResult> CheckedPrice(IEnumerable<int> categorySns, decimal from, decimal to, int pageSize, int pageIndex);
+
+        /// <summary>
+        /// 获取会员Id
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <param name="machineSn"></param>
+        /// <param name="phone"></param>
+        /// <returns></returns>
+        MemberInfo GetMemberInfo(string phone,string cardNo, string uid);
+        /// <summary>
+        /// 获取门店可销售产品分类
+        /// </summary>
+        /// <returns></returns>
+        IEnumerable<CategoryDAO> GetStoreCategory();
+
+
+        /// <summary>
+        /// 出入款
+        /// </summary>
+        /// <param name="cashierUid"></param>
+        /// <param name="password"></param>
+        /// <param name="money"></param>
+        /// <param name="mode"></param>
+        void PosIncomePayout(string uid, decimal money, PosIncomePayoutMode mode);
+
+        /// <summary>
+        /// 获取历史订单详细
+        /// </summary>
+        /// <param name="paySn"></param>
+        /// <returns></returns>
+        BillHistoryInfo GetBillDetailsHistory(string paySn);
+
+        /// <summary>
+        /// 获取退换货原因
+        /// </summary>
+        /// <param name="mode">1、换货原因；2、退货原因</param>
+        /// <returns></returns>
+        IEnumerable<ReasonItem> GetReason(int mode);
+
+        /// <summary>
+        /// 退货
+        /// </summary>
+        /// <param name="refundList"></param>
+        /// <param name="reason"></param>
+        /// <param name="paySn"></param>
+        /// <param name="amount"></param>
+        void Refund(List<ChangeRefundItem> refundList, int reason, string paySn, decimal amount, string uid);
+        /// <summary>
+        /// 整单退货
+        /// </summary>
+        /// <param name="reason"></param>
+        /// <param name="paySn"></param>
+        /// <param name="amount"></param>
+        void RefundAll(int reason, string paySn, decimal amount, string uid);
+
+        /// <summary>
+        /// 换货
+        /// </summary>
+        /// <param name="changeList"></param>
+        /// <param name="reason"></param>
+        /// <param name="paySn"></param>
+        /// <param name="amount"></param>
+        /// <param name="uid"></param>
+        void ChangeOrRefund(OrderChangeRefundSale changeList, int reason, MachineInformation machineInformation, string newPaySn, decimal amount, string uid, string apiCodes);
+        /// <summary>
+        /// 支付方式记录
+        /// </summary>
+        /// <param name="paySn"></param>
+        /// <param name="amount"></param>
+        /// <param name="apiCode"></param>
+        /// <param name="apiOrderSN"></param>
+        /// <param name="cardNo"></param>
+        void RecordPayment(string paySn, decimal amount, int apiCode, string apiOrderSN = null, string cardNo = null);
+        /// <summary>
+        /// 获取支付方式设置信息
+        /// </summary>
+        /// <param name="apiCode"></param>
+        /// <returns></returns>
+        ApiLibrary GetApiSettings(int apiCode);
+        /// <summary>
+        /// 按时间获取历史订单列表
+        /// </summary>
+        /// <param name="date"></param>
+        /// <returns></returns>
+        IEnumerable<BillListItem> GetBills(DateTime date);
+        /// <summary>
+        /// 注册设备
+        /// </summary>
+        /// <param name="deviceSn"></param>
+        /// <param name="type"></param>
+        void RegisterDevice(string deviceSn, DeviceType type);
+        /// <summary>
+        /// 验证设备是否已注册
+        /// </summary>
+        /// <param name="deviceSn"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        bool HasRegister(string deviceSn, DeviceType type);
+        /// <summary>
+        /// 获取公告
+        /// </summary>
+        /// <returns></returns>
+        IEnumerable<Announcement> Announcements();
+
+        /// <summary>
+        /// 获取门店促销信息(需要根据门店、有效性过滤)
+        /// </summary>
+        /// <returns></returns>
+        IEnumerable<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> GetMarketingRules();
+        /// <summary>
+        /// 获取已售促销量
+        /// </summary>
+        /// <param name="marketingId"></param>
+        /// <param name="mode"></param>
+        /// <returns></returns>
+        decimal GetMarketingRecordNumber(string marketingId, MarketingQuotaMode mode);
+        /// <summary>
+        /// 记录已售促销量
+        /// </summary>
+        /// <param name="marketingId"></param>
+        /// <param name="number"></param>
+        void SaveMarketingRecord(string marketingId, decimal number);
+        /// <summary>
+        /// 获取会员类型
+        /// </summary>
+        /// <param name="memberId"></param>
+        /// <returns></returns>
+        Sale.Members.CustomerType GetMemberType(string memberId);
+
+        /// <summary>
+        /// 保存销售订单
+        /// </summary>
+        /// <param name="shoppingCart"></param>
+        /// <param name="apiCodes"></param>
+        void SaveOrder(Sale.ShoppingCart shoppingCart,string apiCodes);
+
+        /// <summary>
+        /// 日结/月结
+        /// </summary>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <param name="range"></param>
+        /// <returns></returns>
+        DayReportResult DayMonthReport(DateTime from, DateTime to, Range range);
+
+        /// <summary>
+        /// 获取所有门店信息
+        /// </summary>
+        /// <returns></returns>
+        IEnumerable<WarehouseInformations> GetWarehouseInformations();
+
+        IEnumerable<Activity> Activities();
+    }
+}

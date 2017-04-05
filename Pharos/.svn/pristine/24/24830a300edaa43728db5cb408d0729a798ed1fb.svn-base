@@ -1,0 +1,42 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.BLL
+{
+    public class ProductBrandService : BaseService<Entity.ProductBrand>
+    {
+        public static List<Entity.ProductBrand> GetList(bool isAll = false)
+        {
+            if (isAll)
+            {
+                var all = FindList(null);
+                all.ForEach(a => { if (a.State == 0) a.Title = "*" + a.Title; });
+                return all.OrderByDescending(a => a.State).ThenBy(a => a.Title).ToList();
+            }
+            return FindList(o => o.State == 1).OrderBy(o => o.Title).ToList();
+        }
+        public static Dictionary<string, int> GetListByProduct(int subCate)
+        {
+            var query = BaseService<VwProduct>.CurrentRepository.QueryEntity;
+            var categorys = query.Where(o => o.BrandSN > 0 && o.CategorySN == subCate).Select(o => new { o.BrandSN, o.BrandTitle }).Distinct();
+            return categorys.ToDictionary(o => o.BrandTitle, o => o.BrandSN.GetValueOrDefault());
+        }
+        public static int MaxSN
+        {
+            get
+            {
+                int max = 0;
+                try
+                {
+                    max = CurrentRepository.QueryEntity.Max(o => o.BrandSN);
+                }
+                catch { max = 0; }
+                return max + 1;
+            }
+        }
+    }
+}

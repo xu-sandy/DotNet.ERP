@@ -1,0 +1,110 @@
+﻿<Window x:Class="Pharos.POS.Retailing.Login"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:Pharos.POS.Retailing"
+        Title="Login" Height="430" Width="750" WindowState="Normal" WindowStyle="None" Name="mainWindow" Icon="Images\favicon.ico"
+        AllowsTransparency="True" Background="Transparent" Padding="0"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles\LoginStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Window.Effect>
+        <DropShadowEffect ShadowDepth="0" BlurRadius="15" Opacity="0.8" Color="#80000000"></DropShadowEffect>
+    </Window.Effect>
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="150"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="30"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Image Grid.RowSpan="6" Stretch="Fill" Source="{Binding ElementName=mainWindow,Path=BackgroundImage}"></Image>
+        <Border Cursor="Hand" Padding="0" ToolTip="移动" VerticalAlignment="Top" BorderThickness="0" Margin="0" Background="#727275" Opacity="0.36" Height="30"  PreviewMouseLeftButtonDown="Title_MouseLeftButtonDown">
+        </Border>
+        <Grid  Cursor="Hand">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30"></RowDefinition>
+                <RowDefinition Height="*"></RowDefinition>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="35"></ColumnDefinition>
+                <ColumnDefinition Width="350*"></ColumnDefinition>
+                <ColumnDefinition Width="30"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Image  Width="25" Cursor="Hand" Margin="5" Source="Images\Login\logo.png" ToolTip="Logo,双击关闭" PreviewMouseLeftButtonDown="Logo_MouseDown"></Image>
+            <TextBlock Grid.Column="1" Margin="10,7,0,7" FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" VerticalAlignment="Center"  FontSize="12" Foreground="#cbcbcb" PreviewMouseLeftButtonDown="Title_MouseLeftButtonDown">欢迎使用 道诚科技 · 商业管理软件</TextBlock>
+            <Border Grid.Column="2" Padding="0" VerticalAlignment="Top" BorderThickness="0" ToolTip="关闭" Cursor="Hand" Margin="0" Background="#fff" Opacity="0.36" MouseDown="CloseImage_MouseDown">
+                <TextBlock Height="30" FontSize="25"  TextAlignment="Center" FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" Foreground="#aaa" TextDecorations="{x:Null}">×</TextBlock>
+            </Border>
+        </Grid>
+        <Border Grid.Row="1" VerticalAlignment="Center" Height="40" HorizontalAlignment="Center" Margin="240,0,240,0" Background="White" CornerRadius="5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="30"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Image Width="20" Margin="10,0,0,0" Source="Images\Login\user.png"/>
+                <TextBox Name="txtUserName" Text="{Binding UserName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" TabIndex="0" Grid.Column="1" FontSize="20"  Panel.ZIndex="2" Width="220" Height="35" Padding="10,5" Background="Transparent" BorderThickness="0"/>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13" Padding="10,3" Text="工号" Panel.ZIndex="1">
+                    <TextBlock.Resources>
+                        <conv:PasswordTagShowConverter x:Key="PasswordTagShowConverter"/>
+                    </TextBlock.Resources>
+                    <TextBlock.Style>
+                        <Style TargetType="{x:Type TextBlock}">
+                            <Setter Property="Foreground" Value="LightGray"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding UserName}" Value="">
+                                    <Setter Property="Foreground" Value="LightGray"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding UserName, Converter={StaticResource PasswordTagShowConverter}}" Value="False">
+                                    <Setter Property="Foreground" Value="Transparent"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </Border>
+
+
+        <Border Grid.Row="2" Height="40" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,10,0,0" Background="White" CornerRadius="5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="30"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Image Margin="10,0,0,0" Width="20" Source="Images\Login\lock.png"/>
+                <PasswordBox Name="pwdbox" Grid.Column="1" FontSize="20"  Panel.ZIndex="2" TabIndex="1" Width="220" Height="35" Padding="10,5" Background="Transparent" BorderThickness="0" PasswordChanged="PasswordBox_PasswordChanged" BorderBrush="Transparent">
+                </PasswordBox>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13" Padding="10,3" Text="密码" Panel.ZIndex="1">
+                    <TextBlock.Resources>
+                        <conv:PasswordTagShowConverter x:Key="PasswordTagShowConverter"/>
+                    </TextBlock.Resources>
+                    <TextBlock.Style>
+                        <Style TargetType="{x:Type TextBlock}">
+                            <Setter Property="Foreground" Value="LightGray"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Password}" Value="">
+                                    <Setter Property="Foreground" Value="LightGray"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Password, Converter={StaticResource PasswordTagShowConverter}}" Value="False">
+                                    <Setter Property="Foreground" Value="Transparent"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </Border>
+
+        <Button Name="btnLogin" Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center"  TabIndex="2" Command="{Binding ElementName=mainWindow,Path=LoginAction}"  CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}"  Style="{StaticResource BtnBase}" BorderThickness="0" Background="#20A393" Foreground="#eaeaea" FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" FontSize="16"  Height="40" Width="250" Content="登录"/>
+        <TextBlock MouseDown="Config_MouseDow" Grid.Row="4" FontSize="14" TextAlignment="Right" VerticalAlignment="Bottom" TextDecorations="Underline" Foreground="Blue" HorizontalAlignment="Left" Width="730"  Cursor="Hand" Margin="-15,0,0,0">设备配置</TextBlock>
+        <TextBlock Visibility="Collapsed" MouseDown="DataSync_MouseDown" Grid.Row="4" FontSize="14" TextAlignment="Right" VerticalAlignment="Bottom" TextDecorations="Underline" Margin="-80,0,0,0" Foreground="Blue" HorizontalAlignment="Left" Width="730" Cursor="Hand">数据同步</TextBlock>
+        <TextBlock Grid.Row="5" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,10,0" FontFamily="Khmer UI" FontSize="10" Foreground="#eaeaea">product version 2015</TextBlock>
+    </Grid>
+</Window>

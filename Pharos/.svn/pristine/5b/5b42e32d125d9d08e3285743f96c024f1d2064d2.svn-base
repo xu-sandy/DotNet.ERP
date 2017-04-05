@@ -1,0 +1,394 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.Sale.Barcodes;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Marketings
+{
+    /// <summary>
+    /// 促销活动管理器
+    /// </summary>
+    public class MarketingManager : IDisposable
+    {
+        private bool disposable = false;
+        public MarketingManager(string storeId, int token)
+        {
+            StoreId = storeId;
+            CompanyToken = token;
+
+            AutoRefreshInterval = MachinesSettings.ReloadMarketingInterval;
+            AutoRefresh();
+            CurrentRules = new List<MarketingRule>();
+            TimelinessTimes = new List<DateTime>();
+        }
+
+        /// <summary>
+        /// 自动刷新间隔（小时）
+        /// </summary>
+        public int AutoRefreshInterval { get; set; }
+
+        public int CompanyToken { get; set; }
+
+        /// <summary>
+        /// 当前促销规则
+        /// </summary>
+        public IEnumerable<MarketingRule> CurrentRules { get; private set; }
+        /// <summary>
+        /// 门店促销活动缓存
+        /// </summary>
+        private IEnumerable<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> CacheRules { get; set; }
+
+        /// <summary>
+        /// 时效时间
+        /// </summary>
+        private List<DateTime> TimelinessTimes { get; set; }
+
+        /// <summary>
+        /// 时效线程
+        /// </summary>
+        private Thread TimelinessThread { get; set; }
+
+        /// <summary>
+        /// 门店Id
+        /// </summary>
+        public string StoreId { get; set; }
+        public dynamic RunningStates()
+        {
+            if (CacheRules == null)
+            {
+                CacheRules = new List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>>();
+            }
+            if (CurrentRules == null)
+            {
+                CurrentRules = new List<MarketingRule>();
+            }
+            var result = new
+            {
+                StoreId,
+                CompanyToken,
+                TimelinessTimes = TimelinessTimes.Count,
+                TimelinessThread = (TimelinessThread != null),
+                CacheRules = CacheRules.Count(),
+                CurrentRules = CurrentRules.Count(),
+                Rules = CurrentRules.GroupBy(o => o.Type).ToDictionary(o => o.Key, o => o.Count())
+
+            };
+            return result;
+        }
+        /// <summary>
+        /// 加载促销信息
+        /// </summary>
+        /// <returns></returns>
+        private IEnumerable<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> Load()
+        {
+            var defualtDataAdapter = DataAdapterFactory.DefualtDataAdapter;
+            defualtDataAdapter.StoreId = StoreId;
+            defualtDataAdapter.CompanyToken = CompanyToken;
+            return defualtDataAdapter.GetMarketingRules();
+        }
+        /// <summary>
+        ///自动重载促销信息
+        /// </summary>
+        private void AutoRefresh()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                while (!disposable)
+                {
+                    try
+                    {
+                        CacheRules = Load();
+
+                        //刷新时效管理器
+                        if (TimelinessThread != null)
+                        {
+                            TimelinessThread.Abort();
+                            TimelinessThread = null;
+                        }
+                        TimelinessTimes.Add(DateTime.Now);
+                        TimeRangeManager();
+                    }
+                    catch { }
+
+                    //等待下次更新
+                    Thread.Sleep(new TimeSpan(0, AutoRefreshInterval, 0));
+                }
+            });
+        }
+
+
+
+        /// <summary>
+        /// 匹配促销信息
+        /// </summary>
+        /// <param name="shoppingCart">购物车</param>
+        /// <param name="outObj">输出促销匹配结果</param>
+        /// <returns>总额促销</returns>
+        public decimal Match(ShoppingCart shoppingCart, out IEnumerable<MarketingContext> outObj)
+        {
+            var tempRules = CurrentRules;//防止自动更新促销信息时，匹配促销活动方式资源争抢，造成死锁
+            var marketingGroups = tempRules.GroupBy(o => o.Type).OrderBy(p => p.Key).ToList();//促销优惠顺序 单品折扣-》买赠促销-》组合促销-》满元促销
+            List<MarketingContext> result = new List<MarketingContext>();
+            decimal totalPreferential = 0;
+            foreach (var child in marketingGroups)
+            {
+                List<MarketingRule> marketings;
+                if (child.Key == MarketingType.Manyuan)
+                {
+                    marketings = child.OrderByDescending(o => o.RuleNumber).ToList();//满元同等促销顺序 按最新规则金额为最优
+                }
+                else
+                {
+                    marketings = child.OrderByDescending(o => o.CreateRuleDate).ToList();//同等促销顺序 按最新创建日期为最优
+
+                }
+
+                foreach (var item in marketings)
+                {
+                    var context = item.Match(shoppingCart, StoreId);
+                    if (context != MarketingContext.Empty)
+                    {
+                        switch (context.MarketingRule.MarketingAction.MarketingActionMode)
+                        {
+                            case MarketingActionMode.DiscountAmount:
+                                if (context.MarketingRule.MeteringMode == MeteringMode.GuDingLiang)
+                                {
+                                    foreach (var product in context.MatchRanges)
+                                    {
+                                        var num = product.SaleNumber - context.MarketingRule.RuleNumber;
+                                        if (num > 0)
+                                        {
+                                            var barcode = BarcodeFactory.Factory(shoppingCart.MachineInformation.StoreId, shoppingCart.MachineInformation.MachineSn, shoppingCart.MachineInformation.CompanyToken, product.MainBarcode, product.Details.SaleStatus, product.Details.GiftId, product.Details.GiftPromotionId);
+                                            barcode.SaleNumber = num;
+                                            barcode.MarketingPrice = barcode.SalePrice;
+                                            barcode.Details.CollectionMarketingPrice = product.MarketingPrice;
+
+                                            barcode.Details.Total = barcode.SalePrice * num;
+                                            barcode.Details.SaleStatus = SaleStatus.Normal;
+                                            barcode.MarketingMarks = new List<MarketingRule>();
+                                            var index = shoppingCart.OrderList.IndexOf(product);
+                                            shoppingCart.OrderList.Insert(index + 1, barcode);
+                                            product.SaleNumber = context.MarketingRule.RuleNumber;
+
+                                        }
+                                        product.MarketingPrice = context.MarketingRule.MarketingAction.DiscountAmount / context.MarketingRule.RuleNumber;
+                                        product.Details.CollectionMarketingPrice = product.MarketingPrice;
+                                        product.Details.Total = context.MarketingRule.MarketingAction.DiscountAmount;
+                                        product.Details.SaleStatus = SaleStatus.Promotion;
+                                        product.Details.EnableEditNum = false;
+                                    }
+                                }
+                                break;
+                            case MarketingActionMode.RepetitionDiscountAmount:
+                                if (context.MarketingRule.MeteringMode == MeteringMode.GuDingLiang)
+                                {
+                                    foreach (var product in context.MatchRanges)
+                                    {
+                                        var saleNum = product.SaleNumber;
+                                        var num = saleNum % context.MarketingRule.RuleNumber;
+                                        var index = shoppingCart.OrderList.IndexOf(product);
+                                        product.SaleNumber = context.MarketingRule.RuleNumber;
+                                        product.MarketingPrice = context.MarketingRule.MarketingAction.DiscountAmount / context.MarketingRule.RuleNumber;
+                                        product.Details.CollectionMarketingPrice = product.MarketingPrice;
+                                        product.Details.Total = product.MarketingPrice * product.SaleNumber;
+                                        product.Details.SaleStatus = SaleStatus.Promotion;
+                                        var saleNumber = saleNum - num - context.MarketingRule.RuleNumber;
+                                        while (saleNumber > 0)
+                                        {
+                                            var barcode = BarcodeFactory.Factory(shoppingCart.MachineInformation.StoreId, shoppingCart.MachineInformation.MachineSn, shoppingCart.MachineInformation.CompanyToken, product.MainBarcode, product.Details.SaleStatus, product.Details.GiftId, product.Details.GiftPromotionId);
+
+                                            barcode.SaleNumber = context.MarketingRule.RuleNumber;
+                                            saleNumber -= context.MarketingRule.RuleNumber;
+                                            barcode.MarketingPrice = context.MarketingRule.MarketingAction.DiscountAmount / context.MarketingRule.RuleNumber;
+                                            barcode.Details.CollectionMarketingPrice = barcode.MarketingPrice;
+                                            barcode.Details.Total = barcode.MarketingPrice * barcode.SaleNumber;
+
+                                            barcode.Details.SaleStatus = SaleStatus.Promotion;
+                                            barcode.MarketingMarks = product.MarketingMarks;
+                                            shoppingCart.OrderList.Insert(++index, barcode);
+                                        }
+                                        if (num > 0)
+                                        {
+                                            var barcode = BarcodeFactory.Factory(shoppingCart.MachineInformation.StoreId, shoppingCart.MachineInformation.MachineSn, shoppingCart.MachineInformation.CompanyToken, product.MainBarcode, product.Details.SaleStatus, product.Details.GiftId, product.Details.GiftPromotionId);
+                                            barcode.SaleNumber = num;
+                                            barcode.MarketingPrice = barcode.SalePrice;
+                                            barcode.Details.CollectionMarketingPrice = product.MarketingPrice;
+
+                                            barcode.Details.Total = barcode.SalePrice * num;
+                                            barcode.Details.SaleStatus = SaleStatus.Normal;
+                                            barcode.MarketingMarks = new List<MarketingRule>();
+                                            shoppingCart.OrderList.Insert(++index, barcode);
+                                        }
+                                    }
+                                }
+                                break;
+                            case MarketingActionMode.Discount:
+                                foreach (var product in context.MatchRanges)
+                                {
+                                    product.MarketingPrice = product.MarketingPrice * (context.MarketingRule.MarketingAction.Discount / 10);
+                                    product.Details.CollectionMarketingPrice = product.MarketingPrice;
+                                    product.Details.Total = product.MarketingPrice * product.SaleNumber;
+                                    product.Details.SaleStatus = SaleStatus.Promotion;
+                                }
+                                break;
+                            case MarketingActionMode.NowCash:
+                                if (context.MarketingRule.IsRepeatMarketing)
+                                {
+                                    decimal multiple = 1m;
+                                    switch (context.MarketingRule.MeteringMode)
+                                    {
+                                        case MeteringMode.ManYuan:
+                                            multiple = (int)(context.ProductTotal / context.MarketingRule.RuleNumber);
+                                            break;
+                                        case MeteringMode.QiGouLiang:
+                                            multiple = (int)(context.ProductCount / context.MarketingRule.RuleNumber);
+                                            break;
+                                    }
+                                    totalPreferential += context.MarketingRule.MarketingAction.Amount * multiple;
+
+                                    foreach (var record in context.MatchRanges)
+                                    {
+                                        //record.Details.SaleStatus = SaleStatus.Promotion;
+                                        record.Details.CollectionMarketingPrice -= context.MarketingRule.MarketingAction.Amount * multiple * (record.Details.CollectionMarketingPrice / context.ProductTotal);
+                                    }
+                                }
+                                else
+                                {
+                                    totalPreferential += context.MarketingRule.MarketingAction.Amount;
+
+                                    foreach (var record in context.MatchRanges)
+                                    {
+                                        // record.Details.SaleStatus = SaleStatus.Promotion;
+                                        record.Details.CollectionMarketingPrice -= context.MarketingRule.MarketingAction.Amount * (record.Details.CollectionMarketingPrice / context.ProductTotal);
+                                    }
+                                }
+                                break;
+                            default:
+                                foreach (var record in context.MatchRanges)
+                                {
+                                    //record.Details.SaleStatus = SaleStatus.Promotion;
+                                }
+                                break;
+                        }
+                        result.Add(context);
+                    }
+                }
+            }
+            outObj = result;
+            return totalPreferential;
+        }
+        /// <summary>
+        /// 刷新促销规则托管
+        /// </summary>
+        private void RefreshHosted()
+        {
+            var cacheRules = CacheRules;
+            TimelinessTimes.Clear();
+            List<MarketingRule> rules = new List<MarketingRule>();
+            foreach (var item in cacheRules)
+            {
+                var now = DateTime.Now;
+                item.Value.Enable = true;
+                if (item.Key.StartTime <= now && item.Key.OverTime >= now)
+                {
+                    var ranges = item.Key.TimeRanges;
+                    if (ranges == null || ranges.Count() == 0)//无时效约束
+                    {
+                        rules.Add(item.Value);//启动规则
+                        TimelinessTimes.Add(item.Key.OverTime);//添加过期时间
+                    }
+                    else//有时效约束
+                    {
+                        foreach (var range in ranges)
+                        {
+                            var start = DateTime.Parse(range.Key);
+                            var end = DateTime.Parse(range.Value);
+                            if (start <= now && end >= now)
+                            {
+                                TimelinessTimes.Add(end);//添加时效约束
+                                rules.Add(item.Value);//启动规则
+                                TimelinessTimes.Add(item.Key.OverTime);
+
+                            }
+                            else if (start >= now)
+                            {
+                                TimelinessTimes.Add(start);//添加启动规则时间
+                            }
+                        }
+                    }
+                }
+                else if (item.Key.StartTime > now)
+                {
+                    TimelinessTimes.Add(item.Key.StartTime);//添加启动规则时间
+                }
+            }
+            var repeatRanges = rules.Where(o => o.Type == MarketingType.Danpinzhekou).GroupBy(o => o.BarcodeRange.FirstOrDefault());//处理单品折扣失效覆盖
+            foreach (var item in repeatRanges)
+            {
+                if (item.Count() > 1)
+                {
+                    var maxDate = item.Max(o => o.CreateRuleDate);
+                    foreach (var rule in item)
+                    {
+                        if (rule.CreateRuleDate != maxDate)
+                        {
+                            rule.Enable = false;
+                        }
+                        else
+                        {
+                            var cache = cacheRules.FirstOrDefault(o => o.Value == rule);
+                            TimelinessTimes.Add(cache.Key.OverTime);
+                        }
+                    }
+                }
+            }
+            CurrentRules = rules;
+        }
+
+
+        /// <summary>
+        /// 活动时效管理器
+        /// </summary>
+        private void TimeRangeManager()
+        {
+            var task = Task.Factory.StartNew(() =>
+             {
+                 TimelinessThread = Thread.CurrentThread;
+                 while (!disposable)
+                 {
+                     if (TimelinessTimes != null && TimelinessTimes.Count > 0)
+                     {
+                         var dates = TimelinessTimes.OrderBy(o => o);
+                         var date = dates.FirstOrDefault();
+                         var now = DateTime.Now;
+                         var timeSpan = date - now;
+                         if (date > now)
+                             Thread.Sleep(timeSpan);
+                         RefreshHosted();
+                     }
+                     else
+                     {
+                         Thread.Sleep(1000);
+                     }
+                 }
+             });
+        }
+
+        public void Dispose()
+        {
+            disposable = true;
+            if (TimelinessThread != null)
+                TimelinessThread.Abort();
+        }
+
+        ~MarketingManager()
+        {
+            Dispose();
+        }
+    }
+}

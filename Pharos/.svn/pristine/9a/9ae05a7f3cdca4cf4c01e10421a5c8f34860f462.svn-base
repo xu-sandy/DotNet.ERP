@@ -1,0 +1,526 @@
+﻿using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using System.Web.Mvc;
+using System.Data;
+
+namespace Pharos.Logic.BLL
+{
+    public class SaleOrdersService : BaseService<SaleOrders>
+    {
+        static readonly SaleOrderDAL saleOrderDal = new SaleOrderDAL();
+
+        public static List<DropdownItem> GetDataForSearch(string searchText, string searchField)
+        {
+            var list= saleOrderDal.GetDataForSearch(searchText, searchField, CommonService.CompanyId);
+            return list.Select(o => new DropdownItem(o)).ToList();
+        }
+        /// <summary>
+        /// 销售总额
+        /// </summary>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="uid"></param>
+        /// <param name="machineSn"></param>
+        /// <returns></returns>
+        public static decimal GetTotalSales(DateTime startTime, DateTime endTime, string uid, string machineSn)
+        {
+            return CurrentRepository.FindList(o => o.CreateDT >= startTime && o.CreateDT <= endTime && o.CreateUID == uid && o.MachineSN == machineSn)
+                .Select(o => (decimal?)o.TotalAmount)
+                .Sum() ?? 0;
+        }
+        /// <summary>
+        /// 获取销售中收银员
+        /// </summary>
+        /// <returns></returns>
+        public static List<SelectListItem> GetCashiers()
+        {
+            var uids = CurrentRepository.Entities.Select(o => o.CreateUID).Distinct().ToList();
+            var list = UserInfoService.FindList(o => uids.Contains(o.UID));
+            return list.Select(o => new SelectListItem()
+            {
+                Text = o.FullName,
+                Value = o.UID
+            }).ToList();
+        }
+        /// <summary>
+        /// 获取销售中导购员
+        /// </summary>
+        /// <returns></returns>
+        public static List<SelectListItem> GetSalers()
+        {
+            var uids = CurrentRepository.Entities.Select(o => o.Salesman).Where(o => o != null || o != "").Distinct().ToList();
+            var list = UserInfoService.FindList(o => uids.Contains(o.UID));
+            return list.Select(o => new SelectListItem()
+            {
+                Text = o.FullName,
+                Value = o.UID
+            }).ToList();
+        }
+
+        /// <summary>
+        /// 获得首页销售订单数据
+        /// </summary>
+        /// <param name="beginTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public static List<SaleOrders> GetIndexSaleOrder(DateTime beginTime, DateTime endTime, string storeId = "")
+        {
+            var query = CurrentRepository.QueryEntity.Where(o => o.CreateDT >= beginTime && o.CreateDT <= endTime && !o.IsTest && o.State==0 && o.Type==0);
+            if (!string.IsNullOrEmpty(storeId))
+                query = query.Where(o => o.StoreId == storeId);
+            var saleOrderList = query.ToList();
+            if (saleOrderList == null)
+                saleOrderList = new List<SaleOrders>();
+            return saleOrderList;
+        }
+
+
+        #region 销售管理
+
+        public static System.Data.DataTable QuerySaleOrdersPageList(NameValueCollection nvl, out int recordCount, out object footer)
+        {
+            recordCount = 0;
+            var nl = new NameValueCollection() { nvl };
+            if (nl["date"].IsNullOrEmpty() && nl["date2"].IsNullOrEmpty())
+            {
+                nl["date"] = DateTime.Now.ToString("yyyy-MM-dd");
+                nl["date2"] = DateTime.Now.AddDays(1).ToString("yyyy-MM-dd");
+            }
+            else if (!nl["date"].IsNullOrEmpty() && nl["date2"].IsNullOrEmpty())
+            {
+                nl["date2"] = DateTime.MaxValue.ToString("yyyy-MM-dd");
+            }
+            else if (nl["date"].IsNullOrEmpty())
+            {
+                nl["date"] = "2015-01-01";
+                nl["date2"] = DateTime.Parse(nl["date2"]).AddDays(1).ToString("yyyy-MM-dd");
+            }
+            else
+                nl["date2"] = DateTime.Parse(nl["date2"]).AddDays(1).ToString("yyyy-MM-dd");
+            var dt = saleOrderDal.QuerySaleOrdersPageList(nl);
+            if (nl["ispage"] != "0")//分页
+            {
+                if (dt.Rows.Count > 0)
+                {
+                    recordCount = Convert.ToInt32(dt.Rows[0]["RecordTotal"]);
+                }
+            }
+            decimal PurchaseNumberTotal = 0, AmountTotal = 0, PreferentialPriceTotal = 0;
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                PurchaseNumberTotal += Convert.ToDecimal(dt.Rows[i]["PurchaseNumber"]);
+                if (i == 0)
+                {
+                    AmountTotal += Convert.ToDecimal(dt.Rows[i]["TotalAmount"]);
+                    PreferentialPriceTotal += Convert.ToDecimal(dt.Rows[i]["PreferentialPrice"]);
+                }
+                else
+                {
+                    if (dt.Rows[i]["PaySN"].ToString() != dt.Rows[i - 1]["PaySN"].ToString())
+                    {
+                        AmountTotal += Convert.ToDecimal(dt.Rows[i]["TotalAmount"]);
+                        PreferentialPriceTotal += Convert.ToDecimal(dt.Rows[i]["PreferentialPrice"]);
+                    }
+                }
+            }
+            footer = new List<object>() { 
+                new {PurchaseNumber=PurchaseNumberTotal,TotalAmount=AmountTotal,PreferentialPrice=PreferentialPriceTotal,Title="本页合计:"}
+            };
+            return dt;
+        }
+
+        /// <summary>
+        /// /// 修改销售单信息
+        /// </summary>
+        /// <param name="paySN">订单流水号</param>
+        /// <param name="newPreferentialPrice">修改后的优惠合计</param>
+        /// <param name="newTotalAmount">修改后的金额合计（优惠后）</param>
+        /// <param name="changedDetailsStr">发生修改的订单明细的json字符串</param>
+        /// <param name="uid">操作者UID</param>
+        /// <returns></returns>
+        public static OpResult UpdateSaleOrder(string paySN, decimal newPreferentialPrice, decimal newTotalAmount, string changedDetailsStr, string uid)
+        {
+            var opResult = new OpResult();
+            try
+            {
+                var order = Find(o => o.PaySN == paySN && o.State == 0);
+                if (order == null)
+                {
+                    return OpResult.Fail("未查找到该订单，不允许退货！");
+                }
+
+                if (changedDetailsStr.IsNullOrEmpty())
+                {
+                    opResult = OpResult.Fail("订单未发生修改！");
+                }
+                else
+                {
+                    var returnId = CommonRules.GUID;
+                    var changedDetails = changedDetailsStr.ToObject<List<Pharos.Logic.Entity.SaleDetail>>();
+
+                    #region 更新 销售单、销售明细、退换单、退换明细
+                    BaseService<SalesReturns>.CurrentRepository.Add(new SalesReturns()
+                    {
+                        CreateDT = DateTime.Now,
+                        CreateUID = uid,
+                        MachineSN = "-1",
+                        ReasonId = 156,  // 对应字典类型“换货理由”下的“录错商品”
+                        ReturnId = returnId,
+                        ReturnPrice = 0,
+                        ReturnType = 3,
+                        Source = 1,
+                        State = 2,
+                        StoreId = order.StoreId
+                    }, false);
+
+                    var deletedDetailIds = changedDetails.Where(a => a.Id != -1).Select(a => a.Id).Distinct();
+                    if (deletedDetailIds.Any())
+                    {
+                        var deletedDetails = BaseService<SaleDetail>.FindList(a => deletedDetailIds.Contains(a.Id));
+                        if (deletedDetails.Any())
+                        {
+                            foreach (var deletedDetail in deletedDetails)
+                            {
+                                BaseService<SalesReturnsDetailed>.Add(new SalesReturnsDetailed()
+                                {
+                                    Barcode = deletedDetail.Barcode,
+                                    Number = deletedDetail.PurchaseNumber,
+                                    Price = deletedDetail.SysPrice,
+                                    TradingPrice = deletedDetail.ActualPrice,
+                                    ReceiptsNumber = deletedDetail.PaySN,
+                                    ReturnId = returnId,
+                                }, false);
+
+                                //更新 库存(回撤)
+                                InventoryService.UpdateStock(deletedDetail.Barcode, deletedDetail.PurchaseNumber, order.StoreId, deletedDetail.PaySN, 7, true);
+                            }
+                            SaleDetailService.CurrentRepository.RemoveRange(deletedDetails);
+                        }
+                    }
+
+                    var insertedDetails = changedDetails.Where(a => a.Id == -1).ToList();
+                    SaleDetailService.AddRange(insertedDetails);
+
+                    //更新 库存(扣除)
+                    foreach (var insertedDetail in insertedDetails)
+                    {
+                        InventoryService.UpdateStock(insertedDetail.Barcode, insertedDetail.PurchaseNumber, order.StoreId, insertedDetail.PaySN, 8, false);
+                    }
+                    #endregion
+
+                    BaseService<SaleOrderHistory>.Add(new SaleOrderHistory()
+                    {
+                        ReturnId = returnId,
+                        PaySN = order.PaySN,
+                        PreviousPreferentialPrice = order.PreferentialPrice,
+                        PreviousTotalAmount = order.TotalAmount
+                    }, false);
+
+                    order.PreferentialPrice = newPreferentialPrice;
+                    order.TotalAmount = newTotalAmount;
+                    order.ReturnId = order.ReturnId.IsNullOrEmpty() ? returnId : (order.ReturnId + "," + returnId);
+                    //是否要修改State字段？
+                    opResult = Update(order);
+                }
+            }
+            catch (Exception ex)
+            {
+                opResult.Message = ex.Message;
+                Log.WriteError(ex);
+            }
+            return opResult;
+        }
+        #endregion
+
+        public static OpResult Import(ImportSet obj, System.Web.HttpFileCollectionBase httpFiles, string fieldName, string columnName,ref DataTable dt)
+        {
+            var op = new OpResult();
+            var errLs = new List<string>();
+            int count = 0;
+            try
+            {
+                Dictionary<string, char> fieldCols = null;
+                op = ImportSetService.ImportSet(obj, httpFiles, fieldName, columnName, ref fieldCols, ref dt);
+                if (!op.Successed) return op;
+                var users= UserInfoService.GetList();
+                var barcodeIdx = Convert.ToInt32(fieldCols["Barcode"]) - 65;
+                var barcodes = dt.AsEnumerable().Select(o => o[barcodeIdx].ToString()).Distinct().ToList();
+                var products = ProductService.FindList(o => (barcodes.Contains(o.Barcode) || !(o.Barcodes == null || o.Barcodes == "")) && o.CompanyId == CommonService.CompanyId);
+                var payments = new List<ConsumptionPayment>();
+                count = dt.Rows.Count;
+                
+                foreach (var de in fieldCols)
+                {
+                    var idx = Convert.ToInt32(de.Value) - 65;
+                    var col = dt.Columns[idx];
+                    col.ColumnName = de.Key;
+                }
+                dt.Columns.Add("ApiTitle");
+                dt.Columns.Add("ValuationType");
+                dt.Columns.Add("ProductCode");
+                dt.Columns.Add("BuyPrice");
+                dt.Columns.Add("StoreId");
+                dt.Columns.Add("Receive");
+                dt.Columns.Add("SalesClassifyId2");
+                dt.Columns.Add("CreateUID2");
+                dt.Columns.Add("Salesman2");
+                object ApiOrderSN="",ApiTitle="", ApiCode_11 = 0, ApiCode_12 = 0, ApiCode_20 = 0, ApiCode_21 = 0, ApiCode_19 = 0, PreferentialPrice = 0, Change = 0, WipeZero = 0, TotalAmount = 0;
+
+                if (!dt.Columns.Contains("ApiOrderSN"))
+                {
+                    dt.Rows.Clear();
+                    errLs.Add("销售流水号位置未指定!");
+                }
+                else
+                {
+                    var apiOrderSns = dt.AsEnumerable().Select(o => o["ApiOrderSN"].ToString()).Distinct().Where(o=>!o.IsNullOrEmpty()).ToList();
+                    payments=ConsumptionPaymentService.FindList(o => apiOrderSns.Contains(o.ApiOrderSN));
+                }
+                if (!dt.Columns.Contains("SaleDate"))
+                {
+                    dt.Columns.Add("SaleDate");
+                    foreach (DataRow dr in dt.Rows)
+                        dr["SaleDate"] = DateTime.Now;
+                }
+                var removeDrs = new List<DataRow>();
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    var dr = dt.Rows[i];
+                    var text = dr["Barcode"].ToString();
+                    if(text.IsNullOrEmpty())
+                    {
+                        removeDrs.Add(dr);
+                        count--;
+                        continue;
+                    }
+                    var pro = products.FirstOrDefault(o => o.Barcode == text || ("," + o.Barcodes + ",").Contains("," + text + ","));
+                    if (pro==null)
+                    {
+                        errLs.Add("条码[" + text + "]不存在!");
+                        removeDrs.Add(dr);
+                        continue;
+                    }
+                    dr["ProductCode"] = pro.ProductCode;
+                    dr["BuyPrice"] = pro.BuyPrice;
+                    dr["ValuationType"] = pro.ValuationType;
+                    dr["StoreId"] = System.Web.HttpContext.Current.Request["storeId"];
+                    text = dr["Type"].ToString();
+                    dr["Type"] = text == "换货" ? "1" : text == "退换" ? "2" : text == "退单" ? "3" : "0";
+                    text = dr["CreateUID"].ToString();
+                    if(!text.IsNullOrEmpty())
+                    {
+                        var user = users.FirstOrDefault(o => o.FullName == text || o.UserCode == text);
+                        dr["CreateUID2"] = user == null ? "" : user.UID;
+                        if (user == null) dr["CreateUID"] = "";
+                    }
+                    text = dr["Salesman"].ToString();
+                    if (!text.IsNullOrEmpty())
+                    {
+                        var user = users.FirstOrDefault(o => o.FullName == text || o.UserCode == text);
+                        dr["Salesman2"] = user == null ? "" : user.UID;
+                        if (user == null) dr["Salesman"] = "";
+                    }
+                    text = dr["SalesClassifyId"].ToString();
+                    dr["SalesClassifyId2"] = text == "赠送" ? "49" : "47";
+
+                    var ApiOrderSNCur = dr.GetValue("ApiOrderSN"); var ChangeCur = dr.GetValue("Change");
+                    var ApiCode_11Cur = dr.GetValue("ApiCode_11"); var ApiCode_12Cur = dr.GetValue("ApiCode_12");
+                    var ApiCode_20Cur = dr.GetValue("ApiCode_20"); var ApiCode_21Cur = dr.GetValue("ApiCode_21");
+                    var ApiCode_19Cur = dr.GetValue("ApiCode_19"); var PreferentialPriceCur = dr.GetValue("PreferentialPrice");
+                    var WipeZeroCur = dr.GetValue("WipeZero"); var TotalAmountCur = dr.GetValue("TotalAmount");
+                    var apiTitleCur = "";
+                    if (!(ApiCode_11Cur is DBNull))
+                        apiTitleCur += "现金,";
+                    if (!(ApiCode_12Cur is DBNull))
+                        apiTitleCur += "银联,";
+                    if (!(ApiCode_20Cur is DBNull))
+                        apiTitleCur += "支付宝,";
+                    if (!(ApiCode_21Cur is DBNull))
+                        apiTitleCur += "微信,";
+                    if (!(ApiCode_19Cur is DBNull))
+                        apiTitleCur += "即付宝,";
+                    
+                    if (dr.GetValue("ApiOrderSN") is DBNull)
+                    {
+                        dr["ApiOrderSN"] = ApiOrderSN; dr.SetValue("Change",Change);
+                        dr.SetValue("ApiCode_11",ApiCode_11); dr.SetValue("ApiCode_12", ApiCode_12);
+                        dr.SetValue("ApiCode_20",ApiCode_20); dr.SetValue("ApiCode_21",ApiCode_21);
+                        dr.SetValue("ApiCode_19",ApiCode_19); dr.SetValue("PreferentialPrice",PreferentialPrice);
+                        dr.SetValue("WipeZero", WipeZero); dr.SetValue("TotalAmount",TotalAmount);
+                        dr.SetValue("ApiTitle", ApiTitle);
+                    }
+                    else
+                    {
+                        ApiOrderSN =ApiOrderSNCur;Change =ChangeCur;
+                        ApiCode_11 = ApiCode_11Cur; ApiCode_12 = ApiCode_12Cur;
+                        ApiCode_20 = ApiCode_20Cur; ApiCode_21 = ApiCode_21Cur;
+                        ApiCode_19 = ApiCode_19Cur; PreferentialPrice = PreferentialPriceCur;
+                        WipeZero = WipeZeroCur; TotalAmount = TotalAmountCur;
+                        dr["ApiTitle"] =ApiTitle= apiTitleCur.TrimEnd(',');
+                    }
+                    dr["Receive"] = (ApiCode_11Cur is DBNull ? 0 : Convert.ToDecimal(ApiCode_11Cur)) +
+                        (ApiCode_12Cur is DBNull ? 0 : Convert.ToDecimal(ApiCode_12Cur)) +
+                        (ApiCode_20Cur is DBNull ? 0 : Convert.ToDecimal(ApiCode_20Cur)) +
+                        (ApiCode_21Cur is DBNull ? 0 : Convert.ToDecimal(ApiCode_21Cur)) +
+                        (ApiCode_19Cur is DBNull ? 0 : Convert.ToDecimal(ApiCode_19Cur)) -
+                        (ChangeCur is DBNull ? 0 : Convert.ToDecimal(ChangeCur));
+                    
+                    text = dr["ApiOrderSN"].ToString();
+                    if (payments.Any(o => o.ApiOrderSN == text))
+                    {
+                        errLs.Add("销售流水号[" + text + "]已存在!");
+                        removeDrs.Add(dr);
+                    }
+                }
+                foreach (var dr in removeDrs)
+                    dt.Rows.Remove(dr);
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                op.Successed = false;
+                Log.WriteError(ex);
+                errLs.Add("导入出现异常!");
+            }
+            return CommonService.GenerateImportHtml(errLs, count);
+        }
+        public static OpResult SureImport(DataTable dt)
+        {
+            var op = new OpResult();
+            try
+            {
+                if (dt == null) return OpResult.Fail("请重新浏览文件!");
+                var saleOrders = new List<SaleOrders>();
+                var salelist = dt.AsEnumerable().GroupBy(o => new { ApiOrderSN = o["ApiOrderSN"].ToString(), CreateUID = o["CreateUID2"].ToString(),
+                                                                    PreferentialPrice = o["PreferentialPrice"].ToString(),Receive = o["Receive"].ToString(),TotalAmount = o["TotalAmount"].ToString(),
+                                                                    Type = o["Type"].ToString(),Salesman = o.GetValue("Salesman2").ToString(),StoreId = o.GetValue("StoreId").ToString(),
+                                                                    ApiCode_11 = o.GetValue("ApiCode_11").ToString(),ApiCode_12 = o.GetValue("ApiCode_12").ToString(),ApiCode_20 = o.GetValue("ApiCode_20").ToString(),
+                                                                    ApiCode_21 = o.GetValue("ApiCode_21").ToString(),ApiCode_19 = o.GetValue("ApiCode_19").ToString(),WipeZero = o.GetValue("WipeZero").ToString(),
+                                                                    Change=o.GetValue("Change").ToString()
+                }).ToList();
+                int i=1;
+                foreach (var sl in salelist)
+                {
+                    var sn = sl.Key.ApiOrderSN;
+                    var date = sl.Max(o => Convert.ToDateTime(o["SaleDate"]));
+                    var sale = new SaleOrders();
+                    sale.CustomOrderSn = GetPrefixSerialNumber(date) + (i++).ToString("0000");
+                    sale.MachineSN = "00";
+                    sale.CompanyId = CommonService.CompanyId;
+                    sale.CreateDT = Convert.ToDateTime(date);
+                    sale.PaySN = Pharos.Logic.CommonRules.GUID;
+                    sale.CreateUID = sl.Key.CreateUID;
+                    sale.Salesman = sl.Key.Salesman;
+                    sale.StoreId = sl.Key.StoreId;
+                    sale.InInventory = 1;
+                    sale.IsProcess = true;
+                    if (!sl.Key.PreferentialPrice.IsNullOrEmpty())
+                        sale.PreferentialPrice = Convert.ToDecimal(sl.Key.PreferentialPrice);
+                    if (!(sl.Key.Receive.IsNullOrEmpty()))
+                        sale.Receive = Convert.ToDecimal(sl.Key.Receive);
+                    if (!sl.Key.TotalAmount.IsNullOrEmpty())
+                        sale.TotalAmount = Convert.ToDecimal(sl.Key.TotalAmount);
+                    if (!sl.Key.Type.IsNullOrEmpty())
+                        sale.Type = Convert.ToInt16(sl.Key.Type);
+                    sale.SaleDetails = new List<SaleDetail>();
+                    sale.ConsumptionPayments = new List<ConsumptionPayment>();
+                    sale.WipeZeros = new List<WipeZero>();
+                    var payment = new ConsumptionPayment()
+                    {
+                        Amount = sale.TotalAmount,
+                        ApiOrderSN = sn,
+                        CompanyId = sale.CompanyId,
+                        PaySN = sale.PaySN,
+                        State = 1,
+                        Received = sale.Receive
+                    };
+                    if (!(sl.Key.ApiCode_11.IsNullOrEmpty()))
+                    {
+                        payment.ApiCode = 11;
+                        payment.Change = sl.Key.Change.IsNullOrEmpty() ? 0 : Convert.ToDecimal(sl.Key.Change);
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(sl.Key.ApiCode_12.IsNullOrEmpty()))
+                    {
+                        payment.ApiCode = 12;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(sl.Key.ApiCode_20.IsNullOrEmpty()))
+                    {
+                        payment.ApiCode = 20;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(sl.Key.ApiCode_21.IsNullOrEmpty()))
+                    {
+                        payment.ApiCode = 21;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(sl.Key.ApiCode_19.IsNullOrEmpty()))
+                    {
+                        payment.ApiCode = 19;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (sale.ConsumptionPayments.Count <= 0)
+                    {
+                        payment.ApiCode = 11;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(sl.Key.WipeZero.IsNullOrEmpty()))
+                    {
+                        sale.WipeZeros.Add(new WipeZero()
+                        {
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            Number = Convert.ToDecimal(sl.Key.WipeZero)
+                        });
+                    }
+                    foreach (DataRow dr in dt.Select("ApiOrderSN='" + sn + "'"))
+                    {
+                        var detail = new SaleDetail()
+                        {
+                            ActualPrice = Convert.ToDecimal(dr.GetValue("ActualPrice")),
+                            Barcode = dr.GetValue("Barcode").ToString(),
+                            BuyPrice = Convert.ToDecimal(dr.GetValue("BuyPrice")),
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            ProductCode = dr.GetValue("ProductCode").ToString(),
+                            PurchaseNumber = Convert.ToDecimal(dr.GetValue("PurchaseNumber")),
+                            SalesClassifyId = Convert.ToInt32(dr.GetValue("SalesClassifyId2")),
+                            ScanBarcode = dr.GetValue("Barcode").ToString(),
+                            SysPrice = Convert.ToDecimal(dr.GetValue("SysPrice")),
+                            Title = dr.GetValue("Title").ToString(),
+                        };
+                        sale.ProductCount += dr["ValuationType"].ToString() == "2" ? 1 : detail.PurchaseNumber;
+                        detail.Total = detail.PurchaseNumber * detail.ActualPrice;
+                        sale.SaleDetails.Add(detail);
+                    }
+                    sale.ApiCode = string.Join(",", sale.ConsumptionPayments.Select(o => o.ApiCode));
+                    saleOrders.Add(sale);
+                }
+                op=AddRange(saleOrders);
+                if(op.Successed) Log.WriteInsert("销售数据导入", Sys.LogModule.其他);
+            }catch(Exception ex)
+            {
+                op.Message = ex.Message;
+                op.Successed = false;
+                Log.WriteError(ex);
+            }
+            return op;
+        }
+        private static string GetPrefixSerialNumber(object date)
+        {
+            var datetime=DateTime.Now;
+            if (!(date is DBNull))
+                datetime = Convert.ToDateTime(date);
+            return "00" + datetime.ToString("yyyyMMdd");
+        }
+    }
+}

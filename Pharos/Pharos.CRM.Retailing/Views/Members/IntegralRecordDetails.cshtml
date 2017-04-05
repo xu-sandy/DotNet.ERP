@@ -1,0 +1,26 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增兑换单", delText: "移除", hideDel: true, hideAdd: true, hideSearch: true, hideEdit: true));
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("IntegralRecordDetailPageList")" + "?id=" + '@ViewBag.id';
+    pharos.manager.columns = [[
+        //{ field: 'Id', hidden: true, width: 60 },
+        { field: 'Id', title: '返赠id', width: 80 },
+        { field: 'Integral', title: '每期数值', width: 100 },
+        { field: 'InstalmentDT', title: '生效时间', width: 80 },
+        {
+            field: 'State', title: '状态', width: 80, formatter: function (value) {
+                switch (value) {
+                    case 0:
+                        return "未执行";
+                    case 1:
+                        return "已完成";
+                    case 2:
+                        return "已失效";
+                }
+            }
+        },
+    ]];
+</script>

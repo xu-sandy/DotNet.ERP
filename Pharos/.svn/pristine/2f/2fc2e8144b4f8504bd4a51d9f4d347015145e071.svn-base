@@ -1,0 +1,121 @@
+﻿<Window xmlns:Retailing="clr-namespace:Pharos.POS.Retailing"   x:Class="Pharos.POS.Retailing.ChildPages.RiJie"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:Helpers="clr-namespace:Pharos.POS.Retailing.Helper"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="800" Height="650" Icon="..\Images\rijie.png"
+        Title="日结操作"  WindowState="Normal" WindowStyle="None"   Style="{DynamicResource SkinWindowStyle}"
+        AllowsTransparency="True"  WindowStartupLocation="CenterScreen"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" 
+        Background="Transparent" BorderBrush="Transparent"
+        xmlns:sysglb="clr-namespace:System.Globalization;assembly=mscorlib"
+        Name="mainWindow">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\RiJieStyle.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="70"></RowDefinition>
+            <RowDefinition Height="200"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="150"></ColumnDefinition>
+                <ColumnDefinition Width="150"></ColumnDefinition>
+                <ColumnDefinition Width="50"></ColumnDefinition>
+                <ColumnDefinition Width="120"></ColumnDefinition>
+                <ColumnDefinition Width="20"></ColumnDefinition>
+                <ColumnDefinition Width="110"></ColumnDefinition>
+                <ColumnDefinition Width="110"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <ComboBox Margin="10,0" FontSize="16" Grid.Column="0" ItemsSource="{Binding RangeSelectItem}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding Range}" Height="35"></ComboBox>
+            <ComboBox Margin="10,0" FontSize="16" Grid.Column="1"  ItemsSource="{Binding ModeSelectItem}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding Mode}" Height="35"></ComboBox>
+            
+            <TextBlock Style="{StaticResource BaseTextBlock}" Margin="0,24,0,10"  VerticalAlignment="Center" Grid.Column="2" Grid.Row="0" Height="36">时间：</TextBlock>
+            <DatePicker SelectedDateFormat="Short"  TabIndex="1" SelectedDate="{Binding CheckTime,Mode=TwoWay}" FontSize="14" Grid.Column="3" Grid.Row="0" Height="35"  VerticalContentAlignment="Center"></DatePicker>
+           
+            <Button Command="{Binding Search}"  CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}" Style="{StaticResource BtnSearchStyle}" Height="35" Margin="0,15"  Grid.Column="5" Grid.Row="0">查询</Button>
+            <Button Command="{Binding Print}"  CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}" Style="{StaticResource BtnSearchStyle}" Height="35" Margin="0,15"  Grid.Column="6" Grid.Row="0">打印</Button>
+        </Grid>
+        <DataGrid Grid.Row="1" Name="DataView" ItemsSource="{Binding Statistics}" BorderThickness="1" BorderBrush="#BCB4BB"  Height="200" Margin="10,0"  VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserDeleteRows="True" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Binding="{Binding Title}" IsReadOnly="True" Header="交易" Width="150"/>
+                <DataGridTextColumn Binding="{Binding Count}" IsReadOnly="True" Header="笔数" Width="150"/>
+                <DataGridTextColumn Binding="{Binding Amount, StringFormat=\{0:C\}}" IsReadOnly="True" Header="金额" Width="150"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        <ListBox Focusable="False" Width="750" Margin="10"  FontSize="16" Grid.Row="2" ItemsSource="{Binding UsersStatistics}" ScrollViewer.CanContentScroll="False" >
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel IsEnabled="False">
+                    </StackPanel>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="0,30,0,0" IsEnabled="False">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                        </Grid.RowDefinitions>
+                        <TextBlock><Run Text="{Binding Uid}"></Run>  <Run Text="{Binding UserName}"></Run></TextBlock>
+                        <StackPanel Visibility="{Binding HasData}" Grid.Row="1" Orientation="Horizontal">
+                            <TextBlock><Run>销售小计：</Run><Run DataContext="{Binding Sale}" Text="{Binding Amount,ConverterCulture={x:Static sysglb:CultureInfo.CurrentUICulture},StringFormat=\{0:C\}}"></Run></TextBlock>
+                            <TextBlock Margin="10,0,0,0"><Run>笔数：</Run><Run DataContext="{Binding Sale}" Text="{Binding Count}"></Run></TextBlock>
+                        </StackPanel>
+                        <ListBox Visibility="{Binding HasData}" Focusable="False" BorderThickness="0" Margin="10"  Grid.Row="2" ItemsSource="{Binding Payways}" ScrollViewer.CanContentScroll="False" >
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel IsEnabled="False">
+                                    </StackPanel>
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <TextBlock><Run Text="{Binding Key,Mode=OneWay}"></Run><Run>：</Run><Run Text="{Binding Value,StringFormat=\{0:C\},Mode=OneWay,ConverterCulture={x:Static sysglb:CultureInfo.CurrentUICulture}}"></Run></TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel Visibility="{Binding HasData}" Grid.Row="3" Orientation="Horizontal">
+                            <TextBlock><Run>赠送合计：</Run><Run DataContext="{Binding Gift}" Text="{Binding Amount,StringFormat=\{0:C\},ConverterCulture={x:Static sysglb:CultureInfo.CurrentUICulture}}"></Run></TextBlock>
+                            <TextBlock Margin="10,0,0,0"><Run>笔数：</Run><Run DataContext="{Binding Gift}" Text="{Binding Count}"></Run></TextBlock>
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding HasData}" Grid.Row="4" Orientation="Horizontal">
+                            <TextBlock><Run>入款合计：</Run><Run DataContext="{Binding RuKuan}" Text="{Binding Amount,StringFormat=\{0:C\},ConverterCulture={x:Static sysglb:CultureInfo.CurrentUICulture}}"></Run></TextBlock>
+                            <TextBlock Margin="10,0,0,0"><Run>笔数：</Run><Run DataContext="{Binding RuKuan}" Text="{Binding Count}"></Run></TextBlock>
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding HasData}" Grid.Row="5" Orientation="Horizontal">
+                            <TextBlock><Run>出款合计：</Run><Run DataContext="{Binding ChuKuan}" Text="{Binding Amount,StringFormat=\{0:C\},ConverterCulture={x:Static sysglb:CultureInfo.CurrentUICulture}}"></Run></TextBlock>
+                            <TextBlock Margin="10,0,0,0"><Run>笔数：</Run><Run DataContext="{Binding ChuKuan}" Text="{Binding Count}"></Run></TextBlock>
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding HasData}" Grid.Row="6" Orientation="Horizontal">
+                            <TextBlock><Run>退货合计：</Run><Run DataContext="{Binding TuiHuo}" Text="{Binding Amount,StringFormat=\{0:C\},ConverterCulture={x:Static sysglb:CultureInfo.CurrentUICulture}}"></Run></TextBlock>
+                            <TextBlock Margin="10,0,0,0"><Run>笔数：</Run><Run DataContext="{Binding TuiHuo}" Text="{Binding Count}"></Run></TextBlock>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding HasData}" Grid.Row="7" Orientation="Horizontal">
+                            <TextBlock><Run>换货合计：</Run><Run DataContext="{Binding HuanHuo}" Text="{Binding Amount,StringFormat=\{0:C\},ConverterCulture={x:Static sysglb:CultureInfo.CurrentUICulture}}"></Run></TextBlock>
+                            <TextBlock Margin="10,0,0,0"><Run>笔数：</Run><Run DataContext="{Binding HuanHuo}" Text="{Binding Count}"></Run></TextBlock>
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding HasData}" Grid.Row="8" Orientation="Horizontal">
+                            <TextBlock><Run>剩余现金：</Run><Run DataContext="{Binding ShengYuXianJin}" Text="{Binding Amount,StringFormat=\{0:C\},ConverterCulture={x:Static sysglb:CultureInfo.CurrentUICulture}}"></Run></TextBlock>
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</Window>

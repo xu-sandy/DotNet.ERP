@@ -1,0 +1,150 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using System.Collections.Generic;
+using System.Windows;
+using System.Linq;
+
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    /// <summary>
+    ///查价格
+    /// </summary>
+    public class CheckPrices : BaseObservable
+    {
+
+        public CheckPrices()
+        {
+            _form = 0;
+            _to = 100;
+        }
+        #region Property
+        public decimal _form;
+        public decimal Form
+        {
+            get
+            {
+                return _form;
+            }
+            set
+            {
+                if (value < 0)
+                {
+                    Toast.DoShow("价格不能小于0！");
+                    OnPropertyChanged("Form");
+                    return;
+                }
+                _form = value;
+            }
+        }
+        private decimal _to;
+        public decimal To
+        {
+            get
+            {
+                return _to;
+            }
+            set
+            {
+                if (value < 0)
+                {
+                    Toast.DoShow("价格不能小于0！");
+                    OnPropertyChanged("To");
+                    return;
+                }
+                if (value < Form)
+                {
+                    Toast.DoShow("查看价格范围第一值不能大于第二值");
+                    OnPropertyChanged("To");
+                    return;
+                }
+                _to = value;
+                OnPropertyChanged("To");
+
+            }
+        }
+
+        public IList<CheckPricesDTO> Products { get; private set; }
+
+
+        public GeneralCommand Search
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    var win = o as Window;
+                    if (To == 0)
+                    {
+                        Toast.DoShow("请输入完整范围值，第二值不能为0！", win);
+                        return;
+                    }
+                    if (To < Form)
+                    {
+                        Toast.DoShow("查看价格范围第一值不能大于第二值", win);
+                        return;
+                    }
+                    var selectItem = TreeModel.FindSelectItem(CategoryTree);
+                    var categorySNlist = selectItem.GetSN();
+                    Products = ProductInfoLocalService.FindProductList(Form, To, categorySNlist).Select(p => new CheckPricesDTO(p)).ToList();
+                    if (Products.Count == 0)
+                    {
+                        Products.Add(new CheckPricesDTO(new CheckPricesDAO() { Barcode = "无数据！" }));
+                    }
+                    OnPropertyChanged("Products");
+
+                });
+            }
+        }
+
+        List<TreeModel> categoryTree = new List<TreeModel>() { new TreeModel("全部", -1) { IsSelected = true }.SetChild(0) };
+        public List<TreeModel> CategoryTree
+        {
+            get
+            {
+                return categoryTree;
+            }
+            set { }
+        }
+        #endregion Property
+
+
+
+    }
+
+    public class CheckPricesDTO
+    {
+        public CheckPricesDTO(CheckPricesDAO data)
+        {
+            CurrentDAO = data;
+        }
+        CheckPricesDAO CurrentDAO { get; set; }
+        public string ProductCode { get { return CurrentDAO.ProductCode; } }
+
+        public string ProductName { get { return CurrentDAO.ProductName; } }
+
+        public string SubCategoryName { get { return CurrentDAO.SubCategoryName; } }
+
+        public string Barcode { get { return CurrentDAO.Barcode; } }
+
+        public decimal SysPrice { get { return CurrentDAO.SysPrice; } }
+
+        public int CategorySN { get { return CurrentDAO.CategorySN; } }
+
+        public string Unit { get { return CurrentDAO.Unit; } }
+
+
+        public GeneralCommand AddCommand
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+
+                    var isSuccess = PosMachine.Current.BillList.AddFromBarcode(Barcode);
+
+                });
+            }
+        }
+    }
+}

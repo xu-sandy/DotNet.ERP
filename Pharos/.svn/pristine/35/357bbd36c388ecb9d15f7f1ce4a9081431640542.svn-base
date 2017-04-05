@@ -1,0 +1,143 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link href="css/component.css" rel="stylesheet" />
+    <link href="css/global.css" rel="stylesheet" />
+    <script src="javascript/jquery-3.1.0.min.js"></script>
+    <script src="javascript/modernizr.custom.js"></script>
+    <script src="javascript/spin.min.js"></script>
+    <script src="javascript/app.js"></script>
+    <title></title>
+    <style>
+        .actions {
+            margin: auto;
+            margin-top: 45px;
+            width: 325px;
+        }
+
+            .actions a {
+                width: 150px;
+                height: 46px;
+                background-repeat: no-repeat;
+                background-size: 150px 46px;
+                display: block;
+                text-indent: -9999px;
+                float: left;
+            }
+
+        a.download {
+            background-image: url(site-assets/images/download-btn.png);
+        }
+
+        a.tweet {
+            background-image: url(site-assets/images/tweet-btn.png);
+            margin-left: 25px;
+        }
+
+        .attr {
+            color: #fff;
+            text-align: center;
+            font-size: 0.875rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="menu">
+        <div>分店POS控制台</div>
+        <ul>
+            <li><a href="index.html">运行状况</a></li>
+            <li class="active"><a href="reg1.html">服务注册</a></li>
+            <li><a href="pos.html">POS配置</a></li>
+            <li>快捷按键</li>
+            <li>系统日志</li>
+            <li>软件更新</li>
+        </ul>
+    </div>
+    <div>
+        <header>
+            <a>退出登录</a>
+            <div id="heheda" class="morph-button morph-button-modal morph-button-modal-3 morph-button-fixed " style="color:#515151;float:right;line-height:50px;">
+                <button type="button" class="text-button">重启服务</button>
+                <div class="morph-content" style="width: 200px; height: 300px; background: none; margin: auto; text-align: center; clear: both;">
+                    <img src="svg-loaders/puff.svg" width="50" alt="">
+                    <p style="color:#fff;margin:auto;z-index:999999;position:relative;opacity:0.7;">服务启动中…</p>
+                </div>
+            </div>
+            <a class="text-button" style="margin-right:4px;">门店重置</a>
+        </header>
+        <div class="container">
+            <h4>服务设置<span>1/2</span></h4>
+            <div class="item">
+                <div style="margin:150px auto;text-align:center;width:800px;">
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control redis" />
+                        <label class="form-label">Redis连接串    </label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control wcfip" />
+                        <label class="form-label">WCF服务IP</label>
+                    </div>
+                    <div class="form-group" style="margin-left:30px;float:left;">
+                        <input required="required" class="form-control wcfport" style="width: 100px;" />
+                        <label class="form-label">端口</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control socketip" />
+                        <label class="form-label">Socket服务IP</label>
+                    </div>
+                    <div class="form-group" style="margin-left:30px;float:left;">
+                        <input required="required" class="form-control socketport" style="width: 100px;" />
+                        <label class="form-label">端口</label>
+                    </div>
+                </div>
+                <div class="btn-item">
+                    <a href="#"><input type="button" class="btn" value="下一步" /></a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="javascript/classie.js"></script>
+    <script src="javascript/uimorphingbutton_fixed.js"></script>
+    <script type="text/javascript">
+        var _height = window.screen.height - 255;
+        $('.item').css('height', _height + 'px');
+        jQuery.ajax({
+            type: 'Get',
+            url: 'api/StoreManager/GetServiceSettings',
+            dataType: 'json',
+            cache: false,
+            success: function (datas) {
+                if (datas.Code == "200") {
+                    $(".redis").val(datas.Result.Redis);
+                    $(".wcfip").val(datas.Result.WCFIp);
+                    $(".wcfport").val(datas.Result.WCFPort);
+                    $(".socketip").val(datas.Result.SocketIp);
+                    $(".socketport").val(datas.Result.SocketPort);
+                } else {
+                    alert(datas.Message);
+                }
+            }
+        });
+        $(".btn").click(function () {
+            jQuery.ajax({
+                type: 'POST',
+                url: 'api/StoreManager/NewServiceSettings',
+                data: { Redis: $(".redis").val(), WCFIp: $(".wcfip").val(), WCFPort: $(".wcfport").val(), SocketIp: $(".socketip").val(), SocketPort: $(".socketport").val() },
+                dataType: 'json',
+                cache: false,
+                success: function (datas) {
+                    if (datas.Code == "200") {
+                        location.href = "reg2.html";
+                    } else {
+                        alert(datas.Message);
+                    }
+                }
+            });
+        });
+     
+    </script>
+</body>
+</html>

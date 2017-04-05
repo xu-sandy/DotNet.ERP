@@ -1,0 +1,85 @@
+﻿using System;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Cache;
+using Pharos.Logic.ApiData.Pos.User;
+
+
+namespace Pharos.Logic.ApiData.Pos.DataAdapter
+{
+    public static class DataAdapterFactory
+    {
+        /// <summary>
+        /// 默认数据适配器初始化参数（适用于不需要区分门店及设备的数据交互情况）
+        /// </summary>
+        public static string DEFUALT = ("DEFUALT" + Guid.NewGuid().ToString("N"));
+        private static ProductCache productCache = new ProductCache();
+        /// <summary>
+        /// 默认数据适配器（使用默认数据适配器初始化参数初始化的数据适配器对象，适用于不需要区分门店及设备的数据交互情况）
+        /// </summary>
+        public static IDataAdapter DefualtDataAdapter
+        {
+            get
+            {
+                return Factory(MachinesSettings.Mode, DEFUALT, DEFUALT, -1, DEFUALT);
+            }
+        }
+        /// <summary>
+        /// 获取产品信息缓存
+        /// </summary>
+        public static ProductCache ProductCache { get { return productCache; } }
+
+        /// <summary>
+        /// 数据适配器工厂
+        /// </summary>
+        /// <param name="mode">数据源模式（1：SQLITE、2：SQL SERVER）</param>
+        /// <param name="storeId">门店Id</param>
+        /// <param name="machineSn">设备编号</param>
+        /// <returns>数据适配器对象</returns>
+        public static IDataAdapter Factory(DataAdapterMode mode, string storeId, string machineSn, int companyId, string deviceSn)
+        {
+            IDataAdapter dataAdapter = new MemoryCacheDataAdapter() { MachineSN = machineSn, StoreId = storeId, CompanyId = companyId, DeviceSn = deviceSn };
+            dataAdapter.IsSalesclerkTest = false;
+            var machineInfo = Salesclerk.GetMachineInfo(storeId, machineSn, companyId, deviceSn);
+            if (machineInfo != null && machineInfo.InTestMode)
+            {
+                dataAdapter.IsSalesclerkTest = true;
+            }
+            return dataAdapter;
+        }
+
+        internal static IDataAdapter DbFactory(DataAdapterMode mode, string storeId, string machineSn, int companyId, string deviceSn)
+        {
+            IDataAdapter dataAdapter = null;
+            switch (mode)
+            {
+                //case DataAdapterMode.SQLITE:
+                //    //dataAdapter = new SqliteDataAdapter() { MachineSN = machineSn, StoreId = storeId };
+                //    break;
+#if(Local != true)
+                case DataAdapterMode.SQLSERVER:
+                    dataAdapter = new SqlServerDataAdapter() { MachineSN = machineSn, StoreId = storeId, CompanyId = companyId, DeviceSn = deviceSn };
+                    break;
+#endif
+#if (Local ==true)
+                case DataAdapterMode.SQLSERVERCE:
+                    dataAdapter = new SqlServerCEDataAdapter() { MachineSN = machineSn, StoreId = storeId, CompanyId = companyId, DeviceSn=deviceSn };
+                    break;
+#endif
+                default:
+                    throw new PosException("未知数据源！");
+
+            }
+            if (dataAdapter == null)
+            {
+                throw new PosException("数据源不可用！");
+            }
+            dataAdapter.IsSalesclerkTest = false;
+            var machineInfo = Salesclerk.GetMachineInfo(storeId, machineSn, companyId, deviceSn);
+            if (machineInfo != null && machineInfo.InTestMode)
+            {
+                dataAdapter.IsSalesclerkTest = true;
+            }
+            return dataAdapter;
+        }
+    }
+}

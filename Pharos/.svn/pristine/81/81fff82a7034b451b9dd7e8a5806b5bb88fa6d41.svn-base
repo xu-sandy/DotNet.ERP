@@ -1,0 +1,44 @@
+﻿using Pharos.Wpf.Controls;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using Pharos.Wpf.Extensions;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.POS.Retailing.Extensions;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// Login.xaml 的交互逻辑
+    /// </summary>
+    public partial class Login : LoginWindow
+    {
+        public Login()
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+            Application.Current.MainWindow = this;
+            var model = new LoginViewModel();
+            this.ApplyBindings(this, model);
+            Application.Current.MainWindow = this;
+            this.Loaded += Login_Loaded;
+        }
+
+        void Login_Loaded(object sender, RoutedEventArgs e)
+        {
+            Keyboard.Focus(txtAccount);
+
+        }
+
+    }
+}

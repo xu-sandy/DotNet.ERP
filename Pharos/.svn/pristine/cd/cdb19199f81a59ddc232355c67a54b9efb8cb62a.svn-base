@@ -1,0 +1,117 @@
+﻿using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class StoredValueCardRecharge : BaseViewModel
+    {
+
+        private string name;
+
+        public string Name
+        {
+            get { return name; }
+            set
+            {
+                var text = value.Trim();
+                if (text.Length > 40)
+                {
+                    Toast.ShowMessage("会员名称超出！限制长度50个字符！", CurrentWindow);
+                    return;
+                }
+                name = text;
+                this.OnPropertyChanged(o => o.Name);
+            }
+        }
+
+
+        private string cardNo;
+        public string CardNo
+        {
+            get { return cardNo; }
+            set
+            {
+                var text = value.Trim();
+                if (text.Length > 40)
+                {
+                    Toast.ShowMessage("会员卡号超出！限制长度50个字符！", CurrentWindow);
+                    return;
+                }
+                cardNo = text;
+                this.OnPropertyChanged(o => o.CardNo);
+            }
+        }
+
+        decimal amount;
+        public decimal Amount
+        {
+            get { return amount; }
+            set
+            {
+
+                amount = value;
+                this.OnPropertyChanged(o => o.Amount);
+            }
+        }
+        decimal _YuE;
+        public decimal YuE
+        {
+            get { return _YuE; }
+            set
+            {
+
+                _YuE = value;
+                this.OnPropertyChanged(o => o.YuE);
+            }
+        }
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        if (o1 != null && o1.Equals("0"))
+                        {
+                            Amount = 0;
+                        }
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        StoredValueCardRechargeParams _params = new StoredValueCardRechargeParams()
+                        {
+
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CID = _machinesInfo.CompanyId,
+                            CardNo = CardNo,
+                            Amount = Amount
+                        };
+                        var result = ApiManager.Post<StoredValueCardRechargeParams, ApiRetrunResult<StoredValueCardRechargeResult>>(@"api/StoredValueCardRecharge", _params);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            if (result.Code == "200")
+                            {
+                                YuE = result.Result.balance;
+                                Amount = result.Result.Amount;
+                                Name = result.Result.Name;
+                                CardNo = result.Result.CardNo;
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }
+                        }));
+                    });
+                });
+            }
+        }
+    }
+}

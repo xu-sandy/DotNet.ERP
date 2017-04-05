@@ -1,0 +1,137 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  AgentsUsers
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .table-form td {
+        padding: 5px 0px;
+    }
+</style>
+
+<script type="text/javascript">
+
+    $(function () {
+
+    });
+
+    function SaveBefore() {
+        return Verification();
+    }
+
+    //获取url的参数
+    function getUrlParam(name) {
+
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+
+        var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+
+        if (r != null) return unescape(r[2]); return null; //返回参数值
+
+    }
+
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        var id = getUrlParam('id');
+        if (id == null) {
+            id = 0;
+        }
+        $.ajax({
+            url: "@Url.Action("getAgentsIdWhere", "AgentsInfo")",
+            type: "post",
+        data: {
+            //传值，还是JSON数据搜索
+            keyword: q,
+            id:id
+        },
+        dataType: "json",
+        success: function (data) {
+            comboRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function (item) {
+                return { AgentsId: item.AgentsId, AgentsId: item.AgentsId };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+
+    var Id = getUrlParam('Id');
+    var isRequired = true;
+    if (Id != null) {
+        isRequired = false;
+    }
+
+    //验证
+    function Verification() {
+        var verifi = false;
+        var AgentsId = $("#AgentsId").combobox("getValue");
+        $.ajax({
+            url: "/AgentsUsers/Verification?AgentsId=" + AgentsId,
+            type: "post",
+            async: false,
+            dataType: "json",
+            data: {},
+            success: function (data) {
+                var json = data;
+                if (!json.successed) {
+                    $.messager.alert("提示", json.message, "error");
+                }
+                else {
+                    verifi = true;
+                }
+            }
+        });
+        return verifi;
+    }
+
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">代理商编号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.AgentsId, new { @class = "easyui-combobox", data_options = "required:true,prompt:'请输入',width:120,editable:true,mode:'remote',valueField:'AgentsId',textField:'AgentsId',loader:comboload,validType:'integer'" })</td>
+                    <td class="name">姓名：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.FullName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:''" })</td>
+                </tr>
+                <tr>
+                    <td class="name">登录账号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.LoginName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'',validType:'loginno'" })</td>
+                    <td class="name">登录密码：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.LoginPwd, new { type = "password", @class = "easyui-textbox", data_options = "novalidate:true,required:isRequired,prompt:'',validType: 'length[6,20]'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">账号类型：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.AgentType, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "主账号", Value = "1" }, new SelectListItem() { Text = "普通账号", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                    <td class="name">状态：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.Status, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "正常", Value = "1" }, new SelectListItem() { Text = "停用", Value = "0" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                </tr>
+                <tr>
+                    <td class="name">备注：</td>
+                    <td class="input" colspan="3">
+                       @Html.TextAreaFor(o => o.Memo, new { @class = "easyui-validatebox", style = "width:400px; height: 60px; max-width: 400px; max-height: 60px; resize: none; ", maxlength = "200", data_options = "novalidate:false,required:false,prompt:'限200个字符',validType: 'length[0,200]'" })
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+

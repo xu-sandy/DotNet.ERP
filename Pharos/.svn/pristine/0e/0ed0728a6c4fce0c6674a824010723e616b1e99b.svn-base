@@ -1,0 +1,123 @@
+ALTER TABLE dbo.InboundGoods ADD ProductionBatch null; 
+
+
+--来源标识（1、总部入库；2、总部出库；3、调拨入库；4、调拨出库；5、门店售后退换货入库；6、门店售后换货出库；7、拆分子商品入库；8、拆分父商品消减；
+--9、销售商品消减；10、销售组合商品消减;11、门店收货；12、预约退货入库）
+-- =============================================
+-- Author:		<余雄文>
+-- Create date: <2015-12-15>
+-- Description:	<刷新有效期库存>
+-- =============================================
+CREATE PROCEDURE  [dbo].[RefreshInventoryValidity]
+	-- Add the parameters for the stored procedure here
+	@date  date
+AS
+BEGIN
+if @date = null begin set @date = dateadd(DAY,-1,GETDATE()) end
+
+declare @LastDate dateTime
+declare @fromDate varchar(12)
+declare @toDate varchar(12)
+
+declare @rowId int
+declare @Source int
+declare @barcode varchar(80)
+declare @OperatId varchar(80)
+declare @StoreId varchar(80)
+declare @number money
+
+
+select  @LastDate =dateadd(DAY,1,GETDATE())
+select @fromDate = CONVERT(varchar(12) , @date, 111 )
+select @toDate = CONVERT(varchar(12) , @LastDate, 111 )
+
+IF OBJECT_ID('tempdb.dbo.#InventoryRecordForInventoryValidity2','U') IS NOT NULL DROP TABLE #InventoryRecordForInventoryValidity2;
+IF OBJECT_ID('tempdb.dbo.#InventoryRecordForInventoryValidity3','U') IS NOT NULL DROP TABLE #InventoryRecordForInventoryValidity3;
+IF OBJECT_ID('tempdb.dbo.#InventoryRecordForInventoryValidity','U') IS NOT NULL DROP TABLE #InventoryRecordForInventoryValidity;
+IF OBJECT_ID('tempdb.dbo.#InventoryValidity','U') IS NOT NULL DROP TABLE #InventoryValidity;
+select * into #InventoryRecordForInventoryValidity from  InventoryRecord r where r.CreateDT between @fromDate and @toDate and r.InValidity =0
+
+
+
+--入库操作
+WHILE EXISTS(SELECT Source FROM #InventoryRecordForInventoryValidity where Source in (1,3,11))
+BEGIN
+    SET ROWCOUNT 1
+    SELECT  @rowId= Id, @Source= Source,@barcode = Barcode,@number = Number,@OperatId = OperatId,@StoreId = StoreId FROM #InventoryRecordForInventoryValidity  where Source in (1,3,11);
+
+	if   @Source =1 
+	 begin 
+	insert into InventoryValidity  select @StoreId StoreId,Barcode,@number StockNumber,ProducedDate,ExpiryDate,ExpiryDateUnit,ExpirationDate,b.ProductionBatch as ProductionBatch,b.DistributionBatch as DistributionBatch
+	    from InboundList a ,InboundGoods b where a.InboundGoodsId = b.InboundGoodsId and b.InboundGoodsId = @OperatId
+	 end
+
+	if   @Source =3 or  @Source =5  --
+	 begin 
+		if (select COUNT(*) from InventoryValidity where Barcode = @barcode)>0
+ 		    update InventoryValidity set StockNumber = StockNumber+@number where id in (select top(1) id from InventoryValidity where Barcode = @barcode and StoreId= @StoreId order by ExpirationDate desc)
+		else
+			INSERT INTO [dbo].[InventoryValidity]([StoreId],[Barcode],[StockNumber],[ProducedDate],[ExpiryDate],[ExpiryDateUnit],[ExpirationDate],[ProductionBatch],[DistributionBatch])
+			VALUES(@StoreId,@barcode,@number,getdate(),null,null,null,null,null)
+     end
+
+    if  @Source =11 
+	 begin 
+	    insert into InventoryValidity select @StoreId StoreId,Barcode,@number StockNumber,ProducedDate,ExpiryDate,ExpiryDateUnit,ExpirationDate,ProductionBatch,DistributionBatch  from OrderDistribution a where a.DistributionId = @OperatId
+	 end
+
+    SET ROWCOUNT 0;
+    update InventoryRecord set InValidity = 1 where Id=@rowId;
+    DELETE FROM #InventoryRecordForInventoryValidity WHERE Id=@rowId;
+END
+
+
+
+--获取负库存
+select * into #InventoryValidity from InventoryValidity where StockNumber<0
+--未入库数据处理
+select *  into #InventoryRecordForInventoryValidity2 from  #InventoryRecordForInventoryValidity r where (select count(*) from InventoryValidity where r.StoreId =StoreId and r.Barcode = Barcode )=0
+
+INSERT INTO [dbo].[InventoryValidity]([StoreId],[Barcode],[StockNumber],[ProducedDate],[ExpiryDate],[ExpiryDateUnit],[ExpirationDate],[ProductionBatch],[DistributionBatch])
+			 select StoreId,Barcode,-Number Number,getdate(),null,null,null,null,null from #InventoryRecordForInventoryValidity2
+update InventoryRecord set InValidity = 1  where id in(select id from #InventoryRecordForInventoryValidity2)
+delete from #InventoryRecordForInventoryValidity  where Id in(select id from #InventoryRecordForInventoryValidity2)
+
+
+--处理负库存及库存消减
+
+
+select StoreId,Barcode,sum(Number) as Number into #InventoryRecordForInventoryValidity3 from (
+select StoreId,Barcode,StockNumber as Number from #InventoryValidity
+union all
+select   StoreId,Barcode, -Number from #InventoryRecordForInventoryValidity) as t group by StoreId,Barcode
+
+
+WHILE EXISTS(SELECT Number FROM #InventoryRecordForInventoryValidity3)
+	BEGIN
+		 SET ROWCOUNT 1
+		 SELECT  @barcode = Barcode,@number = Number,@StoreId = StoreId FROM #InventoryRecordForInventoryValidity3;
+		 WHILE @number<0
+			 begin
+				if EXISTS( select * from InventoryValidity i where  i.Barcode =@barcode AND i.StoreId = @StoreId and i.StockNumber>0)
+					begin
+						 select top(1) @rowId = i.Id, @number = i.StockNumber + @number from InventoryValidity i where  i.Barcode =@barcode AND i.StoreId = @StoreId and i.StockNumber>0 order by i.ExpirationDate desc
+						 if(@number>=0)
+						 update InventoryValidity set StockNumber =@number where id = @rowId
+					end
+				else
+					begin
+						update  InventoryValidity set StockNumber =( select top(1)StockNumber +@number  from InventoryValidity i where  i.Barcode =@barcode AND i.StoreId = @StoreId order by i.ExpirationDate asc)
+						set	@number =0
+					end
+			 end
+		SET ROWCOUNT 0;
+		DELETE FROM #InventoryRecordForInventoryValidity3 WHERE StoreId=@StoreId and Barcode = @barcode;
+	END
+
+update InventoryRecord set InValidity = 1  where id in(select id from #InventoryRecordForInventoryValidity)
+
+
+end
+
+
+GO

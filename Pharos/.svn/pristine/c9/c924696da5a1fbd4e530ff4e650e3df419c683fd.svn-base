@@ -1,0 +1,57 @@
+﻿using Pharos.Infrastructure.Data.Normalize;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.AfterSale
+{
+    public static class OrderChangeFactory
+    {
+        static Dictionary<string, OrderChangeRefundSale> orderChangeSaleCache = new Dictionary<string, OrderChangeRefundSale>();
+        private static Dictionary<string, OrderChangeRefundSale> OrderChangeCache
+        {
+            get { return orderChangeSaleCache; }
+        }
+
+        public static OrderChangeRefundSale Factory(string storeId, string machineId, int companyToken, AfterSaleMode mode, string deviceSn)
+        {
+            string key = KeyFactory.OrderChangeRefundSaleKeyFactory(companyToken, storeId, machineId, deviceSn);
+
+            if (orderChangeSaleCache.ContainsKey(key))
+            {
+                var shoppingCart = orderChangeSaleCache[key];
+                if (shoppingCart == null)
+                {
+                    goto TheSaleException;
+                }
+                return shoppingCart;
+            }
+            else
+            {
+                OrderChangeCache.Remove(key);
+                var orderChangeSale = new OrderChangeRefundSale();
+                orderChangeSale.PaySn = Guid.NewGuid().ToString("N");
+                orderChangeSale.CustomOrderSnObject = new PaySn(MachinesSettings.CachePath)
+                {
+                    CompanyToken = companyToken,
+                    MachineSn = machineId,
+                    StoreId = storeId
+                };
+                orderChangeSale.Mode = mode;
+                orderChangeSaleCache.Add(key, orderChangeSale);
+
+                return orderChangeSale;
+            }
+        TheSaleException:
+            throw new SaleException("400", "未登录或者未授权，不允许操作！");
+        }
+
+        public static void Disposable(string storeId, string machineId, int companyToken, AfterSaleMode mode, string deviceSn)
+        {
+            string key = KeyFactory.OrderChangeRefundSaleKeyFactory(companyToken, storeId, machineId, deviceSn);
+            orderChangeSaleCache.Remove(key);
+        }
+    }
+}

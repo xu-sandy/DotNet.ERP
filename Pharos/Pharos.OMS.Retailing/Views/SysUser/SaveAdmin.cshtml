@@ -1,0 +1,33 @@
+﻿@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%" height="100px">
+                <tr>
+                    <td class="name">当前超级管理员：</td>
+                    <td class="input">@Html.TextBox("1", ViewBag.adminname as string, new { @class = "easyui-textbox", data_options = "readonly:true" })</td>
+                    <td class="name">当前后台帐号：</td>
+                    <td class="input">@Html.TextBox("2", ViewBag.adminaccount as string, new { @class = "easyui-textbox", data_options = "readonly:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">将超级管理权限指派为：</td>
+                    <td class="input">@Html.DropDownList("adminname", ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "onChange:userChange,validType:'requiredForCombo'" })</td>
+                    <td class="name">指派后台帐号：</td>
+                    <td class="input">@Html.TextBox("adminaccount", "", new { @class = "easyui-textbox", data_options = "readonly:true" })</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    function SaveBefore() {
+        return true;
+    }
+    function userChange(nv,ov) {
+        $("#adminaccount").textbox("setValue", nv);
+    }
+</script>

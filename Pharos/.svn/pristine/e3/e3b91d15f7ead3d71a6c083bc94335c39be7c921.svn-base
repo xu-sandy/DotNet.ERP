@@ -1,0 +1,348 @@
+﻿/**  版本信息模板在安装目录下，可自行修改。
+* TradeOrders.cs
+*
+* 功 能： N/A
+* 类 名： TradeOrders
+*
+* Ver    变更日期             负责人  变更内容
+* ───────────────────────────────────
+* V0.01  2017/1/10 10:37:50   N/A    初版
+*
+* Copyright (c) 2012 Maticsoft Corporation. All rights reserved.
+*┌──────────────────────────────────┐
+*│　此技术信息为本公司机密信息，未经本公司书面同意禁止向第三方披露．　│
+*│　版权所有：动软卓越（北京）科技有限公司　　　　　　　　　　　　　　│
+*└──────────────────────────────────┘
+*/
+using System;
+namespace Pharos.Logic.OMS.Entity
+{
+	/// <summary>
+	/// 商户交易信息表：用于管理本系统中商户发起的交易
+	/// </summary>
+	[Serializable]
+	public partial class TradeOrder
+	{
+		public TradeOrder()
+		{}
+		#region Model
+		private int _id;
+        private short _state;
+		private string _tradeno;
+		private string _tradeno3;
+		private string _outtradeno;
+		private string _oldouttradeno;
+		private int _cid;
+		private int _sid;
+		private int _deviceid;
+		private string _mchid3;
+		private string _storeid3;
+		private string _deviceid3;
+        private short _ordertype3;
+		private string _signtype;
+		private string _version;
+		private string _signature;
+		private decimal _totalamount;
+		private decimal _receiptamount=0M;
+        private short _tradetype;
+		private string _tradedate;
+		private string _tradetime;
+        private short _feetype;
+		private decimal _fee;
+		private string _channeldetailid;
+		private string _buyermobile;
+        private short _sourcetype;
+		private int _apino;
+		private string _paynotifyurl;
+		private string _rfdnotifyurl;
+		private DateTime _createdt= DateTime.Now;
+		private DateTime _updatedt= DateTime.Now;
+		private string _refundreason;
+		private string _buyerpaytoken;
+        private short _paychannel = 0;
+        private int _channelno = 0;
+		/// <summary>
+		/// 记录ID（系统自增）
+		/// </summary>
+		public int Id
+		{
+			set{ _id=value;}
+			get{return _id;}
+		}
+		/// <summary>
+		/// 支付状态(若交易类型=收入，则枚举值为：0：未支付，1：支付成功，2：支付失败，3：已撤销，4：支付超时；若交易类型=支出，则枚举值为：0：退款中；1：退款成功；2：退款失败；)
+		/// </summary>
+		public short State
+		{
+			set{ _state=value;}
+			get{return _state;}
+		}
+		/// <summary>
+		/// 交易流水号（云支付平台全局唯一）
+		/// </summary>
+		public string TradeNo
+		{
+			set{ _tradeno=value;}
+			get{return _tradeno;}
+		}
+		/// <summary>
+		/// 第三方返回的交易流水号
+		/// </summary>
+		public string TradeNo3
+		{
+			set{ _tradeno3=value;}
+			get{return _tradeno3;}
+		}
+		/// <summary>
+		/// 商户支付订单号，每笔支付订单的唯一标识，商户需保持该字段在系统内唯一，建议生成规则：时 间 (yyyyMMddHHmmss)+4位序号
+		/// </summary>
+		public string OutTradeNo
+		{
+			set{ _outtradeno=value;}
+			get{return _outtradeno;}
+		}
+		/// <summary>
+		/// 商户退款原始商户支付单号（退款订单时该值必传）
+		/// </summary>
+		public string OldOutTradeNo
+		{
+			set{ _oldouttradeno=value;}
+			get{return _oldouttradeno;}
+		}
+		/// <summary>
+		/// 商户号
+		/// </summary>
+		public int CID
+		{
+			set{ _cid=value;}
+			get{return _cid;}
+		}
+		/// <summary>
+		/// 门店编号
+		/// </summary>
+		public int SID
+		{
+			set{ _sid=value;}
+			get{return _sid;}
+		}
+		/// <summary>
+		/// 设备编号
+		/// </summary>
+		public int DeviceId
+		{
+			set{ _deviceid=value;}
+			get{return _deviceid;}
+		}
+		/// <summary>
+		/// 第三方商户号
+		/// </summary>
+		public string MchId3
+		{
+			set{ _mchid3=value;}
+			get{return _mchid3;}
+		}
+		/// <summary>
+		/// 第三方门店编号
+		/// </summary>
+		public string StoreId3
+		{
+			set{ _storeid3=value;}
+			get{return _storeid3;}
+		}
+		/// <summary>
+		/// 第三方设备编号
+		/// </summary>
+		public string DeviceId3
+		{
+			set{ _deviceid3=value;}
+			get{return _deviceid3;}
+		}
+		/// <summary>
+		/// 第三方订单类型(枚举：1：普通订单；2：当面收款订单)
+		/// </summary>
+		public short OrderType3
+		{
+			set{ _ordertype3=value;}
+			get{return _ordertype3;}
+		}
+		/// <summary>
+		/// 第三方签名方式
+		/// </summary>
+		public string SignType
+		{
+			set{ _signtype=value;}
+			get{return _signtype;}
+		}
+		/// <summary>
+		/// 第三方版本号
+		/// </summary>
+		public string Version
+		{
+			set{ _version=value;}
+			get{return _version;}
+		}
+		/// <summary>
+		/// 第三方数字签名
+		/// </summary>
+		public string Signature
+		{
+			set{ _signature=value;}
+			get{return _signature;}
+		}
+		/// <summary>
+		/// 交易订单金额，以元为单位
+		/// </summary>
+		public decimal TotalAmount
+		{
+			set{ _totalamount=value;}
+			get{return _totalamount;}
+		}
+		/// <summary>
+		/// 实际交易金额，以元为单位
+		/// </summary>
+		public decimal ReceiptAmount
+		{
+			set{ _receiptamount=value;}
+			get{return _receiptamount;}
+		}
+		/// <summary>
+		/// 交易类型(枚举：0：收入，1：支出)
+		/// </summary>
+        public short TradeType
+		{
+			set{ _tradetype=value;}
+			get{return _tradetype;}
+		}
+		/// <summary>
+		/// 交易日期，格式：yyyyMMdd
+		/// </summary>
+		public string TradeDate
+		{
+			set{ _tradedate=value;}
+			get{return _tradedate;}
+		}
+		/// <summary>
+		/// 交易时间，格式：HHmmss
+		/// </summary>
+		public string TradeTime
+		{
+			set{ _tradetime=value;}
+			get{return _tradetime;}
+		}
+		/// <summary>
+		/// 币种(枚举)
+		/// </summary>
+        public short FeeType
+		{
+			set{ _feetype=value;}
+			get{return _feetype;}
+		}
+		/// <summary>
+		/// 手续费
+		/// </summary>
+		public decimal Fee
+		{
+			set{ _fee=value;}
+			get{return _fee;}
+		}
+		/// <summary>
+		/// 费率依据ID
+		/// </summary>
+		public string ChannelDetailId
+		{
+			set{ _channeldetailid=value;}
+			get{return _channeldetailid;}
+		}
+		/// <summary>
+		/// 买家（支付用户）的手机号，订单类型为 2（当面收款订单）时，则该值必输
+		/// </summary>
+		public string BuyerMobile
+		{
+			set{ _buyermobile=value;}
+			get{return _buyermobile;}
+		}
+		/// <summary>
+		/// 所属体系(枚举 :1：云平台；2：外部系统)
+		/// </summary>
+        public short SourceType
+		{
+			set{ _sourcetype=value;}
+			get{return _sourcetype;}
+		}
+		/// <summary>
+		/// 支付通道（来自支付接口中的类型、接口名称）
+		/// </summary>
+		public int ApiNo
+		{
+			set{ _apino=value;}
+			get{return _apino;}
+		}
+		/// <summary>
+		/// 支付结果通知URL（平台回调商户）
+		/// </summary>
+		public string PayNotifyUrl
+		{
+			set{ _paynotifyurl=value;}
+			get{return _paynotifyurl;}
+		}
+		/// <summary>
+		/// 退款结果通知URL（平台回调商户）
+		/// </summary>
+		public string RfdNotifyUrl
+		{
+			set{ _rfdnotifyurl=value;}
+			get{return _rfdnotifyurl;}
+		}
+		/// <summary>
+		/// 创建时间
+		/// </summary>
+		public DateTime CreateDT
+		{
+			set{ _createdt=value;}
+			get{return _createdt;}
+		}
+		/// <summary>
+		/// 修改时间
+		/// </summary>
+		public DateTime UpdateDT
+		{
+			set{ _updatedt=value;}
+			get{return _updatedt;}
+		}
+		/// <summary>
+		/// 退款原因
+		/// </summary>
+		public string RefundReason
+		{
+			set{ _refundreason=value;}
+			get{return _refundreason;}
+		}
+		/// <summary>
+		/// 购买者的被扫支付二维码字符串（支付或者微信支付时提供给商家扫码的二维码字符串）
+		/// </summary>
+		public string BuyerPayToken
+		{
+			set{ _buyerpaytoken=value;}
+			get{return _buyerpaytoken;}
+		}
+		/// <summary>
+		/// 上游返回的支付渠道，枚举（0：无；1：WX（微信支付），2：ALIPAY（支付宝支付））
+		/// </summary>
+        public short PayChannel
+		{
+			set{ _paychannel=value;}
+			get{return _paychannel;}
+		}
+        /// <summary>
+        /// 支付通道
+        /// </summary>
+        public int ChannelNo
+        {
+            set { _channelno = value; }
+            get { return _channelno; }
+        }
+		#endregion Model
+
+	}
+}
+

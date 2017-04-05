@@ -1,0 +1,80 @@
+﻿using System.Linq;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.BLL;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class BrandController : BaseController
+    {
+        //
+        // GET: /Brand/
+        [Ninject.Inject]
+        BusinessService BusinessService { get; set; }
+        [Ninject.Inject]
+        BrandService BrandService { get; set; }
+        [Ninject.Inject]
+        ImportSetService ImportSetService { get; set; }
+        public ActionResult Index()
+        {
+            ViewBag.types = ListToSelect(BusinessService.GetList().Select(o => new SelectListItem() { Value = o.ById.ToString(), Text = o.Title }), emptyTitle: "全部");
+            return View();
+        }
+
+        public ActionResult FindPageList(string title, int? classfyId)
+        {
+            var count = 0;
+            var list = BrandService.GetPageList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+        [HttpPost]
+        public ActionResult Delete(int[] ids)
+        {
+            var op = BrandService.Deletes(ids);
+            return new OpActionResult(op);
+        }
+        //新增品牌
+        public ActionResult AddBrand(int? id)
+        {
+            ViewBag.types = ListToSelect(BusinessService.GetList().Select(o => new SelectListItem() { Value = o.ById, Text = o.Title }), emptyTitle: "请选择");
+            var obj = new ProductBrand() { Source=1};
+            if (id.HasValue)
+            {
+                obj = BrandService.GetOne(id.Value);
+            }
+            return View(obj.IsNullThrow());
+        }
+        [HttpPost]
+        public ActionResult AddBrand(ProductBrand obj)
+        {
+            var op = BrandService.SaveOrUpdate(obj);
+            return new OpActionResult(op);
+        }
+        [HttpPost]
+        public ActionResult SetState(string ids, short state)
+        {
+            var op = BrandService.SetState(ids, state);
+            return new JsonNetResult(op);
+        }
+        [HttpPost]
+        public ActionResult GetBrandInput(string searchName)
+        {
+            var list = BrandService.GetBrandInput(searchName);
+            return ToDataGrid(list, list.Count);
+        }
+        public ActionResult Import()
+        {
+            var obj = ImportSetService.GetOne("ProductBrand");
+            return View(obj ?? new ImportSet());
+        }
+        [HttpPost]
+        public ActionResult Import(ImportSet imp)
+        {
+            imp.TableName = "ProductBrand";
+            var op = BrandService.Import(imp, Request.Files, Request["FieldName"], Request["ColumnName"]);
+            return new OpActionResult(op);
+        }
+    }
+}

@@ -1,0 +1,279 @@
+﻿using Pharos.Infrastructure.Data.Normalize;
+using Pharos.Infrastructure.Data.Redis;
+using Pharos.Logic.ApiData.Pos;
+using Pharos.Logic.BLL;
+using Pharos.Logic.Cache;
+using Pharos.ObjectModels.DTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Quartz;
+using Quartz.Impl;
+using System.IO;
+#if Local
+using Pharos.Logic.ApiData.Pos.DataAdapter;
+#endif
+
+namespace Pharos.Service.Retailing.Marketing
+{
+    /// <summary>
+    /// 促销活动管理器
+    /// </summary>
+    public class MarketingManager
+    {
+        /// <summary>
+        /// 加载促销信息
+        /// </summary>
+        /// <returns></returns>
+        private static IEnumerable<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> Load(int companyId, string storeId)
+        {
+#if Local
+            var marketingService = Pharos.Logic.ApiData.Pos.DataAdapter.DataAdapterFactory.DbFactory(DataAdapterMode.SQLSERVERCE, storeId, string.Empty, companyId, string.Empty);
+            return (marketingService as SqlServerCEDataAdapter).GetMarketingRules();
+#endif
+#if (Local!=true)
+            MarketingService marketingService = new MarketingService(storeId, companyId);
+            return marketingService.GetMarketingRules();
+#endif
+        }
+        private static void Subscribe()
+        {
+#if (Local!=true)
+            RedisManager.Subscribe("SyncDatabase", (channel, info) =>
+            {
+                var databaseChanged = JsonConvert.DeserializeObject<DatabaseChanged>(info);
+                switch (databaseChanged.Target)
+                {
+                    case "CommodityBundlingPackage":
+                    case "CommodityDiscountPackage":
+                    case "CommodityFreeGiftPackage":
+                    case "CommodityBlendPackage":
+                        Console.WriteLine("SyncDatabaseMessage");
+
+                        var storeIds = databaseChanged.StoreId.Split(",".ToCharArray(), System.StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var storeId in storeIds)
+                        {
+                            RedisManager.Publish("MarketingRefresh", new MarketingRefreshInfo() { StoreId = storeId, CompanyId = databaseChanged.CompanyId });
+                            Console.WriteLine("SyncDatabase-MarketingRefresh");
+                        }
+                        break;
+                }
+            });
+#endif
+            RedisManager.Subscribe("MarketingRefresh", (chanel, msg) =>
+            {
+                Task.Factory.StartNew((obj) =>
+                {
+                    var info = JsonConvert.DeserializeObject<MarketingRefreshInfo>(obj.ToString());
+                    MarketingRuleCache marketingRuleCache = new MarketingRuleCache();
+                    var key = KeyFactory.StoreKeyFactory(info.CompanyId, info.StoreId);
+                    var rules = Load(info.CompanyId, info.StoreId);
+                    marketingRuleCache.Set(key, rules);
+                    var ts = RefreshHosted(info.CompanyId, info.StoreId);
+                    CreateSchedulerRefreshHosted(ts, obj.ToString());
+                }, msg);
+            });
+            RedisManager.Subscribe("RefreshHostedMarketing", (channel, msg) =>
+            {
+                Task.Factory.StartNew((obj) =>
+                {
+                    var info = JsonConvert.DeserializeObject<MarketingRefreshInfo>(obj.ToString());
+                    MarketingRuleCache marketingRuleCache = new MarketingRuleCache();
+                    var key = KeyFactory.StoreKeyFactory(info.CompanyId, info.StoreId);
+                    var ts = RefreshHosted(info.CompanyId, info.StoreId);
+                    CreateSchedulerRefreshHosted(ts, obj.ToString());
+                }, msg);
+            });
+        }
+        //public static void CloseStoreMarketing()
+        //{
+        //    RedisManager.UnSubscribe("RefreshHostedMarketing");
+        //    RedisManager.UnSubscribe("MarketingRefresh");
+        //}
+        public static void InitStoreMarketing()
+        {
+            Subscribe();
+#if(Local!=true)
+            var stores = WarehouseService.GetStores();
+            foreach (var item in stores)
+            {
+                var info = new MarketingRefreshInfo() { StoreId = item.StoreId, CompanyId = item.CompanyId };
+                RedisManager.Publish("MarketingRefresh", info);
+                CreateSchedulerRefreshMarketing(JsonConvert.SerializeObject(info));
+
+            }
+#endif
+#if Local
+            var companyId = Convert.ToInt32(System.Configuration.ConfigurationManager.AppSettings["CompanyId"]);
+            var storeId = System.Configuration.ConfigurationManager.AppSettings["StoreId"];
+            var info = new MarketingRefreshInfo() { StoreId = storeId, CompanyId = companyId };
+            RedisManager.Publish("MarketingRefresh", info);
+            CreateSchedulerRefreshMarketing(JsonConvert.SerializeObject(info));
+#endif
+        }
+
+        private static void CreateSchedulerRefreshHosted(TimeSpan ts, string info)
+        {
+            if (ts == default(TimeSpan) && ts < new TimeSpan(1)) return;
+
+            lock (StdSchedulerFactory.SystemPropertyAsInstanceId)
+            {
+                IScheduler scheduler = StdSchedulerFactory.GetDefaultScheduler();
+                scheduler.Start();       //开启调度器
+                IJobDetail job1 = JobBuilder.Create<RefreshHostedMarketingJob>()  //创建一个作业
+                   .WithIdentity("RefreshHostedMarketingJob" + Guid.NewGuid().ToString(), "Marketing")
+                   .Build();
+                job1.JobDataMap.Put("MarketingRefreshInfo", info);
+                ITrigger trigger1 = TriggerBuilder.Create()
+                                           .WithIdentity("RefreshHostedMarketing" + Guid.NewGuid().ToString(), "Marketing")
+                                           .StartAt(DateTime.Now.Add(ts))                        //现在开始
+                                           .Build();
+                scheduler.ScheduleJob(job1, trigger1);      //把作业，触发器加入调度器。
+            }
+
+        }
+        private static void CreateSchedulerRefreshMarketing(string info)
+        {
+            var date = DateTime.Now.Date.AddDays(1).AddHours(2);
+            lock (StdSchedulerFactory.SystemPropertyAsInstanceId)
+            {
+                IScheduler scheduler = StdSchedulerFactory.GetDefaultScheduler();
+                scheduler.Start();       //开启调度器
+                IJobDetail job1 = JobBuilder.Create<RefreshMarketingJob>()  //创建一个作业
+                   .WithIdentity("RefreshMarketingJob" + Guid.NewGuid().ToString(), "Marketing")
+                   .Build();
+                job1.JobDataMap.Put("MarketingRefreshInfo", info);
+                ITrigger trigger1 = TriggerBuilder.Create()
+                                           .WithIdentity("RefreshMarketing" + Guid.NewGuid().ToString(), "Marketing")
+                                           .StartAt(date)                        //启动时间
+                                           .WithSimpleSchedule(x => x         //触发时间，5秒一次。
+                                               .WithIntervalInHours(24)
+                                               .RepeatForever()
+                                               )
+                                           .Build();
+                scheduler.ScheduleJob(job1, trigger1);      //把作业，触发器加入调度器。
+            }
+        }
+        /// <summary>
+        /// 刷新促销规则托管
+        /// </summary>
+        /// <param name="companyId">公司id</param>
+        /// <param name="storeId">门店id</param>
+        /// <returns>返回下次刷新托管规则的时间间隔</returns>
+        private static TimeSpan RefreshHosted(int companyId, string storeId)
+        {
+            MarketingRuleCache marketingRuleCache = new MarketingRuleCache();
+            var key = KeyFactory.StoreKeyFactory(companyId, storeId);
+
+            IEnumerable<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> cacheRules = null;
+
+            if (marketingRuleCache.ContainsKey(key))
+                cacheRules = marketingRuleCache.Get(key);
+
+            if (cacheRules == null && cacheRules.Count() == 0)
+                return default(TimeSpan);
+
+            var timelinessTimes = new List<DateTime>();
+            List<MarketingRule> rules = new List<MarketingRule>();
+            foreach (var item in cacheRules)
+            {
+                var now = DateTime.Now;
+                item.Value.Enable = true;
+                if (item.Key.StartTime <= now && item.Key.OverTime >= now)
+                {
+                    var ranges = item.Key.TimeRanges;
+                    if (ranges == null || ranges.Count() == 0)//无时效约束
+                    {
+                        rules.Add(item.Value);//启动规则
+                        timelinessTimes.Add(item.Key.OverTime);//添加过期时间
+                    }
+                    else//有时效约束
+                    {
+                        foreach (var range in ranges)
+                        {
+                            var start = DateTime.Parse(range.Key);
+                            var end = DateTime.Parse(range.Value);
+                            if (start <= now && end >= now)
+                            {
+                                timelinessTimes.Add(end);//添加时效约束
+                                rules.Add(item.Value);//启动规则
+                                timelinessTimes.Add(item.Key.OverTime);
+
+                            }
+                            else if (start >= now)
+                            {
+                                timelinessTimes.Add(start);//添加启动规则时间
+                            }
+                        }
+                    }
+                }
+                else if (item.Key.StartTime > now)
+                {
+                    timelinessTimes.Add(item.Key.StartTime);//添加启动规则时间
+                }
+            }
+            var repeatRanges = rules.Where(o => o.Type == MarketingType.Danpinzhekou).GroupBy(o => o.BarcodeRange.FirstOrDefault());//处理单品折扣失效覆盖
+            foreach (var item in repeatRanges)
+            {
+                if (item.Count() > 1)
+                {
+                    var maxDate = item.Max(o => o.CreateRuleDate);
+                    foreach (var rule in item)
+                    {
+                        if (rule.CreateRuleDate != maxDate)
+                        {
+                            rule.Enable = false;
+                        }
+                        else
+                        {
+                            var cache = cacheRules.FirstOrDefault(o => o.Value == rule);
+                            timelinessTimes.Add(cache.Key.OverTime);
+                        }
+                    }
+                }
+            }
+            ActiveMarketingRuleCache activeMarketingRuleCache = new ActiveMarketingRuleCache();
+            activeMarketingRuleCache.Set(key, rules);
+            if (timelinessTimes.Count > 0)
+            {
+                var dates = timelinessTimes.OrderBy(o => o);
+                var date = dates.FirstOrDefault();
+                return date - DateTime.Now;
+            }
+            else
+            {
+                return default(TimeSpan);
+            }
+        }
+    }
+    public class RefreshMarketingJob : IJob
+    {
+
+        public void Execute(IJobExecutionContext context)
+        {
+            JobDataMap dataMap = context.JobDetail.JobDataMap;
+            string content = dataMap.GetString("MarketingRefreshInfo");
+            RedisManager.Publish("MarketingRefresh", content);
+        }
+    }
+    public class RefreshHostedMarketingJob : IJob
+    {
+
+        public void Execute(IJobExecutionContext context)
+        {
+            JobDataMap dataMap = context.JobDetail.JobDataMap;
+            string content = dataMap.GetString("MarketingRefreshInfo");
+            RedisManager.Publish("RefreshHostedMarketing", content);
+        }
+    }
+    public class MarketingRefreshInfo
+    {
+        public string StoreId { get; set; }
+
+        public int CompanyId { get; set; }
+    }
+}

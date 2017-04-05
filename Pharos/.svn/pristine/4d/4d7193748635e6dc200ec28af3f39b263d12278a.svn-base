@@ -1,0 +1,108 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增地区", editText: "修改地区", delText: "移除地区", hideDel: true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>地区：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.CityCombobox("pid", empty: "全部")
+            </td>
+            @*<td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="searchText" name="searchText" class="datacontrol easyui-textbox" data-options="prompt:'名称/区号'" />
+            </td>*@
+        </tr>
+    </table>
+}
+@section toolbar
+{
+}
+
+<script type="text/javascript">
+    pharos.managertree.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Title', title: '地区名称', width: 150 },
+        { field: 'PTitle', title: '上级名称', width: 150, hidden: true },
+        { field: 'TraderNum', title: '商户量', width: 150,hidden:true },
+        { field: 'Type', title: '类型', width: 150, hidden: true },
+        { field: 'JianPin', title: '简拼', width: 150 },
+        { field: 'QuanPin', title: '全拼', width: 150 },
+        { field: 'AreaSN', title: '区号', width: 150 },
+        { field: 'PostCode', title: '邮政编号', width: 150 }
+    ]];
+    pharos.managertree.sortName = "OrderNum";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "Title";
+    pharos.managertree.pagination = true;
+    var priovs = [];
+    pharos.managertree.loadSuccess = function (row, data) {
+        //if (priovs.length <= 0) {
+        //    priovs = data;
+        //    var $dg = $(this);
+        //    $.each(priovs, function (i, r) {
+        //        //$dg.treegrid("expand", r.Id)
+        //    })
+        //}
+    }
+    var removeIds = [];
+    function removeBefore(item) {
+        if (item.Count>0) {
+            $.messager.alert("提示", "无法移除，该分类下存在商品档案信息!"); return false;
+        }
+        var childs = pharos.managertree.$dg.treegrid("getChildren", item.Id);
+        var result = true;
+        $.each(childs, function (i, r) {
+            if (r.Count > 0) {
+                $.messager.alert("提示", "无法移除，该子分类下存在商品档案信息!");
+                result = false;
+                return false;
+            }
+            removeIds.add(r.Id);
+        });
+        return result;
+    }
+    pharos.managertree.removeItem = function (id) {
+        removeIds = [];
+        var rows = pharos.managertree.$dg.treegrid('getChecked');
+        if (!rows || rows.length == 0) {
+            $.messager.alert('提示', '请选择要删除的项');
+            return;
+        }
+        var result = true;
+        $.each(rows, function (i, r) {
+            if (!removeBefore(r)) {
+                result = false; return false;
+            }
+            removeIds.push(r.Id);
+        });
+        if (!result) return;
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r)  return r;
+            $.ajax({
+                url: pharos.managertree.delurl,
+                data: { Ids: removeIds, t: Math.random() },
+                type: "POST",
+                traditional: true, //使用数组
+                dataType: "json",
+                success: function (d) {
+                    if (d.successed) {
+                        $.messager.alert("提示", "删除成功！", "info");
+                        pharos.managertree.gridReload();
+                    } else {
+                        $.messager.alert("提示", "删除失败！" + d.message, "error");
+                    }
+                },
+                error: function () {
+                    $.messager.alert("错误", "删除失败！", "error");
+                }
+            });
+        });
+    }
+</script>

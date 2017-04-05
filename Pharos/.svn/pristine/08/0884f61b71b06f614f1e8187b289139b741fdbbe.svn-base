@@ -1,0 +1,234 @@
+﻿// --------------------------------------------------
+// Copyright (C) 2015 版权所有
+// 创 建 人：日志引擎
+// 创建时间：2015-05-27
+// 描述信息：公共字典
+// --------------------------------------------------
+
+using System;
+using System.Web;
+using System.Data.SqlClient;
+using AX.CSF.Log;
+using Pharos.DBFramework;
+
+namespace Pharos.Sys
+{
+    /// <summary>
+    /// 日志引擎类
+    /// </summary>
+    /// <example>
+    /// <![CDATA[
+    /// 使用示例：
+    /// Sys.LogEngine log = new Sys.LogEngine();
+    /// log.WriteInfo("成功：新增XXX信息");
+    /// ]]>
+    /// </example>
+    public class LogEngine
+    {
+        #region 写入日志
+
+        #region 操作类型
+
+        /// <summary>
+        /// 写入普通信息日志（todo：该方法为临时使用）
+        /// </summary>
+        /// <param name="msg">自定义信息</param>
+        public void WriteInfo(string msg)
+        {
+            this.Analysis(msg, null, LogType.调试);
+        }
+
+        /// <summary>
+        /// 写入新增日志
+        /// </summary>
+        /// <param name="msg">自定义信息</param>
+        public void WriteInsert(string msg)
+        {
+            this.Analysis(msg, null, LogType.新增);
+        }
+        /// <summary>
+        /// 写入修改日志
+        /// </summary>
+        /// <param name="msg">自定义信息</param>
+        public void WriteUpdate(string msg)
+        {
+            this.Analysis(msg, null, LogType.修改);
+        }
+        /// <summary>
+        /// 写入删除日志
+        /// </summary>
+        /// <param name="msg">自定义信息</param>
+        public void WriteDelete(string msg)
+        {
+            this.Analysis(msg, null, LogType.删除);
+        }
+
+        #endregion
+
+        /// <summary>
+        /// 写入登录日志
+        /// </summary>
+        /// <param name="msg">自定义信息</param>
+        public void WriteLogin(string msg)
+        {
+            this.Analysis(msg, null, LogType.登录);
+        }
+
+        /// <summary>
+        /// 写入退出日志
+        /// </summary>
+        /// <param name="msg">自定义信息</param>
+        public void WriteLogout(string msg)
+        {
+            this.Analysis(msg, null, LogType.退出);
+        }
+
+        /// <summary>
+        /// 写入异常日志
+        /// </summary>
+        /// <param name="ex">Exception 异常信息</param>
+        public void WriteError(Exception ex)
+        {
+            this.Analysis(string.Empty, ex, LogType.异常);
+        }
+
+        /// <summary>
+        /// 写入自定义信息的异常日志
+        /// </summary>
+        /// <param name="msg">自定义信息（优先级）</param>
+        /// <param name="ex">Exception 异常信息</param>
+        public void WriteError(string msg, Exception ex)
+        {
+            this.Analysis(msg, ex, LogType.异常);
+        }
+
+        /// <summary>
+        /// 解析
+        /// </summary>
+        /// <param name="msg">自定义信息（优先级）</param>
+        /// <param name="ex">Exception 异常信息</param>
+        /// <param name="type">LogType 日志类型</param>
+        private void Analysis(string msg, Exception ex, LogType type)
+        {
+            try
+            {
+                string UId = CurrentUser.UID;
+                //将捕获的日志写入到数据库中
+                LogHelper db;
+
+                if (string.IsNullOrEmpty(msg))
+                {
+                    db = new LogHelper(ex, (LogHelper.LogType)type);
+                }
+                else
+                {
+                    db = new LogHelper(msg, (LogHelper.LogType)type);
+                }
+
+                if (ex != null)
+                {
+                    var e = ToInnerException(ex);
+                    msg += (ex.Message == e.Message ? e.Message : ex.Message + "\r\n描述:" + e.Message) + "\r\n源:" + e.Source + "\r\n引发原因:" + e.TargetSite + "\r\n堆栈跟踪:" + e.StackTrace;
+                }
+
+                SqlParameter[] parms = {
+                    new SqlParameter("@Type", (byte)type),
+                    new SqlParameter("@UId", UId),
+                    new SqlParameter("@Summary",msg),
+                    new SqlParameter("@ClientIP",(db.ClientIP=="::1")?"127.0.0.1":db.ClientIP),
+                    new SqlParameter("@ServerName",db.ServerNetBIOS + @"/" + db.ServerUser)
+                };
+
+                string sql = "INSERT INTO SysLog([Type],[UId],[Summary],[ClientIP],[ServerName]) ";
+                sql += "VALUES (@Type, @UId, @Summary, @ClientIP, @ServerName); ";
+
+                int resultDefault = new DBHelper().ExecuteNonQueryText(sql, parms);
+            }
+            catch (Exception sex)
+            {
+                LogHelper txt = new LogHelper(sex, (LogHelper.LogType)type);
+
+                try
+                {
+                    //当数据库服务器无法连接时，则写入txt中
+                    txt.SetLogPath("SysLog");
+                    txt.SaveToTxt();
+                }
+                catch
+                {
+                    //若连txt都写入失败，则直接将异常输出到页面
+                    //throw new Exception(e.Message);
+                    GoErrorPage("[" + txt.ServerNetBIOS + "] 写入日志失败，请检查日志路径是否正常！");
+                }
+            }
+        }
+        /// <summary>
+        /// 返回最内部的错误
+        /// </summary>
+        /// <param name="ex"></param>
+        /// <returns></returns>
+        public static Exception ToInnerException(Exception ex)
+        {
+            if (ex.InnerException == null) return ex;
+            return ToInnerException(ex.InnerException);
+        }
+        #endregion
+
+        #region 跳转到异常提示页面
+
+        /// <summary>
+        /// 跳转到异常提示页面
+        /// </summary>
+        /// <param name="message">要提示的信息</param>
+        public void GoErrorPage(string message)
+        {
+            //todo: 该页跳转方式需转为 mapping 方式
+            HttpContext.Current.Response.Redirect(SysConstPool.Page_GoError + HttpUtility.UrlEncode(message));
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// 日志类型
+    /// </summary>
+    public enum LogType : byte
+    {
+        /// <summary>
+        /// 登录
+        /// </summary>
+        登录 = 1,
+        /// <summary>
+        /// 退出
+        /// </summary>
+        退出 = 2,
+        /// <summary>
+        /// 异常
+        /// </summary>
+        异常 = 3,
+        /// <summary>
+        /// 新增
+        /// </summary>
+        新增 = 4,
+        /// <summary>
+        /// 修改
+        /// </summary>
+        修改 = 5,
+        /// <summary>
+        /// 删除
+        /// </summary>
+        删除 = 6,
+        /// <summary>
+        /// 调试
+        /// </summary>
+        调试 = 7,
+        /// <summary>
+        /// 演练
+        /// </summary>
+        演练 = 8,
+        /// <summary>
+        /// 其他
+        /// </summary>
+        其他 = 10
+    }
+}

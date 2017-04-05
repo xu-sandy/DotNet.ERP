@@ -1,0 +1,143 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增会员", delText: "移除", hideDel: true,searchHeight:70));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>来源：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("StoreId", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "" })
+            </td>
+            <td class="label-toolbar">
+                <label>会员分组：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("MemberGroupId", ViewBag.groups as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "width:130" })
+            </td>
+            <td class="label-toolbar">
+                <label>居住城市：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.CityCombobox("CurrentCityId",empty: "全部", controlWidth: 160)
+            </td>
+            <td class="label-toolbar">
+                <label>会员等级：</label>
+            </td>
+            <td class="input-toolbar">
+               @Html.DropDownList("MemberLevelId", ViewBag.levels as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "width:130" })
+            </td>
+        </tr>
+        <tr>
+            <td class="label-toolbar">
+                <label>建档日期:</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date1" class="datacontrol Wdate" style="width:120px" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+            </td>
+            <td style="float:left;margin-left:7px;margin-right:7px;line-height:28px;">-</td>
+            <td class="input-toolbar">
+                <input name="date2" class="datacontrol Wdate" style="width:120px" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <select name="searchField" class="easyui-combobox">
+                    <option value="1">会员编号</option>
+                    <option value="2">会员名称</option>
+                    <option value="3">会员卡号</option>
+                    <option value="4">手机号</option>
+                    <option value="5">微信号</option>
+                    <option value="6">支付宝</option>
+                    <option value="7">Email</option>
+                    <option value="8">QQ</option>
+                </select>
+            </td>
+            <td class="input-toolbar">
+                &nbsp;<input id="searchText" name="searchText" class="datacontrol easyui-textbox" data-options="prompt:'请输入查询条件...'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">审核通过</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">设为无效</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-suspend'" onclick="openDialog600('会员分组','@Url.Action("CreateMemberGroup")')">会员分组</a>
+    <select class="easyui-combobox datacontrol" id="slttype" data-options="onLoadSuccess:sltLoad,onSelect:sltMove,url:'@Url.Action("GetMemberGroupList")'" style="width:180px;"></select>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindMemberPageList")";
+    pharos.manager.editurl = "@Url.Action("CreateMember")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StoreTitle', title: '来源', width: 120 },
+        { field: 'MemberNo', title: '编号', width: 120 },
+        { field: 'RealName', title: '姓名', width: 100 },
+        { field: 'Sex', title: '性别', width: 60, formatter: function (value, row) { return value == 0 ? "女" : value == 1 ? "男" : "未知";} },
+        { field: 'UsableIntegral', title: '可用积分', width: 80 },
+        { field: 'UsableBalance', title: '可用余额', width: 80 },
+        { field: 'RechargeTotal', title: '累计充值', width: 80 },
+        { field: 'ConsumeTotal', title: '累计消费', width: 80 },
+        { field: 'MemberGroup', title: '分组', width: 80 },
+        { field: 'MemberLevel', title: '等级', width: 80 },
+        { field: 'MemberCards', title: '会员卡数', width: 80 },
+        { field: 'Coupons', title: '优惠券数', width: 80 },
+        { field: 'IDNumber', title: '证件号', width: 120 },
+        { field: 'Birthday', title: '生日', width: 100 },
+        { field: 'MobilePhone', title: '手机', width: 100 },
+        { field: 'Weixin', title: '微信号', width: 100 },
+        { field: 'Zhifubao', title: '支付宝', width: 100 },
+        { field: 'Email', title: 'Email', width: 100 },
+        { field: 'CurrentCity', title: '居住城市', width: 80 },
+        { field: 'Status', title: '会员状态', width: 80, formatter: function (value, row) { return value == 0 ? "未审" : value == 1 ? "正常" :value==2? "无效":""; } },
+        { field: 'Referrer', title: '推荐人', width: 80 },
+        { field: 'FullName', title: '建档人员', width: 80 },
+        { field: 'CreateDT', title: '建档时间', width: 150 },
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache());
+    };
+    pharos.manager.editItem = function (id) {
+        this.Id = id;
+        openDialog800(this.editText, this.editurlNocache());
+    }
+    function closeDialog() {
+        $("#slttype").combobox("reload");
+    }
+    function sltLoad() {
+        var data = $(this).combobox("getData");
+        var d = [];
+        $.each(data, function (i, r) {
+            var item = { value: r.value, text: r.text };
+            if (item.value == "") {
+                item.text = "全部";
+            }
+            d.add(item);
+        });
+        $("#MemberGroupId").combobox("loadData",d);
+    }
+    function sltMove(record) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = [];
+        $.each(rows, function (i, r) {
+            ids.push(r.Id);
+        });
+        $.post("@Url.Action("MoveType")", { ids: ids.join(), groupId: record.value }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+                $("#slttype").combobox("setValue", "");
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        },"json");
+    }
+</script>

@@ -1,0 +1,368 @@
+﻿@model Pharos.Logic.Entity.IntegralRule
+@{
+    ViewBag.Title = "CreateIntegralRule";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @*@Html.Hidden("SelectPSN")
+            @Html.Hidden("CategorySN")
+            @Html.Hidden("CategoryCode")*@
+        <input type="hidden" name="RuleTypeValue" value="">
+        <div class="content">
+            <table class="table-form" width="98%" height="180px">
+                <tr>
+                    <td class="name">有效期：</td>
+                    <td class="input">
+                        <input type="text" id="date1" name="ExpiryStart" class="easyui-validatebox Wdate" value="@Model.ExpiryStart" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',maxDate:'#F{$dp.$D(\'date2\')}'})" /> -
+                        <input type="text" id="date2" name="ExpiryEnd" class="easyui-validatebox Wdate" value="@Model.ExpiryEnd" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',minDate:'#F{$dp.$D(\'date1\')}'})" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">适用客户群：</td>
+                    <td class="input">@Html.DropDownList("UseUsers", ViewBag.MemberLevels as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "" })</td>
+                </tr>
+                <tr>
+                    <td class="name">规则方式：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>
+                                    <select id="RuleTypeId" name="RuleTypeId" class="easyui-combobox">
+                                        <option value="0">请选择</option>
+                                        <option value="1">按消费金额</option>
+                                        <option value="2">按付款方式</option>
+                                        <option value="3">按指定品类</option>
+                                        <option value="4">按具体商品</option>
+                                        <option value="5">按消费次数</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                <tr id="payType" class="hideItem" hidden="hidden">
+                    <td class="name">付款方式：</td>
+                    <td class="input choose">@Html.CheckBoxListFor(o => o.RuleTypeValue, ViewBag.ApiTypes as List<SelectListItem>, new { data_options = "", @class = "easyui-validatebox", id = "ApiTypes" }, 9)</td>
+                    <td>
+                        @*<input type="hidden" id="category" class="textbox-value" name="CategoryPSN" value="">*@
+                        <input type="hidden" name="CategoryPSN_0" value="">
+                        @Html.HiddenFor(o => o.RuleTypeValue)
+                    </td>
+
+                </tr>
+                <tr id="categorys" class="hideItem" hidden>
+                    <td class="name">指定分类：</td>
+                    <td class="input">@Form.CategoryCombobox("CategoryPSN", ViewBag.parenttypes as SelectListItem, empty: "请选择", showAll: false)</td>
+
+                </tr>
+                <tr id="products" style="min-height:100px" class="hideItem">
+                    <td colspan="4">
+                        <table id="grid"></table>
+                    </td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="name">满：</td>
+                    <td class="input"><input type="text" id="condition" class="easyui-textbox" name="Condition" value="@Model.Condition" /></td>
+                </tr>
+                <tr>
+                    <td class="name">赠送积分：</td>
+                    <td class="input"><input type="text" id="giveInterger" class="easyui-textbox" name="ReturnValue" value="@Model.ReturnValue" /></td>
+                </tr>
+                <tr>
+                    <td class="name">转换比例：</td>
+                    <td class="input"><input type="text" id="changeBili" class="easyui-textbox" readonly="readonly" name="ConverRatio" value="@Model.ConverRatio" /></td>
+                </tr>
+                <tr>
+                    <td class="name"></td>
+                    <td class="input">@Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "是否包含促销", Selected = true } }, "InContainsPromotion")</td>
+                </tr>
+                <tr>
+                    <td class="name">状态：</td>
+                    <td class="input">@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "生效", Selected = @Model.State == 0 ? true : false }, new SelectListItem() { Text = "失效", Selected = @Model.State == 1 ? true : false } }, "state")</td>
+                </tr>
+                <tr>
+                    <td class="name">备 注：</td>
+                    <td class="input" colspan="3">
+                        <textarea name="Memo" class="easyui-validatebox" style="width:320px;height:50px;">@Model.Memo</textarea>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script>
+
+
+    var $dg2;
+    var editProcIndex = undefined, comboRows = [], opaddPro = false;
+
+    $(function () {
+        $("#giveInterger").textbox({
+            onChange: function (value) {
+                var beishu = $("#condition").textbox('getValue');
+                var yueshu = $(this).textbox('getValue');
+                $("#changeBili").textbox('setValue', (beishu / yueshu).toFixed(2) + " : 1");
+            }
+        })
+
+        $("#grid").datagrid({
+            showFooter: false,
+            border: true,
+            rownumbers: true,
+            fit: false,
+            fitColumns: true,
+            pagination: false,
+            singleSelect: true,
+            columns: [[
+                { field: 'ProductCode', editor: { type: 'textbox', options: { disabled: true } }, width: 120, title: '货号' },
+                {
+                    field: 'Barcode', title: '条码', editor: {
+                        type: 'combobox', options: {
+                            prompt: '请输入条码...',
+                            //required: true,
+                            mode: 'remote',
+                            valueField: 'barcode',
+                            textField: 'title',
+                            loader: comboload,
+                            onChange: comboSelect2,
+                        }
+                    }, width: 150
+                },
+                { field: 'Title', editor: { type: 'textbox', options: { disabled: true } }, width: 150, title: '品名' },
+                { field: 'CategoryTitle', editor: { type: 'textbox', options: { disabled: true } }, width: 80, title: '品类' },
+                { field: 'SubUnit', editor: { type: 'textbox', options: { disabled: true } }, width: 60, title: '单位' },
+                { field: 'SysPrice', editor: { type: 'textbox', options: { disabled: true } }, width: 80, title: '系统售价' },
+                { field: 'StockNums', editor: { type: 'textbox', options: { disabled: true } }, width: 120, title: '库存' },
+                { field: 'Editor', formatter: operation, width: 100, title: '操作' },
+            ]]
+        });
+
+
+
+        //
+
+        $("#RuleTypeId").combobox({
+            onChange: function (n, o) {
+                $(".hideItem").hide();
+
+                switch (n) {
+                    case "0":
+
+                        break;
+                    case "1":
+
+                        break;
+                    case "2":
+                        $("#payType").show();
+                        break;
+                    case "3":
+                        $("#categorys").show();
+                        break;
+                    case "4":
+                        $("#products").show();
+                        break;
+                    case "5":
+                        break;
+                }
+            }
+        });
+        //var isChecked = "checked";
+        //$("input[type='checkbox']").each(function (index, val) {
+        //    if ($(this).val() == undefined) {
+        //        isChecked = $(this).attr("checked")
+        //    } else {
+        //        $(this).attr("checked", isChecked);
+        //    }
+        //})
+        var ruleTypeId = '@Model.RuleTypeId';
+        if (ruleTypeId == "4") {
+            var ruleTypeValue = '@Model.RuleTypeValue';
+            if (ruleTypeValue != "") {
+                var arrValues = ruleTypeValue.split(',');
+                for (var i = 0; i < arrValues.length; i++) {
+                    if (arrValues[i] != "") {
+                        //var ed = $("#grid").datagrid('getEditor', { index: $dg2.datagrid("getRows").length - 1, field: 'Barcode' });
+                        //$(ed.target).textbox('setValue', arrValues[i]);
+                        //$(ed.target).textbox('textbox').keydown(function (e) { });
+                        ////comboload({ q: arrValues[i] });
+                        $.ajax({
+                            url: "@Url.Action("GetProductInput", "Product")",
+                            type: "post",
+                            data: {
+                                searchName: arrValues[i],
+                                zp: '1'
+                            },
+                            dataType: "json",
+                            success: function (data) {
+                                $("#grid").datagrid('appendRow', {
+                                    ProductCode: data.rows[0].ProductCode,
+                                    Barcode: data.rows[0].Barcode,
+                                    Title: data.rows[0].Title,
+                                    CategoryTitle: data.rows[0].CategoryTitle,
+                                    SubUnit: data.rows[0].SubUnit,
+                                    SysPrice: data.rows[0].SysPrice,
+                                    StockNums: data.rows[0].StockNums,
+                                });
+                            }
+                        });
+
+                    }
+                    if (i == arrValues.length - 1) {
+                        setTimeout(function () {
+                            startData();
+                        }, 100);
+                    }
+                }
+            }
+        } else {
+            startData();
+        }
+
+    });
+
+    function startData() {
+        setTimeout(
+    function () {
+        appendItemProc();
+        $("#products").hide();
+        $("#RuleTypeId").combobox("setValue", "@Model.RuleTypeId");
+    }
+    , 100);
+    }
+
+    function appendItemProc() {
+        $dg2 = $dg2 ? $dg2 : $("#grid");
+        opaddPro = true;
+        $dg2.datagrid('appendRow', {
+            ProductCode: "",
+            Barcode: "",
+            Title: "",
+            CategoryTitle: "",
+            SubUnit: "",
+            SysPrice: "",
+            StockNums: "",
+        });
+        editIndex = $dg2.datagrid("getRows").length - 1;
+        $dg2.datagrid("selectRow", editIndex).datagrid("beginEdit", editIndex);
+    }
+    function removeItemProc(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dg2.datagrid("selectRecord", id);
+            var row = $dg2.datagrid("getSelected")
+            var index = $dg2.datagrid("getRowIndex", row);
+            $dg2.datagrid('deleteRow', index);
+        });
+    }
+
+
+
+    function operation(value, row, index) {
+        if (opaddPro) {
+            opaddPro = false;
+            return "<a href='javascript:void(0)' onclick='appendItemProc()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItemProc('" + row.Id + "')\">删除</a>";
+        }
+    }
+
+    var comboload = function (param, success, error) {
+        var q = param.q || "";
+        if (q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url: "@Url.Action("GetProductInput", "Product")",
+            type: "post",
+            data: {
+                //传值，还是JSON数据搜索
+                searchName: q,
+                storeId: $.map($("[name='StoreId']:checked"), function (r) { return $(r).val(); }).join(),
+                zp: '1'
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function (item) {
+                    return { barcode: item.Barcode, title: item.Title };
+                });
+                //执行loader的success方法
+                success(items);
+                var val = $combo.combobox("getValue");
+                if (val) {
+                    //comboSelect1(val);
+                    comboSelect2(val);
+                }
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    function comboSelect2(newValue, oldValue) {
+        var obj = getRow(newValue);
+        if (!obj) return;
+        editProcNoIndex = $dg2.datagrid('getRows').length - 1;
+        var ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'ProductCode' });
+        $(ed.target).textbox('setValue', obj.ProductCode);
+        ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'Title' });
+        $(ed.target).textbox('setValue', obj.Title);
+        ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'SubUnit' });
+        $(ed.target).textbox('setValue', obj.SubUnit);
+        ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'SysPrice' });
+        $(ed.target).textbox('setValue', obj.SysPrice);
+        ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'CategoryTitle' });
+        $(ed.target).textbox('setValue', obj.CategoryTitle);
+        ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'StockNums' });
+        $(ed.target).textbox('setValue', obj.StockNums);
+        $dg2.datagrid('endEdit', editProcNoIndex);
+        appendItemProc();
+    }
+    function getRow(cd) {
+        var obj = null;
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == cd) {
+                obj = row; return;
+            }
+        });
+        return obj;
+    }
+
+
+    function SaveBefore() {
+        var selectVal = $("#RuleTypeId").combobox("getValue");
+        if (selectVal == 0) {
+            $.messager.alert("提示", "请选择规则方式！", "info");
+            return false;
+        }
+        var vals = "";
+
+        switch (selectVal) {
+            case "2":
+                $("input[type='checkbox']:checked").each(function () {
+                    vals += ("," + $(this).val());
+                });
+                break;
+            case "3":
+                vals = $($("input[name='CategoryPSN_0']")[0]).val();
+                break;
+            case "4":
+                var rows = $dg2.datagrid("getRows");
+                for (var i = 0; i < rows.length; i++) {
+                    vals += ("," + rows[i].Barcode);
+                }
+                break;
+        }
+        $("input[name='RuleTypeValue']").val(vals);
+    }
+
+</script>

@@ -1,0 +1,48 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.DataSynchronism
+{
+    public class DataSyncTransactionRange : Queue<IDbProvider>
+    {
+        public bool Execute()
+        {
+            try
+            {
+                using (var db = new DataSyncLocalDBContext())
+                {
+                    using (var tran = db.Database.BeginTransaction())
+                    {
+                        try
+                        {
+                            var count = this.Count;
+                            for (var i = 0; i < count; i++)
+                            {
+                                IDbProvider provider = this.Dequeue();
+                                if (provider == null)
+                                {
+                                    return false;
+                                }
+                                provider.Save(db);
+                            }
+                            tran.Commit();
+                        }
+                        catch (Exception ex)
+                        {
+                            tran.Rollback();
+                        }
+                    }
+                }
+                this.Clear();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
+    }
+
+}

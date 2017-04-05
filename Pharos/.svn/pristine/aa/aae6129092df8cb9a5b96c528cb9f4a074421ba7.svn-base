@@ -1,0 +1,82 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.OMS.DAL;
+
+namespace Pharos.Logic.OMS.BLL
+{
+   public class BaseBLL<T> : BaseDAL<T>
+   {
+        private BaseDAL<T> _dal = new BaseDAL<T>();
+
+        /// <summary>
+        /// 根据ID获取数据对象
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public new T GetById(int id)
+        {
+            return _dal.GetById(id);
+        }
+        
+        public new T  GetByColumn(object val, string colName)
+        {
+           return _dal.GetByColumn(val, colName);
+        }
+
+        /// <summary>
+        /// 根据ID删除
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public new bool Delete(int id)
+        {
+            return _dal.Delete(id);
+        }
+
+        /// <summary>
+        /// 根据ID判断数据是否存在
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public new bool ExistsById(int id)
+        {
+            return _dal.ExistsById(id);
+        }
+
+        /// <summary>
+        /// 获得列的最大值
+        /// </summary>
+        /// <param name="columnName"></param>
+        /// <returns></returns>
+        public new int MaxVal(string columnName)
+        {
+            return _dal.MaxVal(columnName);
+        }
+        public new bool ExistsColumn(object objid, string objColumn, object existValue, string existColumn)
+        {
+            return _dal.ExistsColumn(objid, objColumn, existValue, existColumn);
+        }
+        /// <summary>
+        /// 自动分页方法
+        /// </summary>
+        /// <param name="strSql">完整sql语句</param>
+        /// <param name="recordCount">记录总数</param>
+        /// <param name="nvl">参数值</param>
+        /// <returns></returns>
+        public new List<T> ExceuteSqlForPage(string strSql, out int recordCount, System.Collections.Specialized.NameValueCollection nvl = null)
+        {
+            return _dal.ExceuteSqlForPage(strSql, out recordCount, nvl);
+        }
+        public new bool SaveOrUpdate(T obj)
+        {
+            return _dal.SaveOrUpdate(obj);
+        }
+        public new bool Delete(object[] ids)
+        {
+            return _dal.Delete(ids);
+        }
+
+    }
+}

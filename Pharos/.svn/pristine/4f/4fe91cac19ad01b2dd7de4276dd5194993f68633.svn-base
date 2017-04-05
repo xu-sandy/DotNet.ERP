@@ -1,0 +1,130 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+using System.IO;
+using Pharos.Logic.ApiData.Pos.Sale.Barcodes;
+using Newtonsoft.Json.Converters;
+using System.Threading.Tasks;
+using System.Threading;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Suspend
+{
+    /// <summary>
+    /// 挂单操作
+    /// </summary>
+    public class SaleSuspend
+    {
+        static SaleSuspend()
+        {
+            Expries = 1;
+            Task.Factory.StartNew(() =>
+            {
+                while (true)
+                {
+
+                    Thread.Sleep(new TimeSpan(Expries, 0, 0, 0));
+                }
+            });
+        }
+        /// <summary>
+        /// 挂单失效时间（默认为1天）
+        /// </summary>
+        public static int Expries { get; set; }
+        public static void Suspend(ShoppingCart cart)
+        {
+            try
+            {
+                var statistics = cart.GetSaleStatistics();
+                var details = new SuspendDetails()
+                {
+                    Amount = statistics.Receivable,
+                    Count = statistics.Num,
+                    SuspendDate = DateTime.Now,
+                    OrderSN = cart.OrderSN
+                };
+                var suspendList = SuspendList.Factory(cart.MachineInformation.StoreId, cart.MachineInformation.MachineSn, MachinesSettings.CachePath);
+                suspendList.Add(details);
+                suspendList.Save(MachinesSettings.CachePath, cart.MachineInformation.StoreId, cart.MachineInformation.MachineSn);
+                Save(cart, MachinesSettings.CachePath);
+                cart.Clear();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        private static void Save(ShoppingCart cart, string path)
+        {
+            var fileName = string.Format("SaleDetails{0}.JSON", cart.OrderSN);
+            var filePath = Path.Combine(path, fileName);
+
+            using (StreamWriter sw = new StreamWriter(filePath, false, Encoding.UTF8))
+            {
+                JsonSerializer serializer = new JsonSerializer();
+                JsonWriter writer = new JsonTextWriter(sw);
+                serializer.Serialize(writer, cart.OrderList);
+                writer.Close();
+                sw.Close();
+            }
+        }
+
+
+        public static IEnumerable<IBarcode> Read(ShoppingCart cart, string orderSN)
+        {
+            try
+            {
+                IEnumerable<IBarcode> result = null;
+                var fileName = string.Format("SaleDetails{0}.JSON", orderSN);
+                var filePath = Path.Combine(MachinesSettings.CachePath, fileName);
+                if (File.Exists(filePath))
+                {
+                    using (StreamReader sr = new StreamReader(filePath))
+                    {
+                        JsonSerializer serializer = new JsonSerializer();
+                        JsonReader reader = new JsonTextReader(sr);
+                        result = serializer.Deserialize<List<JsonBarcode>>(reader);
+                    }
+                }
+                if (result != null && result.Count() > 0)
+                {
+                    result = result.Select(o => BarcodeFactory.Factory(o));
+                    cart.Clear();
+                    cart.AddRange(result);
+                }
+                var suspendList = SuspendList.Factory(cart.MachineInformation.StoreId, cart.MachineInformation.MachineSn, MachinesSettings.CachePath);
+                suspendList.RemoveAll(o => o.OrderSN == orderSN);
+                suspendList.Save(MachinesSettings.CachePath, cart.MachineInformation.StoreId, cart.MachineInformation.MachineSn);
+                File.Delete(filePath);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        public static SuspendList Remove(ShoppingCart cart, string orderSN)
+        {
+            try
+            {
+                var suspendList = SuspendList.Factory(cart.MachineInformation.StoreId, cart.MachineInformation.MachineSn, MachinesSettings.CachePath);
+                var fileName = string.Format("SaleDetails{0}.JSON", orderSN);
+                var filePath = Path.Combine(MachinesSettings.CachePath, fileName);
+                suspendList.RemoveAll(o => o.OrderSN == orderSN);
+                suspendList.Save(MachinesSettings.CachePath, cart.MachineInformation.StoreId, cart.MachineInformation.MachineSn);
+                File.Delete(filePath);
+                return suspendList;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+    }
+
+
+}

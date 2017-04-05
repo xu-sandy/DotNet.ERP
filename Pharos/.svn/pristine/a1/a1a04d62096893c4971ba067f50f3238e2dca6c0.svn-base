@@ -1,0 +1,28 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale.Payment;
+using Pharos.Logic.ApiData.Pos.Services;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.AfterSale
+{
+    public class ChangeSale
+    {
+        public static void Change(string storeId, string machineSn, List<ChangeRefundItem> changeList, int reason, string paySn, decimal amount, IPay pay)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn);
+            var shoppingcart = ShoppingCartFactory.Factory(storeId, machineSn);
+            var uid = shoppingcart.MachineInformation.CashierUid;
+            dataAdapter.Change(changeList, reason, paySn, pay.PayDetails.PaySn, amount, uid, pay.ApiCode.ToString());
+        }
+        public static IEnumerable<ReasonItem> GetReason(string storeId, string machineSn)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn);
+            return dataAdapter.GetReason(1);
+        }
+    }
+}

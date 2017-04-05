@@ -1,0 +1,447 @@
+﻿using Newtonsoft.Json.Linq;
+using System.Configuration;
+using System.Web.Http;
+using Pharos.Api.Retailing.Models.Mobile;
+using Pharos.Logic.BLL;
+using Pharos.Logic.ApiData.Mobile.Exceptions;
+using Pharos.Infrastructure.Data.Normalize;
+using System;
+using System.Collections.Generic;
+using Pharos.Utility;
+using Newtonsoft.Json;
+using System.Text;
+using System.Security.Cryptography;
+using Pharos.Logic.Entity;
+using Pharos.Logic.DAL;
+using System.Linq;
+
+namespace Pharos.Api.Retailing.Controllers.Mobile
+{
+    [RoutePrefix("api/mobile")]
+    public class PayController : ApiController
+    {
+        //测试地址
+        //http://27.154.234.10:8016/api/pay/qctpay
+        //http://api.pay.qcterp.com
+        //商户号：4 门店号：30005
+
+
+
+        /// <summary>
+        /// 扫码收款
+        /// </summary>
+        /// <param name="param"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("PayMerchScanDyna")]
+        public object PayMerchScanDyna(AppPayRequest param)
+        {
+            try
+            {
+                int apicode = 26;
+                int cid = param.CID;
+                var storeId = param.StoreId;
+                //查询门店支付授权
+                var authorization = GetCompanyPayInfo(cid, storeId, apicode);//26=主扫支付apicode
+                if (!authorization.Successed)
+                {
+                    throw new MessageException(authorization.Message);
+                }
+
+                string out_trade_no = new AppPayOrderSn(cid, storeId).ToString();
+                string create_date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                var pay_notify_url = Pharos.Utility.Config.GetAppSettings("qctpaynotifyurl");//回调地址
+                var goods_name = "";
+                var goods_desc = "";
+
+                //判断用户积分使用
+                #region 积分记录
+                IntegralFlows reduceIntegral = new IntegralFlows()
+                {
+                    CompanyId = cid,
+                    StoreId = storeId,
+                    FlowSN = out_trade_no,
+                    Amount = param.TotalAmount,
+                    Integral = -param.UseIntegral,
+                    DiscountAmount = param.DiscountAmount,
+                    CardSN = param.CardSN,
+                    Received = param.Received,
+                    Remark = "",
+                    State = 0,
+                    CreateDate = DateTime.Now,
+                    CreateUser = param.CurrentUser
+                };
+                IntegralFlows addIntegral = new IntegralFlows()
+                {
+                    CompanyId = cid,
+                    StoreId = storeId,
+                    FlowSN = out_trade_no,
+                    Amount = param.TotalAmount,
+                    Integral = param.GetIntegral,
+                    DiscountAmount = param.DiscountAmount,
+                    CardSN = param.CardSN,
+                    Received = param.Received,
+                    Remark = "",
+                    State = 0,
+                    CreateDate = DateTime.Now,
+                    CreateUser = param.CurrentUser
+                };
+                IntegralFlowsService.Add(reduceIntegral, false);
+                IntegralFlowsService.Add(addIntegral);
+                #endregion
+
+                var reqParams = new SortedDictionary<string, object>();
+
+                reqParams.Add("charset", PayConst.CHARSET);
+                reqParams.Add("method", PayConst.QCTTRADE_PAY_MERCHSCAN);
+                reqParams.Add("mch_id", cid);
+                reqParams.Add("store_id", storeId);
+                reqParams.Add("device_id", param.Device_id);
+                reqParams.Add("sign_type", PayConst.SIGNTYPE);
+                reqParams.Add("version", PayConst.VERSION);
+                reqParams.Add("out_trade_no", out_trade_no);
+                reqParams.Add("order_type", 1);
+                reqParams.Add("create_date", create_date);
+                reqParams.Add("total_amount", param.Received);
+                reqParams.Add("buyer_pay_token", param.PayToken);
+                reqParams.Add("pay_notify_url", pay_notify_url);
+                reqParams.Add("buyer_mobile", "");
+                reqParams.Add("goods_name", goods_name);
+                reqParams.Add("goods_desc", goods_desc);
+                //签名
+                String sign = PayHelper.Sign(reqParams, authorization.Message);
+                reqParams.Add("sign", sign);
+                var obj = HttpClient.PayPost(Pharos.Utility.Config.GetAppSettings("qctpayurl"), reqParams);
+                var result = JsonConvert.DeserializeObject<JObject>(obj);
+                if (result.Property("return_code").Value.ToString() == "00000")
+                {
+                    int state = 0;
+                    var rstate = result.Property("pay_status", true);
+                    switch (rstate)
+                    {
+                        default:
+                        case "NOTPAY":
+                            break;
+                        case "PAYSUCCESS":
+                            state = 1;
+                            break;
+                        case "PAYFAIL":
+                            state = 2;
+                            break;
+                        case "PAYCANCEL":
+                            state = 3;
+                            break;
+                        case "PAYTIMEOUT":
+                            state = 4;
+                            break;
+                    }
+                    AppPaymentRecords record = new AppPaymentRecords()
+                    {
+                        CompanyId = cid,
+                        StoreId = storeId,
+                        OrderSN = out_trade_no,
+                        TotalAmount = param.TotalAmount,
+                        DiscountAmount = param.DiscountAmount,
+                        Received = param.Received,
+                        ApiCode = apicode,
+                        PayChannel = result.Property("pay_channel", true),
+                        State = state,
+                        CreateDate = DateTime.Now,
+                        CreateUser = param.CurrentUser,
+                        ReturnData = obj
+                    };
+
+                    //成功
+                    if (state == 1)
+                    {
+                        return result.Property("receipt_amount", true);
+                    }
+                    else
+                    {//状态不成功
+                        return result.Property("pay_status", true);
+                    }
+                }
+                else
+                {
+                    //失败
+                    var errmsg = result.Property("return_msg").Value.ToString();
+                    throw new MessageException(errmsg);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new MessageException("支付异常：" + ex.Message);
+            }
+        }
+        /// <summary>
+        /// 客户扫码回调
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("TradeNotify")]
+        public object TradeNotify([FromBody]JObject obj)
+        {
+            if (!obj.Properties().Any(o => o.Name == "return_code"))
+            {
+                return new { return_code = "50000", return_msg = "返回参数错误" };
+            }
+            if (obj.Property("return_code").Value.ToString() == "00000")
+            {
+                //更新会员积分信息
+                var cid = Convert.ToInt32(obj.Property("mch_id", true));//
+                var storeId = obj.Property("store_id", true);//门店
+                var orderSN = obj.Property("out_trade_no", true);//单号
+                var amount = obj.Property("receipt_amount", true);//支付金额
+                var payState = obj.Property("pay_status", true);//notpay=支付中；paysuccess=支付成功；payfail=支付失败;paycancel=已撤销;paytimeout=支付超时
+                var tradeDate = obj.Property("trade_date", true);//支付时间
+                var channel = obj.Property("pay_channel", true);//支付渠道
+                var deviceId = obj.Property("device_id", true);//设备编号
+                var signType = obj.Property("sign_type", true);
+                var sign = obj.Property("sign", true);
+                var version = obj.Property("version", true);
+                var date = obj.Property("trade_date", true);
+                var method = obj.Property("method", true);
+
+                //验证签名
+                var reqParams = new SortedDictionary<string, object>();
+
+                reqParams.Add("method", PayConst.QCTTRADE_PAY_MERCHSCAN);
+                reqParams.Add("mch_id", cid);
+                reqParams.Add("store_id", storeId);
+                reqParams.Add("device_id", deviceId);
+                reqParams.Add("sign_type", signType);
+                reqParams.Add("version", version);
+                reqParams.Add("out_trade_no", orderSN);
+                //reqParams.Add("order_type", 1);
+                //reqParams.Add("create_date", date);
+                reqParams.Add("receipt_amount", amount);
+                //reqParams.Add("buyer_pay_token", param.PayToken);
+                //reqParams.Add("pay_notify_url", pay_notify_url);
+                reqParams.Add("pay_status", payState);
+                reqParams.Add("pay_channel", channel);
+                reqParams.Add("trade_date", date);
+                //签名
+
+                //查询门店支付授权
+                var authorization = GetCompanyPayInfo(cid, storeId, 25);
+                if (!authorization.Successed)
+                {
+                    throw new MessageException("门店信息错误");
+                }
+                string localsign = PayHelper.Sign(reqParams, authorization.Message);
+                if (localsign == sign)
+                {
+
+                    if (payState == "PAYSUCCESS")
+                    {
+                        //更新支付记录
+                        var data = AppPaymentRecordsService.Find(o => o.CompanyId == cid && o.StoreId == storeId && o.OrderSN == orderSN);
+                        if (data != null)
+                        {
+                            data.PayChannel = channel;
+                            data.ReturnData = obj.ToString();
+                            AppPaymentRecordsService.Update(data);
+                        }
+                    }
+                }
+                else
+                {
+                    return new { return_code = "50000", return_msg = "签名错误" };
+                }
+                //通知手机
+
+            }
+
+            return new { return_code = "00000", return_msg = "接收成功" };
+        }
+
+        /// <summary>
+        /// 收款码请求发起
+        /// </summary>
+        /// <param name="param"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("PayBuyerScanDyna")]
+        public object PayBuyerScanDyna(AppPayRequest param)
+        {
+            try
+            {
+                Dictionary<string, string> dic = new Dictionary<string, string>();
+                dic.Add("state", "s");
+                dic.Add("sd", "ers");
+                var re = dic.ToString();
+
+
+
+                int cid = param.CID;
+                var storeId = param.StoreId;
+
+                int apicode = 25;//25=被扫支付apicode
+                //查询门店支付授权
+                var authorization = GetCompanyPayInfo(cid, storeId, apicode);
+                if (!authorization.Successed)
+                {
+                    throw new MessageException(authorization.Message);
+                }
+
+                string out_trade_no = new AppPayOrderSn(cid, storeId).ToString();
+
+                string create_date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                var pay_notify_url = Pharos.Utility.Config.GetAppSettings("qctpaynotifyurl");//回调地址
+                var goods_name = "";
+                var goods_desc = "";
+
+                var reqParams = new SortedDictionary<string, object>();
+
+                reqParams.Add("charset", PayConst.CHARSET);
+                reqParams.Add("method", PayConst.QCTTRADE_PAY_BUYERSCAN_DYNA);
+                reqParams.Add("mch_id", cid);
+                reqParams.Add("store_id", storeId);
+                reqParams.Add("device_id", param.Device_id);
+                reqParams.Add("sign_type", PayConst.SIGNTYPE);
+                reqParams.Add("version", PayConst.VERSION);
+                reqParams.Add("out_trade_no", out_trade_no);
+                reqParams.Add("order_type", 1);
+                reqParams.Add("create_date", create_date);
+                reqParams.Add("total_amount", param.Received);
+                reqParams.Add("pay_notify_url", pay_notify_url);
+                reqParams.Add("buyer_mobile", "");
+                reqParams.Add("goods_name", goods_name);
+                reqParams.Add("goods_desc", goods_desc);
+                //签名
+                String sign = PayHelper.Sign(reqParams, authorization.Message);
+                reqParams.Add("sign", sign);
+                var obj = HttpClient.PayPost(Pharos.Utility.Config.GetAppSettings("qctpayurl"), reqParams);
+                var result = JsonConvert.DeserializeObject<JObject>(obj);
+                if (result.Property("return_code").Value.ToString() == "00000")
+                {
+                    //成功
+                    AppPaymentRecords record = new AppPaymentRecords()
+                    {
+                        CompanyId = cid,
+                        StoreId = storeId,
+                        OrderSN = out_trade_no,
+                        TotalAmount = param.TotalAmount,
+                        DiscountAmount = param.DiscountAmount,
+                        Received = param.Received,
+                        ApiCode = apicode,
+                        //PayChannel = result.Property("pay_channel", true),
+                        State = 0,
+                        CreateDate = DateTime.Now,
+                        CreateUser = param.CurrentUser
+                        //ReturnData = obj
+                    };
+
+                    return result.Property("pay_token").Value.ToString();
+                }
+                else
+                {
+                    //失败
+                    var errmsg = result.Property("return_msg").Value.ToString();
+                    throw new MessageException(errmsg);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                throw new MessageException("支付异常：" + ex.Message);
+            }
+        }
+
+        private OpResult GetCompanyPayInfo(int cid, string storeid, int apicode)
+        {
+            var entity = PayConfigurationService.Find(o => o.CompanyId == cid && o.State == 1 && apicode == o.PayType);
+            if (entity != null)
+            {
+                var storeEntity = StorePaymentAuthorizationService.Find(o => o.CompanyId == cid && o.StoreId == storeid && o.PayType == apicode && o.State == 1);
+                if (storeEntity != null)
+                {
+                    return OpResult.Success(entity.SecurityKey);
+                }
+                else
+                {
+                    return OpResult.Fail("门店未开通授权支付！");
+
+                }
+
+            }
+            else
+            {
+                return OpResult.Fail("商户未开通授权支付！");
+            }
+        }
+
+    }
+    /// <summary>
+    /// 测试参数
+    /// </summary>
+    public class PayConst
+    {
+
+        //测试账号
+        //public const int MERCHANT_ID = 4;//您的商户号
+        //public const int MERCHANT_STOREID = 30005;//您的商户门店号
+        //public const string MERCHANT_SECRETKEY = "56D0F28A2AEE4A928BE282D1CCEBF33D";//您的商户安全密钥
+
+        public const string SIGNTYPE = "MD5";//签名类型
+        public const string VERSION = "1.0";//调用版本
+        public const string CHARSET = "utf-8";//字符集格式
+
+        #region QctPay Methods
+        public const string QCTTRADE_PAY_BUYERSCAN_DYNA = "qct.trade.pay.buyerscandyna";
+        public const string QCTTRADE_PAY_MERCHSCAN = "qct.trade.pay.merchscan";
+        public const string QCTTRADE_REFUNDAPPLY = "qct.trade.refund.apply";
+
+        public const string QCTTRADE_NOTIFY_PAY = "qct.trade.notify.pay";
+        public const string QCTTRADE_NOTIFY_REFUND = "qct.trade.notify.refund";
+
+        public const string TEST_URL = "http://27.154.234.10:8016/api/pay/qctpay";
+        public const string RETURN_URL = "http://192.168.10.53:3122/api/mobile/TradeNotify";
+        #endregion
+    }
+
+    public class PayHelper
+    {
+        public static String Sign(SortedDictionary<String, Object> signObj, String md5Key)
+        {
+            StringBuilder signdatasb = new StringBuilder();
+            foreach (var item in signObj)
+            {
+                String key = item.Key;
+                String value = signObj[key] == null ? "" : signObj[key].ToString();
+                signdatasb.Append("&").Append(key).Append("=").Append(value);
+            }
+
+            String signdata = signdatasb.ToString().Substring(1) + "&key=" + md5Key;
+            return GetMD5(signdata);
+        }
+        public static string GetMD5(string value)
+        {
+            MD5 md5 = MD5.Create();
+            byte[] data = md5.ComputeHash(Encoding.UTF8.GetBytes(value));
+            string sh1 = "";
+            for (int i = 0; i < data.Length; i++)
+            {
+                sh1 += data[i].ToString("x2").ToUpperInvariant();
+            }
+            return sh1;
+        }
+        public static SortedDictionary<string, object> Trans2SortedDic<T>(T model)
+        {
+            var sortDic = new SortedDictionary<string, object>();
+            var type = typeof(T);
+            foreach (var item in type.GetProperties())
+            {
+                var attrs = item.GetCustomAttributes(typeof(JsonPropertyAttribute), false);
+                foreach (JsonPropertyAttribute attr in attrs)
+                {
+                    var key = attr.PropertyName;
+                    var value = item.GetValue(model);
+                    value = value == null ? "" : value;
+                    sortDic.Add(key, value);
+                }
+            }
+            return sortDic;
+        }
+    }
+}

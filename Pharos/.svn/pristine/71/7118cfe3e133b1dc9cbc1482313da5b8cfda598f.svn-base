@@ -1,0 +1,25 @@
+﻿using Pharos.Logic.OMS.DAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class CommonPayService
+    {
+        /// <summary>
+        /// 根据表明及字段名获取对应字段Max值
+        /// </summary>
+        /// <param name="tbName"></param>
+        /// <param name="fieldName"></param>
+        /// <returns></returns>
+        public static int GetMaxNo(string tbName,string fieldName)
+        {
+            string sql = "SELECT ISNULL(MAX({0}),0) FROM {1}";
+            var db = ContextFactory.GetCurrentContext<EFDbContext>().Database;
+            var result = db.SqlQuery<int>(string.Format(sql, fieldName, tbName)).FirstOrDefault();
+            return result + 1;
+        }
+    }
+}

@@ -1,0 +1,271 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Linq;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Windows;
+using Pharos.POS.Retailing.Models.Payment;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    /// <summary>
+    /// 退货
+    /// </summary>
+    public class RefundModel : BaseObservable
+    {
+        public RefundModel()
+        {
+            OldProducts = new ObservableCollection<RefundProduct>();
+            var defualt = ChangingSelectItem.FirstOrDefault();
+            if (defualt != null)
+                Reason = defualt.DicSN;
+            Current = this;
+        }
+
+
+        public static RefundModel Current { get; set; }
+        internal Window CurrentWindow { get; set; }
+
+        public ObservableCollection<RefundProduct> OldProducts { get; set; }
+
+
+        //订单流水号
+        private string orderId;
+        /// <summary>
+        /// 订单流水号
+        /// </summary>
+        public string OrderId
+        {
+            get { return orderId; }
+            set
+            {
+                var result = SaleDetailLocalService.GetOrderDetails(value);
+                if (result.Count == 0)
+                {
+                    Toast.DoShow("流水号不存在！", CurrentWindow);
+                    OnPropertyChanged("OrderId");
+                    return;
+                }
+                OldProducts.Clear();
+                foreach (var item in result)
+                {
+                    var product = new RefundProduct()
+                    {
+                        Barcode = item.Barcode,
+                        Number = item.Number,
+                        ProductCode = item.ProductCode,
+                        SalePrice = item.SalePrice,
+                        SysPrice = item.SysPrice,
+                        Title = item.Title,
+                        Total = item.SalePrice * item.Number
+                    };
+                    product.PropertyChanged += product_PropertyChanged;
+                    OldProducts.Add(product);
+                }
+                OnPropertyChanged("OldProducts");
+
+                orderId = value;
+                OnPropertyChanged("OrderId");
+            }
+        }
+
+        private void product_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            Premium = OldProducts.Where(o => o.IsChange).Sum(o => o.SalePrice * o.ChangeNumber);
+        }
+
+        //换货下拉列表项
+        public List<SysDataDictionary> ChangingSelectItem
+        {
+            get
+            {
+                var dict = SysDataDictionaryLocalService.Find(p => p.DicSN == 8);
+                if (dict != null)
+                {
+                    var psn = dict.DicSN;
+                    return SysDataDictionaryLocalService.FindList(o => o.DicPSN == psn);
+                }
+                return new List<SysDataDictionary>();
+            }
+        }
+        //退货原因
+        private int reason;
+        public int Reason
+        {
+            get { return reason; }
+            set
+            {
+                reason = value;
+                OnPropertyChanged("Reason");
+            }
+        }
+        //差价
+        private decimal premium;
+        public decimal Premium
+        {
+            get { return premium; }
+            set
+            {
+
+                premium = value;
+                OnPropertyChanged("Premium");
+            }
+        }
+
+        public GeneralCommand Save
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    if (this.OldProducts.Count == 0)
+                    {
+                        Toast.DoShow("没有退货，不允许操作！");
+                        return;
+                    }
+                    var win = o as Window;
+                    VerifyPassword vp = new VerifyPassword(() =>
+                    {
+                        string returnId = Guid.NewGuid().ToString("N");
+                        var order = SaleOrdersLocalService.Find(O => O.PaySN == OrderId);
+                        order.ReturnId = returnId;
+                        order.State = 1;
+                        order.IsUpload = true;
+                        SaleOrdersLocalService.Update(order);
+                        SalesReturns salesReturn = new SalesReturns()
+                        {
+                            CreateDT = DateTime.Now,
+                            CreateUID = UserModel.Current.Uid,
+                            ReasonId = Current.Reason,
+                            ReturnId = returnId,
+                            ReturnPrice = Current.Premium,
+                            ReturnType = 0,
+                            State = 2,
+                            StoreId = PosMachine.Current.Infos.StoreId,
+                            NewPaySN = "",
+                            MachineSN = PosMachine.Current.Infos.MachineId,
+                            IsUpload = true
+                        };
+                        SalesReturnsLocalService.Add(salesReturn);
+                        List<SalesReturnsDetailed> details = new List<SalesReturnsDetailed>();
+                        var result = Current.OldProducts.Where(p => p.IsChange);
+                        foreach (var item in result)
+                        {
+                            details.Add(new SalesReturnsDetailed()
+                            {
+                                Barcode = item.Barcode,
+                                Number = item.Number,
+                                Price = item.SysPrice,
+                                ReceiptsNumber = Current.OrderId,
+                                ReturnId = returnId,
+                                TradingPrice = item.SalePrice,
+                                CreateDT = DateTime.Now,
+                                IsUpload = true
+                            });
+                        }
+                        SalesReturnsDetailedLocalService.AddRange(details);
+                        Toast.DoShow("退货成功！");
+                        win.Close();
+                    }, true);
+                    vp.ShowDialogInScreen();
+                });
+            }
+        }
+    }
+    public class RefundProduct : BaseObservable
+    {
+        public RefundProduct()
+        {
+            IsChange = false;
+        }
+        public string Barcode { get; set; }
+        public string ProductCode { get; set; }
+
+        public string Title { get; set; }
+
+        private decimal number;
+        public decimal Number
+        {
+            get { return number; }
+            set
+            {
+                number = value;
+                ChangeNumber = value;
+                OnPropertyChanged("Number");
+            }
+        }
+
+        private decimal changeNumber;
+        public decimal ChangeNumber
+        {
+            get { return changeNumber; }
+            set
+            {
+                if (value > Number)
+                {
+                    Toast.DoShow("超出购买数量！");
+                    return;
+                }
+                changeNumber = value;
+                OnPropertyChanged("ChangeNumber");
+
+            }
+        }
+        private bool isChange = false;
+        public bool IsChange
+        {
+            get { return isChange; }
+            set
+            {
+                isChange = value;
+                if (value)
+                {
+                    NotChangeVisibility = Visibility.Collapsed;
+                    ChangeVisibility = Visibility.Visible;
+                }
+                else
+                {
+                    NotChangeVisibility = Visibility.Visible;
+                    ChangeVisibility = Visibility.Collapsed;
+                }
+                OnPropertyChanged("IsChange");
+                OnPropertyChanged("ChangeVisibility");
+                OnPropertyChanged("NotChangeVisibility");
+
+            }
+        }
+
+        public Visibility NotChangeVisibility { get; set; }
+        public Visibility ChangeVisibility { get; set; }
+
+        public decimal SysPrice { get; set; }
+
+        public decimal SalePrice { get; set; }
+
+        public decimal Total { get; set; }
+
+        public GeneralCommand Change
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    IsChange = true;
+                    ChangeNumber = Number;
+                });
+            }
+        }
+        public GeneralCommand Cancel
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    IsChange = false;
+                });
+            }
+        }
+    }
+}

@@ -1,0 +1,134 @@
+// --------------------------------------------------
+// Copyright (C) 2015 版权所有
+// 创 建 人：蔡少发
+// 创建时间：2015-05-22
+// 描述信息：用于管理本系统的所有会员信息
+// --------------------------------------------------
+
+using Pharos.Logic.BLL.DataSynchronism;
+using Pharos.Logic.BLL.LocalServices.DataSync;
+using Pharos.Utility;
+using System;
+
+namespace Pharos.Logic.LocalEntity
+{
+    [Excel("会员信息")]
+
+    /// <summary>
+    /// 会员信息
+    /// </summary>
+    public class Members : BaseEntity, ICanUploadEntity
+    {
+        public Int64 Id { get; set; }
+        [Excel("门店ID", 1)]
+        [ExcelField(@"^[0-9]{1,2}$###门店ID长度应在1-2位且为数字")]
+        [LocalKey]
+
+        /// <summary>
+        /// 门店ID
+        /// [长度：40]
+        /// [不允许为空]
+        /// </summary>
+        public string StoreId { get; set; }
+        [Excel("会员卡号", 2)]
+        [ExcelField(@"^[0-9,a-z,A-Z]{1,100}$###会员卡号长度应在1-100位且为数字或者字母")]
+
+
+        /// <summary>
+        /// 会员卡号（全局唯一）
+        /// [长度：100]
+        /// [不允许为空]
+        /// </summary>
+        public string MemberCardNum { get; set; }
+        [Excel("会员姓名", 3)]
+        [ExcelField(@"^[\s,\S]{0,20}$###会员姓名长度应在1-100位字符")]
+
+        /// <summary>
+        /// 会员姓名
+        /// [长度：20]
+        /// </summary>
+        public string RealName { get; set; }
+        [Excel("手机号", 4)]
+        [ExcelField(@"^((13[0-9]|15[0|3|6|7|8|9]|18[8|9])\d{8}){0,1}$###手机号格式不正确")]
+        /// <summary>
+        /// 手机号（全局唯一）
+        /// [长度：11]
+        /// </summary>
+        public string MobilePhone { get; set; }
+        [Excel("Email", 5)]
+        [ExcelField(@"[\da-zA-Z_]+@([-\dA-Za-z]+\.)+[a-zA-Z]{2,}###Email格式不正确")]
+
+        /// <summary>
+        /// Email（全局唯一）
+        /// [长度：100]
+        /// </summary>
+        public string Email { get; set; }
+        [Excel("生日", 6)]
+        [ExcelField(@"^((((1[6-9]|[2-9]\d)\d{2})-(0?[13578]|1[02])-(0?[1-9]|[12]\d|3[01]))|(((1[6-9]|[2-9]\d)\d{2})-(0?[13456789]|1[012])-(0?[1-9]|[12]\d|30))|(((1[6-9]|[2-9]\d)\d{2})-0?2-(0?[1-9]|1\d|2[0-9]))|(((1[6-9]|[2-9]\d)(0[48]|[2468][048]|[13579][26])|((16|[2468][048]|[3579][26])00))-0?2-29-))$###生日格式应为（yyyy-MM-dd）")]
+
+        /// <summary>
+        /// 生日（yyyy-MM-dd）
+        /// [长度：10]
+        /// </summary>
+        public string Birthday { get; set; }
+        [Excel("可用积分", 7)]
+        [ExcelField(@"^[0-9]{1,10}$###可用积分为不大于10位数字且不为空")]
+
+        /// <summary>
+        /// 可用积分
+        /// [长度：10]
+        /// [默认值：((0))]
+        /// </summary>
+        public int UsableIntegral { get; set; }
+        [Excel("已用积分", 8)]
+        [ExcelField(@"^[0-9]{1,10}$###已用积分为不大于10位数字且不为空")]
+
+        /// <summary>
+        /// 已用积分
+        /// [长度：10]
+        /// [默认值：((0))]
+        /// </summary>
+        public int UsedIntegral { get; set; }
+        [Excel("所在城市ID", 9)]
+        [ExcelField(@"^[0-9]{0,10}$###所在城市ID为不大于10位数字且不为空")]
+
+        /// <summary>
+        /// 所在城市ID
+        /// [长度：10]
+        /// </summary>
+        public int CurrentCityId { get; set; }
+        [Excel("内部人员GUID", 10)]
+        [ExcelField(@"^[0-9,a-z,A-Z]{0,40}$###内部人员GUID应为Guid")]
+
+        /// <summary>
+        /// 内部人员GUID
+        /// [长度：40]
+        /// </summary>
+        public string InsiderUID { get; set; }
+        [Excel("创建时间", 11)]
+        [ExcelField(@"^(((((1[6-9]|[2-9]\d)\d{2})-(0?[13578]|1[02])-(0?[1-9]|[12]\d|3[01]))|(((1[6-9]|[2-9]\d)\d{2})-(0?[13456789]|1[012])-(0?[1-9]|[12]\d|30))|(((1[6-9]|[2-9]\d)\d{2})-0?2-(0?[1-9]|1\d|2[0-8]))|(((1[6-9]|[2-9]\d)(0[48]|[2468][048]|[13579][26])|((16|[2468][048]|[3579][26])00))-0?2-29-)) (20|21|22|23|[0-1]?\d):[0-5]?\d:[0-5]?\d)$###创建时间格式为yyyy-MM-dd HH:mm:ss")]
+
+        /// <summary>
+        /// 创建时间
+        /// [长度：23，小数位数：3]
+        /// [不允许为空]
+        /// </summary>
+        public DateTime CreateDT { get; set; }
+        [Excel("创建人UID", 12)]
+        [ExcelField(@"^[0-9,a-z,A-Z]{0,40}$###创建人UID应为Guid")]
+
+        /// <summary>
+        /// 创建人UID
+        /// [长度：40]
+        /// [不允许为空]
+        /// </summary>
+        public string CreateUID { get; set; }
+
+        public string Weixin { get; set; }
+        [LocalKey]
+
+        public string MemberId { get; set; }
+
+        public bool IsUpload { get; set; }
+    }
+}

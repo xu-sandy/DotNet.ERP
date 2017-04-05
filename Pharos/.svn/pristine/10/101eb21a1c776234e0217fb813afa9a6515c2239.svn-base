@@ -1,0 +1,68 @@
+﻿@model Pharos.Logic.OMS.Entity.SysDataDictionaryExt
+@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.DicSN)
+        @Html.HiddenFor(o => o.DicPSN)
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-toolbar" style="width: 100%; height: 120px; ">
+                @if (Model.DicPSN != 0)
+                {
+                    <tr>
+                        <td class="name">
+                            <span>所属分类：</span>
+                        </td>
+                        <td class="input">
+                            @Html.DisplayFor(o => o.PTitle)
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td class="name">
+                        <span>名称：</span>
+                    </td>
+                    <td class="input">
+                        @if(Model.DicPSN == 0){
+                            @Html.DisplayFor(o => o.Title)
+                            @Html.HiddenFor(o => o.Title)
+                        }else{
+                            @Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true" })
+                        }
+                    </td>
+                </tr>
+                @if (Model.DicPSN > 0)
+                {
+                <tr>
+                    <td class="name">
+                        <span>有无下级：</span>
+                    </td>
+                    <td class="input">
+                        @Html.RadioButtonFor(o => o.HasChild, false) 无
+                        @Html.RadioButtonFor(o => o.HasChild, true) 有
+                    </td>
+                </tr>
+                }
+                else
+                {
+                    @Html.HiddenFor(o => o.HasChild)
+                }
+                <tr>
+                    <td class="name">
+                        <span>状态：</span>
+                    </td>
+                    <td class="input">
+                        @Html.RadioButtonFor(o => o.Status, false) 关闭
+                        @Html.RadioButtonFor(o => o.Status, true) 启用
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    
+</script>

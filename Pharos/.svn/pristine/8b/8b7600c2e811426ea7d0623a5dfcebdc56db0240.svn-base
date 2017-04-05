@@ -1,0 +1,276 @@
+﻿using Pharos.Logic.BLL.DataSynchronism;
+using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.BLL.LocalServices.DataSync;
+using Pharos.Logic.BLL.LocalServices.DataSync.LocalUpdateDao;
+using Pharos.Logic.LocalEntity;
+using Pharos.POS.Retailing.Models.SalesPromotionRules;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Models.DataSync
+{
+    internal class DataSyncResources
+    {
+        static DataSyncResources()
+        {
+            UpdateRanges = new List<DataSyncItem>();
+
+            #region 更新
+            UpdateRanges.Add(new DataSyncItem(typeof(SysStoreUserInfo))
+            {
+                IsChecked = true,
+                Title = "用户信息　　",
+                Datas = () =>
+                {
+                    //用户
+                    var userInfoParams = new UpdateFormData();
+                    userInfoParams.StoreId = PosMachineInfo.Infos.StoreId;
+                    userInfoParams.Datas.Add(typeof(SysStoreUserInfo).ToString(), new List<SysStoreUserInfo>());
+                    userInfoParams.Datas.Add(typeof(DeviceRegInfo).ToString(), new List<DeviceRegInfo>());
+                    return userInfoParams;
+                },
+                UpdateAction = DataSynchronization.Update
+            });
+            UpdateRanges.Add(new DataSyncItem(typeof(Notice))
+            {
+                IsChecked = true,
+                Title = "公告信息　　",
+                Datas = () =>
+                {
+                    //用户
+                    var noticeParams = new UpdateFormData();
+                    noticeParams.StoreId = PosMachineInfo.Infos.StoreId;
+                    noticeParams.Datas.Add(typeof(Notice).ToString(), new List<Notice>());
+                    return noticeParams;
+                },
+                UpdateAction = DataSynchronization.Update
+            });
+
+            UpdateRanges.Add(new DataSyncItem(typeof(ApiLibrary))
+            {
+                IsChecked = true,
+                Title = "接口信息　　",
+                Datas = () =>
+                {
+                    //集成接口库
+                    var apiLibraryParams = new UpdateFormData();
+                    apiLibraryParams.StoreId = PosMachineInfo.Infos.StoreId;
+                    apiLibraryParams.Datas.Add(typeof(ApiLibrary).ToString(), new List<ApiLibrary>());
+                    return apiLibraryParams;
+                },
+                UpdateAction = DataSynchronization.Update
+
+            });
+            UpdateRanges.Add(new DataSyncItem(typeof(ProductBrand), typeof(ProductCategory), typeof(SysDataDictionary), typeof(ProductInfo))
+            {
+                IsChecked = true,
+                Title = "产品数据　　",
+                Datas = () =>
+                {
+                    // 品牌信息表、产品类别、数据字典、产品信息表
+                    var productInfoParams = new UpdateFormData();
+                    productInfoParams.StoreId = PosMachineInfo.Infos.StoreId;
+                    productInfoParams.Datas.Add(typeof(ProductBrand).ToString(), new List<ProductBrand>());
+                    productInfoParams.Datas.Add(typeof(ProductCategory).ToString(), new List<ProductCategory>());
+                  //  productInfoParams.Datas.Add(typeof(ProductGroup).ToString(), new List<ProductGroup>());
+                    productInfoParams.Datas.Add(typeof(SysDataDictionary).ToString(), new List<SysDataDictionary>());
+                    productInfoParams.Datas.Add(typeof(ProductInfo).ToString(), new List<ProductInfo>());
+                   // productInfoParams.Datas.Add(typeof(Commodity).ToString(), new List<Commodity>());
+                    return productInfoParams;
+                },
+                UpdateAction = DataSynchronization.Update
+            });
+            UpdateRanges.Add(new DataSyncItem(typeof(CommodityPromotion), typeof(Bundling), typeof(BundlingList), typeof(CommodityDiscount), typeof(FreeGiftPurchase), typeof(FreeGiftPurchaseList), typeof(PromotionBlend), typeof(PromotionBlendList))
+            {
+                IsChecked = true,
+                Title = "促销活动　　",
+                Datas = () =>
+                {
+                    //商品促销、捆绑销售、捆绑销售清单、单品折扣、买赠促销、买赠赠品清单、组合促销、组合促销清单
+                    var commodityPromotionParams = new UpdateFormData();
+                    commodityPromotionParams.StoreId = PosMachineInfo.Infos.StoreId;
+                    commodityPromotionParams.Datas.Add(typeof(CommodityPromotion).ToString(), new List<CommodityPromotion>());
+                    commodityPromotionParams.Datas.Add(typeof(Bundling).ToString(), new List<Bundling>());
+                    commodityPromotionParams.Datas.Add(typeof(BundlingList).ToString(), new List<BundlingList>());
+                    commodityPromotionParams.Datas.Add(typeof(CommodityDiscount).ToString(), new List<CommodityDiscount>());
+                    commodityPromotionParams.Datas.Add(typeof(FreeGiftPurchase).ToString(), new List<FreeGiftPurchase>());
+                    commodityPromotionParams.Datas.Add(typeof(FreeGiftPurchaseList).ToString(), new List<FreeGiftPurchaseList>());
+                    commodityPromotionParams.Datas.Add(typeof(PromotionBlend).ToString(), new List<PromotionBlend>());
+                    commodityPromotionParams.Datas.Add(typeof(PromotionBlendList).ToString(), new List<PromotionBlendList>());
+
+                    return commodityPromotionParams;
+                },
+                UpdateAction = (o) =>
+                {
+
+                    DataSynchronization.Update(o, () =>
+                    {
+                        SaleContext.LoadDiscout();
+                    });
+                }
+            });
+            UpdateRanges.Add(new DataSyncItem(typeof(Members))
+            {
+                IsChecked = true,
+                Title = "会员信息　　",
+                Datas = () =>
+                {
+                    //会员信息
+                    var membersParams = new UpdateFormData();
+                    membersParams.StoreId = PosMachineInfo.Infos.StoreId;
+                    membersParams.Datas.Add(typeof(Members).ToString(), new List<Members>());
+                    return membersParams;
+                },
+                UpdateAction = DataSynchronization.Update
+            });
+
+            UpdateRanges.Add(new DataSyncItem(typeof(SaleOrders), typeof(SaleDetail), typeof(ConsumptionPayment), typeof(SalesReturns), typeof(SalesReturnsDetailed), typeof(PosIncomePayout), typeof(WipeZero), typeof(SaleDetailsTotal))
+            {
+                IsChecked = true,
+                Title = "销售信息　　",
+                Datas = () =>
+                {
+                    //销售信息
+                    var saleParams = new UpdateFormData();
+                    saleParams.StoreId = PosMachineInfo.Infos.StoreId;
+                    saleParams.Datas.Add(typeof(SaleOrders).ToString(), new List<SaleOrders>());
+                    saleParams.Datas.Add(typeof(SaleDetail).ToString(), new List<SaleDetail>());
+                    saleParams.Datas.Add(typeof(ConsumptionPayment).ToString(), new List<ConsumptionPayment>());
+                    saleParams.Datas.Add(typeof(SalesReturns).ToString(), new List<SalesReturns>());
+                    saleParams.Datas.Add(typeof(SalesReturnsDetailed).ToString(), new List<SalesReturnsDetailed>());
+                    saleParams.Datas.Add(typeof(PosIncomePayout).ToString(), new List<PosIncomePayout>());
+                    saleParams.Datas.Add(typeof(WipeZero).ToString(), new List<WipeZero>());
+                    saleParams.Datas.Add(typeof(SaleDetailsTotal).ToString(), new List<SaleDetailsTotal>());
+                    return saleParams;
+                },
+                UpdateAction = DataSynchronization.Update
+            });
+            #endregion 更新
+
+            #region 上传
+
+            UpdateRanges.Add(new DataSyncItem()
+            {
+                IsChecked = true,
+                IsUpload = true,
+                Title = "销售信息上传",
+                UpdateAction = (info) =>
+                {
+                    var result = DataSynchronization.HasUpdate(info.Datas);
+                    if (result)
+                    {
+                        DataSynchronization.PostRequery
+                        (
+                            DataSynchronization.UPLOADURL,
+                            info,
+                            new Action<bool>((o) =>
+                            {
+                                if (o)
+                                {
+                                    BaseLocalDataSyncService.Upload(info, () =>
+                                    {
+                                        if (DataSynchronization.GetProgressInfo != null)
+                                        {
+                                            DataSynchronization.GetProgressInfo();
+                                        }
+                                    }, 12);
+                                }
+                                if (DataSynchronization.GetProgressInfo != null)
+                                {
+                                    DataSynchronization.GetProgressInfo();
+                                }
+                            })
+                        );
+                    }
+                    else
+                    {
+                        if (DataSynchronization.GetProgressInfo != null)
+                        {
+                            DataSynchronization.GetProgressInfo();
+                        }
+                    }
+                },
+                Datas = () =>
+                {
+                    //销售单信息、消费支付方式、销售明细信息、销售退换货、退换货明细、出入款、会员、会员积分
+                    var saleParams = new UpdateFormData();
+                    saleParams.Mode = DataSyncMode.UploadToServer;
+                    saleParams.StoreId = PosMachineInfo.Infos.StoreId;
+                    saleParams.Datas.Add(typeof(SaleOrders).ToString(), BaseLocalDataSyncService.GetUploadDatas<SaleOrders>());
+                    saleParams.Datas.Add(typeof(SaleDetail).ToString(), BaseLocalDataSyncService.GetUploadDatas<SaleDetail>());
+                    saleParams.Datas.Add(typeof(ConsumptionPayment).ToString(), BaseLocalDataSyncService.GetUploadDatas<ConsumptionPayment>());
+                    saleParams.Datas.Add(typeof(SalesReturns).ToString(), BaseLocalDataSyncService.GetUploadDatas<SalesReturns>());
+                    saleParams.Datas.Add(typeof(SalesReturnsDetailed).ToString(), BaseLocalDataSyncService.GetUploadDatas<SalesReturnsDetailed>());
+                    saleParams.Datas.Add(typeof(PosIncomePayout).ToString(), BaseLocalDataSyncService.GetUploadDatas<PosIncomePayout>());
+                    saleParams.Datas.Add(typeof(WipeZero).ToString(), BaseLocalDataSyncService.GetUploadDatas<WipeZero>());
+                    saleParams.Datas.Add(typeof(SaleDetailsTotal).ToString(), BaseLocalDataSyncService.GetUploadDatas<SaleDetailsTotal>());
+                    saleParams.Datas.Add(typeof(Members).ToString(), BaseLocalDataSyncService.GetUploadDatas<Members>());
+                    saleParams.Datas.Add(typeof(MemberIntegral).ToString(), BaseLocalDataSyncService.GetUploadDatas<MemberIntegral>());
+                    return saleParams;
+                }
+            });
+            UpdateRanges.Add(new DataSyncItem()
+            {
+                IsChecked = true,
+                IsUpload = true,
+                Title = "店员登录信息更新",
+                UpdateAction = (info) =>
+                {
+
+                    //销售单信息、消费支付方式、销售明细信息
+                    if (DataSynchronization.HasUpdate(info.Datas))
+                    {
+                        var key = typeof(SysStoreUserInfo).ToString();
+                        var datas = (info.Datas[key] as IEnumerable<SysStoreUserInfo>).Select(p => new SysStoreUserInfoLocalUpdateDao() { LoginDT = p.LoginDT, UserCode = p.UserCode }).ToList();
+                        var tempInfo = new UpdateFormData() { StoreId = info.StoreId, Mode = DataSyncMode.UpdateToServer };
+                        tempInfo.Datas.Add(key, datas);
+
+                        DataSynchronization.PostRequery
+                        (
+                            DataSynchronization.UPLOADURL,
+                            tempInfo,
+                            new Action<bool>((o) =>
+                            {
+                                if (o)
+                                {
+                                    BaseLocalDataSyncService.Upload(info, () =>
+                                    {
+                                        if (DataSynchronization.GetProgressInfo != null)
+                                        {
+                                            DataSynchronization.GetProgressInfo();
+                                        }
+                                    });
+                                }
+                                if (DataSynchronization.GetProgressInfo != null)
+                                {
+                                    DataSynchronization.GetProgressInfo();
+                                }
+                            })
+                        );
+                    }
+                    else
+                    {
+                        if (DataSynchronization.GetProgressInfo != null)
+                        {
+                            DataSynchronization.GetProgressInfo();
+                        }
+                    }
+                },
+                Datas = () =>
+                {
+                    //更新店员登陆时间
+                    var sysStoreUserInfoParams = new UpdateFormData();
+                    sysStoreUserInfoParams.Mode = DataSyncMode.UpdateToServer;
+                    sysStoreUserInfoParams.StoreId = PosMachineInfo.Infos.StoreId;
+                    sysStoreUserInfoParams.Datas.Add(typeof(SysStoreUserInfo).ToString(), BaseLocalDataSyncService.GetUpdateDatas<SysStoreUserInfo>());
+                    return sysStoreUserInfoParams;
+                }
+            });
+            #endregion 上传
+        }
+
+        public static List<DataSyncItem> UpdateRanges { get; set; }
+
+    }
+}

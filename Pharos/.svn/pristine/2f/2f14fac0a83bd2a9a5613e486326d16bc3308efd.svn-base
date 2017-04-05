@@ -1,0 +1,53 @@
+﻿<control:DialogWindow02 x:Class="Pharos.POS.Retailing.ChildWin.RiJie"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"
+        Title="日结" Height="600" Width="1024" WindowStartupLocation="CenterScreen" Icon="..\Images\ChaKuCun\search.png" Margin="0" WindowStyle="None">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\RiJieStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="10"></RowDefinition>
+            <RowDefinition Height="200"></RowDefinition>
+            <RowDefinition Height="10"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"></ColumnDefinition>
+                <ColumnDefinition Width="200"></ColumnDefinition>
+                <ColumnDefinition Width="200"></ColumnDefinition>
+                <ColumnDefinition Width="145"></ColumnDefinition>
+                <ColumnDefinition Width="150"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <ComboBox Margin="10,0" FontSize="16" Grid.Column="0" ItemsSource="{Binding RangeSelectItem}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding Range,Mode=TwoWay}" Height="35"></ComboBox>
+            <ComboBox Margin="10,0" FontSize="16" Grid.Column="1"  ItemsSource="{Binding ModeSelectItem}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding Mode,Mode=TwoWay}" Height="35"></ComboBox>
+            <DatePicker Margin="10,0"  SelectedDateFormat="Short"  TabIndex="1" SelectedDate="{Binding SearchTime,Mode=TwoWay}" FontSize="14" Grid.Column="2"  Height="35"  VerticalContentAlignment="Center"></DatePicker>
+            <control:PosButton Style="{StaticResource BtnStyle}" IsEnabled="True" Grid.Column="3"  Command="{Binding SearchCommand}">查询</control:PosButton>
+            <control:PosButton Style="{StaticResource BtnStyle}" IsEnabled="True" Grid.Column="4" Background="#BCB4BB"  Command="{Binding PrintCommand}">打印</control:PosButton>
+        </Grid>
+
+        <DataGrid Name="DataView" Grid.Row="2" Margin="0" ItemsSource="{Binding DayReportItems,Mode=OneWay}" BorderThickness="1" BorderBrush="#BCB4BB"   VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserDeleteRows="True" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Binding="{Binding Project}" IsReadOnly="True" Header="交易" Width="150*"/>
+                <DataGridTextColumn Binding="{Binding Number}" IsReadOnly="True" Header="笔数" Width="150*"/>
+                <DataGridTextColumn Binding="{Binding Amount, StringFormat=\{0:C\}}" IsReadOnly="True" Header="金额" Width="150*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        <Border Grid.Row="4" CornerRadius="10" BorderThickness="1" BorderBrush="Gray">
+            <ScrollViewer>
+                <Grid>
+                    <ItemsControl ScrollViewer.CanContentScroll="False" ItemsSource="{Binding UsersDayReportItems}" ItemTemplate="{StaticResource UserDayReportDataTemplate}">
+                    </ItemsControl>
+                </Grid>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</control:DialogWindow02>

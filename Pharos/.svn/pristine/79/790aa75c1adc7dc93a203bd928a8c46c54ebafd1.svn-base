@@ -1,0 +1,86 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class UserService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<SysUserInfo> UserRepository { get; set; }
+        [Ninject.Inject]
+        public MenuService MenuService { get; set; }
+        public Utility.OpResult SaveOrUpdate(SysUserInfo model)
+        {
+            model.LoginPwd = Pharos.Utility.Security.MD5_Encrypt(model.LoginPwd);
+            if (UserRepository.GetQuery(o => o.LoginName == model.LoginName && o.Id != model.Id).Any())
+                return Utility.OpResult.Fail("登陆名已存在!");
+            if(model.Id==0)
+            {
+                model.UserId = CommonService.GUID;
+                UserRepository.Add(model);
+            }
+            else
+            {
+                var source= UserRepository.Get(model.Id);
+                var pwd = source.LoginPwd;
+                model.ToCopyProperty(source, new List<string>() { "LoginPwd","UserId" });
+                if (!model.LoginPwd.IsNullOrEmpty() && pwd != model.LoginPwd)
+                    source.LoginPwd = model.LoginPwd;
+                UserRepository.SaveChanges();
+            }
+            return Utility.OpResult.Success();
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = UserRepository.GetQuery(null);
+            var keyword = (nvl["keyword"] ?? "").Trim();
+            query=query.Where(o=>(o.LoginName!=null && o.LoginName.Contains(keyword)) || (o.FullName!=null && o.FullName.Contains(keyword)));
+            recordCount = query.Count();
+            return query.ToPageList();
+        }
+
+        public Utility.OpResult Deletes(int[] ids)
+        {
+            var list= UserRepository.GetQuery(o => ids.Contains(o.Id)).ToList();
+            if (list.Any(o => o.IsAdmin)) return Utility.OpResult.Fail("管理员不允许注销!");
+            if (list.Any(o => o.Status==3)) return Utility.OpResult.Fail("用户已注销!");
+            list.Each(o => o.Status = 3);
+            UserRepository.SaveChanges();
+            return Utility.OpResult.Success();
+        }
+        public Utility.OpResult SetState(string ids, short state)
+        {
+            var idlist= ids.Split(',').Select(o => int.Parse(o)).ToList();
+            var list = UserRepository.GetQuery(o => idlist.Contains(o.Id)).ToList();
+            list.Each(o => o.Status = state);
+            UserRepository.SaveChanges();
+            return Utility.OpResult.Success();
+        }
+        public SysUserInfo GetOne(object id)
+        {
+            return UserRepository.Get(id);
+        }
+        public SysUserInfo GetOneByUID(string uid)
+        {
+            return UserRepository.Find(o=>o.UserId==uid);
+        }
+        public SysUserInfo Login(string loginName,string password)
+        {
+            var pwd = Pharos.Utility.Security.MD5_Encrypt(password);
+            return UserRepository.Find(o => o.LoginName == loginName && o.LoginPwd == pwd);
+        }
+
+
+        public List<SysUserInfo> GetList()
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

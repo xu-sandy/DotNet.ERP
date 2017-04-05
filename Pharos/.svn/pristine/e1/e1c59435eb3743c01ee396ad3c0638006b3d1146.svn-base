@@ -1,0 +1,42 @@
+﻿@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("ids",Request["ids"])
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td height="30px">将以下人员变更到新机构部门：</td>
+                    <td>@Html.DropDownList("DeptId", ViewBag.depts as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,validType:'requiredForCombo',width:300" })</td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <table class="easyui-datagrid" id="grid"
+                               data-options="url:'',data:pharos.dropdown['grid'],showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true">
+                            <thead>
+                                <tr>
+                                    <th data-options="field:'UserCode'" width="80">员工编号</th>
+                                    <th data-options="field:'FullName'" width="150">员工姓名</th>
+                                    <th data-options="field:'LoginName'" width="100">后台账号</th>
+                                    <th data-options="field:'DeptTitle'" width="120">部门</th>
+                                    <th data-options="field:'PositionTitle'" width="120">职位</th>
+                                    <th data-options="field:'Status', formatter: function (value, row, index) { return value == 1 ? '正常':value==2 ? '暂停':'注销'; }" width="70">状态</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+    }
+</div>
+<script type="text/javascript">
+    pharos.dropdown['grid']=@Html.Raw(ViewBag.grids);
+    function SaveBefore() {
+        return true;
+    }
+</script>

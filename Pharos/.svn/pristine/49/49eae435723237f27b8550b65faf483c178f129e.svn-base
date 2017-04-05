@@ -1,0 +1,162 @@
+﻿using System;
+using System.Threading;
+using System.Windows;
+using System.Windows.Input;
+using Pharos.POS.Retailing.Models;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// Toast.xaml 的交互逻辑
+    /// </summary>
+    public partial class Toast : Window
+    {
+        private ToastMsg model;
+        private int index;
+        private int interval = 5;
+        public bool isRuning;
+        private static Toast toast = null;
+        private Action callback;
+        public Toast()
+        {
+            model = new ToastMsg() { Seconds = interval };
+            InitializeComponent();
+            this.InitPublicSettings();
+            this.DataContext = model;
+            StartTimer();
+            this.Closed += Toast_Closed;
+            this.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        }
+
+        void Toast_Closed(object sender, EventArgs e)
+        {
+            toast = null;
+        }
+        public void CannelHandler()
+        {
+            this.Hide();
+        }
+        public static void Close() 
+        {
+            if (toast != null && toast.Visibility == Visibility.Visible) 
+            {
+                toast.Hide();
+            }
+        }
+
+        private void StartTimer()
+        {
+            isRuning = true;
+            ThreadPool.QueueUserWorkItem((o) =>
+            {
+                while (isRuning)
+                {
+                    for (; index >= 0; )
+                    {
+                        index--;
+                        Thread.Sleep(1000);
+                        model.Seconds = index;
+                        if (model.Seconds == 0)
+                        {
+                            this.Dispatcher.Invoke(new Action(() =>
+                            {
+                                this.Hide();
+                                if (callback != null)
+                                {
+                                    callback();
+                                }
+                            }));
+                        }
+                        if (!isRuning)
+                        {
+                            return;
+                        }
+                    }
+                    Thread.Sleep(200);
+                }
+            });
+        }
+        public static void DoShow(string msg, bool enableAutoClose = true)
+        {
+            DoShow(msg, null, null, enableAutoClose);
+        }
+        public static void DoShow(string msg, Window owner, bool enableAutoClose = true)
+        {
+            DoShow(msg, null, owner, enableAutoClose);
+        }
+        public static void DoShow(string msg, Action CallBack, Window owner, bool enableAutoClose = true)
+        {
+            if (toast == null)
+            {
+                toast = new Toast();
+                toast.Owner = owner;
+            }
+            toast.Topmost = true;
+            toast.ShowToast(msg, enableAutoClose);
+            toast.callback = CallBack;
+        }
+
+        private void ShowToast(string msg, bool enableAutoClose = true)
+        {
+            model.Message = msg;
+            this.ShowInScreen();
+            index = interval;
+            model.EnableAutoClose = enableAutoClose;
+            model.Seconds = interval;
+            this.Focus();
+        }
+
+        private void CloseImage_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            this.Hide();
+        }
+
+    }
+
+
+    public class ToastMsg : BaseObservable
+    {
+        private string message;
+        public string Message
+        {
+            get { return message; }
+            set
+            {
+                message = value;
+                OnPropertyChanged("Message");
+            }
+        }
+
+        private int seconds;
+        public int Seconds
+        {
+            get { return seconds; }
+            set
+            {
+                seconds = value;
+                OnPropertyChanged("Seconds");
+            }
+        }
+        public Visibility IsAutoClose { get; set; }
+
+        public bool EnableAutoClose
+        {
+            get { return IsAutoClose == Visibility.Visible; }
+            set
+            {
+                if (value)
+                {
+                    IsAutoClose = Visibility.Visible;
+                }
+                else
+                {
+                    IsAutoClose = Visibility.Collapsed;
+
+                }
+                OnPropertyChanged("IsAutoClose");
+                OnPropertyChanged("EnableAutoClose");
+
+            }
+        }
+    }
+}

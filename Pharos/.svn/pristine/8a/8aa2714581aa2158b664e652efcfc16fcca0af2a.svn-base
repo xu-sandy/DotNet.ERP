@@ -1,0 +1,90 @@
+﻿using Pharos.MessageAgent.MessageQueues;
+using Pharos.SuperSocketProtocol;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+using Pharos.MessageAgent.Extensions;
+using System.Globalization;
+using Pharos.MessageAgent.Agent;
+using SuperSocket.SocketBase.Config;
+using System.Net;
+using Pharos.MessageAgent.MessageStore;
+
+namespace Pharos.MessageAgent
+{
+    public class MessageServer : SocketServer
+    {
+        public MessageServer()
+            : base(new DefaultRouteProvider(4))
+        {
+            Current = this;
+            ConfigDefualtInformactions();
+
+            MessageAgent = new MessageAgentService(this);
+        }
+        public static MessageServer Current { get; private set; }
+        public IMessageQueue MessageQueue { get; private set; }
+
+        public IMessageStoreService MessageStore { get; private set; }
+        public IMessageAgentService MessageAgent { get; private set; }
+        public void ConfigDefualtInformactions()
+        {
+            var assemblies = new List<Assembly>();
+            List<IMessageQueue> tempRuleProviders = new List<IMessageQueue>();
+            if (!assemblies.Any())
+            {
+                assemblies.Add(this.GetType().Assembly);
+            }
+            var messageQueue = assemblies.GetImplementedObjectByInterface<IMessageQueue>(
+                (type) =>
+                {
+                    return type.FullName.EndsWith(MessageServerConfiguration.GetConfig().MessageQueue, true, CultureInfo.CurrentCulture);
+                });
+
+            if (messageQueue == null)
+            {
+                throw new Exception("初始化消息队列失败！");
+            }
+            MessageQueue = messageQueue;
+            var messageStore = assemblies.GetImplementedObjectByInterface<IMessageStoreService>(
+                 (type) =>
+                 {
+                     return type.FullName.EndsWith(MessageServerConfiguration.GetConfig().MessageStore, true, CultureInfo.CurrentCulture);
+                 });
+            if (messageStore == null)
+            {
+                throw new Exception("初始化存储失败！");
+            }
+            MessageStore = messageStore;
+        }
+
+        public static MessageServer InitServer()
+        {
+            return InitServer(MessageServerConfiguration.GetConfig().Port);
+        }
+        public static MessageServer InitServer(int port = 3033)
+        {
+            MessageServer appServer = new MessageServer();
+            var listenners = new List<IListenerConfig>();
+            listenners.Add(new ListenerConfig() { Ip = "IPv6Any", Port = port });
+            listenners.Add(new ListenerConfig() { Ip = "Any", Port = port });
+
+            ServerConfig config = new ServerConfig()
+            {
+                Listeners = listenners
+            };
+            if (!appServer.Setup(config)) //Setup with listening port
+            {
+                throw new Exception("Failed to setup!");
+            }
+            if (!appServer.Start())
+            {
+                throw new Exception("Failed to start!");
+            }
+            return appServer;
+        }
+    }
+}

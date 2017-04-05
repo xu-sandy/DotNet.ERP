@@ -1,0 +1,32 @@
+﻿using Pharos.Logic.BLL;
+using Pharos.Logic.Entity;
+using Quartz;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.InstalmentDomain
+{
+    public class IntalmentTimerTaskJob : IJob
+    {
+        public void Execute(IJobExecutionContext context)
+        {
+            var date = DateTime.Now.Date;
+            var list = BaseService<InstalmentRecord>.FindList(o => o.InstalmentDT <= date && o.State == 0);
+            var memberInstalments = list.GroupBy(o => o.MemberId);
+            var memberids = memberInstalments.Select(o => o.Key).ToList();
+            var members = MembersService.FindList(o => memberids.Any(p => p == o.MemberId));
+            foreach (var item in members)
+            {
+                var memberDatas = memberInstalments.FirstOrDefault(o => o.Key == item.MemberId);
+                item.UsableIntegral += memberDatas.Sum(o => o.Integral);
+                foreach (var instalment in memberDatas)
+                {
+                    instalment.State = 1;
+                }
+            }
+            MembersService.CurrentRepository._context.SaveChanges();
+        }
+    }
+}

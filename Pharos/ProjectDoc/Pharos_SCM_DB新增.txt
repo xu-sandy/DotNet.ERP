@@ -1,0 +1,242 @@
+2015/07/10
+增加新表 公告表（Notice）
+公告表（Notice）
+描述说明：用于管理本系统的公告信息
+序号	列名		数据类型	标识	主键	允许空	默认值	说明
+1 	Id 		Int			√ 	× 		公告 ID
+2 	Theme		Nvarchar(100)			√ 		公告主题
+3 	NoticeContent	Nvarchar(1000)			√ 		公告内容
+4 	StoreId		varchar（100）			× 	0	公告范围(门店ID 多个ID 以,号间隔）
+5 	State		SmallInt			× 	0	公告状态
+6 	OperatorUID 	GUID				× 		创建人
+7 	CreateDT 	DateTime			× 		创建日期
+8 	ExpirationDate	DateTime			× 		公告截止日期
+9 	BeginDate	DateTime			× 		公告开始日期
+
+2015/07/06
+增加新表 返利方案（PrivilegeSolution）、区间段（PrivilegeRegion)、设定商品(PrivilegeProduct)、设定商品值(PrivilegeRegionVal)
+返利计算(PrivilegeCalc)和返利计算明细(PrivilegeCalcDetail)
+
+返利方案（PrivilegeSolution）
+描述说明： 用于管理本系统的所有返利方案基本信息
+序号	列名		数据类型	标识	主键	允许空	默认值	说明
+1 	Id 		Int			√ 	× 		ID
+2 	Title	 	Varchar(30)			× 		方案名称
+3 	Mode	 	Int				× 		返利模式
+4	Suppliers	Varchar(500)			×		返利供应商（多个以逗号隔开）
+5	Memo		Varchar(200)			×		备 注
+6 	OperatorUID 	GUID				× 		操作员 UID
+7 	CreateDT 	DateTime			× 		操作日期
+区间段（PrivilegeRegion)
+描述说明： 用于管理返利方案动态区间
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			Int			√ 	× 		ID
+2 	StartVal	 	number				× 		开始值
+3 	EndVal	 		number				× 		结束值
+4	PrivilegeSolutionId	Int				×		返利方案Id
+
+设定商品(PrivilegeProduct)
+描述说明： 用于管理设定商品或类型
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			Int			√ 	× 		ID
+2 	BarcodeOrCategorySN	number				× 		商品条码或商品类型
+3 	Type	 		SmallInt			× 		类型(1-商品条码2-商品类型)
+4	PrivilegeSolutionId	Int				×		返利方案Id
+
+设定商品值(PrivilegeRegionVal)
+描述说明： 用于管理返利方案动态区间值
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			Int			√ 	× 		ID
+2 	Value	 		Number				× 		设定值
+3 	PrivilegeProductId	Int				× 		设定商品
+4	PrivilegeRegionId	Int				×		设定区间段
+
+返利计算(PrivilegeCalc)
+描述说明： 用于管理本系统的所有返利计算基本信息
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			Int			√ 	× 		ID
+2 	StartDate 		Date				× 		方案名称
+3 	EndDate	 		Date				× 		返利模式
+4	SupplierId		Varchar(40)			×		返利供应商Id
+5	SupplierTitle		Varchar(50)			×		返利供应商名称
+6	PrivilegeSolutionId	Varchar(40)			×		返利方案Id
+7	PrivilegeSolutionTitle	Varchar(40)			×		返利方案名称
+8	PrivilegeModeSN		Int				×		返利模式
+9	PrivilegeModeSNTitle	Varchar(50)			×		返利模式名称
+10	TotalMoney		number				×		合计金额
+11	PrivilegeNum		number				×		返利(元/数量)
+12	State			Smallint			×		状态(0-未返利1-已返利)
+13 	OperatorUID 		GUID				× 		操作员 UID
+14 	CreateDT 		DateTime			× 		操作日期
+
+返利计算明细(PrivilegeCalcDetail)
+描述说明： 用于管理本系统的所有返利计算明细信息
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			Int			√ 	× 		ID
+2 	IndentOrderId 		Varchar(40)			× 		订单号
+3 	Barcode	 		Varchar(40)			× 		商品条码
+4	PartName		Varchar(40)			×		商品名称
+5	CategorySN		Varchar(50)			×		品类SN
+6	CategoryTitle		Varchar(40)			×		品类名称
+7	Unit			Varchar(40)			×		单位
+8	OrderDate		Date				×		订货日期
+9	TakeDate		Date				×		到货日期
+10	TakeNum			Int				×		收货数量
+11	Price			Price				×		进价
+12	SubTotal		number				×		小计
+13	PrivilegeCalcId		Int				×		返利计算ID
+
+返利计算结果(PrivilegeCalcResult)
+描述说明： 用于管理本系统的所有返利计算配置信息
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			Int			√ 	× 		ID
+2 	StartVal 		number			× 			开始值
+3 	EndVal	 		number			× 			结束值
+6	BarcodeOrCategorySN	Varchar(40)		×			商品条码或商品类型
+7	Type			smallint		×			类型(1-商品条码2-商品类型)
+4	TotalNum		number			×			合计
+5	Value			number			×			设定值
+13	PrivilegeCalcId		Int			×			返利计算ID
+
+
+邮件发送(SysMailSender)
+描述说明： 用于管理本系统的所有返利计算配置信息
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			Varchar(38)			√ 	× 		ID
+2 	BatchNo 		Varchar(20)			× 		批次
+3 	Title	 		Varchar(50)			× 		标题
+4	Body			text				√		内容
+5	State			smallint			×		状态 0-草稿1-已发送
+6	SenderCode		number				×		发送者编号
+7	SenderName		Varchar(50)			×		发送者姓名
+8	CreateDT		DateTime			×		发送时间
+9	TimerDate		DateTime			√		定时时间
+10	ReceiverCodes		Varchar(2000)			×		接收者，以分号隔开
+11	CopytoCodes		Varchar(1000)			√		抄送者，以分号隔开
+
+邮件接收(SysMailReceive)
+描述说明： 用于管理本系统的所有返利计算配置信息
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			Varchar(38)			√ 	× 		ID
+2 	BatchNo 		Varchar(20)			× 		批次
+3 	Title	 		Varchar(50)			× 		标题
+4	Body			text				√		内容
+5	State			smallint			×		状态 0-未读1-已读
+6	Type			smallint			×		类型 1-收件人2-抄送人
+7	ReceiveCode		number				×		接收者编号
+8	ReceiveName		Varchar(50)			×		接收者姓名
+9	SenderCode		number				×		发送者编号
+10	SenderName		Varchar(50)			×		发送者姓名
+11	CreateDT		DateTime			×		发送时间
+12	ReadDate		DateTime			√		已读时间
+13	ReceiverCodes		Varchar(2000)			×		接收者，以分号隔开
+14	CopytoCodes		Varchar(1000)			√		抄送者，以分号隔开
+
+
+条码2-商品类型)
+公告表（Notice）新增字段
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1       ExpirationDate          datetime				× 		公告截止日期
+促销活动记录（SalesRecord）
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1	Id			int			√			主键		
+2	CommodityId		varchar(50)					促销活动Id
+3	StoreId			varchar(50)					商店Id
+4	Number			money						剩余数量
+
+入库明细信息（InboundList）
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1	ProducedDate		Date				√		生产日期
+2	ExpiryDate		SmallInt			√	-1	有效期（天数）
+3	ExpiryDateUnit		SmallInt			√	1	有效期单位（1：天、2：月、3、年）
+4	ExpirationDate		Date				√		截止保质日期
+
+出库单信息（OutboundGoods）
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1	Channel		        SmallInt			×	0	出货渠道（0：门店、1：批发）	
+
+商品档案(ProductRecord)
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1	CategorySN		int				√		品类SN（中类）
+2	OldBarcode		Varchar(30)			√		对应条码
+3	SaleNum			money				√		可售数量
+删除 BarcodeGroup,BigCategorySN,MidCategorySN,SubCategorySN
+
+商品组合(ProductGroup)
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			int				√ 	× 	ID
+2 	Barcode 		Varchar(30)			× 		条码
+3 	GroupBarcode 		Varchar(30)			× 		组合条码
+4 	Number	 		int				× 		数量
+
+一品多价(ProductMultPrice)
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			int				√ 	× 	ID
+2 	Barcode 		Varchar(30)			× 		条码
+3 	StoreId 		Varchar(3)			× 		门店
+4 	Price	 		money				× 		价格
+
+调价日志(ChangePriceLog)
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			int				√ 	× 	ID
+2 	BatchNo 		Varchar(30)			√ 		批次
+3 	Barcode 		Varchar(30)			× 		条码
+4 	Oldrice	 		money				× 		原价格
+5 	Newrice	 		money				× 		新价格
+6 	StoreId 		Varchar(3)			× 		门店
+7	CreateDT		datetime			×		创建时间
+8	CreateUID		Varchar(40)			×		修改者
+9	OperType		smallint			×		操作类型(1.增2.删3.改)
+
+一品多商(ProductMultSupplier)
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			int				√ 	× 	ID
+2 	Barcode 		Varchar(30)			× 		条码
+3 	SupplierId 		Varchar(40)			× 		供应商
+
+采购清单(IndentOrderList)
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Nature	 		smallint			× 		产品性质(1-赠品)
+
+买赠促销（FreeGiftPurchase）
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	GiftType	 	smallint			× 		分类（1:单品、2:系列）
+
+盘点日志（StockTakingLog）
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	Id 			int				√ 	× 	ID
+2	CheckBatch		Varchar(30)					盘点批次
+3 	Barcode 		Varchar(30)			× 		条码
+4 	Number	 		int				× 		盘点数量
+5	CreateDT		datetime			×		录入时间
+6 	CheckUID 		Varchar(40)			× 		盘点员
+7 	CreateUID 		Varchar(40)			× 		录入员
+
+买赠促销（FreeGiftPurchase）
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1 	BrandSN 		int				√ 	× 	品牌
+
+供应商信息（Supplier）
+序号	列名			数据类型	标识	主键	允许空	默认值	说明
+1	BusinessType		        SmallInt			×		商家类型（1：供应商、2：批发商）
+
+新增表：库存退货信息（CommodityReturns）
+描述说明：用于管理本系统的库存退货信息
+序号	列名		数据类型	标识	主键	允许空	    默认值	  说明
+1	Id		Int		√	√	×	    自增          记录ID
+2	ReturnId        GUID	       			×			  退货单号
+3	StoreId		Varchar(3)	       		×			  出货仓ID
+4	CreateUID	GUID				×		          经办人ID
+5	CreateDT	DateTime        		×         (getdate())    登记时间
+6	State		SmallInt			×	    0		  状态（ 0:未处理、1:处理中、 2:已处理）
+
+新增表：库存退货明细信息（CommodityReturnsDetail）
+描述说明：用于管理本系统的库存退货详细信息
+序号	列名		数据类型	标识	主键	允许空	    默认值	  说明
+1	Id		Int		√	√	×	    自增          明细ID
+2	ReturnId        GUID	       			×			  退货单号
+3	Barcode		Varchar(30)			×		          条码
+4	ReturnNum	Money        			×         		  退货数量
+5	SysPrice	Money        			×	    		  系统售价
+6	Memo		Nvarchar(200)			√			  备注
+7	State		SmallInt			×	    0		  状态（ 0:未处理、1:处理中、 2:已处理）

@@ -1,0 +1,49 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IBLL;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class BusinessService : IBaseService<Business>
+    {
+        [Ninject.Inject]
+        public IBaseRepository<Business> BusinessRepository { get; set; }
+        public Pharos.Utility.OpResult SaveOrUpdate(Area model)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = BusinessRepository.GetQuery(null);
+            recordCount = query.Count();
+            return query.ToList();
+        }
+
+        public Pharos.Utility.OpResult Deletes(object[] ids)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Business GetOne(object id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Utility.OpResult SaveOrUpdate(Business model)
+        {
+            throw new NotImplementedException();
+        }
+
+        public List<Business> GetList()
+        {
+            return BusinessRepository.GetQuery(o => o.Status == 1).ToList();
+        }
+    }
+}

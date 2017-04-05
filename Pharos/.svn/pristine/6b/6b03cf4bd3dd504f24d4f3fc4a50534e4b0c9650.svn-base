@@ -1,0 +1,91 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增设备", editText: "编辑设备", delText: "移除设备", hideDel: false));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>分类：</label>
+            </td>
+            <td class="input-toolbar">
+                @*需要修改name,option 获取字典数据*@
+                <select name="" class="easyui-combobox" style="width:150px">
+                    <option value="" selected>全部</option>
+                    <option value="0">mPOS一体机</option>
+                    <option value="1">mPOS刷卡器</option>
+                    <option value="3">mPOS迷你机</option>
+                    <option value="4">PAD</option>
+                    <option value="5">手机</option>
+                    <option value="6">电子台称</option>
+                </select>
+            </td>
+
+            <td class="label-toolbar">
+                <label>品牌：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'品牌',width:150" />
+            </td>
+
+            <td class="label-toolbar">
+                <label>维护人：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'维护人',width:150" />
+            </td>
+
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'设备名称',width:150" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="">设为可用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="">设为停用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="">导入</a>
+}
+<script type="text/javascript">
+
+    //pharos.manager.$dg.datagrid({
+    //    rowStyler: function (index, row) {
+    //        if (row.State == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+    //    }
+    //})
+
+    //待修改开始
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: '', title: '名称', editor: { type: 'text', required: true }, width: 120 },
+        { field: '', title: '序号', editor: { type: 'text', required: true }, width: 100 },
+        { field: '', title: '分类', editor: { type: 'text', required: true }, width: 60 },
+        { field: '', title: '品牌', editor: { type: 'text', required: true }, width: 70 },
+        { field: '', title: '型号', editor: { type: 'text', required: true }, width: 60 },
+        { field: '', title: '状态', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: '', title: '维护人', editor: { type: 'text', required: true }, width: 100 },
+        { field: '', title: '更新时间', editor: { type: 'text', required: true }, width: 100 }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog("新增设备", this.editurlNocache(), 800, 600, false);
+    };
+    pharos.manager.editItem = function (id,row) {
+        this.Id = id;
+        openDialog800(this.editText, this.editurlNocache());
+    }
+
+    function removeBefore(row) {
+        if (row.State == 1) {
+            $.messager.alert("提示", "已审状态不能删除!");
+            return false;
+        }
+        return true;
+    }
+    //待修改结束
+</script>

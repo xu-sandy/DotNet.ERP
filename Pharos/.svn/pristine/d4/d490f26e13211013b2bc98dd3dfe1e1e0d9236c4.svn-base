@@ -1,0 +1,46 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL-----商户分类
+    /// </summary>
+    public class TraderTypeService : BaseService
+    {
+        [Ninject.Inject]
+        // 商户分类
+        public IBaseRepository<TraderType> TraderTypeRepository { get; set; }
+
+        public Utility.OpResult SaveOrUpdate(TraderType model)
+        {
+            model.CreateDT = DateTime.Now;
+            model.CreateUID = CurrentUser.UID;
+            if (model.Id == 0)
+            {
+                model.TraderTypeId = CommonService.GUID.ToUpper();
+                TraderTypeRepository.Add(model);
+            }
+            else
+            {
+                var source = TraderTypeRepository.Get(model.Id);
+                model.ToCopyProperty(source);
+            }
+
+            if (TraderTypeRepository.SaveChanges())
+            {
+                LogEngine.WriteUpdate(model.Id + "," + model.Title, LogModule.商户分类);
+            }
+            return OpResult.Success();
+        }
+    }
+}

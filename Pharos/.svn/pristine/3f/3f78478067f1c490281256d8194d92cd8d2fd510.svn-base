@@ -1,0 +1,208 @@
+﻿// --------------------------------------------------
+// Copyright (C) 2015 版权所有
+// 创 建 人：蔡少发
+// 创建时间：2015-05-28
+// 描述信息：数据字典-数据访问层
+// --------------------------------------------------
+
+using System.Data;
+using System.Data.SqlClient;
+using System.Collections.Generic;
+using Pharos.DBFramework;
+using Pharos.Sys.Entity;
+using System.Text;
+using Pharos.Sys.EntityExtend;
+using System;
+
+namespace Pharos.Sys.DAL
+{
+    /// <summary>
+    /// 数据字典-数据访问层
+    /// </summary>
+    internal class SysDataDictionaryDAL : BaseSysEntityDAL<SysDataDictionary>
+    {
+        public SysDataDictionaryDAL() : base("SysDataDictionary") { }
+
+        /// <summary>
+        /// 根据该父级类别下的子字典项
+        /// </summary>
+        /// <param name="psn">父级编号</param>
+        internal DataTable GetDicListByPSN(int psn)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@DicPSN", psn)
+				};
+
+            StringBuilder sql = new StringBuilder();
+            sql.Append("SELECT DicSN,Title,Status FROM dbo.SysDataDictionary ");
+            sql.Append("WHERE DicPSN IN (SELECT DicSN FROM dbo.SysDataDictionary WHERE DicSN=@DicPSN AND [STATUS]=1) AND [Status]=1; ");
+
+            return DbHelper.DataTableText(sql.ToString(), parms);
+        }
+        /// <summary>
+        /// 根据Id获得数据字典
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        internal SysDataDictionaryExt GetExtModel(int id)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@id", id)};
+
+            StringBuilder sql = new StringBuilder();
+            sql.Append("SELECT a.*,b.Title AS PTitle FROM dbo.SysDataDictionary a ");
+            sql.Append("LEFT JOIN dbo.SysDataDictionary b ON b.DicSN=a.DicPSN ");
+            sql.Append("WHERE a.Id=@id ");
+
+            var objs = DbHelper.DataTableText<SysDataDictionaryExt>(sql.ToString(), parms);
+
+            if (objs != null && objs.Count > 0)
+                return objs[0];
+            else
+                return null;
+        }
+        /// <summary>
+        /// 根据dicSN获得数据字典
+        /// </summary>
+        /// <param name="dicSN">字典编号</param>
+        /// <returns></returns>
+        internal SysDataDictionaryExt GetExtModelByDicSN(int dicSN)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@DicSN", dicSN)};
+
+            StringBuilder sql = new StringBuilder();
+            sql.Append("SELECT a.*,b.Title AS PTitle FROM dbo.SysDataDictionary a ");
+            sql.Append("LEFT JOIN dbo.SysDataDictionary b ON b.DicSN=a.DicPSN ");
+            sql.Append("WHERE a.DicSN=@DicSN ");
+
+            var objs = DbHelper.DataTableText<SysDataDictionaryExt>(sql.ToString(), parms);
+
+            if (objs != null && objs.Count > 0)
+                return objs[0];
+            else
+                return null;
+        }
+        /// <summary>
+        /// 获得数据字典列表
+        /// </summary>
+        /// <param name="pageIndex"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        internal List<SysDataDictionaryExt> GetList(int pageIndex, int pageSize, string key)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@Key", key),
+                    new SqlParameter("@CurrentPage", pageIndex),
+                    new SqlParameter("@PageSize", pageSize)};
+
+            return DbHelper.DataTable<SysDataDictionaryExt>("Sys_DataDicList", parms);
+        }
+        /// <summary>
+        /// 获得数据字典列表
+        /// </summary>
+        /// <param name="psn"></param>
+        /// <returns></returns>
+        internal List<SysDataDictionary> GetItemList(int psn)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@psn", psn)};
+
+            StringBuilder sql = new StringBuilder();
+            sql.Append("SELECT a.* FROM dbo.SysDataDictionary a WHERE a.DicPSN=@psn");
+            
+            return DbHelper.DataTableText<SysDataDictionary>(sql.ToString(), parms);
+        }
+        /// <summary>
+        /// 更新数据字典状态
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public bool UpdateStatus(SysDataDictionary model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@id", model.Id),
+                    new SqlParameter("@status", model.Status)};
+
+            string sql = string.Format("update {0} set status=@status where id=@id", TableName);
+
+            int rows = DbHelper.ExecuteNonQueryText(sql, parms);
+
+            return rows > 0 ? true : false;
+        }
+        /// <summary>
+        /// 新增数据字典
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public int Insert(SysDataDictionary model)
+        {
+            SqlParameter[] parameters = {
+                    new SqlParameter("@DicSN", model.DicSN),
+                    new SqlParameter("@DicPSN", model.DicPSN),
+                    new SqlParameter("@SortOrder", model.SortOrder),
+                    new SqlParameter("@Title", model.Title),
+                    new SqlParameter("@Depth", model.Depth),
+                    new SqlParameter("@Status", model.Status)
+                                        };
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("insert into {0}(", TableName);
+            sql.Append("DicSN,DicPSN,SortOrder,Title,Depth,[Status])");
+            sql.Append(" values (@DicSN,@DicPSN,@SortOrder,@Title,@Depth,@Status)");
+            sql.Append(";select @@IDENTITY");
+            
+            object obj = DbHelper.ExecuteScalarText(sql.ToString(), parameters);
+
+            return (obj == null) ? 0 : Convert.ToInt32(obj);
+        }
+        /// <summary>
+        /// 更新数据字典
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public bool Update(SysDataDictionary model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@DicPSN", model.DicPSN),
+                    new SqlParameter("@SortOrder", model.SortOrder),
+                    new SqlParameter("@Title", model.Title),
+                    new SqlParameter("@Depth", model.Depth),
+                    new SqlParameter("@Status", model.Status),
+                    new SqlParameter("@id", model.Id)};
+
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("update {0} set ", TableName);
+            sql.Append("DicPSN=@DicPSN,");
+            sql.Append("SortOrder=@SortOrder,");
+            sql.Append("Title=@Title,");
+            sql.Append("Depth=@Depth,");
+            sql.Append("Status=@Status");
+            sql.Append(" where [Id]=@id");
+            
+            int rows = DbHelper.ExecuteNonQueryText(sql.ToString(), parms);
+
+            return rows > 0 ? true : false;
+        }
+        /// <summary>
+        /// 判断同一级别的字典名称是否重复
+        /// </summary>
+        /// <param name="sn"></param>
+        /// <param name="psn"></param>
+        /// <param name="title"></param>
+        /// <returns></returns>
+        public bool ExistsTitle(int sn, int psn, string title)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@sn" , sn),
+					new SqlParameter("@psn" , psn),
+					new SqlParameter("@title" , title)};
+
+            string sql = string.Format("select count(1) from {0} where [DicSN]<>@sn and DicPSN=@psn and Title=@title", TableName);
+
+            var obj = DbHelper.ExecuteScalarText(sql, parms);
+
+            return (obj == null) ? false : Convert.ToInt32(obj) > 0;
+        }
+    }
+}

@@ -1,0 +1,52 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.MemberDomain.Interfaces
+{
+    /// <summary>
+    /// 积分规则提供程序
+    /// 【余雄文】
+    /// </summary>
+    public interface IIntegralRuleProvider
+    {
+        /// <summary>
+        /// 提供程序ID,来至数据字典，用于ProviderLoader反射加载识别
+        /// </summary>
+        int ProviderId { get; }
+        /// <summary>
+        /// 获取该提供程序的所有规则
+        /// </summary>
+        /// <param name="info">获取规则的可能参数传值</param>
+        /// <returns>提供程序的所有规则</returns>
+        IEnumerable<IIntegralRule> GetRules(object info = null);
+        /// <summary>
+        /// 获取计量方式
+        /// </summary>
+        /// <param name="providerRules">所有提供程序</param>
+        /// <returns>计量方式</returns>
+        IEnumerable<int> GetMeteringModes(IEnumerable<IIntegralRule> providerRules);
+        /// <summary>
+        /// 验证提供程序的所有规则是否满足条件
+        /// </summary>
+        /// <param name="providerRules">提供程序的所有规则</param>
+        /// <param name="scene">场景数据</param>
+        /// <returns>满足条件的提供程序规则</returns>
+        IEnumerable<IIntegralRule> VerifyRules(IEnumerable<IIntegralRule> providerRules, IScene scene);
+        /// <summary>
+        /// 运算表达式
+        /// </summary>
+        /// <param name="efficientRule">满足条件的提供程序规则</param>
+        /// <param name="scene">场景数据</param>
+        /// <returns>规则及对应积分</returns>
+        IDictionary<IIntegralRule, decimal> RunExpression(IEnumerable<IIntegralRule> efficientRules, IScene scene);
+        /// <summary>
+        /// 获取场景数据
+        /// </summary>
+        /// <param name="channelMessage">通道消息</param>
+        /// <param name="meteringModes">所有规则中包含的计量模式</param>
+        /// <returns>场景数据</returns>
+        IEnumerable<IScene> GetScenes(object channelMessage, IEnumerable<int> meteringModes);
+    }
+}

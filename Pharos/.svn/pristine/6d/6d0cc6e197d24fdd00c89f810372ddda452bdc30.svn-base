@@ -1,0 +1,28 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Web.Http;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.BLL;
+
+namespace Pharos.Api.Retailing.Controllers.Mobile
+{
+    [RoutePrefix("api/mobile")]
+    public class NoticeController : ApiController
+    {
+        /// <summary>
+        /// 获取最新公告
+        /// </summary>
+        /// <param name="json"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetNoticeList")]
+        public object GetNoticeList([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            return NoticeService.GetNewsNotice(storeId);
+        }
+    }
+}

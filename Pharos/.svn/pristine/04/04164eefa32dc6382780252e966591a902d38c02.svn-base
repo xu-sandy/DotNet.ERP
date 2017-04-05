@@ -1,0 +1,307 @@
+﻿@model Pharos.Logic.OMS.Entity.PayChannelDetail
+@using Pharos.Logic.OMS.Entity.View
+@{
+    ViewBag.Title = "服务费率设置";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var url = Url.Action("GetPayChannelDetail") + "?ChannelNo=" + ViewBag.ChannelNo;
+    var urlLog = Url.Action("GetPayChannelDetail") + "?LogData=true&ChannelNo=" + ViewBag.ChannelNo;
+    var newModel = new Pharos.Logic.OMS.Entity.PayChannelDetail();
+}
+<script type="text/javascript">
+    window.drpdata = window.drpdata || {};
+    window.drpdata['ChannelPayModeJson'] = @Html.Raw(ViewBag.ChannelPayModeJson);
+    window.drpdata['PayOperateTypeJson'] = @Html.Raw(ViewBag.PayOperateTypeJson);
+</script>
+<input type="hidden" id="ChannelNo" value="@ViewBag.ChannelNo" />
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <div id="tt1" class="easyui-tabs" data-options="onSelect:function(title,index){}" style="height:auto;">
+                <div title="费率设置">
+                    <table id="dg1" class="easyui-datagrid" title="费率设置" style="width:860px;height:auto"
+                           data-options="iconCls: 'icon-edit', singleSelect: true, toolbar: '#tb', url: '@url', method: 'post', onClickCell: onClickCell, onEndEdit: onEndEdit,rownumbers: true">
+                        <thead>
+                            <tr>
+                                <th data-options="field:'SortId'">序号</th>
+                                <th data-options="field:'Id',hidden:'true',formatter:function(value,row){
+							return row.Id;
+						}" style="width:0px;"></th>
+                                <th data-options="field:'ChannelDetailId' ,hidden:'true'" style="width:0px;"></th>
+                                <th data-options="field:'ChannelPayMode',width:100,
+						formatter:function(value,row){
+							return formatColumn(value, window.drpdata['ChannelPayModeJson']);
+						},
+						editor:{
+							type:'combobox',
+							options:{
+								valueField:'value',
+								textField:'text',
+								data:window.drpdata['ChannelPayModeJson'],
+								required:true
+							}
+						}">支付方式</th>
+                                <th data-options="field:'OptType',width:100,
+                        formatter:function(value,row){
+							return formatColumnMultiple(value, window.drpdata['PayOperateTypeJson']);
+						},
+						editor:{
+							type:'combobox',
+							options:{
+								valueField:'value',
+								textField:'text',
+								data:window.drpdata['PayOperateTypeJson'],
+                                multiple:true,
+								required:true
+							}
+						}">操作类型</th>
+                                <th data-options="field:'MonthFreeTradeAmount',width:80,align:'right',editor:{type:'numberbox',options:{precision:2}}">单月免费<br />交易额度(元)</th>
+                                <th data-options="field:'OverServiceRate',width:80,editor:{type:'numberbox',options:{precision:2}}">超出金额<br />服务费率(%)</th>
+                                <th data-options="field:'SingleServFeeLowLimit',width:80,align:'center',editor:{type:'numberbox',options:{precision:2}}">单笔服务费<br />下限(元)</th>
+                                <th data-options="field:'SingleServFeeUpLimit',width:80,align:'center',editor:{type:'numberbox',options:{precision:2}}">单笔服务费<br />上限(元)</th>
+                                <th data-options="field:'EffectiveDate',width:100,editor:{type:'datebox',options:{required:true}}">生效日期</th>
+                                <th data-options="field:'Operation', width:100, formatter:operation">操作</th>
+                            </tr>
+                        </thead>
+                    </table>
+
+                    <script type="text/javascript">
+                        var editIndex = undefined;
+                        var opadd = false,first = true;
+                        var $dg1 = $('#dg1');
+                        $(function(){
+                            setTimeout(function(){
+                                append();
+                            },10);
+                        });
+                        function endEditing(){
+                            if (editIndex == undefined){return true}
+                            if ($dg1.datagrid('validateRow', editIndex)){
+                                $dg1.datagrid('endEdit', editIndex);
+                                editIndex = undefined;
+                                return true;
+                            } else {
+                                return false;
+                            }
+                        }
+                        function onClickCell(index, field){
+                            if (editIndex != index){
+                                if (endEditing()){
+                                    $dg1.datagrid('selectRow', index)
+                                            .datagrid('beginEdit', index);
+                                    var ed = $dg1.datagrid('getEditor', {index:index,field:field});
+                                    if (ed){
+                                        ($(ed.target).data('textbox') ? $(ed.target).textbox('textbox') : $(ed.target)).focus();
+                                    }
+                                    editIndex = index;
+                                } else {
+                                    setTimeout(function(){
+                                        $dg1.datagrid('selectRow', editIndex);
+                                    },0);
+                                }
+                            }
+                        }
+                        function onEndEdit(index, row){
+                            var ed = $(this).datagrid('getEditor', {
+                                index: index,
+                                field: 'ChannelPayMode'
+                            });
+                            var edOpttype = $(this).datagrid('getEditor', {
+                                index: index,
+                                field: 'OptType'
+                            });
+                            row.ChannelPayModeName = $(ed.target).combobox('getText');
+                            row.OptTypeName = $(edOpttype.target).combobox('getText');
+                        }
+                        function append(){
+                            var index = editIndex;
+                            var row =  $dg1.datagrid('getRows', index)[0];
+                            if(!first){
+                                var ed = $dg1.datagrid('getEditor', { index: index, field: 'ChannelPayMode' });
+                                row.ChannelPayMode = $(ed.target).combobox('getValue');
+
+                                $.post("@Url.Action("CanAddChannelDetail")", {
+                                    ChannelNo:$("#ChannelNo").val(),
+                                    ChannelPayMode:row.ChannelPayMode
+                                }, function (r) {
+                                    if (r.successed) {
+                                        if (endEditing()){
+                                            if(!first){
+                                                $.post("@Url.Action("SavePayChannelDetail")", {
+                                                    ChannelNo:$("#ChannelNo").val(),
+                                                    ChannelPayMode:row.ChannelPayMode,
+                                                    EffectiveDate:row.EffectiveDate,
+                                                    OptType:row.OptType,
+                                                    MonthFreeTradeAmount:row.MonthFreeTradeAmount,
+                                                    OverServiceRate:row.OverServiceRate,
+                                                    SingleServFeeLowLimit:row.SingleServFeeLowLimit,
+                                                    SingleServFeeUpLimit:row.SingleServFeeUpLimit
+                                                }, function (r) {
+                                                    if (r.successed) {
+                                                        row.ChannelDetailId = r.data.ChannelDetailId;
+                                                        appendNew();
+                                                    } else {
+                                                        $dg1.datagrid('selectRow', index)
+                                                        .datagrid('beginEdit', index);
+                                                        opadd = true;
+                                                        $.messager.alert("提示", "保存失败！" + r.message, "error");
+                                                    }
+                                                }, "json");
+                                            }
+                                            else{
+                                                appendNew();
+                                            }
+                                        }
+                                    } else {
+                                        $.messager.alert("提示", "保存失败！" + r.message, "error");
+                                    }
+                                }, "json");
+                            }
+                            else{
+                                appendNew();
+                            }
+                            first = false;
+                        }
+                        function appendNew(){
+                            opadd = true;
+                            $dg1.datagrid('appendRow',{});
+                            editIndex = $dg1.datagrid('getRows').length-1;
+                            $dg1.datagrid('selectRow', editIndex)
+                                    .datagrid('beginEdit', editIndex);
+                        }
+                        function removeit(id,detailId){
+                            if (editIndex == undefined){return}
+
+                            $.messager.confirm("提示", "是否确定删除?", function (r) {
+                                $.post("@Url.Action("RemoveDetailById")", {
+                                    ChannelDetailId:detailId
+                                }, function (r) {
+                                    if (r.successed) {
+                                        $dg1.datagrid("selectRecord", id);
+                                        var row = $dg1.datagrid("getSelected");
+                                        var index = $dg1.datagrid("getRowIndex", row);
+                                        $dg1.datagrid('cancelEdit', index)
+                                            .datagrid('deleteRow', index);
+                                    } else {
+                                        $.messager.alert("提示", "保存失败！" + r.message, "error");
+                                    }
+                                }, "json");
+                            });
+                            editIndex = undefined;
+                        }
+                        function accept(){
+                            var index = editIndex;
+                            if (endEditing()){
+                                $dg1.datagrid('acceptChanges');
+                            }
+                        }
+                        function reject(){
+                            $dg1.datagrid('rejectChanges');
+                            editIndex = undefined;
+                        }
+                        function getChanges(){
+                            var rows = $dg1.datagrid('getChanges');
+                            alert(rows.length+' rows are changed!');
+                        }
+                        function operation(value, row, index) {
+                            if (opadd) {
+                                opadd = false;
+                                return "<a href='javascript:void(0)' onclick='append()'>添加</a>";
+                            } else if(row.ChannelPayMode!=undefined){
+                                return "<a href='javascript:void(0)' onclick=\"removeit('"+row.Id+"','" + row.ChannelDetailId + "')\">删除</a>";
+                            }
+                        }
+                        //取枚举对应值
+                        function formatColumn(value, list) {
+                            for (var i = 0; i < list.length; i++) {
+                                if (list[i].value == value) {
+                                    if (list[i].value != "")
+                                        return list[i].text;
+                                }
+                            }
+                            return value;
+                        }
+                        function formatColumnMultiple(values, list) {
+                            var text = "";
+                            if(values!=null){
+                                var valueList = values.split(',');
+                                for (var j = 0; j < valueList.length; j++) {
+                                    var value = valueList[j];
+                                    for (var i = 0; i < list.length; i++) {
+                                        if (list[i].value == value) {
+                                            if (list[i].value != "")
+                                            {
+                                                text += list[i].text+",";
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                if(text!=""){
+                                    text = text.slice(0,text.length-1);
+                                }
+                                else{
+                                    text = values;
+                                }
+                                return text;
+                            }
+                        }
+                        function formatDate(value, row, index) {
+                            return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd")
+                        }
+                    </script>
+                </div>
+                <div title="历史日志">
+                    <table id="dg2" class="easyui-datagrid" title="费率设置" style="width:860px;height:auto"
+                           data-options="iconCls: 'icon-edit', singleSelect: true, toolbar: '#tb', url: '@urlLog', method: 'post',rownumbers: true">
+                        <thead>
+                            <tr>
+                                <th data-options="field:'SortId'">序号</th>
+                                <th data-options="field:'Id',hidden:'true',formatter:function(value,row){
+							return row.Id;
+						}" style="width:0px;"></th>
+                                <th data-options="field:'ChannelDetailId',hidden:'true',formatter:function(value,row){
+							return row.ChannelDetailId;
+						}" style="width:0px;"></th>
+                                <th data-options="field:'ChannelPayMode',width:100,
+						formatter:function(value,row){
+							return formatColumn(value, window.drpdata['ChannelPayModeJson']);
+						},
+						editor:{
+							type:'combobox',
+							options:{
+								valueField:'value',
+								textField:'text',
+								data:window.drpdata['ChannelPayModeJson'],
+								required:true
+							}
+						}">支付方式</th>
+                                <th data-options="field:'OptType',width:100,
+                        formatter:function(value,row){
+							return formatColumnMultiple(value, window.drpdata['PayOperateTypeJson']);
+						},
+						editor:{
+							type:'combobox',
+							options:{
+								valueField:'value',
+								textField:'text',
+								data:window.drpdata['PayOperateTypeJson'],
+                                multiple:true,
+								required:true
+							}
+						}">操作类型</th>
+                                <th data-options="field:'MonthFreeTradeAmount',width:60,align:'right'">单月免费交易额度(元)</th>
+                                <th data-options="field:'OverServiceRate',width:60">超出金额服务费率(%)</th>
+                                <th data-options="field:'SingleServFeeLowLimit',width:60,align:'center'">单笔服务费下限(元)</th>
+                                <th data-options="field:'SingleServFeeUpLimit',width:60,align:'center'">单笔服务费上限(元)</th>
+                                <th data-options="field:'EffectiveDate',width:100,formatter:formatDate">生效日期</th>
+                                <th data-options="field:'CreateDT',width:100,formatter:formatDate">创建日期</th>
+                                <th data-options="field:'Creater',width:100">创建人</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>

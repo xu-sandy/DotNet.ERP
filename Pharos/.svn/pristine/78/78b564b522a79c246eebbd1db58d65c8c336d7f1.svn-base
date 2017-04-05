@@ -1,0 +1,130 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Sys.Entity;
+using System.Data.SqlClient;
+using Pharos.Sys.EntityExtend;
+
+namespace Pharos.Sys.DAL
+{
+    internal class SysPaymentSettingDAL : BaseSysEntityDAL<SysPaymentSetting>
+    {
+        public SysPaymentSettingDAL() : base("SysPaymentSetting") { }
+
+        /// <summary>
+        /// 获取支付宝配置信息列表
+        /// </summary>
+        /// <returns></returns>
+        internal List<SysPaymentSettingExt> GetList(int PayType, string StoreId, int State)
+        {
+            string sql=@"SELECT (CASE WHEN (a.StoreId='0') THEN '全部' ELSE (dbo.F_TrimStrMore(STUFF((SELECT '、'+w.Title FROM dbo.Warehouse w INNER join dbo.SplitString(a.storeId,',',1) s ON s.Value=w.StoreId FOR XML PATH('')),1,1,''),60)) END) AS StoreTitle,                       
+                        a.Id,a.PartnerId,a.AppId,a.CheckKey,a.NotifyUrl, (Select CONVERT(varchar(100), a.AlterDT, 23)) AS AlterDate,(CASE WHEN (a.State=0 ) THEN '停用' ELSE '可用' END) AS StateTitle                     
+                        FROM dbo.SysPaymentSetting a where 1=1 ";
+            if (PayType != -1)    
+            {
+                sql += " and a.PayType=" + PayType;
+            }
+            if (!string.IsNullOrEmpty(StoreId))
+            {
+                sql += string.Format(" and ((a.StoreId not like '%,%' and a.StoreId='{0}') or a.StoreId like '{0},%' or a.StoreId like '%,{0}' or a.StoreId like '%,{0},%' or a.StoreId='0')", StoreId);
+            }
+            if (State != -1)
+            {
+                sql += " and a.State=" + State;
+            }
+
+            var result = DbHelper.DataTableText<SysPaymentSettingExt>(sql, null);
+            return result;
+        }
+
+        /// <summary>
+        /// 修改支付宝配置信息
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal bool Update(SysPaymentSetting model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@Id", model.Id),
+                    new SqlParameter("@StoreId", model.StoreId),
+                    new SqlParameter("@State", model.State),
+                    new SqlParameter("@PartnerId", model.PartnerId),
+                    new SqlParameter("@AppId", model.AppId),
+                    new SqlParameter("@CheckKey", model.CheckKey),
+                    new SqlParameter("@NotifyUrl", model.NotifyUrl),
+                    new SqlParameter("@AlterDT", model.AlterDT),
+                    new SqlParameter("@AlterUID", model.AlterUID)                              
+            };
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("update {0} set ", TableName);
+            sql.Append("StoreId=@StoreId,");
+            sql.Append("State=@State,");
+            sql.Append("PartnerId=@PartnerId,");
+            sql.Append("AppId=@AppId,");
+            sql.Append("CheckKey=@CheckKey,");
+            sql.Append("NotifyUrl=@NotifyUrl,");
+            sql.Append("AlterDT=@AlterDT,");
+            sql.Append("AlterUID=@AlterUID");
+            sql.Append(" where Id=@Id");
+
+            int rows = DbHelper.ExecuteNonQueryText(sql.ToString(), parms);
+            return rows > 0 ? true : false;
+        }
+
+        /// <summary>
+        /// 新增支付宝配置信息
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal int Insert(SysPaymentSetting model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@Id", model.Id),
+                    new SqlParameter("@StoreId", model.StoreId),
+                    new SqlParameter("@PayType", model.PayType),
+                    new SqlParameter("@State", model.State),
+                    new SqlParameter("@PartnerId", model.PartnerId),
+                    new SqlParameter("@AppId", model.AppId),
+                    new SqlParameter("@CheckKey", model.CheckKey),
+                    new SqlParameter("@NotifyUrl", model.NotifyUrl),
+                    new SqlParameter("@CreateDT", model.CreateDT),
+                    new SqlParameter("@CreateUID", model.CreateUID)  
+            };
+
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("insert into {0} (", TableName);
+            sql.Append("StoreId,PayType,State,PartnerId,AppId,CheckKey,NotifyUrl,CreateDT,CreateUID)");
+            sql.Append(" values (@StoreId,@PayType,@State,@PartnerId,@AppId,@CheckKey,@NotifyUrl,@CreateDT,@CreateUID)");
+            sql.Append(";select @@IDENTITY");
+
+            object obj = DbHelper.ExecuteScalarText(sql.ToString(), parms);
+            return (obj == null) ? 0 : Convert.ToInt32(obj);
+        }
+
+        /// <summary>
+        /// 修改状态
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        internal bool SetState(int id, short state)
+        {
+            var alterDT = DateTime.Now;
+            var alterUid = CurrentUser.UID;
+
+            SqlParameter[] parms = {
+                    new SqlParameter("@Id", id),
+                    new SqlParameter("@State", state),
+                    new SqlParameter("@AlterDT", alterDT),
+                    new SqlParameter("@AlterUID", alterUid)
+                };
+
+            string sql = string.Format("update {0} set State=@State,AlterDT=@AlterDT,AlterUID=@AlterUID where Id=@Id", TableName);
+
+            int rows = DbHelper.ExecuteNonQueryText(sql, parms);
+            return rows > 0 ? true : false;
+        }
+
+    }
+}

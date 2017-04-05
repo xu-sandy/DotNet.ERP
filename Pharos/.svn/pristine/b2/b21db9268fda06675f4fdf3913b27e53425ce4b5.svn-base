@@ -1,0 +1,66 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.InstalmentDomain.Interfaces;
+using Quartz;
+using Quartz.Impl;
+
+namespace Pharos.Logic.InstalmentDomain
+{
+    public class ReturnRulesTimerTask : IIntalmentTimerTask
+    {
+
+        public void DoTask()
+        {
+            var identity = "ReturnRuleStateTimer";
+            var date = DateTime.Now.Date.AddDays(1);
+            lock (StdSchedulerFactory.SystemPropertyAsInstanceId)
+            {
+                IScheduler scheduler = StdSchedulerFactory.GetDefaultScheduler();
+                scheduler.Start();       //开启调度器
+                var tempTriggerKey = new TriggerKey(identity, identity);
+                if (scheduler.CheckExists(tempTriggerKey))
+                {
+                    scheduler.UnscheduleJob(tempTriggerKey);
+                }
+                IJobDetail job1 = JobBuilder.Create<ReturnRulesTimerTaskJob>()  //创建一个作业
+                   .WithIdentity(identity, identity)
+                   .Build();
+                ITrigger trigger1 = TriggerBuilder.Create()
+                                           .WithIdentity(identity, identity)
+                                           .StartAt(date)                        //启动时间每天零时
+                                           .WithSimpleSchedule(x => x
+                                               .WithIntervalInHours(24)
+                                               .RepeatForever()
+                                               )
+                                           .Build();
+                scheduler.ScheduleJob(job1, trigger1);      //把作业，触发器加入调度器。
+            }
+        }
+
+        public void DoTask(TimeSpan ts)
+        {
+            if (ts == default(TimeSpan)) return;
+            var identity = "ReturnRuleStateTimer";
+            lock (StdSchedulerFactory.SystemPropertyAsInstanceId)
+            {
+                //从工厂中获取一个调度器实例
+                IScheduler scheduler = StdSchedulerFactory.GetDefaultScheduler();
+                scheduler.Start();
+                var tempTriggerKey = new TriggerKey(identity, identity);
+                if (scheduler.CheckExists(tempTriggerKey))
+                {
+                    scheduler.UnscheduleJob(tempTriggerKey);
+                }
+                IJobDetail job = JobBuilder.Create<ReturnRulesTimerTaskJob>().WithIdentity(identity, identity).Build();
+
+                ITrigger trigger1 = TriggerBuilder.Create()
+                                               .WithIdentity(identity, identity)
+                                               .StartAt(DateTime.Now.Add(ts))                        //现在开始
+                                               .Build();
+                scheduler.ScheduleJob(job, trigger1);      //把作业，触发器加入调度器。
+            }
+        }
+    }
+}

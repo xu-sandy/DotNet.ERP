@@ -1,0 +1,107 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.MinorScreenPage;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.SalesPromotionRules;
+using System;
+using System.Threading.Tasks;
+using System.Windows;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// 启动程序时的Loading界面，负责启动Login、次屏界面
+    /// </summary>
+    public partial class Entrance : Window
+    {
+        private bool isShowLoginPage = false;
+        Login loginPage = null;
+
+        public Entrance()
+        {
+            InitializeComponent();
+            this.Loaded += Entrance_Loaded;
+            this.Closing += Entrance_Closing;
+        }
+
+        void Entrance_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (loginPage != null && loginPage.Visibility == System.Windows.Visibility.Hidden)
+            {
+                Toast.DoShow("正在完成初始化，不允许关闭！", this);
+                e.Cancel = true;
+            }
+        }
+
+        void Entrance_Loaded(object sender, RoutedEventArgs e)
+        {
+            var task = Task.Factory.StartNew(() =>
+            {
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    isShowLoginPage = PosMachineInfo.ReadConfig();
+                }));
+                InvokeMsg(this, "正在初始化数据，请稍等...");
+                Task.Factory.StartNew(() =>
+                {
+                    SysStoreUserInfoLocalService.InitForStart();
+                });
+
+                InvokeMsg(this, "正在初始化设备信息，请稍等...");
+                this.Dispatcher.Invoke(new Action(() =>
+                  {
+                      CustomerViewForOld customerPage = new CustomerViewForOld();
+                      customerPage.ShowInScreen();
+                  }));
+
+                if (!isShowLoginPage)
+                {
+                    this.Dispatcher.Invoke(new Action(() =>
+                    {
+                        this.Close();
+                    }));
+                }
+
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    Log = "正在加载登录信息，请稍等...";
+                    loginPage = new Login();
+                    Application.Current.MainWindow = loginPage;
+                    loginPage.ShowInScreen();
+                    this.Hide();
+                }));
+
+                InvokeMsg(this, "正在启动数据同步服务，请稍等...");
+                DataSynchronization.Start();
+                //InvokeMsg(this, "正在初始化促销信息，请稍等...");
+                //SaleContext.LoadDiscout();
+
+            });
+            task.ContinueWith((o) =>
+            {
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    this.Close();
+                }));
+            });
+        }
+
+
+
+        public static readonly DependencyProperty LogProperty = DependencyProperty.Register("Log", typeof(string), typeof(Entrance));
+
+        public string Log
+        {
+            get { return (string)GetValue(LogProperty); }
+            set { SetValue(LogProperty, value); }
+        }
+
+        public static void InvokeMsg(Entrance _this, string msg)
+        {
+            _this.Dispatcher.Invoke(new Action(() =>
+            {
+                _this.Log = msg;
+            }));
+        }
+    }
+}

@@ -1,0 +1,208 @@
+﻿using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using System;
+using Pharos.POS.Retailing.Extensions;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+
+namespace Pharos.POS.Retailing.ChildWin.Pay
+{
+    /// <summary>
+    /// MultiPay.xaml 的交互逻辑
+    /// </summary>
+    public partial class MultiPay : DialogWindow02
+    {
+        ObservableCollection<MultiPayViewModel> viewModel = null;
+        public MultiPay(decimal amount, PayAction action)
+        {
+            InitializeComponent();
+            viewModel = new ObservableCollection<MultiPayViewModel> { 
+                new MultiPayViewModel(){ IsFrist=true, IsLast=false},
+                new MultiPayViewModel(){ IsFrist=false, IsLast=true},
+            };
+            pays.ItemsSource = viewModel;
+            this.InitDefualtSettings();
+            this.PreviewKeyDown += MultiPay_PreviewKeyDown;
+            txtyingshou.Text = amount.ToString("N2");
+            txtshangqian.Text = amount.ToString("N2");
+            yingshou = amount;
+            if (isWipeZero)
+            {
+                WipeZeroAfter = Math.Round(amount, 1, MidpointRounding.AwayFromZero);
+            }
+            else
+            {
+                WipeZeroAfter = amount;
+            }
+            moling = (amount - WipeZeroAfter);
+            this.action = action;
+            txtmoling.Text = moling.ToString("N2");
+        }
+        private PayAction action;
+        private decimal moling;
+        private decimal yingshou;
+        private decimal WipeZeroAfter;
+        private decimal zhaoling;
+        bool isWipeZero = Global.MachineSettings.MachineInformations.IsNonCashWipeZero;
+        private decimal shishoujiner;
+        private decimal shangqian;
+
+        void MultiPay_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Add)
+            {
+                Label_MouseDown(null, null);
+                e.Handled = true;
+            }
+        }
+        public void SetPayItem(PayMode mode)
+        {
+            var payItem = viewModel.FirstOrDefault(o => o.PayItem != null && o.PayItem.Mode == mode);
+            if (payItem != null)
+            {
+                RemovePayItem(payItem);
+            }
+
+        }
+        private void Label_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            ChoosePayWindow page = new ChoosePayWindow();
+            page.Owner = this;
+            page.ShowDialog();
+            if (page.PayItem != null)
+            {
+                if (page.Amount <= 0)
+                {
+                    Toast.ShowMessage("支付金额应大于0！", this);
+                    return;
+                }
+                viewModel.Insert(viewModel.Count - 1, new MultiPayViewModel() { IsFrist = false, PayItem = page.PayItem, IsLast = false, IsSelected = true, Amount = page.Amount, PayName = page.PayItem.Title });
+                img.Source = page.PayItem.Icon;
+                shishoujiner = viewModel.Sum(o => o.Amount);
+                shangqian = yingshou - shishoujiner;
+                txtshishou.Text = shishoujiner.ToString("N2");
+                if (shangqian >= 0)
+                {
+                    txtshangqian.Text = shangqian.ToString("N2");
+                    zhaoling = 0m;
+                    txtzhaoling.Text = "0.00";
+                }
+                else
+                {
+                    txtshangqian.Text = "0.00";
+                    zhaoling = -shangqian;
+                    txtzhaoling.Text = zhaoling.ToString("N2");
+                }
+            }
+        }
+
+        private void RemovePay_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            RemovePayItem((sender as Border).DataContext as MultiPayViewModel);
+        }
+        private void RemovePayItem(MultiPayViewModel model)
+        {
+            viewModel.Remove(model);
+            var item = viewModel.FirstOrDefault(o => !o.IsLast && !o.IsFrist);
+            if (item != null)
+                img.Source = item.PayItem.Icon;
+            else
+                img.Source = null;
+        }
+
+        private void PosButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (yingshou > shishoujiner)
+            {
+                Toast.ShowMessage("收款金额不可小于应收金额！", this);
+                return;
+            }
+            var cashCoupon = 0m;
+            cashCoupon = viewModel.Where(o => o.PayItem != null && o.PayItem.Mode == PayMode.CashCoupon).Sum(o => o.Amount);
+            if (viewModel.Where(o => o.PayItem != null && o.PayItem.Mode != PayMode.CashPay && o.PayItem.Mode != PayMode.CashCoupon).Sum(o => o.Amount) > (WipeZeroAfter - cashCoupon))
+            {
+                Toast.ShowMessage("非现金收款金额超出！", this);
+                return;
+            }
+            var cashNeedpay = WipeZeroAfter - viewModel.Where(o => o.PayItem != null && o.PayItem.Mode != PayMode.CashPay).Sum(o => o.Amount);
+            var cashPay = viewModel.Where(o => o.PayItem != null && o.PayItem.Mode == PayMode.CashPay).Sum(o => o.Amount);
+            if (cashNeedpay == 0 && cashPay > 0)
+            {
+                Toast.ShowMessage("无需现金支付！", this);
+                return;
+            }
+
+
+            MachineInformations _machineInfo = Global.MachineSettings.MachineInformations;
+            //判读是否有用该支付方式支付
+            List<PayWay> payWay = new List<PayWay>();
+            foreach (var item in viewModel)
+            {
+                if (item.PayItem == null) continue;
+                PayWay _payWay = new PayWay()
+                {
+                    Amount = item.Amount,
+                    Change = 0m,
+                    Receive = item.Amount,
+                    Type = item.PayItem.Mode,
+                    WipeZero = 0m
+                };
+                if (item.PayItem.Mode == PayMode.CashPay)
+                {
+                    _payWay.WipeZero = moling;
+                    _payWay.Change = zhaoling;
+                }
+                payWay.Add(_payWay);
+            }
+            ApiPayParams _params = new ApiPayParams()
+            {
+                StoreId = _machineInfo.StoreId,
+                MachineSn = _machineInfo.MachineSn,
+                CID = _machineInfo.CompanyToken,
+                Mode = action,
+                Receivable = WipeZeroAfter,
+                Payway = payWay,
+                OrderAmount = yingshou,
+                Reason = 0,
+                OldOrderSn = (action == PayAction.RefundAll ? RefundChangeViewModel.Current.RefundOrder.PaySn : "")
+            };
+            var result = ApiManager.Post<ApiPayParams, ApiRetrunResult<object>>(@"api/Pay", _params);
+            if (result.Code == "200")
+            {
+                //返回成功则打开微信支付界面
+                ZhiFuWanCheng page = new ZhiFuWanCheng(WipeZeroAfter, shishoujiner, zhaoling, "多方付", action, (DateTime)result.Result);//支付方式参数
+                page.Owner = Application.Current.MainWindow;
+                page.ShowDialog();
+            }
+            else
+            {
+                Toast.ShowMessage(result.Message, this);
+            }
+        }
+    }
+    public class MultiPayViewModel : Pharos.POS.Retailing.XamlConverters.IMultiPayViewModel
+    {
+
+        public bool IsLast { get; set; }
+        public bool IsFrist { get; set; }
+        public bool IsSelected { get; set; }
+        public decimal Amount { get; set; }
+        public string PayName { get; set; }
+
+        public PayItem PayItem { get; set; }
+    }
+}

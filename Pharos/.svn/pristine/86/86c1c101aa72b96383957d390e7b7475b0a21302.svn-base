@@ -1,0 +1,42 @@
+﻿using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class ProductRecordService : BaseGeneralService<VwProduct, EFDbContext>
+    {
+        /// <summary>
+        /// 适配多条码串、一品多码、价格（变价、一品多价、系统售价）
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <param name="barcode"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        public static ProductInfo GetProductRecod(string storeId, string barcode, int token)
+        {
+            var query = CurrentRepository._context.Database.SqlQuery<ProductInfo>("exec CheckedStoreProductInfo @p0,@p1,@p2", storeId, token, barcode);
+            ProductInfo result = query.FirstOrDefault();
+            if (result.ProductType == ProductType.Weigh) 
+            {
+                throw new SaleException("604", "称重商品请过称！");
+            }
+            return result;
+        }
+
+        internal static ProductInfo GetProductRecodByProductCode(string storeId, string productCode, int token)
+        {
+
+            var query = CurrentRepository._context.Database.SqlQuery<ProductInfo>("exec CheckedStoreProductInfoByProductCode @p0,@p1,@p2", storeId, token, productCode);
+            ProductInfo result = query.FirstOrDefault();
+            return result;
+        }
+    }
+}

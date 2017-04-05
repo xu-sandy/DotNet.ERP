@@ -1,0 +1,191 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Data;
+
+namespace Pharos.Logic.BLL
+{
+    public class ProductBrandService : BaseService<Entity.ProductBrand>
+    {
+        public static List<Entity.ProductBrand> GetList(bool isAll = false)
+        {
+            if (isAll)
+            {
+                var all = FindList(null);
+                all.ForEach(a => { if (a.State == 0) a.Title = "*" + a.Title; });
+                return all.OrderByDescending(a => a.State).ThenBy(a => a.Title).ToList();
+            }
+            return FindList(o => o.State == 1).OrderBy(o => o.Title).ToList();
+        }
+        public static Dictionary<string, int> GetListByProduct(int subCate)
+        {
+            var query = BaseService<VwProduct>.CurrentRepository.QueryEntity;
+            var categorys = query.Where(o => o.BrandSN > 0 && o.CategorySN == subCate).Select(o => new { o.BrandSN, o.BrandTitle }).Distinct();
+            return categorys.ToDictionary(o => o.BrandTitle, o => o.BrandSN.GetValueOrDefault());
+        }
+        public static OpResult Import(ImportSet obj, System.Web.HttpFileCollectionBase httpFiles, string fieldName, string columnName)
+        {
+            var op = new OpResult();
+            try
+            {
+                if (httpFiles.Count <= 0 || httpFiles[0].ContentLength <= 0)
+                {
+                    op.Message = "请先选择Excel文件";
+                    return op;
+                }
+                var stream = httpFiles[0].InputStream;
+                var ext = httpFiles[0].FileName.Substring(httpFiles[0].FileName.LastIndexOf("."));
+                if (!(ext.Equals(".xls", StringComparison.CurrentCultureIgnoreCase) ||
+                    ext.Equals(".xlsx", StringComparison.CurrentCultureIgnoreCase)))
+                {
+                    op.Message = "请先选择Excel文件";
+                    return op;
+                }
+                var dicts = new Dictionary<string, char>();
+                if(!fieldName.IsNullOrEmpty() && !columnName.IsNullOrEmpty())
+                {
+                    var fields= fieldName.Split(',');
+                    var columns = columnName.Split(',');
+                    if(fields.Length!=columns.Length)
+                    {
+                        op.Message = "配置的字段和列数不一致!";
+                        return op;
+                    }
+                    for (var i = 0; i < fields.Length;i++ )
+                    {
+                        dicts[fields[i]] =Convert.ToChar(columns[i]);
+                    }
+                    if(dicts.Values.Distinct().Count()!=columns.Length)
+                    {
+                        op.Message = "配置的列存在重复!";
+                        return op;
+                    }
+                    obj.FieldJson = dicts.Select(o => new { o.Key, o.Value }).ToJson();
+                }
+                if (obj.Id == 0)
+                {
+                    if (!BaseService<ImportSet>.IsExist(o => o.TableName == obj.TableName && o.CompanyId == obj.CompanyId))
+                        op = BaseService<ImportSet>.Add(obj);
+                    else
+                        op.Successed = true;
+                }
+                else
+                {
+                    var res = BaseService<ImportSet>.FindById(obj.Id);
+                    obj.ToCopyProperty(res);
+                    op = BaseService<ImportSet>.Update(res);
+                }
+                if(!op.Successed) return op;
+
+                var dt = new ExportExcel().ToDataTable(stream, minRow: obj.MinRow, maxRow: obj.MaxRow.HasValue?obj.MaxRow.Value:Int32.MaxValue);
+                if(dt==null || dt.Rows.Count<=0)
+                {
+                    op.Message = "无数据，无法导入!";
+                    return op;
+                }
+                var brandClass = SysDataDictService.FindList(o => o.DicPSN == (int)DicType.品牌分类);
+                var otherClass= brandClass.FirstOrDefault(o => o.Title.StartsWith("其"));
+                
+                var errLs = new Dictionary<int, string>();
+                var max = SysDataDictService.GetMaxSN;
+                var clsIdx = Convert.ToInt32(dicts["ClassifyId"]) - 65;
+                var titleIdx = Convert.ToInt32(dicts["Title"]) - 65;
+                for (int i = dt.Rows.Count - 1; i >= 0; i--)
+                {
+                    try
+                    {
+                        var dr = dt.Rows[i];
+                        var text = dr[clsIdx].ToString();
+                        var cls = brandClass.FirstOrDefault(o => o.Title == text);
+                        if (cls != null)
+                        {
+                            dr[clsIdx] = cls.DicSN.ToString();
+                            continue;
+                        }
+                        if (obj.RefCreate)
+                        {
+                            var data = new Sys.Entity.SysDataDictionary()
+                            {
+                                DicPSN = (int)DicType.品牌分类,
+                                DicSN = max++,
+                                Status = true,
+                                Title = text
+                            };
+                            SysDataDictService.Add(data);
+                            brandClass.Add(data);
+                            dr[clsIdx] = data.DicSN.ToString();
+                        }
+                        else if (otherClass != null)
+                        {
+                            dr[clsIdx] = otherClass.DicSN.ToString();
+                        }
+                        else
+                        {
+                            errLs[i] = dr[titleIdx].ToString();
+                            dt.Rows.RemoveAt(i);
+                        }
+
+                    }
+                    catch (Exception e)
+                    {
+                        throw new Exception("品牌分类处理失败!", e);
+                    }
+                }
+                max = MaxSN;
+                StringBuilder sb = new StringBuilder();
+                sb.Append("begin ");
+                foreach (DataRow dr in dt.Rows)
+                {
+                    sb.Append("insert into ");
+                    sb.Append(obj.TableName);
+                    sb.Append("(CompanyId,BrandSN,State,");
+                    sb.Append(string.Join(",",dicts.Keys));
+                    sb.Append(") values(");
+                    sb.AppendFormat("{0},", obj.CompanyId);
+                    sb.AppendFormat("{0},", max++);
+                    sb.AppendFormat("1,");
+                    foreach (var de in dicts)
+                    {
+                        var index = Convert.ToInt32(de.Value) - 65;
+                        try
+                        {
+                            var text = dr[index].ToString();
+                            sb.Append("'" + text + "',");
+                        }
+                        catch (Exception e)
+                        {
+                            throw new Exception("列选择超过范围!",e);
+                        }
+                    }
+                    sb= sb.Remove(sb.Length - 1, 1);
+                    sb.Append(");");
+                }
+                sb.Append("end");
+                op.Successed= new Pharos.Logic.DAL.CommonDAL()._db.ExecuteNonQueryText(sb.ToString(), null)>0;
+            }
+            catch(Exception ex)
+            {
+                op.Message = ex.Message;
+                op.Successed = false;
+            }
+            return op;
+        }
+        public static int MaxSN
+        {
+            get
+            {
+                int max = 0;
+                try
+                {
+                    max = CurrentRepository.QueryEntity.Max(o => o.BrandSN);
+                }
+                catch { max = 0; }
+                return max + 1;
+            }
+        }
+    }
+}

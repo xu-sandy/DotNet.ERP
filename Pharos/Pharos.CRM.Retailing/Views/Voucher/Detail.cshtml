@@ -1,0 +1,87 @@
+﻿@model Receipts
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var colcount = 2;
+    var i = 0;
+}
+
+<div class="default-form">
+    @using (Html.BeginForm("Save", "Voucher", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-form" width="100%" height="180px">
+                <tr>
+                    <td class="name">单据类别：</td>
+                    <td class="input">@Html.DisplayText("Category")</td>
+                    <td class="name">张 数：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.Pages)</td>
+                </tr>
+                <tr>
+                    <td class="name">单据编号：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.Number)</td>
+                    <td class="name">金 额：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.Amount)</td>
+                </tr>
+                <tr>
+                    <td class="name">抬 头：</td>
+                    <td colspan="3" class="input">@Html.DisplayTextFor(o => o.Title)</td>
+                </tr>
+                <tr>
+                    <td class="name">备 注：</td>
+                    <td colspan="3" class="input">@Html.DisplayTextFor(o => o.Memo)</td>
+                </tr>
+                <tr>
+                    <td class="name">交单人：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.CreateTitle)</td>
+                    <td class="name">交单日期：</td>
+                    <td class="input">@Html.ValueFor(o => o.CreateDT, "{0:yyyy-MM-dd}")</td>
+                </tr>
+            </table>
+            @if (Model.Attachments!=null)
+            { 
+            <table class="ListPartial">
+                <tr>
+                    @foreach (var file in Model.Attachments)
+                    {
+                        if (i == colcount)
+                        {
+                            ViewContext.Writer.Write("</tr><tr>");
+                            i = 0;
+                        }
+                        <td><a href="@Url.Action("DownFile", "Attach", new { id=file.Id})">@file.Title</a></td>
+                        i++;
+                    }
+                </tr>
+            </table>
+            }
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    $(function () {
+        $("#Title").textbox({ width: 420 });
+        $("#Memo").textbox({ width: 420 });
+    });
+
+    var i=2;
+    function addFile() {
+        var obj = $("#File1").clone().attr({ name: "File" + i, id: "File" + i });
+        obj.val("");
+        $("#dfs").prepend(obj);
+        i++;
+    }
+    function delFile(obj,fid){
+        $.messager.confirm("提示","是否确定删除该附件?",function(r){
+            if (!r) {return r;}
+            $.post("@Url.Action("DeleteFile")",{Id:$("#Id").val(),fileId:fid,t:Math.random()},function(d){
+                if (d.successed) {
+                    $(obj).parent().remove();
+                } else {
+                    $.messager.alert("提示", "删除失败！" + d.message, "error");
+                }
+            },"json")
+        });
+    }
+</script>

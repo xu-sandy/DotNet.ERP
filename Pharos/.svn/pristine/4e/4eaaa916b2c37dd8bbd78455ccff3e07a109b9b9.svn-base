@@ -1,0 +1,103 @@
+﻿using Pharos.Logic.ApiData.Pos.DataSynchronism.Protocol;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+using System.Threading;
+
+namespace Pharos.Logic.ApiData.Pos.DataSynchronism
+{
+    public class DataSyncManager : IDataSyncManager<SocketClient, DataSyncActionInfo>, IDisposable
+    {
+        private Timer dataSyncTimer;
+        public DataSyncManager(SocketClient client, DataSyncActionSettings<DataSyncActionInfo> settings)
+        {
+            Actions = new List<DataSyncActionItem>();
+            Initialize(client, settings);
+        }
+
+        List<DataSyncActionItem> Actions { get; set; }
+        public SocketClient Client { get; set; }
+
+        public DataSyncActionSettings<DataSyncActionInfo> Settings { get; set; }
+
+
+
+        public void Initialize(SocketClient client, DataSyncActionSettings<DataSyncActionInfo> settings)
+        {
+            Client = client;
+            Settings = settings;
+            if (Settings.EnableAutoDataSync)
+            {
+                ClearTimer();
+                dataSyncTimer = new Timer(DataSyncTimerExecute, null, 0, Settings.Interval * 1000);
+            }
+        }
+
+
+        public void DataSyncTimerExecute(object state)
+        {
+            Execute(Settings.AutoDataSyncMode);
+        }
+
+        public void Execute(DataSyncMode mode, Func<DataSyncActionItem[], DataSyncActionItem[]> filter = null)
+        {
+            if (Actions.Count <= 0 || Client == null)
+            {
+                return;
+            }
+            var executeActions = Actions.ToArray();
+            if (filter != null)
+            {
+                executeActions = filter(executeActions);
+            }
+            foreach (var item in Actions)
+            {
+                if (item.Mode == mode || mode == DataSyncMode.All)
+                {
+                    item.Action.Execute(Client, Settings.DataSyncParams);
+                }
+            }
+        }
+
+
+
+        public void ActionRegister(DataSyncMode mode, IDataSyncAction<SocketClient, DataSyncActionInfo> action)
+        {
+            Actions.Add(new DataSyncActionItem() { Action = action, Mode = mode });
+        }
+        private void ClearTimer()
+        {
+            if (dataSyncTimer != null)
+            {
+                dataSyncTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                dataSyncTimer.Dispose();
+                dataSyncTimer = null;
+            }
+        }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                ClearTimer();
+            }
+        }
+        ~DataSyncManager()
+        {
+            Dispose(false);
+        }
+    }
+
+    public class DataSyncActionItem
+    {
+        public DataSyncMode Mode { get; set; }
+
+        public IDataSyncAction<SocketClient, DataSyncActionInfo> Action { get; set; }
+    }
+}

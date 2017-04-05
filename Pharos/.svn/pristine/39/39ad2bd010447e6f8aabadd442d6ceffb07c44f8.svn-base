@@ -1,0 +1,137 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.SyncService.Helpers;
+using System.Data.Entity.Validation;
+
+namespace Pharos.SyncService.LocalDataServices
+{
+    public class MemberIntegralSetPackageSyncLocalService : ISyncDataService
+    {
+
+        public Microsoft.Synchronization.SyncDirectionOrder SyncDirectionOrder
+        {
+            get { return Microsoft.Synchronization.SyncDirectionOrder.Download; }
+        }
+
+        public IEnumerable<ISyncDataObject> GetSyncObjects(int companyId, string storeId)
+        {
+            try
+            {
+                using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+                {
+                    var orders = db.MemberIntegralSets.Where(o => o.CompanyId == companyId).ToList();
+                    List<SyncDataPackage> result = new List<SyncDataPackage>();
+
+                    foreach (var item in orders)
+                    {
+                        var package = GetVersion(item, companyId, storeId, db);
+                        result.Add(package);
+                    }
+                    return result;
+                }
+            }
+            catch
+            {
+                return new List<ISyncDataObject>();
+            }
+        }
+        private SyncDataPackage GetVersion(Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.MemberIntegralSet item, int companyId, string storeId, LocalCeDbContext db)
+        {
+            var package = new SyncDataPackage() { SyncItemId = item.SyncItemId, EntityType = "MemberIntegralSetPackage" };
+            package.Items.Add(new SyncDataPackageItem() { SyncItemId = item.SyncItemId, EntityType = typeof(SaleOrders).ToString(), SyncItemVersion = item.SyncItemVersion });
+
+            var saledetails = db.MemberIntegralSets.Where(o => o.CompanyId == companyId).ToList().Select(o => new SyncDataPackageItem()
+            {
+                SyncItemVersion = o.SyncItemVersion,
+                SyncItemId = o.SyncItemId,
+                EntityType = typeof(MemberIntegralSet).ToString()
+            }).ToList();
+            package.Items.AddRange(saledetails);
+
+            var consumptionPayments = db.MemberIntegralSetLists.Where(o => o.IntegralId == item.Id).ToList().Select(o => new SyncDataPackageItem()
+            {
+                SyncItemVersion = o.SyncItemVersion,
+                SyncItemId = o.SyncItemId,
+                EntityType = typeof(MemberIntegralSetList).ToString()
+            }).ToList();
+            package.Items.AddRange(consumptionPayments);
+            return package;
+        }
+        public ISyncDataObject GetItem(Guid guid, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var memberIntegralSet = db.MemberIntegralSets.FirstOrDefault(o => o.SyncItemId == guid);
+                var package = new Package() { SyncItemId = guid, EntityType = "MemberIntegralSetPackage" };
+                var orderItem = new List<MemberIntegralSet>();
+                orderItem.Add(new MemberIntegralSet().InitEntity(memberIntegralSet));
+                package.Init(orderItem);
+                package.Init(db.MemberIntegralSetLists.Where(o => o.CompanyId == companyId).ToList().Select(o => new MemberIntegralSetList().InitEntity(o, true)));
+                return package;
+            }
+        }
+
+        public byte[] CreateItem(ISyncDataObject data, Guid guid, int companyId, string storeId)
+        {
+            var temp = data as Package;
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                try
+                {
+                    var memberImterSet = temp.GetEntities<MemberIntegralSet>();
+                    var memberImterSetList = temp.GetEntities<MemberIntegralSetList>();
+                    db.MemberIntegralSets.AddRange(memberImterSet.Select(o => new Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.MemberIntegralSet().InitEntity(o)));
+                    db.MemberIntegralSetLists.AddRange(memberImterSetList.Select(o => new Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.MemberIntegralSetList().InitEntity(o)));
+                    db.SaveChanges();
+                    var order = db.MemberIntegralSets.FirstOrDefault(o => o.SyncItemId == guid);
+                    var version = GetVersion(order, companyId, storeId, db);
+                    return version.SyncItemVersion;
+                }
+                catch (DbEntityValidationException dbEx)
+                {
+                    throw dbEx;
+                }
+            }
+        }
+
+        public byte[] UpdateItem(Guid guid, ISyncDataObject mergedData, int companyId, string storeId)
+        {
+            var temp = mergedData as Package;
+
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var integralSet = db.MemberIntegralSets.FirstOrDefault(o => o.SyncItemId == guid);
+                db.MemberIntegralSets.Remove(integralSet);
+                db.MemberIntegralSetLists.RemoveRange(db.MemberIntegralSetLists.Where(o => o.IntegralId == integralSet.Id).ToList());
+                var integralSets = temp.GetEntities<MemberIntegralSet>();
+                var integralSetLists = temp.GetEntities<MemberIntegralSetList>();
+                db.MemberIntegralSets.AddRange(integralSets.Select(o => new Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.MemberIntegralSet().InitEntity(o)));
+                db.MemberIntegralSetLists.AddRange(integralSetLists.Select(o => new Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.MemberIntegralSetList().InitEntity(o)));
+                db.SaveChanges();
+                integralSet = db.MemberIntegralSets.FirstOrDefault(o => o.SyncItemId == guid);
+                var version = GetVersion(integralSet, companyId, storeId, db);
+                return version.SyncItemVersion;
+            }
+        }
+
+        public void DeleteItem(Guid syncItemId, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var integralSet = db.MemberIntegralSets.FirstOrDefault(o => o.SyncItemId == syncItemId);
+                db.MemberIntegralSets.Remove(integralSet);
+                db.MemberIntegralSetLists.RemoveRange(db.MemberIntegralSetLists.Where(o => o.IntegralId == integralSet.Id).ToList());
+                db.SaveChanges();
+            }
+        }
+
+        public ISyncDataObject Merge(ISyncDataObject syncDataObject1, ISyncDataObject syncDataObject2, int companyId, string storeId)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

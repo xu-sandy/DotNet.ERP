@@ -1,0 +1,27 @@
+﻿@model object
+@{
+    ViewBag.Title = "Detail";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true, hideSearch: true));
+}
+<script type="text/javascript">
+    var footer=@Html.Raw(ViewBag.footer)
+    pharos.manager.data =@Html.Raw(Model.ToJson())
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = true;
+    pharos.manager.geturl = "";
+    pharos.manager.columns = [[
+        { field: 'OrderType', title: '进货类型', width: 80 },
+        { field: 'CreateDT', title: '采购时间', width: 130 },
+        { field: 'IndentOrderId', title: '采购单号', width: 110 },
+        { field: 'Barcode', title: '条码', width: 120 },
+        { field: 'Title', title: '品名', width: 150 },
+        { field: 'IndentNum', title: '采购数量', width: 60 },
+        { field: 'Price', title: '采购单价', width: 60 },
+        { field: 'OrderTotal', title: '采购金额', width: 60 },
+        { field: 'StockNum', title: '库存量', width: 60 }
+    ]];
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid('reloadFooter', footer);
+    }
+</script>

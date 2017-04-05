@@ -1,0 +1,88 @@
+﻿using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class MembersViewModel : BaseViewModel
+    {
+        /// <summary>
+        /// 会员手机号
+        /// </summary>
+        private string phone;
+
+        public string Phone
+        {
+            get { return phone; }
+            set { phone = value.Trim(); this.OnPropertyChanged(o => o.Phone); }
+        }
+        /// <summary>
+        /// 会员卡号
+        /// </summary>
+        private string cardNo;
+
+        public string CardNo
+        {
+            get { return cardNo; }
+            set { cardNo = value.Trim(); this.OnPropertyChanged(o => o.CardNo); }
+        }
+
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (!string.IsNullOrEmpty(Phone) || !string.IsNullOrEmpty(CardNo))
+                    {
+                        //调会员信息接口
+                        Task.Factory.StartNew(() =>
+                        {
+                            var _machinesInfo = Global.MachineSettings.MachineInformations;
+                            SetMemberParams _params = new SetMemberParams()
+                            {
+                                To = MembersSourseMode.Internal,
+                                Phone = Phone,
+                                CardNo = CardNo,
+                                StoreId = _machinesInfo.StoreId,
+                                MachineSn = _machinesInfo.MachineSn,
+                                CID = _machinesInfo.CompanyId
+                            };
+                            var result = ApiManager.Post<SetMemberParams, ApiRetrunResult<SetMemberResult>>(@"api/SetMember", _params);
+                            if (result.Code == "200")
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    //会员信息回传到主界面
+                                    PosViewModel.Current.Phone = result.Result.MobilePhone;
+                                    PosViewModel.Current.CardNo = result.Result.MemberCardNum;
+                                    PosViewModel.Current.FullName = result.Result.RealName;
+                                    PosViewModel.Current.UsableIntegral = result.Result.UsableIntegral;
+                                    CurrentWindow.Close();
+                                }));
+                            }
+                            else
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    Toast.ShowMessage(result.Message, CurrentWindow);
+                                }));
+                            }
+                        });
+
+
+                    }
+                    else
+                    {
+                        Toast.ShowMessage("请输入会员卡号或会员手机号！", CurrentWindow);
+                    }
+                });
+            }
+        }
+
+    }
+}

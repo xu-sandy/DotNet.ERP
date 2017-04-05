@@ -1,0 +1,89 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.BLL
+{
+    public class InventoryRecordService : BaseService<InventoryRecord>
+    {
+        /// <summary>
+        /// 库存操作写入日志(事务中)
+        /// </summary>
+        /// <param name="records">写入对象，Barcode、StoreId、Number和Source必填</param>
+        /// <param name="isSave">是否立即保存，即不在事务中</param>
+        public static void SaveRecord(List<InventoryRecord> records,bool isSave=false)
+        {
+            var recordList = new List<InventoryRecord>();
+            var storeIds= records.Select(o=>o.StoreId).Distinct();
+            var barcodes= records.Select(o=>o.Barcode).Distinct();
+            var inventList= BaseService<Inventory>.FindList(o =>barcodes.Contains(o.Barcode) && storeIds.Contains(o.StoreId));
+            foreach(var rd in records)
+            {
+                if (rd.StoreId.IsNullOrEmpty() || rd.Barcode.IsNullOrEmpty()
+                    || rd.Number == 0 || rd.Source == 0)
+                    throw new Exception("操作日志中Barcode、StoreId、Number、OperatType和Source必填!");
+                var invent=inventList.FirstOrDefault(o=>o.StoreId==rd.StoreId && o.Barcode==rd.Barcode);
+                if(invent!=null)
+                {
+                    if(rd.OperatType==2)
+                        invent.StockNumber -= rd.Number;
+                    else
+                        invent.StockNumber += rd.Number;
+                }
+                else
+                {
+                    invent = new Inventory() { 
+                        Barcode=rd.Barcode,
+                        StoreId=rd.StoreId,
+                        StockNumber=rd.OperatType==2? 0-rd.Number:rd.Number
+                    };
+                    BaseService<Inventory>.Add(invent,false);
+                }
+                recordList.Add(new InventoryRecord()
+                {
+                    Barcode = rd.Barcode,
+                    CreateDT = DateTime.Now,
+                    CreateUID = Sys.CurrentUser.UID,
+                    StoreId = rd.StoreId,
+                    Source = rd.Source,
+                    Number = invent.StockNumber
+                });
+            }
+            AddRange(recordList, isSave);
+        }
+        public static void SaveLog(List<InventoryRecord> records)
+        {
+            var storeIds = records.Select(o => o.StoreId).Distinct();
+            var barcodes = records.Select(o => o.Barcode).Distinct();
+            var inventList = BaseService<Inventory>.FindList(o => barcodes.Contains(o.Barcode) && storeIds.Contains(o.StoreId));
+            var outSource = new int[] { 2,4,6,8,9,10,12};//减库存
+            foreach(var rd in records)
+            {
+                rd.CreateDT = DateTime.Now;
+                rd.CreateUID = Sys.CurrentUser.UID;
+                var invent = inventList.FirstOrDefault(o => o.StoreId == rd.StoreId && o.Barcode == rd.Barcode);
+                if (invent != null)
+                {
+                    if (outSource.Contains(rd.Source))
+                        invent.StockNumber -= rd.Number;
+                    else
+                        invent.StockNumber += rd.Number;
+                }
+                else
+                {
+                    invent = new Inventory()
+                    {
+                        Barcode = rd.Barcode,
+                        StoreId = rd.StoreId,
+                        StockNumber = outSource.Contains(rd.Source) ? 0 - rd.Number : rd.Number
+                    };
+                    BaseService<Inventory>.Add(invent, false);
+                }
+            }
+            AddRange(records.Where(o=>o.Number>0).ToList(), false);
+        }
+    }
+}

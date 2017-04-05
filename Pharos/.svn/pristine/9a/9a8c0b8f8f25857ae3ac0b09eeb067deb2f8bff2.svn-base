@@ -1,0 +1,307 @@
+﻿@model MemberIntegralSet
+@{
+    ViewBag.Title = "ProductIntegral";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.Nature)
+        @Html.Hidden("Inserted")
+        @Html.Hidden("Deleted")
+        @Html.Hidden("Updated")
+        @Html.Hidden("Inserted2")
+        @Html.Hidden("Deleted2")
+        @Html.Hidden("Updated2")
+    <div class="content">
+        <div class="formbox" style="margin-bottom:10px;">
+            <table class="table-form" height="100px">
+                <tr>
+                    <td class="name">有效期：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>@Html.TextBoxFor(o => o.StartDate, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", data_options = "required:true,novalidate:true" })</td>
+                                <td style="padding-left:5px;padding-right:5px;line-height:28px;">-</td>
+                                <td>@Html.TextBoxFor(o => o.EndDate, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", data_options = "" })</td>
+                                <td class="name">适用客户：</td>
+                                <td class="input choose">@Html.CheckBoxListFor(o => o.CustomerObj, ViewBag.customers as List<SelectListItem>, new { data_options = "required:true,novalidate:true,missingMessage:'必勾选一项'", @class = "easyui-validatebox", id = "customer" }, 10)</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">积分比例：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Scale, new { @class = "easyui-numberbox" })  <span style="margin-left:10px">(即消费XX元人民币自动兑换成1个积分,默认:10元=1积分)</span></td>
+                </tr>
+                <tr>
+                    <td class="name"></td>
+                    <td class="input">@Html.CheckBoxFor(o => o.Promotion) <label for="Promotion">是否包含促销</label> <span style="margin-left:90px">(即促销商品也计算积分)</span></td>
+                </tr>
+            </table>
+        </div>
+        <div id="selType" style="margin-bottom:10px;">
+            @if (Request["isdetail"] == null)
+            {
+                <a href="#" class="easyui-linkbutton" onclick="selectType()" style="margin:5px 0px;">添加系列</a>
+            }
+            <table class="easyui-datagrid" id="gridType"
+                   data-options="url:'@Url.Action("LoadTypeList")',queryParams:{integralId:'@Model.Id'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onClickCell:clickCellType,onLoadError:loadError">
+                <thead>
+                    <tr>
+                        <th data-options="field:'Id',hidden:true,editor:{type:'textbox'}" width="120">ID</th>
+                        <th data-options="field:'BarcodeOrCategorySN',hidden:true,editor:{type:'textbox'}" width="120">类别</th>
+                        <th data-options="field:'BigCategoryTitle',editor:{type:'combobox',options:{required:true,data:pharos.dropdown['parenttypes'],onSelect:bigTypeSelect}}" width="150">大类</th>
+                        <th data-options="field:'MidCategoryTitle',editor:{type:'combobox',options:{required:true,onSelect:midTypeSelect}}" width="150">中类</th>
+                        <th data-options="field:'SubCategoryTitle',editor:{type:'combobox',options:{}}" width="150">子类</th>
+                        <th data-options="field:'SaleMoney',editor:{type:'numberbox',options:{min:0,precision:2,required:true}}" width="70">销售金额</th>
+                        <th data-options="field:'IntegralCount',editor:{type:'numberbox',options:{min:0,precision:0,required:true}}" width="100">附加积分</th>
+                        <th data-options="field:'Editor',formatter:operationType" width="120">操作</th>
+                    </tr>
+                </thead>
+            </table>
+            </div>
+            @if (Request["isdetail"] == null)
+            {
+                <a href="#" class="easyui-linkbutton" onclick="selectProduct()" style="margin-bottom: 10px;">添加产品</a>
+            }
+            <div id="win" class="easyui-dialog" data-options="title:'选择商品',buttons:btns,cache:false,modal:true,width:800,height:450,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+            <table class="easyui-datagrid" id="grid2"
+                    data-options="url:'@Url.Action("LoadProductList")',queryParams:{integralId:'@Model.Id'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect:true,onClickCell:clickCell,onLoadError:loadError,idField:'Id'">
+                <thead>
+                    <tr>
+                        <th data-options="field:'BarcodeOrCategorySN'" width="150">条码</th>
+                        <th data-options="field:'Title'" width="150">品名</th>
+                        <th data-options="field:'Size'" width="80">规格</th>
+                        <th data-options="field:'SaleMoney',editor:{type:'numberbox',options:{min:0,precision:2,required:true}}" width="70">销售金额</th>
+                        <th data-options="field:'IntegralCount',editor:{type:'numberbox',options:{min:0,precision:0,required:true}}" width="100">附加积分</th>
+                        @if (Request["isdetail"] == null)
+                        {
+                        <th data-options="field:'Editor',formatter:operation" width="60">操作</th>
+                        }
+                    </tr>
+                </thead>
+            </table>
+        </div>
+        }
+    </div>
+<script type="text/javascript">
+    pharos.dropdown['parenttypes'] = @Html.Raw(ViewBag.parenttypes);
+
+    var $dgPro, $dgType;
+    $(function () {
+        $dgPro = $("#grid2");
+        $dgType = $("#gridType");
+        $("[name='CustomerObj']").click(function () {
+            customerRequired();
+        });
+        @if(Request["isdetail"]==null)
+        {
+            @:customerRequired();
+                }
+        else
+        {
+            @:$("#customer").validatebox("disableValidation");
+                }
+    });
+    function customerRequired() {
+        if ($("[name='CustomerObj']:checked").size() <= 0)
+            $("#customer").validatebox("enableValidation");
+        else
+            $("#customer").validatebox("disableValidation");
+    }
+    function selectProduct() {
+        var url = "@Url.Action("SelectProduct", "Product")?t=" + Math.random();
+        var rows = $dgPro.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.BarcodeOrCategorySN;
+        }).join(",");
+        url += "&cds=" + ids;
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("#win").dialog({ content: cont, buttons: btns }).dialog("open");
+    }
+    function selectType() {
+        var url = "@Url.Action("SelectType2", "Product")?t="+Math.random();
+        var rows = $dgType.datagrid("getRows");
+        var cds = $.map(rows, function (row) {
+            return row.BarcodeOrCategorySN;
+        }).join(",");
+        url += "&cds=" + cds;
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("#win").dialog({ content: cont, buttons: btntypes }).dialog("open");
+    }
+    var btns = [{
+        text: '添加所选产品',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            var data = $dgPro.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            $.each(chks, function (idx, row) {
+                if (!isExists(data.rows, row.Barcode)) {
+                    $dgPro.datagrid('appendRow',
+                    {
+                        BarcodeOrCategorySN: row.Barcode, Title: row.Title, Size: row.Size, Id: maxId(1)
+                    });
+                }
+                lastIndex++;
+            });
+            changeValue();
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+    var btntypes = [{
+        text: '添加所选系列',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            //debugger;
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            var data = $dgType.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            $.each(chks, function (idx, row) {
+                if (!isExists(data.rows, row.CategorySN)) {
+                    $dgType.datagrid('appendRow',
+                    {
+                            BarcodeOrCategorySN: row.CategorySN, MidCategoryTitle: row.MidCategoryTitle, SubCategoryTitle: row.SubCategoryTitle, BigCategoryTitle: row.BigCategoryTitle,
+                            Id: maxId(2)
+                    });
+                    lastIndex++;
+                }
+            });
+            changeValue();
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+
+    function isExists(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.BarcodeOrCategorySN == cd) {
+                result = true; return false;
+            }
+        });
+        return result;
+    }
+    function removeItem(id) {
+        $.messager.confirm("提示", "是否确定删除该项信息?", function (r) {
+            if (!r) return r;
+            $dgPro.datagrid("selectRecord", id);
+            var row = $dgPro.datagrid("getSelected")
+            var index = $dgPro.datagrid("getRowIndex", row);
+            $dgPro.datagrid('deleteRow', index);
+            changeValue();
+        })
+    }
+    function operation(value, row, index) {
+        return "<a href='javascript:void(0)' onclick=\"removeItem(" + row.Id + ")\">删除</a>";
+    }
+    function operationType(value, row, index) {
+        return "<a href='javascript:void(0)' onclick=\"removeItemType(" + row.Id + ")\">删除</a>";
+    }
+    var clickIndex = undefined, endDateClickIndex = undefined, clickTypeIndex=undefined;
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dgPro.datagrid('validateRow', clickIndex)) {
+            $dgPro.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            changeValue();
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function clickCell(index, field) {
+        if (endClickEditing() && (field == "SaleMoney" || field == "IntegralCount")) {
+            $dgPro.datagrid('editCell', { index: index, field: field });
+            clickIndex=index;
+        }
+    }
+    function endClickEditingType() {
+        if (clickTypeIndex == undefined) { return true }
+        if ($dgType.datagrid('validateRow', clickTypeIndex)) {
+            $dgType.datagrid('endEdit', clickTypeIndex);
+            clickTypeIndex = undefined;
+            return true;
+        } else {
+            return false;
+        }
+    }
+    function clickCellType(index, field) {
+        if (endClickEditingType() && (field == "SaleMoney" || field == "IntegralCount")) {
+            $dgType.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickTypeIndex = index;
+        }
+    }
+    function removeItemType(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dgType.datagrid("selectRecord", id);
+            var row = $dgType.datagrid("getSelected")
+            var index = $dgType.datagrid("getRowIndex", row);
+            $dgType.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+    function bigTypeSelect(record) {
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+        if (ed) {
+            $(ed.target).combobox("clear").combobox('reload', "@Url.Action("ChildCategory", "ProductType")?emptyTitle=&psn=" + record.value);
+        }
+    }
+    function midTypeSelect(record) {
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'SubCategoryTitle' });
+        if (ed) {
+            $(ed.target).combobox("clear").combobox('reload', "@Url.Action("ChildCategory", "ProductType")?emptyTitle=&psn=" + record.value);
+        }
+    }
+    function changeValue() {
+        var inserted = $dgPro.datagrid('getChanges', "inserted");
+        var deleted = $dgPro.datagrid('getChanges', "deleted");
+        var updated = $dgPro.datagrid('getChanges', "updated");
+        var inserted2 = $dgType.datagrid('getChanges', "inserted");
+        var deleted2 = $dgType.datagrid('getChanges', "deleted");
+        var updated2 = $dgType.datagrid('getChanges', "updated");
+        $("#Inserted").val(JSON.stringify(inserted));
+        $("#Deleted").val(JSON.stringify(deleted));
+        $("#Updated").val(JSON.stringify(updated));
+        $("#Inserted2").val(JSON.stringify(inserted2));
+        $("#Deleted2").val(JSON.stringify(deleted2));
+        $("#Updated2").val(JSON.stringify(updated2));
+    }
+    function SaveBefore() {
+        var result = endClickEditing();
+        if(!result) return false;
+        result = endClickEditingType();
+        changeValue();
+        return result;
+    }
+    function maxId(type) {
+        var $dg = type == 1 ? $dgPro : $dgType;
+        var rows = $dg.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? row.Id : 0;
+        });
+        var maxId = Math.max.apply(null, ids);
+        if (maxId == -Infinity) maxId = 0;
+        return maxId + 1;
+    }
+</script>

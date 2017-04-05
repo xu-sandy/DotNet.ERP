@@ -1,0 +1,58 @@
+﻿using Common.Logging;
+using Pharos.Api.Retailing;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using System.ServiceProcess;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.ClientService
+{
+    partial class MainService : ServiceBase
+    {
+        IDisposable webServer;
+        public MainService()
+        {
+            InitializeComponent();
+        }
+
+        protected override void OnStart(string[] args)
+        {
+            try
+            {
+                SyncServiceClientStartup.AutoSync();
+                webServer = WebApiStartup.RunWebServer();
+            }
+            catch (Exception ex)
+            {
+                ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                logger.Error(ex.Message, ex);
+                //do log
+            }
+        }
+        protected override void OnStop()
+        {
+            try
+            {
+                if (webServer != null)
+                {
+                    webServer.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                //do log
+                ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                logger.Error(ex.Message, ex);
+            }
+            base.OnStop();
+
+        }
+    }
+}

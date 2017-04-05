@@ -1,0 +1,143 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增设备", editText: "编辑设备", delText: "移除设备", hideDel: false));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>分类：</label>
+            </td>
+            <td class="input-toolbar">
+                @*需要修改name,option 获取字典数据*@
+                <select name="" class="easyui-combobox" style="width:150px">
+                    <option value="" selected>全部</option>
+                    <option value="0">mPOS一体机</option>
+                    <option value="1">mPOS刷卡器</option>
+                    <option value="3">mPOS迷你机</option>
+                    <option value="4">PAD</option>
+                    <option value="5">手机</option>
+                    <option value="6">电子台称</option>
+                </select>
+            </td>
+
+            <td class="label-toolbar">
+                <label>品牌：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'品牌',width:150" />
+            </td>
+
+            <td class="label-toolbar">
+                <label>维护人：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'维护人',width:150" />
+            </td>
+
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'设备名称',width:150" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="">设为可用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="">设为停用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="">导入</a>
+}
+<script type="text/javascript">
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.State == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+    //待修改开始
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: '', title: '名称', editor: { type: 'text', required: true }, width: 120 },
+        { field: '', title: '序号', editor: { type: 'text', required: true }, width: 100 },
+        { field: '', title: '分类', editor: { type: 'text', required: true }, width: 60 },
+        { field: '', title: '品牌', editor: { type: 'text', required: true }, width: 70 },
+        { field: '', title: '型号', editor: { type: 'text', required: true }, width: 60 },
+        { field: '', title: '状态', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: '', title: '维护人', editor: { type: 'text', required: true }, width: 100 },
+        { field: '', title: '更新时间', editor: { type: 'text', required: true }, width: 100 }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache(),true);
+    };
+    pharos.manager.editItem = function (id,row) {
+        this.Id = id;
+        if (row.State == 0 || row.State == 1)
+            openDialog800(this.editText, this.editurlNocache());
+        else
+            openDialogNew(this.detailText, this.editurlNocache(),800,450,true);
+    }
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.each(rows, function (i, r) {
+            if (state == 1 && r.State != 0) {
+                $.messager.alert("提示", "请选择未审的记录!"); rows = null; return false;
+            }
+            else if (state == 2 && r.State == 2) {
+                $.messager.alert("提示", "请选择未注销的记录!"); rows = null; return false;
+            } else if (state == 1 && !r.EffectiveDT) {
+                $.messager.alert("提示", "生效日期不能为空!"); rows = null; return false;
+            }
+        })
+        if (!rows) return;
+        $.messager.confirm("提示", state == 2 ? "注销后将不能再使用，是否继续？" : "是否确定改状态？", function (r) {
+            if (!r) return;
+            var ids= $.map(rows, function (r) { return r.Id;}).join();
+            $.post("@Url.Action("SetState")", {ids:ids,state:state}, function (json) {
+                if (json.successed) {
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "操作失败!" + json.message);
+                }
+            },"json");
+        });
+    }
+    function generateSerial(){
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var pass = true;
+        var codes = $.map(rows, function (r) {
+            if (!r.ExpirationDT) {
+                pass = false;
+                $.messager.alert("提示", "生效日期不能为空!");
+                return false;
+            }
+            else if (r.Useable=="N") {
+                pass = false;
+                $.messager.alert("提示", "请选择为可用状态!");
+                return false;
+            }
+            else if (r.State != 1) {
+                pass = false;
+                $.messager.alert("提示", "请选择为已审状态!");
+                return false;
+            }
+            return r.Code;
+        }).join();
+        if (!pass) return;
+        openDialog("生成系列号", "@Url.Action("GenerateSerial")?codes=" + codes, 600, 370, true);
+    }
+    function removeBefore(row) {
+        if (row.State == 1) {
+            $.messager.alert("提示", "已审状态不能删除!");
+            return false;
+        }
+        return true;
+    }
+    //待修改结束
+</script>

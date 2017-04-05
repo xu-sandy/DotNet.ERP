@@ -1,0 +1,40 @@
+﻿<control:DialogWindow02 x:Class="Pharos.POS.Retailing.ChildWin.DuDan"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"
+        Title="读单" Height="600" Width="1024" WindowStartupLocation="CenterScreen" Icon="..\Images\ChaKuCun\search.png" Margin="0" WindowStyle="None">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\DuDanStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid Margin="10">
+        <DataGrid Margin="0"  ScrollViewer.VerticalScrollBarVisibility="Visible"  Name="DataView" ItemsSource="{Binding OrderItems,Mode=TwoWay}" BorderThickness="1" BorderBrush="#BCB4BB"  VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserDeleteRows="True" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Binding="{Binding Index}" />
+                <!--<DataGridTextColumn IsReadOnly="True" Header="挂单号" Width="250*" Binding="{Binding Id}"></DataGridTextColumn>-->
+                <!--<DataGridTextColumn IsReadOnly="True" Header="订单流水号" Width="250*" Binding="{Binding OrderSN}"></DataGridTextColumn>-->
+                <DataGridTextColumn IsReadOnly="True" Header="挂单时间" Width="200" Binding="{Binding SuspendDate,StringFormat='HH:mm'}" ></DataGridTextColumn>
+                <DataGridTextColumn IsReadOnly="True" Header="预购商品数量" Width="150*" Binding="{Binding Count}"></DataGridTextColumn>
+                <DataGridTextColumn IsReadOnly="True" Header="预购商品总额" Width="180*" Binding="{Binding Amount,StringFormat='{}{0:N}'}"></DataGridTextColumn>
+                <DataGridTemplateColumn CanUserSort="False" IsReadOnly="True" Width="200" Header="操作">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition></ColumnDefinition>
+                                    <ColumnDefinition></ColumnDefinition>
+                                </Grid.ColumnDefinitions>
+                                <control:PosButton  BorderBrush="#5C5753" BorderThickness="1"  FontSize="16" Width="65" Height="35"  Background="White" Foreground="#5C5753" Grid.Column="0" Content="读取" Command="{Binding ReadHandBill}"></control:PosButton>
+                                <control:PosButton  BorderBrush="#B85D5C" BorderThickness="1"  FontSize="16" Width="65" Height="35"  Background="White" Foreground="#B85D5C" Grid.Column="1" Content="移除" Command="{Binding RemoveCommand}"></control:PosButton>
+
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</control:DialogWindow02>

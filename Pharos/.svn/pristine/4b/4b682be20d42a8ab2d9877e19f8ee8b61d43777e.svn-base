@@ -1,0 +1,118 @@
+﻿<Window x:Class="Pharos.POS.Retailing.ChildPages.Duofangshizhifu"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowState="Normal" WindowStyle="None"
+        AllowsTransparency="True"  WindowStartupLocation="CenterScreen"
+        
+        Background="Transparent" BorderBrush="Transparent"
+        xmlns:rules="clr-namespace:Pharos.POS.Retailing.Models.DataRules"   Style="{DynamicResource SkinWindowStyle}"
+        Name="mainWindow" Icon="..\Images\JieSuan\2.png"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" 
+        Title="多方式支付" Height="550" Width="700">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\BaseStyle.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="..\Styles\PayWayStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Name="InfoPanel">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="80"></RowDefinition>
+
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="110"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="140"></ColumnDefinition>
+            <ColumnDefinition Width="160"></ColumnDefinition>
+            <ColumnDefinition Width="150"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+
+
+
+        <TextBlock Style="{StaticResource txtTitle}"  Grid.Row="0" Grid.Column="0">应付金额：</TextBlock>
+        <TextBlock  Grid.Row="0" Text="{Binding Receivable,StringFormat='{}{0:C}'}" Style="{StaticResource txtJiner}" Grid.Column="1"></TextBlock>
+
+        <!--<TextBlock Style="{StaticResource txtTitle}" Grid.Column="2" >币种：</TextBlock>
+        <TextBlock Style="{StaticResource txtJiner}" Grid.Column="3">人民币</TextBlock>-->
+
+        <!--<TextBlock Style="{StaticResource txtTitle}" Grid.Column="2">导购员工号：</TextBlock>
+        <TextBox TabIndex="3" Text="{Binding SalesmanUserCode,UpdateSourceTrigger=LostFocus}" Height="40" Width="150" FontSize="18" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" HorizontalAlignment="Left" Grid.Column="3"></TextBox>-->
+
+        <Line Grid.ColumnSpan="10" Stroke="#27343D" StrokeThickness="0.2" Y1="69" Y2="69" X1="0" X2="700"></Line>
+
+        <TextBlock Style="{StaticResource txtTitle}"  Grid.Row="1" Grid.Column="0">现金收款：</TextBlock>
+        <TextBlock Width="18" Grid.Row="1" Grid.Column="1" FontSize="18" Panel.ZIndex="20" VerticalAlignment="Center" HorizontalAlignment="Left">￥</TextBlock>
+        <!--<TextBox TabIndex="1" VerticalAlignment="Center" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="15,0,0,0" Width="150" Height="40" FontSize="18" Grid.Row="1" Text="{Binding CashPay,StringFormat='{}{0:C}'}" Grid.Column="1"></TextBox>-->
+        <TextBox TabIndex="1"  VerticalAlignment="Center" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="15,0,0,0" Width="150" Height="40" FontSize="18" Grid.Row="1" Grid.Column="1">
+            <TextBox.Text>
+                <Binding Mode="OneWayToSource" Path="CashPayStr" ValidatesOnExceptions="True" NotifyOnValidationError="True" Converter="{StaticResource decimalStringFormatConverter}"  UpdateSourceTrigger="LostFocus" ValidatesOnDataErrors="True">
+                    <Binding.ValidationRules>
+                        <rules:DoubleRules MinValue="0" MinErrorInfo="请输入正确的实收金额！" NaNErrorInfo="请输入正确的实收金额！" ></rules:DoubleRules>
+                    </Binding.ValidationRules>
+                </Binding>
+            </TextBox.Text>
+        </TextBox>
+        
+        
+        
+        <TextBlock Style="{StaticResource txtTitle}"  Grid.Row="2" Grid.Column="0">代金券：</TextBlock>
+        <TextBox  VerticalAlignment="Center" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="15,0,0,0" Width="150" Height="40" FontSize="18" Grid.Row="2"  IsEnabled="False" Text="功能待完善中。" Grid.Column="1"></TextBox>
+
+
+        <TextBlock Style="{StaticResource txtTitle}"  Grid.Row="3" Grid.Column="0">储值卡：</TextBlock>
+        <TextBox  VerticalAlignment="Center" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="15,0,0,0" Width="150" Height="40" FontSize="18" Grid.Row="3"  IsEnabled="False" Text="功能待完善中。" Grid.Column="1"></TextBox>
+
+
+        <TextBlock Style="{StaticResource txtTitle}"  Grid.Row="3" Grid.Column="2">卡号：</TextBlock>
+        <TextBox  VerticalAlignment="Center" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="15,0,0,0" Width="200" Height="40" FontSize="18" Grid.Row="3"  IsEnabled="False" Text="功能待完善中。" Grid.Column="3"></TextBox>
+
+
+        <TextBlock Style="{StaticResource txtTitle}"  Grid.Row="1" Grid.Column="2">银联卡：</TextBlock>
+        <!--<TextBox TabIndex="2" VerticalAlignment="Center" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="15,0,0,0" Width="150" Height="40" FontSize="18"  Grid.Row="1" Text="{Binding UnionPay,StringFormat='{}{0:C}'}" Grid.Column="3"></TextBox>-->
+        <TextBlock Width="18" Grid.Row="1" Grid.Column="3" FontSize="18" Panel.ZIndex="20" VerticalAlignment="Center" HorizontalAlignment="Left">￥</TextBlock>
+        <TextBox TabIndex="2"  VerticalAlignment="Center" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="15,0,0,0" Width="150" Height="40" FontSize="18" Grid.Row="1" Grid.Column="3">
+            <TextBox.Text>
+                <Binding Mode="OneWayToSource" Path="UnionPayStr" ValidatesOnExceptions="True" NotifyOnValidationError="True" Converter="{StaticResource decimalStringFormatConverter}"  UpdateSourceTrigger="LostFocus" ValidatesOnDataErrors="True">
+                    <Binding.ValidationRules>
+                        <rules:DoubleRules MinValue="0" MinErrorInfo="请输入正确的实收金额！" NaNErrorInfo="请输入正确的实收金额！" ></rules:DoubleRules>
+                    </Binding.ValidationRules>
+                </Binding>
+            </TextBox.Text>
+        </TextBox>
+
+        <!--<TextBlock Style="{StaticResource txtTitle}"  Grid.Row="4" Grid.Column="2">交易号：</TextBlock>
+        <TextBox TabIndex="3"  VerticalAlignment="Center" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="15,0,0,0" Width="250" Height="40" FontSize="18" Grid.Row="4" Text="{Binding BackCard}" Grid.Column="3"></TextBox>-->
+
+        <TextBlock Style="{StaticResource txtTitle}"  Grid.Row="5" Grid.Column="0">实收金额：</TextBlock>
+        <TextBlock  Grid.Row="5" Text="{Binding Receipt,StringFormat='{}{0:C}'}" Style="{StaticResource txtJiner}" Grid.Column="1"></TextBlock>
+
+        <TextBlock Style="{StaticResource txtTitle}"  Grid.Row="5" Grid.Column="2">尚欠：</TextBlock>
+        <TextBlock  Grid.Row="5" Text="{Binding OutstandingPayment,StringFormat='{}{0:C}'}" Style="{StaticResource txtJiner}" Grid.Column="3"></TextBlock>
+
+        <TextBlock Style="{StaticResource txtTitle}"  Grid.Row="6" Grid.Column="2">找零：</TextBlock>
+        <TextBlock  Grid.Row="6" Text="{Binding Change,StringFormat='{}{0:C}'}" Style="{StaticResource txtJiner}" Grid.Column="3"></TextBlock>
+
+
+        <Grid Grid.Row="7" Grid.ColumnSpan="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="150"></ColumnDefinition>
+                <ColumnDefinition Width="20"></ColumnDefinition>
+
+                <ColumnDefinition Width="150"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="1" TabIndex="5" Width="150" Margin="0" Style="{StaticResource BtnBackStyle}" Background="#807C7B" Click="btnBack_Click">返回</Button>
+            <Button Grid.Column="3" TabIndex="4" Width="150" Margin="0"  Style="{StaticResource BtnBackStyle}" Background="#659D15" Click="Button_Click">完成支付</Button>
+        </Grid>
+    </Grid>
+</Window>

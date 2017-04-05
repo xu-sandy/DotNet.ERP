@@ -1,0 +1,126 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link href="css/component.css" rel="stylesheet" />
+    <link href="css/global.css" rel="stylesheet" />
+    <script src="javascript/jquery-1.11.1.min.js"></script>
+    <script src="javascript/jquery.tmpl.min.js"></script>
+    <script src="javascript/common.js"></script>
+    <script src="javascript/modernizr.custom.js"></script>
+    <script src="javascript/spin.min.js"></script>
+    <script src="javascript/app.js"></script>
+    <title></title>
+    <style>
+        .actions {
+            margin: auto;
+            margin-top: 45px;
+            width: 325px;
+        }
+
+            .actions a {
+                width: 150px;
+                height: 46px;
+                background-repeat: no-repeat;
+                background-size: 150px 46px;
+                display: block;
+                text-indent: -9999px;
+                float: left;
+            }
+
+        a.download {
+            background-image: url(site-assets/images/download-btn.png);
+        }
+
+        a.tweet {
+            background-image: url(site-assets/images/tweet-btn.png);
+            margin-left: 25px;
+        }
+
+        .attr {
+            color: #fff;
+            text-align: center;
+            font-size: 0.875rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <script type="text/javascript">
+        RegisterArea('menu.html');
+        RegisterArea('head.html');
+    </script>
+    <div>
+        <div class="container">
+            <h4>服务设置<span>1/2</span></h4>
+            <div class="item">
+                <div style="margin:150px auto;text-align:center;width:800px;">
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control redis" />
+                        <label class="form-label">Redis连接串    </label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control wcfip" />
+                        <label class="form-label">WCF服务IP</label>
+                    </div>
+                    <div class="form-group" style="margin-left:30px;float:left;">
+                        <input required="required" class="form-control wcfport" style="width: 100px;" />
+                        <label class="form-label">端口</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control socketip" />
+                        <label class="form-label">Socket服务IP</label>
+                    </div>
+                    <div class="form-group" style="margin-left:30px;float:left;">
+                        <input required="required" class="form-control socketport" style="width: 100px;" />
+                        <label class="form-label">端口</label>
+                    </div>
+                </div>
+                <div class="btn-item">
+                    <a href="#"><input type="button" class="btn" value="下一步" /></a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="javascript/classie.js"></script>
+    <script src="javascript/uimorphingbutton_fixed.js"></script>
+    <script type="text/javascript">
+        var _height = window.screen.height - 255;
+        $('.item').css('height', _height + 'px');
+        jQuery.ajax({
+            type: 'Get',
+            url: 'api/StoreManager/GetServiceSettings',
+            dataType: 'json',
+            cache: false,
+            success: function (datas) {
+                if (datas.Code == "200") {
+                    $(".redis").val(datas.Result.Redis);
+                    $(".wcfip").val(datas.Result.WCFIp);
+                    $(".wcfport").val(datas.Result.WCFPort);
+                    $(".socketip").val(datas.Result.SocketIp);
+                    $(".socketport").val(datas.Result.SocketPort);
+                } else {
+                    alert(datas.Message);
+                }
+            }
+        });
+        $(".btn").click(function () {
+            jQuery.ajax({
+                type: 'POST',
+                url: 'api/StoreManager/NewServiceSettings',
+                data: { Redis: $(".redis").val(), WCFIp: $(".wcfip").val(), WCFPort: $(".wcfport").val(), SocketIp: $(".socketip").val(), SocketPort: $(".socketport").val() },
+                dataType: 'json',
+                cache: false,
+                success: function (datas) {
+                    if (datas.Code == "200") {
+                        location.href = "reg2.html";
+                    } else {
+                        alert(datas.Message);
+                    }
+                }
+            });
+        });
+     
+    </script>
+</body>
+</html>

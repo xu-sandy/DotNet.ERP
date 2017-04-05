@@ -1,0 +1,63 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Markup;
+
+namespace Pharos.POS.Retailing
+{
+    public class EntryPoint
+    {
+        // All WPF applications should execute on a single-threaded apartment (STA) thread
+        /// <summary>
+        /// 用于替换App.XAML启动界面，在低性能机器上启动更迅速
+        /// </summary>
+        [STAThread]
+        public static void Main(params string[] args)
+        {
+            try
+            {
+                if (args.Length == 0 || args[0] != "Restart")
+                {
+                    string path = System.Reflection.Assembly.GetEntryAssembly().Location;
+                    var arr = System.Diagnostics.Process.GetProcessesByName("Pharos.POS.Retailing");
+                    if (arr.Length > 1)
+                    {
+                        return;
+                    }
+                }
+                var entrance = new Entrance();
+                Application app = new Application();
+                app.Exit += app_Exit;
+                app.Startup += app_Startup;
+                app.Resources.MergedDictionaries.Add(new ResourceDictionary() { Source = new Uri("pack://application:,,,/Styles/Base/ChildPageFrame.xaml") });
+                app.DispatcherUnhandledException += app_DispatcherUnhandledException;
+                app.Run(entrance);
+            }
+            catch
+            {
+
+            }
+        }
+
+        static void app_Exit(object sender, ExitEventArgs e)
+        {
+            if (!SqliteTrap.EnableClose)
+            {
+                Toast.DoShow("正在等待数据完成保存！");
+            }
+        }
+
+        static void app_Startup(object sender, StartupEventArgs e)
+        {
+            FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(CultureInfo.GetCultureInfo("zh-CN").IetfLanguageTag)));
+        }
+
+        static void app_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            e.Handled = true;
+        }
+    }
+}

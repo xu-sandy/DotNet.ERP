@@ -1,0 +1,29 @@
+﻿using Pharos.POS.Retailing.Models.SalesPromotionRules.Discount;
+using System;
+using System.Linq;
+using System.Windows.Data;
+
+namespace Pharos.POS.Retailing.Converters
+{
+    public class TabItemSuperscriptTitleConverter : IValueConverter
+    {
+
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            var title = value as string;
+            switch (title)
+            {
+                case "赠品":
+                    return BaseDiscount.PendingGift.GroupBy(o=>o.Id).Count();
+                case "优惠券|代金券":
+                    return BaseDiscount.PendingCoupon.Count;
+            }
+            return 0;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return null;
+        }
+    }
+}

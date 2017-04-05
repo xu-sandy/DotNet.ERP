@@ -1,0 +1,165 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Barcodes
+{
+    /// <summary>
+    ///标准条码
+    /// </summary>
+    public class StandardBarcode : IBarcode
+    {
+        #region 初始化器
+        public StandardBarcode(string storeId, string machineSn, string barcodeString, SaleStatus saleStatus = SaleStatus.Normal, string giftId = "", string giftPromotionId = "")
+        {
+            //处理条码字符串的空格及移除所有前导空白字符和尾部空白字符
+            if (string.IsNullOrWhiteSpace(barcodeString))
+            {
+                throw new BarcodeException("条码不能为空！");
+            }
+           var  dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn);
+            CurrentString = barcodeString;
+            Count = CurrentString.Length;
+            if (Count != 13)
+            {
+                throw new BarcodeException("条码缺失，或者条码长度异常！");
+            }
+            if (dataAdapter == null)
+            {
+                throw new Exception("数据适配器不能为null,请实现IDataAdapter，并实例化！");
+            }
+            var productInfo = dataAdapter.GetProductInfoByBarcode(CurrentString);
+            if (productInfo == null)
+            {
+                throw new SaleException("602", "未找到商品信息，请确认商品是否已经入库销售！");
+            }
+            ProductType = productInfo.ProductType;
+            SaleNumber = 1;
+            ProductCode = productInfo.ProductCode;
+            SalePrice = productInfo.SystemPrice;
+            Details = new ProductDetails()
+            {
+                Brand = productInfo.Brand,
+                Category = productInfo.Category,
+                EnableEditNum = productInfo.EnableEditNum,
+                EnableEditPrice = productInfo.EnableEditPrice,
+                GiftId = giftId,
+                GiftPromotionId = giftPromotionId,
+                SaleStatus = saleStatus,
+                Size = productInfo.Size,
+                SystemPrice = productInfo.SystemPrice,
+                Title = productInfo.Title,
+                Unit = productInfo.Unit,
+                Total = SalePrice * SaleNumber
+            };
+        }
+
+        public StandardBarcode(IBarcode barcode)
+        {
+            Count = barcode.Count;
+            CurrentString = barcode.CurrentString;
+            ProductType = barcode.ProductType;
+            SalePrice = barcode.SalePrice;
+            SaleNumber = barcode.SaleNumber;
+            ProductCode = barcode.ProductCode;
+            Details = barcode.Details;
+        }
+        #endregion 初始化器
+
+        #region 属性
+        /// <summary>
+        /// 条码长度
+        /// </summary>
+        public int Count { get; set; }
+        /// <summary>
+        /// 条码字符串
+        /// </summary>
+        public string CurrentString { get; set; }
+        /// <summary>
+        /// 商品类型
+        /// </summary>
+        public ProductType ProductType { get; set; }
+        /// <summary>
+        /// 销售数量
+        /// </summary>
+        public decimal SaleNumber { get; set; }
+        /// <summary>
+        /// 当前售价
+        /// </summary>
+        public decimal SalePrice { get; set; }
+        /// <summary>
+        /// 商品货号
+        /// </summary>
+        public string ProductCode { get; set; }
+        /// <summary>
+        /// 商品详细信息
+        /// </summary>
+        public ProductDetails Details { get; set; }
+
+        public bool EnableMarketing { get; set; }
+        #endregion 属性
+
+        #region 方法
+        public override bool Equals(object obj)
+        {
+            var barcode = obj as StandardBarcode;
+            if (barcode == null || this == null)
+            {
+                return false;
+            }
+            if (CurrentString != barcode.CurrentString || string.IsNullOrEmpty(CurrentString) || string.IsNullOrEmpty(barcode.CurrentString))
+            {
+                return false;
+            }
+            if (barcode.Details == null || Details == null || Details.SaleStatus != barcode.Details.SaleStatus || Details.GiftId != barcode.Details.GiftId || Details.GiftPromotionId != barcode.Details.GiftPromotionId)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            StringBuilder str = new StringBuilder(CurrentString);
+            if (Details != null)
+                str.Append((int)Details.SaleStatus);
+            return str.ToString().GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return CurrentString;
+        }
+
+        public bool VerfyEnableCombine(string barcode, SaleStatus status, string giftId, string giftPromotionId)
+        {
+            if (this == null)
+            {
+                return false;
+            }
+            if (string.IsNullOrEmpty(CurrentString) || string.IsNullOrEmpty(barcode) || Details == null)
+            {
+                return false;
+            }
+            if (CurrentString == barcode && Details.SaleStatus == status && Details.GiftId == giftId && Details.GiftPromotionId == giftPromotionId)
+                return true;
+            return false;
+        }
+
+        public bool VerfyEnableCombine(IBarcode barcode)
+        {
+            return this.Equals(barcode);
+        }
+
+
+        #endregion 方法
+
+
+
+
+    }
+}

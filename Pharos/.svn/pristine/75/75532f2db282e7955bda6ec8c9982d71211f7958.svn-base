@@ -1,0 +1,39 @@
+﻿using Microsoft.Synchronization;
+using Pharos.Logic.DAL;
+using System;
+using System.Collections.Generic;
+using System.Data.Entity;
+using System.Linq;
+using System.Web;
+
+namespace Pharos.SyncWcfService
+{
+    internal class PosServerDbSyncHandler
+    {
+        private DbContext _PosServerDbContext;
+        private void InitDb() 
+        {
+            if (PosServerDbSyncSettings.InitDbContext == null) 
+            {
+                throw new Exception("初始化数据服务提供程序失败！");
+            }
+            _PosServerDbContext = PosServerDbSyncSettings.InitDbContext();
+        }
+
+        internal void BeginSession() 
+        {
+            InitDb();
+        }
+
+        internal ChangeBatch GetChangeBatch(uint batchSize,SyncKnowledge destinationKnowledge)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public static class PosServerDbSyncSettings 
+    {
+        public static Func<DbContext> InitDbContext { get; set; }
+    }
+
+}

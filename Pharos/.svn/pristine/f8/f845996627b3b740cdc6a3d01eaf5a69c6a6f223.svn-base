@@ -1,0 +1,54 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.MessageAgent
+{
+    public class MessageServerConfiguration : ConfigurationSection
+    {
+        public static MessageServerConfiguration GetConfig()
+        {
+            MessageServerConfiguration section = (MessageServerConfiguration)ConfigurationManager.GetSection("MessageServer");
+            return section;
+        }
+        [ConfigurationProperty("Port", DefaultValue = 3033, IsRequired = false)]
+        public int Port
+        {
+            get
+            {
+                return (int)base["Port"];
+            }
+            set
+            {
+                base["Port"] = value;
+            }
+        }
+
+        [ConfigurationProperty("MessageQueue", DefaultValue = "Redis", IsRequired = false)]
+        public string MessageQueue
+        {
+            get
+            {
+                return (string)base["MessageQueue"];
+            }
+            set
+            {
+                base["MessageQueue"] = value;
+            }
+        }
+        [ConfigurationProperty("MessageQueueConnectionString", IsRequired = true)]
+        public string MessageQueueConnectionString
+        {
+            get
+            {
+                return (string)base["MessageQueueConnectionString"];
+            }
+            set
+            {
+                base["MessageQueueConnectionString"] = value;
+            }
+        }
+    }
+}

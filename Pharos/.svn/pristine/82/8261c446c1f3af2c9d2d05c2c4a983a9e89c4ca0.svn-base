@@ -1,0 +1,90 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Http;
+using Newtonsoft.Json.Linq;
+using Pharos.Api.Retailing.Models;
+using Pharos.Logic.ApiData.Mobile.Services;
+
+namespace Pharos.Api.Retailing.Controllers.Mobile
+{
+    /// <summary>
+    /// 盘点
+    /// </summary>
+    [RoutePrefix("api/mobile")]
+    public class TakeStockController : ApiController
+    {
+        /// <summary>
+        /// 根据门店获取相关批次列表
+        /// </summary>
+        /// <param name="json">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetStoreBatchnoList")]
+        public object GetStoreBatchnoList([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            return TakeStockService.GetStoreBatchnoList(storeId);
+        }
+        /// <summary>
+        /// 根据门店和批次获取盘点列表
+        /// </summary>
+        /// <param name="json">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetTakestockList")]
+        public object GetTakestockList([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            string checkBatch = json.Property("checkBatch", true);
+            return TakeStockService.GetTakestockList(storeId,checkBatch);
+        }
+        /// <summary>
+        /// 根据门店,批次和条码获取盘点商品
+        /// </summary>
+        /// <param name="json">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetTakestockBybarcode")]
+        public object GetTakestockBybarcode([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            string checkBatch = json.Property("checkBatch", true);
+            string barcode = json.Property("barcode", true);
+            return TakeStockService.GetTakestockBybarcode(storeId, checkBatch,barcode);
+        }
+        /// <summary>
+        /// 盘点录入
+        /// </summary>
+        /// <param name="json">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("SaveStock")]
+        public void SaveStock([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            string checkBatch = json.Property("checkBatch", true);
+            string userCode = json.Property("userCode", true);
+            string barcode = json.Property("barcode", true);
+            string number = json.Property("number", true);
+            TakeStockService.SaveStock(storeId, checkBatch, userCode, barcode, number);
+        }
+        /// <summary>
+        /// 盘点复盘
+        /// </summary>
+        /// <param name="json">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("ReSaveStock")]
+        public void ReSaveStock([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            string checkBatch = json.Property("checkBatch", true);
+            string userCode = json.Property("userCode", true);
+            string barcode = json.Property("barcode", true);
+            string number = json.Property("number", true);
+            TakeStockService.ReSaveStock(storeId, checkBatch, userCode, barcode, number);
+        }
+    }
+}

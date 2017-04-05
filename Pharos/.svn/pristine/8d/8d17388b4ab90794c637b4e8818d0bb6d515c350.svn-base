@@ -1,0 +1,166 @@
+﻿@{
+    ViewBag.Title = "Report";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideDel: true, hideAdd: true, hideEdit: true,firstLoadData:false));
+}
+@section search{
+    <table class="table-toolbar">
+    <tr>
+        @*<td class="label-toolbar">
+            <label>月份：</label>
+        </td>
+        <td class="input-toolbar">
+            <input name="date" id="date" class="datacontrol Wdate" onclick="WdatePicker({ dateFmt: 'yyyy-MM'})" onchange="dateChange()" />
+        </td>*@
+        <td class="label-toolbar">
+            <label>盘点门店:</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("storeId", ViewBag.shops as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "width:160,onSelect:storeSelect,validType:'requiredForCombo'" })
+        </td>
+        <td class="label-toolbar">
+            <label>盘点批次:</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("checkBatch", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" } }, new { @class = "easyui-combobox datacontrol", data_options = "width:120,validType:'requiredForCombo'" })
+        </td>
+        <td class="label-toolbar">
+            <label>差异确认:</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("sure", new List<SelectListItem>() { new SelectListItem() { Text = "全部", Value = "" }, new SelectListItem() { Text = "未确认", Value = "0" }, new SelectListItem() { Text = "已确认", Value = "1" } }, new { @class = "easyui-combobox datacontrol", data_options = "width:120,validType:'requiredForCombo'" })
+        </td>
+        <td class="input-toolbar">
+            @Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "全部", Value = "0" }, new SelectListItem() { Text = "仅显示差异数据", Value = "1", Selected = true } }, "dispType")
+        </td>
+        <td class="label-toolbar">
+            <label>关键字:</label>
+        </td>
+        <td class="input-toolbar">
+            <input type="text" class="datacontrol easyui-textbox" name="searchText" data-options="prompt:'品名/条码',width:150" />
+        </td>
+    </tr>
+</table>
+}
+@section toolbar
+{
+    @if(CurrentUser.HasPermiss(SysConstLimits.库存管理_导出盘点差异))
+    { 
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" id="btnExcel" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+    }
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-ok'" onclick="setState(1)">设为已确认差异</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-revocation'" onclick="setState(0)">设为未确认差异</a>
+}
+<script type="text/javascript">
+    $(function () {
+        //$("#btnExcel").insertAfter($("#searchBtn"));
+    });
+    pharos.manager.geturl = '@Url.Action("ReportList")';
+    pharos.manager.showFooter = true;
+    pharos.manager.sortOrder = "asc";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        {
+            title: '状态', field: 'State', width: 60, formatter: function (value, row, index) {
+                if (row.StoreTitle == undefined) {
+                    return "";
+                }
+                else {
+                    return value == 1 ? "已审" : "未审";
+                }
+            }
+        },
+        {
+            title: '差异确认', field: 'Sure', width: 70, formatter: function (value, row, index) {
+                return value == 1 ? "已确认" : "未确认";
+            }
+        },
+        { field: 'CheckBatch', title: '盘点批次', width: 90 ,hidden:true},
+        { field: 'StoreTitle', title: '门店', width: 100, hidden: true },
+        { field: 'SupplierTitle', title: '供应商', width: 100 },
+        { field: 'ProductCode', title: '商品编码', width: 70, hidden: true },
+        { field: 'CategoryTitle', title: '类别', width: 100 },
+        {
+            field: 'Barcode', title: '条码', width: 130, formatter: function (value, row) {
+                var val = value;
+                if (row.Barcodes) {
+                    val += "<br/><font color='blue' title='一品多码'>" + row.Barcodes.replace(/,/g, "<br/>") + "</font>";
+                }
+                return val;
+            }
+        },
+        { field: 'Title', title: '品名', width: 120 },
+        { field: 'Size', title: '规格', width: 70 },
+        { field: 'SubUnit', title: '单位', width: 50 },
+        { field: 'SysPrice', title: '系统售价', width: 80 },
+        { field: 'LockNumber', title: '锁库库存', width: 80 },
+        { field: 'ActualNumber', title: '盘点数量', width: 80 },
+        {
+            field: 'SubstractNum', title: '盈亏数量', width: 80, formatter: function (value, row, index) {
+                return value < 0 ? "<font color='red'>" + value + "</font>" :value>0? "<font color='blue'>" + value + "</font>":value;
+            }
+        },
+        { field: 'SubstractTotal', title: '盈亏金额', width: 80 },
+        { field: 'ActualTotal', title: '盘点售价金额', width: 80 },
+        {
+            title: '盘点状态', field: 'pdState', width: 100, formatter: function (value, row, index) {
+                if (row.StoreTitle == undefined) {
+                    return "";
+                }
+                else if (row.ActualNumber) {
+                    return "正常盘点商品";
+                }
+                else if (row.State == 1) {
+                    return "漏盘商品";
+                } else {
+                    return "未盘商品";
+                }
+            }
+        },
+    ]];
+    function storeSelect(record) {
+        if (!record.value) {
+            $("#checkBatch").combobox("clear").combobox("loadData", [record]);
+            return;
+        }
+        if ($("#date").val() == "") {
+            //$.messager.alert("提示", "请先选择日期!"); $(this).combobox("setValue",""); return;
+        }
+        $.post("@Url.Action("StoreSelect")", { storeId: record.value, date: $("#date").val(), t: Math.random() }, function (data) {
+            $("#checkBatch").combobox("clear").combobox("loadData", data.batchs);
+        },"json");
+    }
+    function dateChange() {
+        storeSelect({ value: $("#storeId").combobox("getValue") });
+    }
+    function Export() {
+        var batch = $("#checkBatch").combobox("getValue");
+        if (!batch) {
+            $.messager.alert("提示", "请选择盘点批次!"); return;
+        }
+        window.location.href = '@Url.Action("SubExport")?' + $('#frmsearch').serialize();
+    }
+    function setState(sure) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = [];
+        $.each(rows, function (i,r) {
+            if (r.State == 1) {
+                $.messager.alert("提示", "已审核不允许操作！", "info");
+                rows = null;
+                return false;
+            } else {
+                ids.add(r.Id);
+            }
+        });
+        if (!rows) return;
+        $.post("@Url.Action("SetSure")", {ids:ids.join(),sure:sure,t:Math.random()}, function (json) {
+            if (json.successed) {
+                $.messager.alert("提示", "操作成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作失败！" + json.message, "error");
+            }
+        }, "json");
+    }
+</script>

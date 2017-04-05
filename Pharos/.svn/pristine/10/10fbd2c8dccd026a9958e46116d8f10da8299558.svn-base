@@ -1,0 +1,77 @@
+﻿@{
+    ViewBag.Title = "RechargeIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "充值", delText: "移除", hideDel: true, hideEdit: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>充值日期:</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="beginDate" class="datacontrol Wdate" style="width:120px" />
+            </td>
+            <td style="float:left;margin-left:7px;margin-right:7px;line-height:28px;">-</td>
+            <td class="input-toolbar">
+                <input name="endDate" class="datacontrol Wdate" style="width:120px" />
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <select id="keywoldType" name="keywoldType" class="easyui-combobox" data-options="">
+                    <option value="1">会员</option>
+                    <option value="2">卡号</option>
+                </select>
+            </td>
+            <td class="input-toolbar">
+                &nbsp;<input id="title" name="keyWold" class="easyui-textbox" data-options="prompt:'会员编号/会员名称/手机'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @*<a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">余额转入</a>*@
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">打印凭证</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindRechargePageList")";
+    pharos.manager.editurl = "@Url.Action("CreateRecharge")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'CardSN', title: '卡号', width: 120 },
+        { field: 'MemberFullName', title: '持卡人', width: 60 },
+        { field: 'BeforChargeMonunt', title: '充前金额', width: 80 },
+        { field: 'RechargeAmount', title: '充值金额', width: 80 },
+        { field: 'GivenAmount', title: '赠送金额', width: 80 },
+        { field: 'Blance', title: '可用金额', width: 80 },
+        { field: 'CreateDT', title: '充值时间', width: 120 },
+        { field: 'StateTitle8', title: '充值方式', width: 80 },
+        { field: 'Memo', title: '备注', width: 80 },
+        { field: 'CreateUID', title: '操作人', width: 80 },
+    ]];
+    pharos.manager.addItem = function () {
+        openDialog600(this.addText, this.editurl, false);
+        window.top.$('#lbsave .l-btn-text').width(100).html('充值');
+        //window.top.$('#lbadd').find(".l-btn-text").width(100).html('充值并打印');
+    }
+
+    $(function () {
+        $("#keywoldType").combobox({
+            onChange: function (n, o) {
+                var title = "";
+                if (n == 1) {
+                    title = "会员编号/会员名称/手机";
+                } else if (n == 2) {
+                    title = "卡号";
+                }
+                $('#title').textbox({ prompt: title });
+            }
+        })
+
+        $("#keywoldType").combobox("setValue", "1");
+    })
+</script>

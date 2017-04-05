@@ -1,0 +1,119 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Models.SalesPromotionRules.Discount
+{
+    /// <summary>
+    /// 买赠促销
+    /// </summary>
+    public class FreebieDiscount : BaseDiscount<FreeGiftPurchaseLocalService, FreeGiftPurchaseDAO>
+    {
+        public const string DISCOUNTTITLE = "买赠促销";
+
+
+        public override void SetRestrictionBuyNum()
+        {
+            foreach (var item in CachePool)
+            {
+                if (item.GiftRestrictionBuyNum > 0)
+                {
+                    var date = DateTime.Now.ToString("yyyyMMdd");
+                    if (!SalesRecordLocalService.IsExist(o => o.StoreId == PosMachineInfo.Infos.StoreId && o.CommodityId == item.GiftId && o.CreateDT == date))
+                    {
+                        SalesRecordLocalService.Add(
+                            new SalesRecord()
+                            {
+                                CommodityId = item.GiftId,
+                                CreateDT = date,
+                                StoreId = PosMachineInfo.Infos.StoreId,
+                                Number = item.GiftRestrictionBuyNum
+                            });
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 商品是否有买赠促销，并返回折扣信息
+        /// </summary>
+        /// <param name="product"></param>
+        /// <param name="info"></param>
+        /// <returns></returns>
+        public override bool HasDiscount(string barcode, out  IEnumerable<FreeGiftPurchaseDAO> info)
+        {
+            var entity = ProductInfoLocalService.Find(o => o.Barcode == barcode);
+            var ids = ProductCategoryLocalService.FindAllParent(entity.CategorySN);
+            ids.Add(entity.CategorySN);//查找产品的父级分类
+            info = CachePool.Where(o => (o.BarcodeOrCategorySN == barcode || ids.Exists(p => o.BarcodeOrCategorySN == p.ToString())) && o.EndDate >= DateTime.Now.Date && o.StartDate <= DateTime.Now.Date);
+            //匹配满足的分类、条码、日期
+            return info != null && info.Count() > 0;
+        }
+        public override bool HasDiscount(string barcode)
+        {
+            IEnumerable<FreeGiftPurchaseDAO> info;
+            return HasDiscount(barcode, out info);
+        }
+        public override void Discount(string barcode, decimal num, decimal sysPrice, ref decimal sale, ref string giftId, ref List<string> promotionIds)
+        {
+            IEnumerable<FreeGiftPurchaseDAO> infos;
+            if (HasDiscount(barcode, out infos))
+            {
+                List<FreeGiftPurchaseDAO> ValidDiscount = new List<FreeGiftPurchaseDAO>();
+                foreach (var item in infos)
+                {
+                    //处理主表限制
+                    var hasDiscount = DiscountCommon(barcode, num, ref  sale, item);
+                    if (hasDiscount)
+                    {
+                        ValidDiscount.Add(item);
+                    }
+                }
+                if (ValidDiscount.Count == 0)
+                {
+                    return;
+                }
+
+
+                //起购量
+                ValidDiscount = ValidDiscount.Where(o => o.MinPurchaseNum <= num).ToList();
+
+
+                var result1 = ValidDiscount.Where(o => o.RestrictionBuyNum == 0);
+                var record = SalesRecordLocalService.FindList(o => o.StoreId == PosMachine.Current.Infos.StoreId).ToList();
+                //Todo:每天限购次数（0:不限） 【暂未实现】
+                var result2 = (from a in ValidDiscount.Where(o => o.RestrictionBuyNum > 0)
+                               from b in record
+                               where a.CommodityPromotionId == b.CommodityId && (a.RestrictionBuyNum == 0 || (a.RestrictionBuyNum > 0 && b.Number > 0))
+                               select a).ToList();
+                ValidDiscount = result1.Concat(result2).ToList();
+
+
+
+                if (ValidDiscount.Count == 0)
+                {
+                    return;
+                }
+                var info = ValidDiscount.OrderByDescending(o => o.CreateDT).FirstOrDefault();
+
+                var list = FreeGiftPurchaseListLocalService.GetGiftList((string)info.GiftId);
+
+                var tempGifts = new List<Gift>();
+                list.ForEach(o =>
+                {
+                    o.CommodityId = info.CommodityPromotionId;
+                    tempGifts.Add(new Gift(o, DISCOUNTTITLE));
+                });
+                giftId = tempGifts.Select(o => o.Id).FirstOrDefault();
+                var _giftId = giftId;
+                if (!PendingGift.Exists(o => o.Id == _giftId))
+                {
+                    PendingGift = PendingGift.Concat(tempGifts).ToList();
+                    promotionIds.Add(info.CommodityPromotionId);
+                }
+            }
+        }
+    }
+}

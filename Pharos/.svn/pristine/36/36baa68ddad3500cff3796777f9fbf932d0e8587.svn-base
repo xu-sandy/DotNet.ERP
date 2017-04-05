@@ -1,0 +1,50 @@
+﻿using Pharos.Logic.MemberDomain.Exceptions;
+using Pharos.Logic.MemberDomain.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+
+namespace Pharos.Logic.MemberDomain.QuanChengTaoProviders.Extensions
+{
+    public static class QuanChengTaoBaseRuleProviderExtensions
+    {
+        /// <summary>
+        /// 获取逻辑运算符表达式
+        /// </summary>
+        /// <param name="logicalOperatorType">逻辑运算符</param>
+        /// <param name="number">逻辑运算范围数值</param>
+        /// <param name="property">比对属性</param>
+        /// <param name="isPropertyRight">比对属性是否在表达式右边</param>
+        /// <returns></returns>
+        public static Expression GetLogicalOperationExpression<TScene>(this BaseIntegralRuleProvider<TScene> baseIntegralRuleProvider, int logicalOperatorType, decimal number, MemberExpression property)
+              where TScene : IScene, new()
+        {
+            Expression leftExpression = property;
+            Expression rightExpression = Expression.Constant(number);
+            Expression result = null;
+            switch (logicalOperatorType)
+            {
+                case (int)LogicalOperatorType.GreaterThan:
+                    result = Expression.GreaterThan(leftExpression, rightExpression);
+                    break;
+                case (int)LogicalOperatorType.GreatThanOrEqualTo:
+                    result = Expression.GreaterThanOrEqual(leftExpression, rightExpression);
+                    break;
+                case (int)LogicalOperatorType.LessThan:
+                    result = Expression.LessThan(leftExpression, rightExpression);
+                    break;
+                case (int)LogicalOperatorType.LessThanOrEqualTo:
+                    result = Expression.LessThanOrEqual(leftExpression, rightExpression);
+                    break;
+                case (int)LogicalOperatorType.EqualTo:
+                    result = Expression.Equal(leftExpression, rightExpression);
+                    break;
+                default:
+                    throw new IntegralRuleProviderLoadException("未知规则逻辑运算符!");
+            }
+            return result;
+        }
+    }
+}

@@ -1,0 +1,276 @@
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Web.Http;
+using System.Net;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Models;
+using Pharos.Logic.OMS.BLL;
+using QCT.Api.Pay.Utils;
+using QCT.Pay.Common;
+using QCT.Pay.Common.Models;
+
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+ 
+
+namespace QCT.Api.Pay.Controllers
+{
+    /// <summary>
+    /// QCT 支付相关
+    /// </summary>
+    [RoutePrefix("Pay")]
+    public class PayController : BasePayController
+    {
+        // GET: /Pay/
+        #region Ninject Properties
+        /// <summary>
+        /// 支付交易Service
+        /// </summary>
+        [Ninject.Inject]
+        PayService PaySvc { get; set; }
+
+        #endregion
+
+        //#region Test
+        //public object Test(string sss)
+        //{
+        //    return "Test";
+        //}
+        //#endregion
+
+        
+
+        #region Qct Pay
+        /// <summary>
+        /// 购买者付款扫码（动态二维码）
+        /// </summary>
+        /// <param name="reqModel"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [VerifySign]
+        public object Pay(PayBuyerScanDynaRequest reqModel)
+        {
+            //（对应融合支付：主扫支付动态）
+            var result = QctPayReturn.Fail(msg: "参数格式错误");
+            OrderBuilder<PayBuyerScanDynaRequest, PayBuyerScanDynaResponse> buyerOrder = new OrderBuilderForBuyerScanDyna();
+            result = buyerOrder.Build(reqModel);
+            return buyerOrder.Result(result);
+        }
+        /// <summary>
+        /// 商家收款扫码
+        /// </summary>
+        /// <param name="reqModel"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [VerifySign]
+        public object ScanPay(PayMerchScanRequest reqModel)
+        {
+            //（对应融合支付：被扫支付）
+            var result = QctPayReturn.Fail(msg: "参数格式错误");
+            OrderBuilder<PayMerchScanRequest, PayMerchScanResponse> merchOrder = new OrderBuilderForPayMerchScan();
+            result = merchOrder.Build(reqModel);
+            return merchOrder.Result(result);
+        }
+        /// <summary>
+        /// 退款申请
+        /// </summary>
+        /// <param name="reqModel"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [VerifySign]
+        public object Refund(RefundApplyRequest reqModel)
+        {
+            var result = QctPayReturn.Fail(msg: "参数格式错误");
+            OrderBuilder<RefundApplyRequest, RefundApplyResponse> rfdOrder = new OrderBuilderForRefund();
+            result = rfdOrder.Build(reqModel);
+            return rfdOrder.Result(result);
+        }
+
+        #region old pay
+        ///// <summary>
+        ///// Qct支付接口调用（第三方随心付SxfPay）
+        ///// </summary>
+        ///// <param name="reqPms">请求参数</param>
+        ///// <returns></returns>
+        //[HttpPost]
+        //[VerifySign]
+        //public object QctPay([FromBody]JObject reqPms)
+        //{
+        //    var result = QctPayReturn.Fail(msg: "参数格式错误");
+        //    String rstStrSxf = String.Empty;
+        //    var sign = String.Empty;
+        //    try
+        //    {
+        //        String method = reqPms.Property("method", true);
+        //        {
+        //            switch (method)
+        //            {
+        //                case PayConst.QCTTRADE_PAY_BUYERSCAN_DYNA: //购买者付款扫码（动态二维码）（对应融合支付：主扫支付动态）
+
+        //                    var buyerOrderModel = reqPms.ToObject<PayBuyerScanDynaRequest>();
+        //                    OrderBuilder<PayBuyerScanDynaRequest, PayBuyerScanDynaResponse> buyerOrder = new OrderBuilderForBuyerScanDyna();
+        //                    result = buyerOrder.Build(buyerOrderModel);
+        //                    return buyerOrder.Result(result);
+
+        //                case PayConst.QCTTRADE_PAY_MERCHSCAN://商家收款扫码（对应融合支付：被扫支付）
+
+        //                    var merchOrderModel = reqPms.ToObject<PayMerchScanRequest>();
+        //                    OrderBuilder<PayMerchScanRequest, PayMerchScanResponse> merchOrder = new OrderBuilderForPayMerchScan();
+        //                    result = merchOrder.Build(merchOrderModel);
+        //                    return merchOrder.Result(result);
+
+        //                case PayConst.QCTTRADE_REFUNDAPPLY://退款申请
+
+        //                    var rfdOrderModel = reqPms.ToObject<RefundApplyRequest>();
+        //                    OrderBuilder<RefundApplyRequest, RefundApplyResponse> rfdOrder = new OrderBuilderForRefund();
+        //                    result = rfdOrder.Build(rfdOrderModel);
+        //                    return rfdOrder.Result(result);
+
+        //                default:
+        //                    return QctPayReturn.Fail(msg: "[method]参数错误");
+        //            }
+        //        }
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        LogEngine.WriteError("[QctPay参数Json解析失败]" + ex.Message, ex, LogModule.支付交易);
+        //        result = QctPayReturn.Fail(msg: "参数格式错误");
+        //        return result;
+        //    }
+        //}
+        #endregion
+        #endregion
+
+        #region Qct PayNotify
+        /// <summary>
+        /// 支付结果后台通知 fishtodo:验证签名有效性
+        /// </summary>
+        /// <param name="reqModel"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public object SxfPayNotify(SxfPayNotifyRequest reqModel)
+        {
+            try
+            {
+                if (reqModel.Type == PayConst.SXF_TYPE_PAYNOTIFY)
+                {
+                    NotifyBuilder<SxfPayNotifyRequest> payNotify = new NotifyBuilderForPay();
+                    return payNotify.Build(reqModel);
+                }
+                else 
+                    return SxfPayReturn.Fail(msg: "通知参数type值错误");
+            }
+            catch (WebException ex)
+            {
+                LogEngine.WriteError(string.Format("[SxfTradeNotify通知格式错误，错误信息：{0}，返回参数：{1}]", ex.Message, reqModel.ToJson()), ex, LogModule.支付交易);
+                return SxfPayReturn.Fail(msg: "通知格式错误");
+            }
+        }
+        /// <summary>
+        /// 退款结果后台通知 fishtodo:验证签名有效性
+        /// </summary>
+        /// <param name="reqModel"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public object SxfRefundNotify(SxfRefundNotifyRequest reqModel)
+        {
+            try
+            {
+                if (reqModel.Type == PayConst.SXF_TYPE_RFDNOTIFY)
+                {
+                    NotifyBuilder<SxfRefundNotifyRequest> rfdNotify = new NotifyBuilderForRefund();
+                    return rfdNotify.Build(reqModel);
+                }
+                else
+                    return SxfPayReturn.Fail(msg: "通知参数type值错误");
+            }
+            catch (WebException ex)
+            {
+                LogEngine.WriteError(string.Format("[SxfTradeNotify通知格式错误，错误信息：{0}，返回参数：{1}]", ex.Message, reqModel.ToJson()), ex, LogModule.支付交易);
+                return SxfPayReturn.Fail(msg: "通知格式错误");
+            }
+        }
+
+        #region old
+        ///// <summary>
+        ///// 支付结果、退款结果通知调用 fishtodo:验证签名有效性
+        ///// </summary>
+        ///// <param name="reqObj"></param>
+        ///// <returns></returns>
+        //[HttpPost]
+        //public object SxfTradeNotify([FromBody]JObject reqObj)
+        //{
+        //    try
+        //    {
+        //        var type = reqObj.Property("type", true);
+        //        switch (type)
+        //        {
+        //            case PayConst.SXF_TYPE_PAYNOTIFY: //支付结果后台通知
+        //                var payModel = reqObj.ToObject<SxfPayNotifyRequest>();
+        //                NotifyBuilder<SxfPayNotifyRequest> payNotify = new NotifyBuilderForPay();
+        //                return payNotify.Build(payModel);
+        //            case PayConst.SXF_TYPE_RFDNOTIFY://退款结果后台通知
+        //                var rfdModel = reqObj.ToObject<SxfRefundNotifyRequest>();
+        //                NotifyBuilder<SxfRefundNotifyRequest> rfdNotify = new NotifyBuilderForRefund();
+        //                return rfdNotify.Build(rfdModel);
+        //            default:
+        //                    return SxfPayReturn.Fail(msg: "通知类型错误");
+        //        }
+        //    }
+        //    catch (WebException ex)
+        //    {
+        //        LogEngine.WriteError(string.Format("[SxfTradeNotify通知格式错误，错误信息：{0}，返回参数：{1}]", ex.Message, reqObj.ToJson()), ex, LogModule.支付交易);
+        //        return SxfPayReturn.Fail(msg: "通知格式错误");
+        //    }
+        //}
+        #endregion
+        #endregion
+
+        #region Qct PayQuery
+        /// <summary>
+        /// 单笔支付订单查询
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [VerifySign]        
+        public object PayQuery(PayQueryRequest reqModel)
+        {
+            OrderBuilder<PayQueryRequest, PayQueryResponse> orderQuery = new OrderQueryForPay();
+            var result = orderQuery.Query(reqModel);
+            return Json(result);
+        }
+
+        /// <summary>
+        /// 单笔退款订单查询
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [VerifySign]
+        public object RefundQuery(RefundQueryRequest reqModel)
+        {
+            OrderBuilder<RefundQueryRequest, RefundQueryResponse> orderQuery = new OrderQueryForRefund();
+            var result = orderQuery.Query(reqModel);
+            return Json(result);
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [VerifySign]
+        public object PayBatchQuery(PayBatchQueryRequest reqModel)
+        {
+            OrderBuilder<PayBatchQueryRequest, PayBatchQueryResponse> orderQuery = new OrderQueryForPayBatch();
+            var result = orderQuery.Query(reqModel);
+            return Json(result);
+        }
+        #endregion
+    }
+}

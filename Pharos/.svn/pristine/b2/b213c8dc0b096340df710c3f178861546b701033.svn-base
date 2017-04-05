@@ -1,0 +1,177 @@
+﻿<Page x:Class="Pharos.POS.Retailing.Pages.PosPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" ShowsNavigationUI="False" 
+      xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"       
+      mc:Ignorable="d" 
+      d:DesignHeight="768" d:DesignWidth="1024" Title="东本 | 夏日1店" x:Name="posPage" Margin="10">
+    <Page.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\PosPageStyle.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Page.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="10"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="10"></RowDefinition>
+            <RowDefinition Height="180"></RowDefinition>
+            <RowDefinition Height="40"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+            <ColumnDefinition Width="Auto"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Row="0" Grid.ColumnSpan="2" CornerRadius="8" Background="#dbd8dc">
+            <Grid Margin="20,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="350"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="50"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Style="{StaticResource PageTitle}" Text="{Binding ElementName=posPage,Path=Title}"></TextBlock>
+                <StackPanel Grid.Column="1">
+                    <control:Marquee Margin="0,15,0,0" Name="notice" Style="{StaticResource noticeStyle}" Content="   中华民族传统节日农历猴年春节即将来临之际，中共中央总书记、国家主席、中央军委主席习近平来到江西，看望慰问广大干部群众和驻赣部队，祝全国各族人民健康快乐吉祥，祝改革发展人民生活蒸蒸日上。2月1日至3日，习近平来到吉安、井冈山、南昌等地，深 入乡村、企业、学校、社区、革命根据地纪念场馆调研考察，就贯彻落实党的十八届五中全会精神和中央经济工作会议、中央扶贫开发工作会议、中央城市工作会议精神进行指导。"></control:Marquee>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <DataGrid Grid.Row="2"  CanUserDeleteRows="True" TabIndex="14" Margin="0" Foreground="#4B4B4B" BorderBrush="#5C5753" BorderThickness="0" VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn FocusManager.IsFocusScope="False" Width="*" MaxWidth="40" SortDirection="Ascending" CanUserReorder="False" CanUserResize="False" CanUserSort="False" Header="" IsReadOnly="True" Binding="{Binding Id,Mode=TwoWay}"></DataGridTextColumn>
+                <DataGridTextColumn FocusManager.IsFocusScope="False"  CanUserSort="False" Width="*" MinWidth="140" MaxWidth="160" Header="条码" IsReadOnly="True" Binding="{Binding ShowCode,Mode=TwoWay}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextWrapping" Value="Wrap"/>
+                            <Setter Property="Height" Value="auto"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn FocusManager.IsFocusScope="False"  Width="*" MaxWidth="450" CanUserSort="False" Header="品名" IsReadOnly="True" Binding="{Binding Name,Mode=TwoWay}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextWrapping" Value="Wrap"/>
+                            <Setter Property="Height" Value="auto"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+
+
+                <DataGridTextColumn FocusManager.IsFocusScope="False"  CanUserSort="False" MaxWidth="40" Width="*" Header="单位" IsReadOnly="True" Binding="{Binding Unit,Mode=TwoWay}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextWrapping" Value="Wrap"/>
+                            <Setter Property="Height" Value="auto"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn FocusManager.IsFocusScope="False"  CanUserSort="False" MinWidth="120" Width="*" Header="小计" IsReadOnly="True" Binding="{Binding Total,Mode=TwoWay,StringFormat='{}{0:N}'}"></DataGridTextColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="10"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="10"></ColumnDefinition>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <Border Background="#DBDCDE" CornerRadius="10" Padding="10">
+                <Grid MaxWidth="360" MinWidth="300">
+                    <Grid.RowDefinitions>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition MinWidth="60" MaxWidth="70"></ColumnDefinition>
+                        <ColumnDefinition MinWidth="180"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource titleStyle}" Text="手机号："></TextBlock>
+                    <control:IconTextBox Grid.Column="1" Style="{StaticResource contentStyle}" Text="{Binding Phone}"></control:IconTextBox>
+
+
+                    <TextBlock Grid.Row="1" Style="{StaticResource titleStyle}" Text="活动ID："></TextBlock>
+                    <control:IconTextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource contentStyle}" Text="{Binding Phone}"></control:IconTextBox>
+
+
+                    <TextBlock Grid.Row="2" Style="{StaticResource titleStyle}" Text="操作人："></TextBlock>
+                    <TextBlock Style="{StaticResource rightTextStyle}" Grid.Row="2" Grid.Column="1">
+                        <Label Padding="0" Margin="0,0,1,0" Content="1008"></Label>
+                        <Label  Padding="0" Margin="0,0,25,0" Content="李四"></Label> 
+                        <Label  Padding="0" Content="09:11:34"></Label>
+                    </TextBlock>
+
+                </Grid>
+            </Border>
+            <Border Grid.Column="2" Background="#DBDCDE" CornerRadius="10" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition MinWidth="60" MaxWidth="90"></ColumnDefinition>
+                        <ColumnDefinition MinWidth="200" MaxWidth="350"></ColumnDefinition>
+                        <ColumnDefinition Width="88"></ColumnDefinition>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Style="{StaticResource titleStyle}" Text="条码："></TextBlock>
+                    <control:IconTextBox MaxWidth="350" Grid.Row="0" Grid.Column="1" Style="{StaticResource contentStyle}" Text="{Binding Phone}"></control:IconTextBox>
+
+                    <TextBlock Grid.Row="1" Style="{StaticResource titleStyle}" FontSize="20" Text="应收："></TextBlock>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource rightTextStyle}" FontSize="20"><Run Text="￥"></Run> <Run Text="0.00"></Run></TextBlock>
+
+                    <TextBlock Grid.Row="2" Style="{StaticResource titleStyle}" Text="优惠："></TextBlock>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource rightTextStyle}" ><Run Text="￥"></Run> <Run Text="1000.00"></Run> <Run Text=" "></Run> <Run Text=" 件数："></Run> <Run Text="100"></Run></TextBlock>
+                    <Image Grid.Column="2" Grid.Row="1" Grid.RowSpan="2" VerticalAlignment="Bottom" HorizontalAlignment="Right" Source="..\Images\PosWindow\sales.png"></Image>
+                </Grid>
+            </Border>
+            <Border Grid.Column="4" Background="#DBDCDE" CornerRadius="10" Padding="10">
+                <Grid MaxWidth="300" MinWidth="280">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="90"></RowDefinition>
+                        <RowDefinition Height="6"></RowDefinition>
+                        <RowDefinition  Height="60"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition MinWidth="100" MaxWidth="180"></ColumnDefinition>
+                        <ColumnDefinition Width="6"></ColumnDefinition>
+                        <ColumnDefinition MinWidth="150" MaxWidth="200"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <control:PosButton  Grid.RowSpan="3" Background="#659D14" Foreground="#ffffff" Content="结算" FontSize="30"></control:PosButton>
+                    <control:PosButton Grid.Column="2" Background="#B07064" Foreground="#ffffff" Content="清空" FontSize="30"></control:PosButton>
+                    <control:PosButton Grid.Row="2" Grid.Column="2" Background="#807C7B" Foreground="#ffffff" Content="整单折扣" FontSize="20"></control:PosButton>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Style="{StaticResource statusStyle}"><Run Text="状态："></Run> <Run Text="销售"></Run></TextBlock>
+            <TextBlock Grid.Column="1" Style="{StaticResource statusStyle}"><Run Text="小票打印："></Run> <Run Text="关闭"></Run></TextBlock>
+            <TextBlock Grid.Column="2" Style="{StaticResource statusStyle}"><Run Text="POS机号："></Run> <Run Text="关闭"></Run></TextBlock>
+            <TextBlock Grid.Column="4" Style="{StaticResource statusStyle}" Text="道诚 · 科技  商业管理软件"></TextBlock>
+        </Grid>
+
+    </Grid>
+
+
+
+</Page>

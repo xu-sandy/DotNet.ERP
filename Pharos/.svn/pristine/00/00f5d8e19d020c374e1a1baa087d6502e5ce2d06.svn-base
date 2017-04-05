@@ -1,0 +1,48 @@
+﻿@model Pharos.Logic.OMS.Entity.ProductVer
+@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.VerCode)
+        @Html.HiddenFor(o => o.ProductId)
+        @Html.HiddenFor(o => o.Status)
+        <div class="content">
+            <table class="table-form" width="100%" height="260px">
+                <tr>
+                    <td class="name">产品编号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.ProductCode, new { @class = "easyui-textbox",data_options = "readonly:true,prompt:'自动生成...'" })</td>
+                    <td class="name">产品全称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Name, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:'length[1,50]'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">产品别名：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Alias, new { @class = "easyui-textbox", data_options = "required:true,validType:'length[1,50]'" })</td>
+                    <td class="name">系统名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.SysName, new{ @class = "easyui-textbox", data_options = "required:true,validType:'length[1,50]'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">描 述：</td>
+                    <td class="input" colspan="3">@Html.TextAreaFor(o => o.Memo, new { @class = "easyui-validatebox", data_options = "", style = "width:440px;height:150px;", maxlength = 200 })
+                        <div>限长200个字，还可以输入 <span style="color:#FF0000;" id="s_num">200</span> 个字</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+    }
+</div>
+<script type="text/javascript">
+    $("#Memo").keyup(function (e) {
+        var maxlen = $(this).attr("maxlength");
+        var val = $(this).val();
+        var len = val.replace(/\n/g, '11').length;
+        $("#s_num").html(Number(maxlen) - len);
+    })
+    function SaveBefore() {
+        return true;
+    }
+</script>

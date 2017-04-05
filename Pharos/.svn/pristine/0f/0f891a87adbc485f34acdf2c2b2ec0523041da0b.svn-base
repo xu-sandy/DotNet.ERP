@@ -1,0 +1,107 @@
+﻿using Pharos.POS.Retailing.Models;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// Help.xaml 的交互逻辑
+    /// </summary>
+    public partial class Help : Window
+    {
+        public Help()
+        {
+            InitializeComponent();
+            var uiModel = new List<HelpItem>();
+            var rules = KeyboardShortcuts.Current.Rules.Where(o => o.IsShowInHelp == true).GroupBy(o => o.Keys).ToList();
+            HelpItem item = null;
+            for (var i = 0; i < rules.Count; i++)
+            {
+                if (item == null)
+                {
+                    item = new HelpItem();
+                }
+                switch (i % 2)
+                {
+                    case 0:
+                        item.One = new HelpCell() { Name = rules[i].FirstOrDefault().Name, Describe = string.Join("|", rules[i].Select(o => o.Command.Describe)), Keys = rules[i].Key == "Escape" ? "Esc" : rules[i].Key };
+                        if (i == rules.Count - 1)
+                        {
+                            uiModel.Add(item);
+                            item = null;
+                        }
+                        break;
+                    case 1:
+                        item.Two = new HelpCell() { Name = rules[i].FirstOrDefault().Name, Describe = string.Join("|", rules[i].Select(o => o.Command.Describe)), Keys = rules[i].Key == "Escape" ? "Esc" : rules[i].Key };
+                        uiModel.Add(item);
+                        item = null;
+                        break;
+                }
+            }
+            panel.ItemsSource = uiModel;
+            this.InitPublicSettings();
+        }
+
+        private void Grid_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (!UserModel.Current.VerifyCurrentOperateAuth(UserAuth.DataManager))
+            {
+                Toast.DoShow("数据维护员才能设置快捷键！",this);
+                return;
+            }
+            var gird = sender as Grid;
+            var info = gird.DataContext as HelpCell;
+            ConfigKeyboardShortcuts page = new ConfigKeyboardShortcuts(info);
+            page.Closed += page_Closed;
+            page.ShowDialogInScreen(this);
+
+        }
+
+        void page_Closed(object sender, System.EventArgs e)
+        {
+            var uiModel = new List<HelpItem>();
+            var rules = KeyboardShortcuts.Current.Rules.Where(o => o.IsShowInHelp == true).GroupBy(o => o.Keys).ToList();
+            HelpItem item = null;
+            for (var i = 0; i < rules.Count; i++)
+            {
+                if (item == null)
+                {
+                    item = new HelpItem();
+                }
+                switch (i % 2)
+                {
+                    case 0:
+                        item.One = new HelpCell() { Name = rules[i].FirstOrDefault().Name, Describe = string.Join("|", rules[i].Select(o => o.Command.Describe)), Keys = rules[i].Key == "Escape" ? "Esc" : rules[i].Key };
+                        if (i == rules.Count - 1)
+                        {
+                            uiModel.Add(item);
+                            item = null;
+                        }
+                        break;
+                    case 1:
+                        item.Two = new HelpCell() { Name = rules[i].FirstOrDefault().Name, Describe = string.Join("|", rules[i].Select(o => o.Command.Describe)), Keys = rules[i].Key == "Escape" ? "Esc" : rules[i].Key };
+                        uiModel.Add(item);
+                        item = null;
+                        break;
+                }
+            }
+            panel.ItemsSource = uiModel;
+        }
+
+    }
+
+    public class HelpItem
+    {
+        public HelpCell One { get; set; }
+        public HelpCell Two { get; set; }
+    }
+
+    public class HelpCell
+    {
+        public string Name { get; set; }
+        public string Keys { get; set; }
+        public string Describe { get; set; }
+    }
+}

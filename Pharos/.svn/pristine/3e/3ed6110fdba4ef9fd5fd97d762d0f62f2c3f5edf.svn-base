@@ -1,0 +1,347 @@
+﻿@using Pharos.Logic.Entity
+@using Pharos.Utility
+@{
+    var printModelList = ViewBag.PrintModelList as List<PrintInboundModel>;
+    ViewBag.Title = "打印入库单";
+    Layout = "~/Views/Shared/_LayoutOther.cshtml";
+}
+
+<!--begin-->
+<!--media=print   这个属性可以在打印时有效-->
+<style media="print">
+    .Noprint { display: none; }
+    .PageNext { page-break-after: always; }
+</style>
+
+<style>
+    body { font-size: 12px; }
+
+    .paper { margin: 0 auto; padding: 5mm 0; width: 240mm; }
+
+    .content { margin: 0 auto; width: 240mm; font-family: 'Microsoft YaHei'; }
+
+    .title { margin: 0 auto; text-align: center; font-size: 22px; }
+    .status { font-size: 14px; width:98%;text-align:right;}
+
+    table td { padding: 3px; }
+    .title-font { font-size: 14px; }
+
+    .table-header .tb-table-header { width: 100%; margin-bottom: 5px; margin-top: 0px; font-size: 14px; }
+        .table-header .tb-table-header .title-col1 { width: 16%; }
+        .table-header .tb-table-header .title-col2 { width: 20%; }
+        .table-header .tb-table-header .title-col3 { width: 19%; }
+        .table-header .tb-table-header .title-col4 { width: 24%; }
+
+    .inbound-info { margin-bottom: 10px; }
+        .inbound-info .lasest-td { border-right: 1px solid #000; }
+        .inbound-info .td-title2 { text-align: center; }
+        .inbound-info .td-align-right { text-align: right; }
+
+        .inbound-info .tb-supplier { width: 100%; font-size: 14px; }
+            .inbound-info .tb-supplier td { border-left: 1px solid #000; border-top: 1px solid #000; }
+            .inbound-info .tb-supplier .col1 { width: 15%; }
+            .inbound-info .tb-supplier .col2 { width: 55%; }
+            .inbound-info .tb-supplier .col3 { width: 10%; }
+            .inbound-info .tb-supplier .col4 { width: 20%; }
+        /*.inbound-info .tb-supplier .col5 { width: 13%; }
+            .inbound-info .tb-supplier .col6 { width: 13%; }
+            .inbound-info .tb-supplier .col7 { width: 14%; }*/
+
+        .inbound-info .tb-goods { width: 100%; }
+            .inbound-info .tb-goods td { border-left: 1px solid #000; border-top: 1px solid #000; }
+            .inbound-info .tb-goods .col1 { width: 2%; }
+            .inbound-info .tb-goods .col2 { width: 11%; }
+            .inbound-info .tb-goods .col3 { width: 15%; }
+            .inbound-info .tb-goods .col4 { width: 24%; }
+            .inbound-info .tb-goods .col5 { width: 8%; }
+            .inbound-info .tb-goods .col6 { width: 5%; }
+            .inbound-info .tb-goods .col7 { width: 36%; }
+            .inbound-info .tb-goods .goods-content .col8 { width: 12%; }
+            .inbound-info .tb-goods .goods-content .col9 { width: 12%; }
+            .inbound-info .tb-goods .goods-content .col10 { width: 12%; }
+
+        .inbound-info .tb-other { width: 100%; border-bottom: 1px solid #000; border-right: 1px solid #000; }
+            .inbound-info .tb-other td { border-left: 1px solid #000; border-top: 1px solid #000; }
+            .inbound-info .tb-other .col1 { width: 8%; }
+            .inbound-info .tb-other .col2 { width: 17%; }
+
+    .paging-info { float: right; margin-right: 10px; }
+
+    .remark { float: left; width: 80%; }
+    .total { float: right; width: 50%; }
+        .total .tb-total .col1 { width: 10%; }
+        .total .tb-total .col2 { width: 13%; }
+        .total .tb-total .col3 { width: 14%; }
+    .footer-div { width: 100%; height: 100px; }
+    .sp-td-content1{ white-space:nowrap}
+</style>
+
+@if (printModelList != null)
+{
+    var printModelIndex = 0;
+    foreach (var printModel in printModelList)
+    {
+
+        var inBoundListCount = printModel.InboundGood.Details.Count;
+        var inBoundListCycleCount = 1;
+        if (inBoundListCount % 12 == 0)
+        {
+            inBoundListCycleCount = inBoundListCount / 12;
+        }
+        else
+        {
+            inBoundListCycleCount = (int)(inBoundListCount / 12) + 1;
+        }
+        for (var i = 0; i < inBoundListCycleCount; i++)
+        {
+            decimal countInboundNumber = 0;
+            decimal sumBuyprice = 0;
+            decimal countBuyPrice = 0;
+            <div id="page" class="">
+                <div class="">
+                    <div class="title">
+                        @*<span class="sp-storeName">@printModel.StoreName</span>*@
+                        <span class="sp-title">商品验收入库单</span>
+                        @*<span class="sp-warehouse">﹝公司仓库﹞</span>*@
+                    </div>
+                    <div class="status">
+                        <span class="sp-staus">已审核</span>
+                    </div>
+                    <div class="table-header">
+                        <table class="tb-table-header">
+                            <tr>
+                                <td class="title-col4">
+                                    <span class="sp-td-title1">入库单号：</span>
+                                    <span class="sp-td-content1">@printModel.InboundGood.InboundGoodsId</span>
+                                </td>
+
+                                @*<td>
+                                        <span class="sp-td-title1">制单人：</span>
+                                        <span class="sp-td-content1">温井周</span>
+                                    </td>*@
+                                <td class="title-col2">
+                                    <span class="sp-td-title1">入库仓库：</span>
+                                    <span class="sp-td-content1">@printModel.StoreName</span>
+                                </td>
+                                <td class="title-col3">
+                                    <span class="sp-td-title1">订货单号：</span>
+                                    <span class="sp-td-content1">@printModel.InboundGood.IndentOrderId</span>
+                                </td>
+                                <td class="title-col1">
+                                    <span class="sp-td-title1">打印日期：</span>
+                                    <span class="sp-td-content1">@DateTime.Now.ToString("yyyy-MM-dd")</span>
+                                </td>
+                            </tr>
+                        </table>
+
+                    </div>
+                    <div class="inbound-info">
+                        <table class="tb-supplier" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td class="td-title2 col1">供应商名称</td>
+                                <td class="td-content2 col2">
+                                    @if(printModel.Supplier.Id=="-1")
+                                    {
+                                        @(printModel.Supplier.FullTitle)
+                                    }
+                                    else
+                                    {
+                                        @(printModel.Supplier.FullTitle+"（"+printModel.Supplier.Title +"）" )
+                                    }
+
+                                    @*@(printModel.Supplier.FullTitle)（@(printModel.Supplier.Title)）*@       
+                                
+                                </td>
+                                <td class="td-title2 col3">联系人</td>
+                                <td class="td-content2 lasest-td col4">@printModel.Supplier.Linkman</td>
+                                @*<td class="td-title2 col5">厂商邮编</td>
+                                    <td class="td-title2 col6">厂商电话</td>
+                                    <td class="td-title2 col7 lasest-td ">厂商传真</td>*@
+                            </tr>
+                            @*<tr>
+                                    <td class="td-title2 col1">供应商地址</td>
+                                    <td class="td-content2 col2"></td>
+                                    <td class="td-title2 col3">联系人</td>
+                                    <td class="td-content2 col4"></td>
+                                    <td class="td-content2 col5"></td>
+                                    <td class="td-content2 col6"></td>
+                                    <td class="td-content2 col7 lasest-td"></td>
+                                </tr>*@
+                        </table>
+
+                        <table class="tb-goods" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td rowspan="2" class="td-title2 title-font col1">序号</td>
+                                <td rowspan="2" class="td-title2 title-font col2">商品编码</td>
+                                <td rowspan="2" class="td-title2 title-font col3">国际条码</td>
+                                <td rowspan="2" class="td-title2 title-font col4">商品名称</td>
+                                <td rowspan="2" class="td-title2 title-font col5">规格</td>
+                                <td rowspan="2" class="td-title2 title-font col6">订货单位</td>
+                                <td colspan="3" class="td-title2 title-font lasest-td col7">进货信息</td>
+                            </tr>
+                            <tr>
+                                <td class="td-title2 title-font col8">数量</td>
+                                <td class="td-title2 title-font col9">进价</td>
+                                <td class="td-title2 title-font lasest-td col10">进价金额</td>
+                            </tr>
+                            @for (var j = 0 + 12 * i; j < 12 + 12 * i; j++)
+                            {
+
+                                if (j < inBoundListCount)
+                                {
+                                    var inBoundList = printModel.InboundGood.Details[j];
+                                    <tr class="goods-content">
+                                        <td class="td-title2 col1">@(j + 1)</td>
+                                        <td class="td-content2 col2">@inBoundList.ProductCode</td>
+                                        <td class="td-content2 col3">@inBoundList.Barcode</td>
+                                        <td class="td-content2 col4">@inBoundList.ProductTitle</td>
+                                        <td class="td-content2 col5">@inBoundList.Size</td>
+                                        <td class="td-title2 col6">@inBoundList.Unit</td>
+                                        <td class="td-title2 col8">@Conver.ProductNumberToStr(inBoundList.InboundNumber)</td>
+                                        <td class="td-align-right col9">@inBoundList.BuyPrice.ToString("N2")</td>
+                                        <td class="td-align-right lasest-td col10">@((inBoundList.BuyPrice * inBoundList.InboundNumber).ToString("N2"))</td>
+                                    </tr>
+                                    countInboundNumber += inBoundList.InboundNumber;
+                                    sumBuyprice += inBoundList.BuyPrice;
+                                    countBuyPrice += inBoundList.BuyPrice * inBoundList.InboundNumber;
+                                }
+                                else
+                                {
+                                    <tr class="goods-content">
+                                        <td class="td-title2 col1">@(j + 1)</td>
+                                        <td class="td-content2 col2"></td>
+                                        <td class="td-content2 col3"></td>
+                                        <td class="td-content2 col4"></td>
+                                        <td class="td-content2 col5"></td>
+                                        <td class="td-title2 col6"></td>
+                                        <td class="td-title2 col8"></td>
+                                        <td class="td-align-right col9"></td>
+                                        <td class="td-align-right lasest-td col10"></td>
+                                    </tr>
+                                }
+
+                            }
+                            <tr class="goods-content">
+                                <td colspan="6" class="td-title2 title-font td-align-right">合计</td>
+                                <td class="td-title2 col8">@Conver.ProductNumberToStr(countInboundNumber)</td>
+                                <td class="td-align-right col9">@sumBuyprice.ToString("N2")</td>
+                                <td class="td-align-right lasest-td col10">@countBuyPrice.ToString("N2")</td>
+                            </tr>
+                        </table>
+
+                        <table class="tb-other" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td class="td-title2 title-font col1">验收人</td>
+                                <td class="td-content2 col2">@printModel.CreateUserName</td>
+                                <td class="td-title2 title-font col1">复核人</td>
+                                <td class="td-content2 col2"></td>
+                                <td class="td-title2 title-font col1">供应商</td>
+                                <td class="td-content2 col2"></td>
+                                <td class="td-title2 title-font col1">核单人</td>
+                                <td class="td-content2 col2"></td>
+                            </tr>
+                            <tr>
+                                <td class="td-title2 title-font col1">日期</td>
+                                <td class="td-content2 col2">@printModel.InboundGood.CreateDT.ToString("yyyy-MM-dd")</td>
+                                <td class="td-title2 title-font col1">日期</td>
+                                <td class="td-content2 col2"></td>
+                                <td class="td-title2 title-font col1">日期</td>
+                                <td class="td-content2 col2"></td>
+                                <td class="td-title2 title-font col1">日期</td>
+                                <td class="td-content2 col2">&nbsp;</td>
+                            </tr>
+
+                        </table>
+
+                    </div>
+                    <div class="paging-info title-font">
+                        <span>第@(i + 1)页/共@(inBoundListCycleCount)页</span>
+                    </div>
+                    <div class="footer-div title-font">
+                        <div class="remark">
+                            <table class="tb-remark">
+                                <tr>
+                                    <td>注：</td>
+                                    <td>1、本单一式三联：①收货业务；②厂商联；③财务联。</td>
+                                </tr>
+                                <tr>
+                                    <td>&nbsp;</td>
+                                    <td>2、订货单位必须与销售单位一致。</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        @*<div class="total">
+                            <table class="tb-total">
+                                <tr>
+                                    <td class="col1">数量合计：</td>
+                                    <td class="col2">@countInboundNumber.ToString("N2")</td>
+                                    <td class="col3">进货金额合计：</td>
+                                    <td class="col2">@countBuyPrice.ToString("N2")</td>
+                                </tr>
+                            </table>
+                        </div>*@
+                    </div>
+
+                    @if (printModelIndex == printModelList.Count - 1 && i == inBoundListCycleCount - 1)
+                    {
+
+                    }
+                    else
+                    {
+                    <!--分页-->
+                        <div class="PageNext">
+                        </div>
+                    }
+
+                </div>
+
+            </div>
+        }
+
+        printModelIndex++;
+
+
+    }
+}
+
+
+<!--end-->
+
+<script type="text/javascript">
+    window.onload = function () {
+        if (pharos.getQueryString("isprint") == "1") {
+            PageSetup_del();
+            window.print();
+            setTimeout(function () { window.close() }, 1000);
+        }
+    }
+    function printt() {
+        //var bdhtml = window.document.body.innerHTML;
+        //var sprnstr = "<!--begin-->";
+        //var eprnstr = "<!--end-->";
+        //prnhtml = bdhtml.substring(bdhtml.indexOf(sprnstr) + 12);
+        //prnhtml = prnhtml.substring(0, prnhtml.indexOf(eprnstr));
+        //// $("#print").hide();
+        //window.document.body.innerHTML = prnhtml;
+
+        //window.print();
+        //window.document.body.innerHTML = bdhtml;
+        // $("#print").show();
+        window.open(window.location.href + "&isprint=1");
+    }
+    var HKEY_Root, HKEY_Path, HKEY_Key;
+    HKEY_Root = "HKEY_CURRENT_USER";
+    HKEY_Path = "\\Software\\Microsoft\\Internet Explorer\\PageSetup\\";
+    function PageSetup_del() {//去除IE页脚
+        try {
+            var WSc = new ActiveXObject("WScript.Shell");
+            HKEY_Key = "header";
+            WSc.RegWrite(HKEY_Root + HKEY_Path + HKEY_Key, "");
+            HKEY_Key = "footer";
+            WSc.RegWrite(HKEY_Root + HKEY_Path + HKEY_Key, "");
+        } catch (e) {
+            var m = e.message;
+        }
+    }
+</script>

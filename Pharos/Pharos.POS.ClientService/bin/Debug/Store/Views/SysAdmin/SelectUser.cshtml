@@ -1,0 +1,106 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+}
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'north',border:false" style="height:40px;">
+        <form id="frmsearch">
+            <table class="table-toolbar">
+                <tr>
+                    <td class="label-toolbar">
+                        <label>所在机构:</label>
+                    </td>
+                    <td class="input-toolbar">
+                        <input id="organizationId" name="organizationId" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text', url:'@Url.Action("GetOrgsEasyuiDropdown", "common")', panelHeight: 'auto', editable: false,width:100,height:30,onSelect:orgSelect" />
+                    </td>
+                    <td class="label-toolbar">
+                        <label>直属部门:</label>
+                    </td>
+                    <td class="input-toolbar">
+                        <input id="departmentId" name="departmentId" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text', panelHeight: 'auto', editable: false,width:100,height:30" />
+                    </td>
+                    @*<td class="label-toolbar">
+                        <label>隶属角色组:</label>
+                    </td>
+                    <td class="input-toolbar">
+                        @Html.DropDownList("roleGroupsId", ViewBag.roles as List<SelectListItem>, new { @class = "easyui-combobox datacontrol" })
+                    </td>*@
+                    <td class="label-toolbar">
+                        <label>关键字：</label>
+                    </td>
+                    <td class="input-toolbar">
+                        <input name="keyword" class="datacontrol input-toolbar" placeholder="姓名/帐号" />
+                    </td>
+                    <td><a href="#" style="margin-left:4px;" id="searchBtn" class="easyui-linkbutton cus4 linkbtn" data-options="iconCls:'icon-search'" onclick="gridReload()">查询</a></td>
+                </tr>
+            </table>
+            <input type="hidden" name="usercode" value="@(ViewBag.codes)" / />
+        </form>
+    </div>
+    <div data-options="region:'center',border:false">
+        <table class="easyui-datagrid" id="gridSel"
+               data-options="url:'',checkOnSelect:false,border:true,rownumbers:true,fit:true,fitColumns:true,pagination:true,onLoadSuccess:loadSuccess,onLoadError:function(){alert('error')}">
+            <thead>
+                <tr>
+                    <th data-options="field:'Id',checkbox: true" width="50"></th>
+                    <th data-options="field:'FullName'" width="100">姓名</th>
+                    <th data-options="field:'LoginName'" width="100">登陆帐号</th>
+                    <th data-options="field:'OrganizationName'" width="150">所属机构</th>
+                    <th data-options="field:'DepartmentName'" width="70">直属部门</th>
+                    <th data-options="field:'PositionName'" width="70">任职岗位</th>
+                    @*<th data-options="field:'RoleNames'" width="180">隶属角色组</th>
+                    <th data-options="field:'StoreRoles'" width="180">隶属门店</th>
+                    <th data-options="field:'Status',formatter: function (value, row) {return value=='1'?'正常':value=='2'?'锁定':'注销'}" width="70">在职状态</th>*@
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+<script type="text/javascript">
+    var $dg = null;
+    function gridReload() {
+        this.$dg.datagrid('options').url = "@Url.Action("GetUsers")?status=1&" + $('#frmsearch').serialize();
+        this.$dg.datagrid('reload');
+    }
+    $(function () {
+        $dg = $("#gridSel");
+        gridReload();
+    })
+    function existsSelect(rows, cd) {
+        var result = { exists: false, index: -1 };
+        $.each(rows, function (idx, row) {
+            if (row.LoginName == cd) {
+                result.exists = true;
+                result.index = idx;
+                return;
+            }
+        });
+        return result;
+    }
+    function loadSuccess(data) {
+        var cds = $("[name='usercode']").val().split(",");
+        $.each(cds, function (index, cd) {
+            var result = existsSelect(data.rows, cd);
+            if (result.exists) {
+                $dg.datagrid("checkRow", result.index);
+            }
+        });
+    }
+    function parentSelect(record) {
+        $.post("@Url.Action("OrganizationSelect","SysAdmin")", { Id: record.value, t: Math.random() }, function (data) {
+            $("#departmentId").combobox("clear").combobox("loadData", data);
+        }, "json");
+    }
+    function orgSelect() {
+        $("#departmentId").combobox("setValue", '');
+        $("#departmentId").combobox("loadData", []);
+        var pDepId = $('#organizationId').combobox('getValue');
+        $.ajax({
+            type: 'post',
+            url: '@Url.Action("GetDepsEasyuiDropdown", "Common")',
+            data: { pDepId: pDepId },
+            success: function (data) {
+                $("#departmentId").combobox("loadData", data);
+            }
+        })
+    }
+</script>

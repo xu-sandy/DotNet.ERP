@@ -1,0 +1,76 @@
+﻿@model ImportSet
+@{
+    ViewBag.Title = "Import";
+    Layout = "~/Views/Shared/_ImportLayout.cshtml";
+    var cols = Form.GetExcelCol();
+    var datas = Model.FieldCols;
+}
+<div class="default-form" style="width:600px">
+    @using (Html.BeginForm("Import", "Sysadmin", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <table style="margin:10px;">
+            <tr>
+                <th>导入文件：</th>
+                <td><input type="text" class="easyui-filebox" name="file1" data-options="buttonText:'选择文件',prompt:'请选择Excel文件...',required:true,missingMessage:'请选择导入文件'" style="width:300px;" /></td>
+            </tr>
+        </table>
+        <fieldset style="margin:0px;margin-bottom:5px;">
+            <legend>导入基本配置</legend>
+            <table style="margin:10px 20px 0px 10px;width:100%">
+                <tr>
+                    <th>@Html.Hidden("FieldName", "Size") 订单类型：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Size") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "BrandSN") 品 牌：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("BrandSN") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "SubUnitId") 单 位：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("SubUnitId") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "Barcode") 商品条码：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Barcode") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Title") 商品名称：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Title") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "CategorySN") 品 类：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("CategorySN") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "ValuationType") 计价方式：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("ValuationType") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Expiry") 保质期：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Expiry") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "ExpiryUnit") 保质期单位：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("ExpiryUnit") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "SupplierId") 供应商：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("SupplierId") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "Factory") 厂家：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("Factory") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "SaleRate") 销售税率：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("SaleRate") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "BuyPrice") 进 价：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("BuyPrice") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "SysPrice") 系统售价：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("SysPrice") + "'" })</td>
+                    <th>@Html.Hidden("FieldName", "TradePrice") 批发价：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("TradePrice") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "JoinPrice") 加盟价：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false,value:'" + datas.GetValue("JoinPrice") + "'" })</td>
+                </tr>
+                <tr>
+                    <th>起始行：</th>
+                    <td>@Html.TextBoxFor(o => o.MinRow, new { @class = "easyui-numberbox", style = "width:85px" })</td>
+                    <th>终止行：</th>
+                    <td>@Html.TextBoxFor(o => o.MaxRow, new { @class = "easyui-numberbox", style = "width:85px" })</td>
+                    <th>新建关联记录：</th>
+                    <td>@Html.CheckBoxFor(o => o.RefCreate)</td>
+                </tr>
+            </table>
+        </fieldset>
+    }
+</div>

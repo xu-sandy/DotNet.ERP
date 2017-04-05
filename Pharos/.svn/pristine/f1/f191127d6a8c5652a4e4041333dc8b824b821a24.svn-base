@@ -1,0 +1,517 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.DataSync;
+using Pharos.POS.Retailing.Models.Scanner;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// MainWindow.xaml 的交互逻辑
+    /// </summary>
+    public partial class MainWindow : Window, IDataGridOperat
+    {
+        bool failedFocus = false;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+
+            //数据绑定
+            this.DataContext = PosMachine.Current;
+            PosMachine.Current.BillList.SetViewScrollToEnd = SetLastLineForDataGrid;
+            gridMembershipCard.DataContext = PosMachine.Current.MembershipCard;
+            DataGridGoods.ItemsSource = PosMachine.Current.BillList;
+            DataGridGoods.SelectionMode = DataGridSelectionMode.Single;
+            gridTotalPanel.DataContext = PosMachine.Current.BillList;
+            this.InitPublicSettings();
+
+            //事件处理
+            this.Closing += MainWindow_Closing;
+            //扫码
+            CurrentScannerNode = txtMemberCard;
+            this.GotKeyboardFocus += MainWindow_GotKeyboardFocus;
+            txtBarCode.GotKeyboardFocus += txtBarCode_GotKeyboardFocus;
+            txtMemberCard.GotKeyboardFocus += txtMemberCard_GotKeyboardFocus;
+            ScannerFactory.MonitorScanner(this, ScannerHandler);
+            new BillScannerCommand().GetCommand().Execute(this);
+        }
+        public void EditDateRowNum()
+        {
+            var obj = DataGridGoods.SelectedItem;
+
+            var product = obj as Product;
+            if (product != null)
+            {
+                product.EditMode = 2;
+                product.GotoEdit.Execute(this);
+                Keyboard.Focus(product.NumNode);
+                (product.NumNode as TextBox).SelectAll();
+
+            }
+
+        }
+
+        public void EditDateRowSale()
+        {
+            var obj = DataGridGoods.SelectedItem;
+
+            var product = obj as Product;
+            if (product != null)
+            {
+                product.EditMode = 1;
+
+                product.GotoEdit.Execute(this);
+                var ctr = (product.SaleNode as TextBox);
+                ctr.Focus();
+                ctr.SelectAll();
+            }
+
+        }
+        public void RemoveDateRow()
+        {
+            var obj = DataGridGoods.SelectedItem;
+
+            var product = obj as Product;
+            if (product != null)
+            {
+                product.Remove.Execute(this);
+            }
+            if (PosMachine.Current.BillList.Count == 0)
+            {
+                PosMachine.Current.ScannerStatus = ScannerStatus.BillScanner;
+            }
+        }
+
+
+        void MainWindow_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            switch (PosMachine.Current.ScannerStatus)
+            {
+                case ScannerStatus.MemberScanner:
+                    if (Keyboard.FocusedElement != txtMemberCard && Keyboard.FocusedElement != txtWeixin)
+                    {
+                        Keyboard.Focus(txtMemberCard);
+                    }
+                    break;
+                case ScannerStatus.BillScanner:
+                    Keyboard.Focus(txtBarCode);
+                    break;
+                case ScannerStatus.Normal:
+                    break;
+            }
+        }
+        private void UserLock_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            new LockScreenCommand().GetCommand().Execute(this);
+        }
+
+        private void txtMemberCard_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            if (Keyboard.FocusedElement == txtMemberCard && !failedFocus)
+            {
+                CurrentScannerNode = txtMemberCard;
+            }
+        }
+
+        void txtBarCode_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            if (Keyboard.FocusedElement == txtBarCode && !failedFocus)
+            {
+                CurrentScannerNode = txtBarCode;
+            }
+        }
+
+        /// <summary>
+        /// 扫码枪处理
+        /// </summary>
+        /// <param name="barcode"></param>
+        /// <param name="arg2"></param>
+        private void ScannerHandler(string barcode, ScannerType type)
+        {
+            switch (type)
+            {
+                case ScannerType.Keyboard:
+                    {
+                        if (txtBarCode.IsKeyboardFocused)
+                        {
+                            CurrentScannerNode = txtBarCode;
+                        }
+                        else if (txtMemberCard.IsKeyboardFocused)
+                        {
+                            CurrentScannerNode = txtMemberCard;
+                        }
+                        else if (this.IsKeyboardFocused)
+                        {
+                            (CurrentScannerNode as TextBox).Text = barcode;
+                        }
+                        failedFocus = true;
+                        CurrentScannerNode.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                        failedFocus = false;
+                        Keyboard.Focus(CurrentScannerNode);
+                    }
+                    break;
+            }
+        }
+
+
+        void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+
+            if (PosMachine.Current.Status == PosStatus.Market)
+            {
+                new ExitSystemCommand().GetCommand().Execute(this);
+            }
+            else if (PosMachine.Current.Status == PosStatus.UserLock)
+            {
+                Toast.DoShow("请先解锁！", this);
+                e.Cancel = true;
+            }
+            else
+            {
+                Toast.DoShow("操作无效！", this);
+                e.Cancel = true;
+            }
+        }
+
+        public void CannelHandler()
+        {
+            PosMachine.Current.Cannel.Execute(this);
+        }
+        private void Button_Click_Exit(object sender, RoutedEventArgs e)
+        {
+            new ExitSystemCommand().GetCommand().Execute(this);
+        }
+
+        public void SetLastLineForDataGrid()
+        {
+            if (DataGridGoods.Items.Count > 0)
+                DataGridGoods.ScrollIntoView(DataGridGoods.Items[DataGridGoods.Items.Count - 1]);
+        }
+
+        public UIElement CurrentScannerNode { get; set; }
+
+        public GeneralCommand SetFocusNext
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    var element = Keyboard.FocusedElement as UIElement;
+                    element.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                });
+            }
+        }
+
+        public GeneralCommand SetFocusPrevious
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    var element = Keyboard.FocusedElement as UIElement;
+                    element.MoveFocus(new TraversalRequest(FocusNavigationDirection.Previous));
+                });
+            }
+        }
+
+        public GeneralCommand SetFocusHome
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    var element = Keyboard.FocusedElement as UIElement;
+                    element.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+                });
+            }
+        }
+
+        private void BtnChaKuCun_Click(object sender, RoutedEventArgs e)
+        {
+            new ChaKuCunCommand().GetCommand().Execute(this);
+
+        }
+
+        private void BtnChaJiaGe_Click(object sender, RoutedEventArgs e)
+        {
+            new ChaJiaGeCommand().GetCommand().Execute(this);
+        }
+
+        private void BtnRuKuan_Click(object sender, RoutedEventArgs e)
+        {
+            new ChuRuKuanCommand().GetCommand().Execute(this);
+        }
+
+        private void BtnChuKuan_Click(object sender, RoutedEventArgs e)
+        {
+            new ChuRuKuanCommand().GetCommand().Execute(this);
+        }
+
+        private void BtnDuiZhang_Click(object sender, RoutedEventArgs e)
+        {
+            new DuiZhangCommand().GetCommand().Execute(this);
+        }
+
+        private void BtnTuiHuanHuo_Click(object sender, RoutedEventArgs e)
+        {
+            new HuanHuoCommand().GetCommand().Execute(this);
+        }
+
+        private void BtnJieSuan_Click(object sender, RoutedEventArgs e)
+        {
+            new JieSuanCommand().GetCommand().Execute(this);
+        }
+
+        private void BtnZhengDanZheKou_Click(object sender, RoutedEventArgs e)
+        {
+            new ZhengDanZheKouCommand().GetCommand().Execute(this);
+        }
+
+        private void BtnGuaDan_Click(object sender, RoutedEventArgs e)
+        {
+            if (PosMachine.Current.LocalBills.Count > 0)
+            {
+                GuaDanCaoZou page = new GuaDanCaoZou();
+                page.ShowDialogInScreen();
+            }
+            else
+            {
+                new GuaDanCommand().GetCommand().Execute(this);
+            }
+        }
+
+
+
+
+        private void DataGridGoods_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            Product goods;
+            switch (e.Key)
+            {
+                case Key.Up:
+                    goods = PosMachine.Current.BillList.FirstOrDefault(o => o.IsEdit);
+                    if (goods != null)
+                    {
+                        goods.PlusStep.Execute(null);
+                        e.Handled = true;
+                    }
+                    break;
+                case Key.Down:
+                    goods = PosMachine.Current.BillList.FirstOrDefault(o => o.IsEdit);
+                    if (goods != null)
+                    {
+                        goods.MinusStep.Execute(null);
+                        e.Handled = true;
+                    }
+                    break;
+                case Key.Left:
+                    EditDateRowNum();
+                    e.Handled = true;
+
+                    break;
+                case Key.Right:
+                    EditDateRowSale();
+                    e.Handled = true;
+
+                    break;
+                case Key.Delete:
+                    {
+                        RemoveDateRow();
+                        e.Handled = true;
+
+                        break;
+
+                    }
+                case Key.Enter:
+                    if (this.GetDataGridSelectItem() != null && PosMachine.Current.ScannerStatus == ScannerStatus.Normal)
+                    {
+                        var obj = this.GetDataGridSelectItem();
+                        var product = (obj as Product);
+                        product.Save.Execute(this);
+                        Keyboard.Focus(DataGridGoods);
+                        e.Handled = true;
+                    }
+                    break;
+            }
+        }
+
+        internal void StatusSwitch_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (PosMachine.Current.Status == PosStatus.Market)
+            {
+                PosMachine.Current.Status = PosStatus.Gift;
+            }
+            else if (PosMachine.Current.Status == PosStatus.Gift)
+            {
+                PosMachine.Current.Status = PosStatus.Market;
+            }
+        }
+
+
+        private void HasGiftImage_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            FreebieDiscountPage page = new FreebieDiscountPage();
+            page.ShowDialogInScreen();
+        }
+
+        private void OparetStatus_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            PosMachine.Current.ScannerStatus++;
+
+            if ((int)PosMachine.Current.ScannerStatus > 2)
+            {
+                PosMachine.Current.ScannerStatus = ScannerStatus.Normal;
+            }
+            if (PosMachine.Current.ScannerStatus > 0 && (int)PosMachine.Current.ScannerStatus < 3)
+            {
+                DataGridGoods.SelectedItem = null;
+            }
+            var ctrl = (Keyboard.FocusedElement as UIElement);
+            if (ctrl != null)
+                ctrl.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+
+        }
+
+        private void BtnBanJie_Click(object sender, RoutedEventArgs e)
+        {
+            new BanJieCommand().GetCommand().Execute(this);
+        }
+
+
+        public void SetDataGridSelectLastItem()
+        {
+            PosMachine.Current.ScannerStatus = ScannerStatus.Normal;
+            DataGridGoods.SelectedItem = PosMachine.Current.BillList.LastOrDefault();
+            Keyboard.Focus(DataGridGoods);
+        }
+
+
+        public object GetDataGridSelectItem()
+        {
+            return DataGridGoods.SelectedItem;
+        }
+        public void ClearDataGridSelectItem()
+        {
+            var product = (DataGridGoods.SelectedItem as Product);
+            if (product != null)
+                product.ExitEdit.Execute(this);
+            DataGridGoods.SelectedItem = null;
+        }
+
+        public void SetDataGridFocus()
+        {
+            Keyboard.Focus(DataGridGoods);
+
+        }
+        public void SetPreviousSelectItem()
+        {
+            if (DataGridGoods.SelectedIndex > 0)
+            {
+                DataGridGoods.SelectedIndex--;
+            }
+        }
+
+        public void SetNextSelectItem()
+        {
+            if (PosMachine.Current.BillList.Count - 1 > DataGridGoods.SelectedIndex)
+            {
+                DataGridGoods.SelectedIndex++;
+            }
+        }
+
+        private void TextBox_PreviewGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+
+        }
+
+        private void txtNumLoad(object sender, RoutedEventArgs e)
+        {
+            var ctr = (sender as TextBox);
+            if (ctr != null)
+            {
+                var product = ctr.DataContext as Product;
+                if (product != null)
+                {
+                    product.NumNode = ctr;
+                }
+            }
+        }
+
+        private void txtSaleLoad(object sender, RoutedEventArgs e)
+        {
+            var ctr = (sender as TextBox);
+            if (ctr != null)
+            {
+                var product = ctr.DataContext as Product;
+                if (product != null)
+                {
+                    product.SaleNode = ctr;
+                }
+            }
+        }
+
+        private void PrinterStatus_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            new SwicthPrinterCommand().GetCommand().Execute(this);
+        }
+
+        private void BtnRiJie_Click(object sender, RoutedEventArgs e)
+        {
+            new RiJieCommand().GetCommand().Execute(this);
+        }
+
+        private void BtnDataSync_Click(object sender, RoutedEventArgs e)
+        {
+            string msg = "销售信息上传更新中请等待！";
+            bool isRunning = true;
+            Task.Factory.StartNew(() =>
+            {
+                while (isRunning)
+                {
+                    Application.Current.Dispatcher.Invoke(new Action(() =>
+                    {
+                        Toast.DoShow(msg, false);
+                    }));
+                    Thread.Sleep(100);
+                }
+                Application.Current.Dispatcher.Invoke(new Action(() =>
+                {
+                    Toast.DoShow(msg, true);
+                }));
+            });
+            var saleDatasSync = DataSyncResources.UpdateRanges.FirstOrDefault(o => o.Title == "销售信息上传");
+            var saledownload = DataSyncResources.UpdateRanges.FirstOrDefault(o => o.Title == "销售信息　　");
+            DataSynchronization.GetProgressInfo = () =>
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(3000);
+                    DataSynchronization.GetProgressInfo = () =>
+                    {
+                        msg = "更新完成！";
+                        isRunning = false;
+                    };
+                    saledownload.UpdateAction(saledownload.Datas());
+                });
+                Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(60000);
+                    msg = "更新超时！";
+                    Thread.Sleep(3000);
+                    isRunning = false;
+                });
+
+            };
+            saleDatasSync.UpdateAction(saleDatasSync.Datas());
+
+        }
+    }
+}

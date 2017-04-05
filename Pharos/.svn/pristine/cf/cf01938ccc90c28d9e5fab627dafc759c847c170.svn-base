@@ -1,0 +1,197 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Marketings
+{
+    /// <summary>
+    /// 促销活动管理器
+    /// </summary>
+    public class MarketingManager : IDisposable
+    {
+        private bool disposable = false;
+        public MarketingManager(string storeId)
+        {
+            AutoRefreshInterval = 30;
+
+            AutoRefresh();
+            TimeOutManager();
+            TimeRangeManager();
+        }
+        /// <summary>
+        /// 自动刷新间隔（分钟）
+        /// </summary>
+        public int AutoRefreshInterval { get; set; }
+
+        /// <summary>
+        /// 当前促销规则
+        /// </summary>
+        public IEnumerable<MarketingRule> CurrentRules { get; private set; }
+        /// <summary>
+        /// 门店促销活动缓存
+        /// </summary>
+        private IEnumerable<KeyValuePair<MarketingLimit, MarketingRule>> CacheRules { get; set; }
+
+        /// <summary>
+        /// 失效时间
+        /// </summary>
+        private List<DateTime> FailureTimes { get; set; }
+        /// <summary>
+        /// 时效线程
+        /// </summary>
+        private Thread FailureTimeThread { get; set; }
+        /// <summary>
+        /// 超时线程
+        /// </summary>
+        private Thread TimeOutThread { get; set; }
+        /// <summary>
+        /// 门店Id
+        /// </summary>
+        public string StoreId { get; set; }
+        /// <summary>
+        /// 加载促销信息
+        /// </summary>
+        /// <returns></returns>
+        private IEnumerable<KeyValuePair<MarketingLimit, MarketingRule>> Load()
+        {
+            return null;
+        }
+        /// <summary>
+        ///自动重载促销信息
+        /// </summary>
+        private void AutoRefresh()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                CacheRules = Load();
+                if (TimeOutThread != null)
+                {
+                    TimeOutThread.Abort();
+                }
+                TimeOutManager();
+                Thread.Sleep(new TimeSpan(0, AutoRefreshInterval, 0));
+            });
+        }
+        /// <summary>
+        /// 匹配促销信息
+        /// </summary>
+        /// <param name="shoppingCart">购物车</param>
+        /// <returns>促销匹配上下文</returns>
+        public IEnumerable<MarketingContext> Match(ShoppingCart shoppingCart)
+        {
+            var tempRules = CurrentRules;//防止自动更新促销信息时月，匹配促销活动方式资源争抢，造成死锁
+            return tempRules.Select(o => o.Match(shoppingCart));
+        }
+        /// <summary>
+        /// 刷新促销规则托管
+        /// </summary>
+        private void RefreshHosted()
+        {
+            var cacheRules = CacheRules;
+            List<MarketingRule> rules = new List<MarketingRule>();
+            foreach (var item in cacheRules)
+            {
+                var ranges = item.Key.TimeRanges;
+                var now = DateTime.Now;
+                if (ranges == null || ranges.Count() == 0)
+                {
+                    rules.Add(item.Value);
+                }
+                else
+                {
+                    foreach (var range in ranges)
+                    {
+                        if (range.Key <= now && range.Value > now)
+                        {
+                            rules.Add(item.Value);
+                            FailureTimes.Add(range.Value);
+                        }
+                    }
+                }
+            }
+            CurrentRules = rules;
+            if (FailureTimeThread != null)
+            {
+                FailureTimeThread.Abort();
+                FailureTimeThread = null;
+            }
+            TimeRangeManager();
+        }
+
+        /// <summary>
+        /// 超时管理器
+        /// </summary>
+        public void TimeOutManager()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                TimeOutThread = Thread.CurrentThread;
+
+                KeyValuePair<MarketingLimit, MarketingRule> rule = new KeyValuePair<MarketingLimit, MarketingRule>();
+                bool hasRule = false;
+                while (!disposable)
+                {
+                    if (hasRule)
+                    {
+                        var tempRules = CacheRules.ToList();
+                        tempRules.Remove(rule);
+                        CacheRules = tempRules.ToList();
+                        RefreshHosted();
+                    }
+
+                    if (CacheRules != null && CacheRules.Count() > 0)
+                    {
+                        var cacheRules = CacheRules;
+                        cacheRules = cacheRules.OrderBy(o => o.Key.OverTime);
+                        rule = cacheRules.FirstOrDefault();
+                        var timeSpan = rule.Key.OverTime - DateTime.Now;
+                        if (timeSpan > new TimeSpan(0, 0, 0, 0, 1))
+                            Thread.Sleep(timeSpan);
+                        hasRule = true;
+                    }
+                    else
+                    {
+                        Thread.Sleep(1000);
+                        hasRule = false;
+                    }
+                }
+            });
+        }
+        /// <summary>
+        /// 活动时效管理器
+        /// </summary>
+        public void TimeRangeManager()
+        {
+           var task = Task.Factory.StartNew(() =>
+            {
+                FailureTimeThread = Thread.CurrentThread;
+                while (!disposable)
+                {
+                    if (FailureTimes != null && FailureTimes.Count > 0)
+                    {
+                        var dates = FailureTimes.OrderBy(o => o);
+                        var date = dates.FirstOrDefault();
+                        var timeSpan = date - DateTime.Now;
+                        if (timeSpan > new TimeSpan(0, 0, 0, 0, 1))
+                            Thread.Sleep(timeSpan);
+                        FailureTimes.Remove(date);
+                        RefreshHosted();
+                    }
+                    else
+                    {
+                        Thread.Sleep(1000);
+                    }
+                }
+            });
+        }
+
+        public void Dispose()
+        {
+            disposable = true;
+        }
+
+    }
+}

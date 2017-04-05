@@ -1,0 +1,101 @@
+
+/****** Object:  StoredProcedure [dbo].[GetStoreInventory]    Script Date: 2015/12/14 14:45:41 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- =============================================
+-- Author:		余雄文
+-- Create date: 2015-11-10
+-- Description:	POS查库存
+-- =============================================
+CREATE PROCEDURE [dbo].[GetStoreInventory]
+@storeId nvarchar(50)
+AS
+BEGIN
+ 
+
+if object_id('tempdb..#tempCategoryForStoreInventory') is not null Begin
+    drop table #tempCategoryForStoreInventory
+End;
+
+if object_id('tempdb..#tempInventoryForStoreInventory') is not null Begin
+    drop table #tempInventoryForStoreInventory
+End;
+
+if object_id('tempdb..#StoreInventory') is not null Begin
+    drop table #StoreInventory
+End;
+--处理门店销售分类
+with cte as
+(
+    select l.CategoryPSN,l.CategorySN,convert(nvarchar(200),l.Title) Title,r.StoreId,0 as lvl from ProductCategory l
+    right join Warehouse r on  ','+r.CategorySN+',' like '%,'+ convert(varchar(200),l.CategorySN) +',%' 	
+	where  r.StoreId=@storeId
+    union all
+    select d.CategoryPSN,d.CategorySN,convert(nvarchar(200),(c.Title+'/'+d.Title)) as Title,c.StoreId,lvl+1 from cte c 
+	inner join ProductCategory d on c.CategorySN = d.CategoryPSN
+)
+
+select *  into #tempCategoryForStoreInventory from cte ;
+
+
+---初始化基础信息
+select 
+t1.Nature,t1.SaleNum,t1.OldBarcode,t1.SysPrice,
+t1.Barcode,t1.Title,t4.Title as Brand,t1.Size Size,
+t2.Title as Category,t2.StoreId,[dbo].[F_DicNameForSN] (t1.SubUnitId) Unit,
+ISNULL(t3.StockNumber,0) StockNumber 
+into #tempInventoryForStoreInventory from ProductRecord t1
+right join #tempCategoryForStoreInventory t2 on t1.CategorySN = t2.CategorySN  
+left join Inventory t3 on t1.Barcode = t3.Barcode and t2.StoreId = t3.StoreId and t3.StoreId =@storeId
+left join ProductBrand t4 on t1.BrandSN = t4.BrandSN
+where t1.Barcode is not null 
+
+--处理库存、门店系统售价
+
+select a.*, Category,
+case a.Nature 
+ when 0 then 
+      (
+	      t1.StockNumber 
+	  )
+ when 1 then 
+	 (
+		 (select  min(b.StockNumber/a.Number)  from  ProductGroup a ,#tempInventoryForStoreInventory b
+		  where a.Barcode = t1.Barcode and b.Barcode =a.GroupBarcode )
+      ) 
+ when 2 then
+     (
+		  select  t1.StockNumber + (CASE WHEN  (c.StockNumber * ISNULL(t1.saleNum,0))>0 THEN (c.StockNumber * ISNULL(t1.saleNum,0)) else 0 end  )  
+		  from #tempInventoryForStoreInventory c where c.Barcode = t1.OldBarcode
+	  ) 
+end
+StockNumber,
+
+
+ case when ( select count(*) from ProductChangePrice q,ProductChangePriceList w where q.Id= w.ChangePriceId and q.State=1 and w.Barcode=t1.Barcode and w.StartDate <= GETDATE() and  w.endDate>=GETDATE())>0 
+ then 
+ (select top(1) w.BuyPrice from ProductChangePrice q,ProductChangePriceList w where q.Id= w.ChangePriceId and q.State=1 and w.StartDate <= GETDATE() and  w.endDate>=GETDATE() and w.Barcode=t1.Barcode order by q.CreateDT desc)
+ else  
+ case when (select count(*) from ProductMultPrice where StoreId = @storeId and Barcode =t1.Barcode )>0
+ then
+ (select top(1) Price from ProductMultPrice where StoreId = @storeId and Barcode =t1.Barcode )
+ else
+ t1.SysPrice
+  end
+  end
+Price
+
+into #StoreInventory
+ from #tempInventoryForStoreInventory t1  ,ProductRecord a
+ where t1.Barcode = a.Barcode
+ update #StoreInventory set StockNumber =0 where StockNumber<0 and Nature in (1,2);
+ update #StoreInventory set SysPrice =Price;
+ select * from #StoreInventory
+
+END
+GO
+

@@ -1,0 +1,158 @@
+﻿@{
+    ViewBag.Title = "ExportOption";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var communs = new List<SelectListItem>();
+    if (CurrentUser.HasPermiss(SysConstLimits.商品传秤_导出下发到电子秤))
+    {
+        communs.Add(new SelectListItem() { Value = "1", Text = "导出", Selected = (Request["Communication"] ?? "1") == "1" });
+    }
+    if (CurrentUser.HasPermiss(SysConstLimits.商品传秤_联机下发到电子秤))
+    {
+        communs.Add(new SelectListItem() { Value = "2", Text = "联机", Selected = Request["Communication"] == "2" });
+    }
+}
+<style type="text/css">
+    .cate {
+        height: 45px;
+    }
+
+    .category {
+        padding-right: 20px;
+        display: inline-block;
+    }
+
+        .category img {
+            cursor: pointer;
+            padding-left: 5px;
+        }
+
+    .swithWeigh, .swithExport, .switchBatch {
+        display: none;
+    }
+</style>
+<div class="default-form" style="margin:50px auto 0px auto;width:600px;">
+    <form id="frm" action="@Url.Action("ExportWeight")" method="get">
+        <table>
+            <tr class="cate">
+                <td align="right">门 店：</td>
+                <td>@Html.DropDownList("store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,width:150,onChange:function(n,o){refreshBatch();$('#selectCategoryText').html('');if (window.sessionStorage) { window.sessionStorage.removeItem('categorys') }}" })</td>
+                <td align="right">热键插片：</td>
+                <td>
+                    @Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Value = "84", Selected = Request["MaxRecord"] == "84" },
+                   new SelectListItem() { Value = "112", Selected = (Request["MaxRecord"] ?? "112") == "112" },
+                   new SelectListItem() { Value = "224", Selected = Request["MaxRecord"] == "224" } ,
+                   new SelectListItem() { Value = "63", Selected = Request["MaxRecord"] == "63" } ,
+                   new SelectListItem() { Value = "126", Selected = Request["MaxRecord"] == "126" }},
+                   "MaxRecord")
+                </td>
+            </tr>
+            <tr class="cate">
+                <td align="right">通讯方式：</td>
+                <td>@Html.RadioButtonList(communs, "Communication")</td>
+                <td align="right" class="swithExport">导出类型：</td>
+                <td class="swithExport">
+                    @Html.RadioButtonList(
+                                   new List<SelectListItem>() { new SelectListItem() { Value = "1", Text = "*.txp", Selected = (Request["ExportType"] ?? "1") == "1" },
+                                   new SelectListItem() { Value = "2", Text = "*.txt", Selected = Request["ExportType"] == "2" },
+                                   new SelectListItem() { Value = "3", Text = "*.xls", Selected = Request["ExportType"] == "3" }
+            }, "ExportType")
+            </td>
+            <td align="right" class="swithWeigh">选择秤号：</td>
+            <td class="swithWeigh">@Html.DropDownList("Weigh", ViewBag.weighs as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "width:150" })</td>
+        </tr>
+        <tr class="cate">
+            <td align="right">数据源：</td>
+            <td>@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "全新选择传秤", Value = "1", Selected = (Request["DataType"] ?? "1") == "1" }, new SelectListItem() { Text = "在历史记录上新加", Value = "2", Selected = Request["DataType"] == "2" } }, "DataType")</td>
+            <td class="switchBatch">历史批次：</td>
+            <td class="switchBatch"><select id="selBatch" name="selBatch" class="easyui-combobox" data-options="editable:false,width:150"></select></td>
+        </tr>
+        <tr class="cate">
+            <td align="right">称重品类：</td>
+            <td>@Form.CategoryCombobox("Category", showThird: true, panelWidth: 350, controlWidth: 160)  <a href="#" class="easyui-linkbutton" onclick="addCategory()">添加品类</a></td>
+        </tr>
+    </table>
+    <div id="selectCategoryText" style="width: 100%;line-height:28px;"></div>
+</form>
+<div style="width:100%;text-align:center;margin-top:10px;display:none"><a href="#" class="easyui-linkbutton cus1 linkbtn" onclick="next()">下一步</a></div>
+</div>
+<script type="text/javascript">
+    $(function () {
+        window.top.$('#lbsave .l-btn-text').width(100).html('下一步');
+        window.top.$('#lbadd').hide();
+        var parentType = "@Request["parentType"]";
+        if (parentType && window.sessionStorage) {
+            var text = window.sessionStorage.getItem("categorys");
+            $(text).appendTo($("#selectCategoryText"));
+        } else if (window.sessionStorage) {
+            window.sessionStorage.removeItem('categorys');
+        }
+        $("[name='Communication']").click(function () {
+            if ($(this).val() == "1") {
+                $(".swithExport").show();
+                $(".swithWeigh").hide();
+                $("#Weigh").combobox("disable");
+                $("[name='ExportType']").removeAttr("disabled")
+            } else {
+                $(".swithExport").hide();
+                $(".swithWeigh").show();
+                $("#Weigh").combobox("enable");
+                $("[name='ExportType']").attr("disabled", true)
+            }
+            refreshBatch();
+        });
+
+        $("[name='DataType']").click(function () {
+            if ($(this).val() == "1") {
+                $(".switchBatch").hide();
+            } else {
+                $(".switchBatch").show();
+                refreshBatch();
+            }
+        })
+        $("[name='Communication']:checked").click();
+        $("[name='DataType']:checked").click();
+    })
+    function refreshBatch() {
+        $("#selBatch").combobox("clear").combobox("reload", "@Url.Action("GetBatchList")?storeId=" + $("#store").combobox("getValue") + "&communication=" + $("[name='Communication']:checked").val());
+    }
+    function SaveBefore() {
+        next();
+        return false;
+    }
+    function addCategory() {
+        var val = $("#Category_0").combobox("getValue");
+        var txt = $("#Category_0").combobox("getText");
+        if (!val) {
+            $.messager.alert("提示", "请选择品类!", "info"); return;
+        }
+        var vals = $.map($("[name='selectCategorySN']"), function (r) {
+            return $(r).val();
+        })
+        if (vals.indexOf(val) != -1) {
+            $.messager.alert("提示", "该品类已存在!", "warning"); return;
+        }
+        $.post("@Url.Action("GetNumByCatesn")", { catesn: val, storeId: $("#store").combobox("getValue"), t: Math.random() }, function (num) {
+            var text = "<span class='category'><input type='hidden' name='selectCategorySN' value='" + val + "'/><label style='display:inline-block;'>" + txt + "(" + num + ")</label><img src='" + root + "Content/image/close.png' width='12' height='12' onclick='delCategory(this)' /></span>";
+            $(text).appendTo($("#selectCategoryText"));
+        })
+    }
+    function delCategory(obj) {
+        $(obj).parent().remove();
+    }
+    function next() {
+        if ($("[name='selectCategorySN']").size() <= 0) {
+            $.messager.alert("提示", "请先添加品类!"); return;
+        }
+        if ($("[name='Communication']").size() <= 0) {
+            $.messager.alert("提示", "您沒有執行此操作的权限!"); return;
+        }
+        if ($("[name='Communication']:checked").size() <= 0) {
+            $.messager.alert("提示", "请选择通訊方式!"); return;
+        }
+        if (window.sessionStorage) {
+            window.sessionStorage.setItem("categorys", $("#selectCategoryText").html());
+        }
+        var type = $.map($("[name='selectCategorySN']"), function (r) { return $(r).val(); }).join();
+        window.location.href = '@Url.Action("ProductWeighList")?1=1&' + $("#frm").serialize() + "&parentType=" + type;
+    }
+</script>

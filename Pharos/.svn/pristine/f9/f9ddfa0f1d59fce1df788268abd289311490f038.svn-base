@@ -1,0 +1,63 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.SyncService.Stores
+{
+    public class LocalStore : IPosLocalDbStore
+    {
+
+        PosSyncLocalDbContext context = null;
+        public void Init(PosSyncLocalDbContext db)
+        {
+            context = db;
+        }
+
+        public IEnumerable<Guid> Ids()
+        {
+            return context.Tests.Select(o => o.SyncServerDbId).ToList();
+        }
+
+        public IEnumerable<IPosLocalDbEntity> Entities()
+        {
+            return context.Tests.Select(o => o).ToList();
+        }
+
+        public IPosLocalDbEntity Get(Guid id)
+        {
+            return context.Tests.FirstOrDefault(o => o.SyncServerDbId == id);
+        }
+
+        public void CreateItem(IPosLocalDbEntity data, Guid guid)
+        {
+            var s = new SyncTest();
+            s.Init(data);
+            context.Tests.Add(s);
+            context.SaveChanges();
+        }
+
+        public byte[] UpdateItem(Guid guid, IPosLocalDbEntity data)
+        {
+            var s = context.Tests.FirstOrDefault(o => o.SyncServerDbId == guid);
+            s.Init(data);
+            context.Tests.Add(s);
+            context.SaveChanges();
+            return s.SyncServerDbRowVersion;
+        }
+
+        public void DeleteItem(Guid guid)
+        {
+            var s = context.Tests.FirstOrDefault(o => o.SyncServerDbId == guid);
+            context.Tests.Remove(s);
+            context.SaveChanges();
+
+        }
+
+        public IPosLocalDbEntity Merge(IPosLocalDbEntity currentDbEntity, IPosLocalDbEntity changeDbEntity)
+        {
+            return currentDbEntity;
+        }
+    }
+}

@@ -1,0 +1,37 @@
+﻿using Microsoft.Synchronization;
+using Pharos.SyncService.SyncProviders;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.SyncService
+{
+    public class SyncController : SyncOrchestrator
+    {
+
+        public void DoSynchronize(int companyId, string storeId, string endpointConfigurationName, LocalSyncContext localSyncContext)
+        {
+            var dataServiceGroups = SyncDataServiceGroupFactory.Factory(localSyncContext);
+            foreach (var item in dataServiceGroups)
+            {
+                var localProvider = new PosDbSyncProvider(companyId, storeId, item);
+                var remoteProvider = new RemoteProviderProxy(companyId, storeId, endpointConfigurationName, item.SyncDirectionOrder);
+                this.LocalProvider = localProvider;
+                this.RemoteProvider = remoteProvider;
+                this.Direction = item.SyncDirectionOrder;
+                SyncOperationStatisticsShow(this.Synchronize(), item.SyncDirectionOrder);
+            }
+        }
+        public void SyncOperationStatisticsShow(SyncOperationStatistics syncOperationStatistics, SyncDirectionOrder _SyncDirectionOrder)
+        {
+            Console.WriteLine("{1} Download Applied:\t {0}", syncOperationStatistics.DownloadChangesApplied, _SyncDirectionOrder);
+            Console.WriteLine("{1} Download Failed:\t {0}", syncOperationStatistics.DownloadChangesFailed, _SyncDirectionOrder);
+            Console.WriteLine("{1} Download Total:\t\t {0}", syncOperationStatistics.DownloadChangesTotal, _SyncDirectionOrder);
+            Console.WriteLine("{1} Upload Applied Total:\t\t {0}", syncOperationStatistics.UploadChangesApplied, _SyncDirectionOrder);
+            Console.WriteLine("{1} Upload Failed Total:\t\t {0}", syncOperationStatistics.UploadChangesFailed, _SyncDirectionOrder);
+            Console.WriteLine("{1} Upload Total:\t\t {0}", syncOperationStatistics.UploadChangesTotal, _SyncDirectionOrder);
+        }
+
+    }
+}

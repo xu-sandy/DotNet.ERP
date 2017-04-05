@@ -1,0 +1,292 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link href="css/component.css" rel="stylesheet" />
+    <link href="css/switchery.css" rel="stylesheet" />
+    <link href="css/global.css" rel="stylesheet" />
+    <script src="javascript/switchery.js"></script>
+    <script src="javascript/jquery-3.1.0.min.js"></script>
+    <script src="javascript/modernizr.custom.js"></script>
+    <script src="javascript/app.js"></script>
+
+    <title></title>
+    <style>
+        .actions {
+            margin: auto;
+            margin-top: 45px;
+            width: 325px;
+        }
+
+            .actions a {
+                width: 150px;
+                height: 46px;
+                background-repeat: no-repeat;
+                background-size: 150px 46px;
+                display: block;
+                text-indent: -9999px;
+                float: left;
+            }
+
+        a.download {
+            background-image: url(site-assets/images/download-btn.png);
+        }
+
+        a.tweet {
+            background-image: url(site-assets/images/tweet-btn.png);
+            margin-left: 25px;
+        }
+
+        .attr {
+            color: #fff;
+            text-align: center;
+            font-size: 0.875rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="menu">
+        <div>分店POS控制台</div>
+        <ul>
+            <li><a href="index.html">运行状况</a></li>
+            <li class="active"><a href="reg2.html">服务注册</a></li>
+            <li><a href="pos.html">POS配置</a></li>
+            <li>快捷按键</li>
+            <li>系统日志</li>
+            <li>软件更新</li>
+        </ul>
+    </div>
+    <div>
+        <header>
+            <a>退出登录</a>
+            <div id="heheda" class="morph-button morph-button-modal morph-button-modal-3 morph-button-fixed " style="color:#515151;float:right;line-height:50px;">
+                <button type="button" class="text-button">重启服务</button>
+                <div class="morph-content" style="width: 200px; height: 300px; background: none; margin: auto; text-align: center; clear: both;">
+                    <img src="svg-loaders/puff.svg" width="50" alt="">
+                    <p style="color:#fff;margin:auto;z-index:999999;position:relative;opacity:0.7;">服务启动中…</p>
+                </div>
+            </div>
+        </header>
+        <div class="container">
+            <h4>门店信息<span>2/2</span></h4>
+            <div class="item">
+                <div style="margin:80px auto;text-align:center;width:800px;">
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control RegNo" />
+                        <label class="form-label ">注册码</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control CompanyId" style="width:265px;" />
+                        <label class="form-label">CID</label>
+                    </div>
+                    <div class="form-group" style="width:10px;float:left;margin-left:30px;">-</div>
+                    <div class="form-group" style="float:left;margin-left:30px;">
+                        <input required="required" class="form-control StoreId" style="width:265px;" />
+                        <label class="form-label">SID</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control CompanyName" />
+                        <label class="form-label">公司简称</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control StoreName" />
+                        <label class="form-label">分店名称</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control Phone" />
+                        <label class="form-label">小票电话</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control DeviceSn" />
+                        <label class="form-label">设备标识</label>
+                    </div>
+                    <div class="form-group" style="margin-left:30px;float:left;">
+                        <input type="button" class="btn-little" value="复制" />
+                    </div>
+
+                </div>
+                <div style="width:800px;display:table;padding-top:30px;margin:auto;">
+                    <span style="font-size:14px;color:#515151;vertical-align:middle;">是否同步初始化本地数据库</span>
+                    <input type="checkbox" class="js-switch01" style="right: 0; margin-left: 20px;" />
+
+                </div>
+                <div class="btn-item">
+                    <a href="reg1.html" style="display:inline;"><input type="button" class="btn btn-gray" value="上一步" /></a>
+                    <input type="button" class="btn btn-save" value="保存" style="margin-left:30px;" />
+                    <input type="button" class="btn btn-reset" value="门店重置" style="margin-left:30px;" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="javascript/classie.js"></script>
+    <script src="javascript/uimorphingbutton_fixed.js"></script>
+    <script type="text/javascript">
+        var _height = window.screen.height - 255;
+        $('.item').css('height', _height + 'px');
+        jQuery.ajax({
+            type: 'Get',
+            url: 'api/StoreManager/GetStoreSettings',
+            dataType: 'json',
+            cache: false,
+            success: function (datas) {
+                if (datas.Code == "200") {
+                    $(".CompanyId").val(datas.Result.CompanyId);
+                    $(".StoreId").val(datas.Result.StoreId);
+                    $(".RegNo").val(datas.Result.RegNo);
+                    $(".StoreName").val(datas.Result.StoreName);
+                    $(".CompanyName").val(datas.Result.CompanyName);
+                    $(".Phone").val(datas.Result.Phone);
+                    $(".DeviceSn").val(datas.Result.DeviceSn);
+                } else {
+                    alert(datas.Message);
+                }
+            }
+        });
+        $(".btn-reset").click(function () {
+            jQuery.ajax({
+                type: 'Post',
+                url: 'api/StoreManager/ResetStore',
+                dataType: 'json',
+                cache: false,
+                success: function (datas) {
+                    if (datas.Code == "200") {
+                        ReStart();
+                    } else {
+                        alert(datas.Message);
+                    }
+                }
+            });
+        });
+        $(".btn-little").click(function () {
+            window.clipboardData.setData("Text", $(".DeviceSn").val());
+        });
+        $(".btn-save").click(function () {
+            jQuery.ajax({
+                type: 'POST',
+                url: 'api/StoreManager/NewStoreSettings',
+                data: {
+                    CompanyId: $(".CompanyId").val(),
+                    StoreId: $(".StoreId").val(),
+                    RegNo: $(".RegNo").val(),
+                    StoreName: $(".StoreName").val(),
+                    CompanyName: $(".CompanyName").val(),
+                    Phone: $(".Phone").val(),
+                    DeviceSn: $(".DeviceSn").val(),
+                    ReplaceDatabase: document.querySelector('.js-switch01').checked
+                },
+                dataType: 'json',
+                cache: false,
+                success: function (datas) {
+                    if (datas.Code == "200") {
+                        ReStart();
+                    } else {
+                        alert(datas.Message);
+                    }
+                }
+            });
+        });
+
+
+        //开关控件
+        var elem = document.querySelector('.js-switch01');
+        var init = new Switchery(elem);
+
+
+
+
+
+
+        (function () {
+
+
+            var docElem = window.document.documentElement, didScroll, scrollPosition;
+
+            // trick to prevent scrolling when opening/closing button
+            function noScrollFn() {
+                window.scrollTo(scrollPosition ? scrollPosition.x : 0, scrollPosition ? scrollPosition.y : 0);
+            }
+
+            function noScroll() {
+                window.removeEventListener('scroll', scrollHandler);
+                window.addEventListener('scroll', noScrollFn);
+            }
+
+            function scrollFn() {
+                window.addEventListener('scroll', scrollHandler);
+            }
+
+            function canScroll() {
+                window.removeEventListener('scroll', noScrollFn);
+                scrollFn();
+            }
+
+            function scrollHandler() {
+                if (!didScroll) {
+                    didScroll = true;
+                    setTimeout(function () { scrollPage(); }, 60);
+                }
+            };
+
+            function scrollPage() {
+                scrollPosition = { x: window.pageXOffset || docElem.scrollLeft, y: window.pageYOffset || docElem.scrollTop };
+                didScroll = false;
+            };
+
+            scrollFn();
+
+            [].slice.call(document.querySelectorAll('.morph-button')).forEach(function (bttn) {
+                new UIMorphingButton(bttn, {
+                    closeEl: '.icon-close',
+                    onBeforeOpen: function () {
+
+
+                        // don't allow to scroll
+                        noScroll();
+                    },
+                    onAfterOpen: function () {
+                        ReStart();
+                        // can scroll again
+                        canScroll();
+                    },
+                    onBeforeClose: function () {
+                        // don't allow to scroll
+                        $("#heheda").addClass("open");
+
+                        noScroll();
+                    },
+                    onAfterClose: function () {
+                        $("#heheda").addClass("open");
+                        // can scroll again
+                        canScroll();
+                    }
+                });
+            });
+
+            // for demo purposes only
+            [].slice.call(document.querySelectorAll('form button')).forEach(function (bttn) {
+                bttn.addEventListener('click', function (ev) { ev.preventDefault(); });
+            });
+
+
+
+
+
+
+        })();
+
+
+        (function (i, s, o, g, r, a, m) {
+            i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+                (i[r].q = i[r].q || []).push(arguments)
+            }, i[r].l = 1 * new Date(); a = s.createElement(o),
+            m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+        })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+        ga('create', 'UA-56980351-1', 'auto');
+        ga('send', 'pageview');
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Linq;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Windows;
+using Pharos.POS.Retailing.Models.Payment;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    /// <summary>
+    /// 换货
+    /// </summary>
+    public class ChangingModel : BaseObservable
+    {
+        public ChangingModel()
+        {
+            OldProducts = new ObservableCollection<ChangeProduct>();
+            var defualt = ChangingSelectItem.FirstOrDefault();
+            if (defualt != null)
+                Reason = defualt.DicSN;
+            Current = this;
+        }
+
+        public static ChangingModel Current { get; set; }
+        internal Window CurrentWindow { get; set; }
+
+        public ObservableCollection<ChangeProduct> OldProducts { get; set; }
+
+
+        public decimal OldProductsTotal { get { return OldProducts.Sum(o => o.Total); } }
+
+
+
+
+        //订单流水号
+        private string orderId;
+        /// <summary>
+        /// 订单流水号
+        /// </summary>
+        public string OrderId
+        {
+            get { return orderId; }
+            set
+            {
+                var result = SaleDetailLocalService.GetOrderDetails(value);
+                if (result.Count == 0)
+                {
+                    Toast.DoShow("流水号不存在！", CurrentWindow);
+                    OnPropertyChanged("OrderId");
+                    return;
+                }
+                OldProducts.Clear();
+                foreach (var item in result)
+                {
+                    var product = new ChangeProduct()
+                    {
+                        Barcode = item.Barcode,
+                        Number = item.Number,
+                        ProductCode = item.ProductCode,
+                        SalePrice = item.SalePrice,
+                        SysPrice = item.SysPrice,
+                        Title = item.Title,
+                        Total = item.SalePrice * item.Number
+                    };
+                    product.PropertyChanged += product_PropertyChanged;
+                    OldProducts.Add(product);
+                }
+                OnPropertyChanged("OldProducts");
+
+                orderId = value;
+                OnPropertyChanged("OrderId");
+            }
+        }
+
+        void product_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            Premium = OldProducts.Where(o => o.IsChange).Sum(o => (o.SysPrice * o.ChangeNumber) - (o.SalePrice * o.ChangeNumber));
+        }
+        //换货下拉列表项
+        public List<SysDataDictionary> ChangingSelectItem
+        {
+            get
+            {
+                var dict = SysDataDictionaryLocalService.Find(p => p.DicSN == 7);
+                if (dict != null)
+                {
+                    var psn = dict.DicSN;
+                    return SysDataDictionaryLocalService.FindList(o => o.DicPSN == psn);
+                }
+                return new List<SysDataDictionary>();
+            }
+        }
+        //换货原因
+        private int reason;
+        public int Reason
+        {
+            get { return reason; }
+            set
+            {
+                reason = value;
+                OnPropertyChanged("Reason");
+            }
+        }
+        //差价
+        private decimal premium;
+        public decimal Premium
+        {
+            get { return premium; }
+            set
+            {
+                if (value < 0)
+                {
+                    premium = 0;
+                }
+                else
+                {
+                    premium = value;
+                }
+                OnPropertyChanged("Premium");
+            }
+        }
+
+        public GeneralCommand Save
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    if (this.OldProducts.Where(p => p.IsChange).Count() == 0)
+                    {
+                        Toast.DoShow("没有换货，不允许操作！");
+                        return;
+                    }
+                    var win = o as Window;
+                    VerifyPassword vp = new VerifyPassword(() =>
+                    {
+                        win.Close();
+                        if (Premium != 0)
+                        {
+                            PayWay payWayPage = new PayWay(new DTOs.PayWayDto() { Remark = "换货", IsReturnProduct = true, Receivable = Premium, Preferential = 0 });
+                            payWayPage.ShowDialogInScreen();
+                        }
+                        else
+                        {
+                            WithoutPay pay = new WithoutPay();
+                            pay.Pay(new PayDetails()
+                            {
+                                MoneyNeedPay = Premium,
+                                IsReturnProduct = true,
+                                Remark = "换货",
+                                PaySN = DateTime.Now.ToString("yyyyMMddHHmmssfff")
+                            });
+                            pay.SetComplete();
+                        }
+                    }, true);
+                    vp.ShowDialogInScreen();
+                });
+            }
+        }
+    }
+
+
+    public class ChangeProduct : BaseObservable
+    {
+        public ChangeProduct()
+        {
+            IsChange = false;
+        }
+        public string Barcode { get; set; }
+        public string ProductCode { get; set; }
+
+        public string Title { get; set; }
+
+        private decimal number;
+        public decimal Number
+        {
+            get { return number; }
+            set
+            {
+                number = value;
+                ChangeNumber = value;
+                OnPropertyChanged("Number");
+            }
+        }
+
+        private decimal changeNumber;
+        public decimal ChangeNumber
+        {
+            get { return changeNumber; }
+            set
+            {
+                if (value > Number)
+                {
+                    Toast.DoShow("超出购买数量！");
+                    return;
+                }
+                changeNumber = value;
+                OnPropertyChanged("ChangeNumber");
+
+            }
+        }
+        private bool isChange = false;
+        public bool IsChange
+        {
+            get { return isChange; }
+            set
+            {
+                isChange = value;
+                if (value)
+                {
+                    NotChangeVisibility = Visibility.Collapsed;
+                    ChangeVisibility = Visibility.Visible;
+                }
+                else
+                {
+                    NotChangeVisibility = Visibility.Visible;
+                    ChangeVisibility = Visibility.Collapsed;
+                }
+                OnPropertyChanged("IsChange");
+                OnPropertyChanged("ChangeVisibility");
+                OnPropertyChanged("NotChangeVisibility");
+
+            }
+        }
+
+        public Visibility NotChangeVisibility { get; set; }
+        public Visibility ChangeVisibility { get; set; }
+
+        public decimal SysPrice { get; set; }
+
+        public decimal SalePrice { get; set; }
+
+        public decimal Total { get; set; }
+
+        public GeneralCommand Change
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    IsChange = true;
+                    ChangeNumber = Number;
+                });
+            }
+        }
+        public GeneralCommand Cancel
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    IsChange = false;
+                });
+            }
+        }
+    }
+}

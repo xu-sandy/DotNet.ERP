@@ -1,0 +1,25 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Http;
+using Pharos.Api.Retailing.Models;
+using Pharos.Logic.BLL;
+
+namespace Pharos.Api.Retailing.Controllers.Mobile
+{
+    [RoutePrefix("api/mobile")]
+    public class StoreController : ApiController
+    {
+        /// <summary>
+        /// 获取门店列表
+        /// </summary>
+        /// <returns></returns>
+        [Route("GetStoreList")]
+        public object GetStoreList()
+        {
+            Pharos.Component.qrcode.Log.Debug(typeof(StoreController).Name, "companyid:" + Sys.SysCommonRules.CompanyId);
+            return WarehouseService.GetList().Select(o=>new{o.StoreId,o.Title,o.Address,o.CategorySN}).ToList();
+        }
+    }
+}

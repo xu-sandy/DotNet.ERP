@@ -1,0 +1,83 @@
+﻿@model Member
+@{
+    ViewBag.Title = "CreateMember";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">.content tr{height:30px;}</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o=>o.Id)
+        <div class="content">
+            <div id="tt1" class="easyui-tabs" data-options="onSelect:function(title,index){}" style="height:auto;">
+                <div title=" 基本信息">
+                    <table class="table-form" width="100%">
+                        <tr>
+                            <td class="name">来源：</td>
+                            <td class="input">@Html.DropDownListFor(o => o.StoreId, ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo'" })</td>
+                            <td class="name">编号：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.MemberNum, new { @class = "easyui-textbox", data_options = "prompt:'后台自动生成'" }) </td>
+                        </tr>
+                        <tr>
+                            <td class="name">姓名：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.RealName, new { @class = "easyui-textbox", data_options = "" })</td>
+                            <td class="name">性别：</td>
+                            <td class="input">@Html.RadioButtonListFor(o => o.Sex, new List<SelectListItem>() { new SelectListItem() { Value = "1", Text = "男"}, new SelectListItem() { Text = "女", Value = "0" } })</td>
+                        </tr>
+                        
+                        <tr>
+                            <td class="name">证件号：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.IDNumber, new { @class = "easyui-textbox", data_options = "" })</td>
+                            <td class="name">生日：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Birthday, new { @class = "easyui-validatebox Wdate", data_options = "" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">手机号：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.MobilePhone, new { @class = "easyui-textbox", data_options = "required:true,validType:'mobile'" })</td>
+                            <td class="name">微信号：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Weixin, new { @class = "easyui-textbox", data_options = "" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">支付宝：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Zhifubao, new { @class = "easyui-textbox", data_options = "" })</td>
+                            <td class="name">Email：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Email, new { @class = "easyui-textbox", data_options = "validType:'email'" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">QQ：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.QQ, new { @class = "easyui-textbox", data_options = "" })</td>
+                            <td class="name">推荐人：</td>
+                            <td class="input">@Form.UserCombobox("ReferrerUID", ViewData.Eval("ReferrerUID"))</td>
+                        </tr>
+                        <tr>
+                            <td class="name">默认优惠方式：</td>
+                            <td class="input"><input type="text" class="easyui-textbox" /></td>
+                            <td class="name">默认积分方式：</td>
+                            <td class="input"><input type="text" class="easyui-textbox" /></td>
+                        </tr>
+                        <tr>
+                            <td class="name">会员等级：</td>
+                            <td class="input">@Html.DropDownListFor(o => o.MemberLevelId, ViewBag.levels as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "" })</td>
+                            <td class="name">会员分组：</td>
+                            <td class="input">@Html.DropDownListFor(o => o.MemberLevelId, ViewBag.groups as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">居住城市：</td>
+                            <td class="input">@Form.CityCombobox("CurrentCityId", selectItem: ViewBag.city as SelectListItem, empty: "请选择", controlWidth: 160)</td>
+                            <td class="name">详细地址：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Address, new { @class = "easyui-textbox", data_options = "" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">内部人员：</td>
+                            <td class="input">@Html.RadioButtonListFor(o => o.Insider, new List<SelectListItem>() { new SelectListItem() { Text = "是", Value = "True" }, new SelectListItem() { Text = "否", Value = "False", Selected = true } })</td>
+                            <td class="name">状态：</td>
+                            <td class="input">@Html.RadioButtonListFor(o => o.Status, new List<SelectListItem>() { new SelectListItem() { Text = "未审", Value = "0", Selected = true }, new SelectListItem() { Text = "正常", Value = "1" }, new SelectListItem() { Text = "无效", Value = "2" } })</td>
+                        </tr>
+                    </table>
+                </div>
+                <div title=" 卡片信息"></div>
+                <div title=" 扩展信息"></div>
+            </div>
+        </div>
+    }
+</div>

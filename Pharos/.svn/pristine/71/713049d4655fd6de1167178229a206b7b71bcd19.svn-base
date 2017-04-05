@@ -1,0 +1,142 @@
+﻿@model TreasuryLocks
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">
+    .category {
+        padding-right: 20px;
+        display:inline-block;
+    }
+    .category img {
+        cursor:pointer;padding-left:5px;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%" style="height:90px;">
+                <tr>
+                    <td class="name">盘点门店：</td>
+                    <td>@Html.DropDownListFor(o => o.LockStoreID, ViewBag.shops as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "onChange:storeSelect,value:'" + Request["store"] + "'" })</td>
+                    <td class="name">盘点批次：</td>
+                    <td>@Html.TextBoxFor(o => o.CheckBatch, new { @class = "easyui-textbox", data_options = "readonly:true,prompt:'选择门店后自动生成',value:'" + Request["CheckBatch"] + "'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">锁定品类：</td>
+                    <td class="input">@Form.CategoryCombobox("Category",showThird:true,panelWidth:350,controlWidth:160)</td>
+                    <td class="name"><a href="#" class="easyui-linkbutton" onclick="addCategory()">添加品类</a></td>
+                    <td></td>
+                </tr>
+            </table>
+            <div id="selectCategoryText" style="width: 100%;line-height:28px;"></div>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    function parentSelect(record) {
+        $.post("@Url.Action("ParentTypeSelect","Product")", { Id: record.Id, t: Math.random() }, function (data) {
+            $("#ChildType").combobox("loadData", data);
+        }, "json");
+    }
+    var isChange = false,msg="";
+    function storeSelect(newVal, oldVal) {
+        if (isChange) { isChange = false; return; }
+        var obj = $(this);
+        if ($("#selectCategoryText").html() != "") {
+            $.messager.confirm("提示", "将清空已选品类,是否继续?", function (r) {
+                if (!r) {
+                    isChange = true;
+                    obj.combobox("select", oldVal);
+                    return;
+                }
+                selected(newVal);
+            });
+        }else
+            selected(newVal);
+    }
+    function selected(val) {
+        $("#selectCategoryText").html("");
+        $("#Category_0").combobox("setValue","");
+        if (!val) {
+            $("#CheckBatch").textbox("setValue", ""); msg = ""; return;
+        }
+        $.ajax({
+            url: "@Url.Action("GetBatchAndCategory")",
+            data: { storeId: val, t: Math.random() },
+            type: "POST",
+            dataType: "json",
+            async:false,
+            success: function (data) {
+                $("#CheckBatch").textbox("setValue", data.batch);
+                $("#firsttype_0").combobox("clear").combobox("loadData", data.items);
+                msg = data.msg;
+                if (msg) {
+                    $.messager.show({
+                        title: '提示',
+                        msg: msg+'！',
+                        showType: 'slide',
+                        timeout: 5000,
+                        width:260
+                     });
+                }
+            },
+            error: function () {
+                $.messager.alert("错误", "操作失败！", "error");
+            }
+        });
+    }
+    function addCategory() {
+        var val = $("#Category_0").combobox("getValue");
+        var txt = $("#Category_0").combobox("getText");
+        if (!val) {
+            $.messager.alert("提示", "请选择品类!", "info"); return;
+        }
+        var vals= $.map($("[name='selectCategorySN']"), function (r) {
+            return $(r).val();
+        })
+        if (vals.indexOf(val) != -1) {
+            $.messager.alert("提示", "该品类已存在!", "warning"); return;
+        }
+        var text = "<span class='category'><input type='hidden' name='selectCategorySN' value='" + val + "'/><label style='display:inline-block;'>" + txt + "</label><img src='" + root + "Content/image/close.png' width='12' height='12' onclick='delCategory(this)' /></span>";
+        $(text).appendTo($("#selectCategoryText"));
+    }
+    function delCategory(obj) {
+        $(obj).parent().remove();
+    }
+    $(function () {
+        //$.messager.show({
+        //    title: '提示',
+        //    msg: '锁定前请先确保各门店是否已上传销售数据！',
+        //    showType: 'slide',
+        //    timeout: 10000,
+        //    width:280
+        // });
+        window.top.$('#lbsave .l-btn-text').width(100).html('下一步');
+        window.top.$('#lbadd').hide();
+        var parentType = "@Request["parentType"]";
+        if (parentType && window.sessionStorage) {
+            var text = window.sessionStorage.getItem("categorys");
+            $(text).appendTo($("#selectCategoryText"));
+        } else if (window.sessionStorage) {
+            window.sessionStorage.removeItem('categorys');
+        }
+    })
+    function SaveBefore() {
+        //if (msg) {
+        //    return confirm(msg + ",是否继续?");
+        //}
+        if (!$("#LockStoreID").combobox("getValue")) {
+            $.messager.alert("提示", "请先选择门店!"); return false;
+        }
+        if (window.sessionStorage) {
+            window.sessionStorage.setItem("categorys", $("#selectCategoryText").html());
+        }
+        var categorys = $("[name='selectCategorySN']").val() || "";
+        //if (!categorys) categorys = "@Request["parentType"]";
+        window.location.href = '@Url.Action("SelectList")?store=' + $("#LockStoreID").combobox("getValue") + "&CheckBatch=" + $("#CheckBatch").textbox("getValue") + "&parentType=" + categorys;
+        return false;
+    }
+</script>

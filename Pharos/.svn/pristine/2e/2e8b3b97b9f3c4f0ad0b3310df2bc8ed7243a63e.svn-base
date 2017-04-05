@@ -1,0 +1,104 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using System.Collections.Specialized;
+using Pharos.Utility.Helpers;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// 交易数据Service
+    /// </summary>
+    public class TradeService : ITradeService
+    {
+        [Ninject.Inject]
+        IBaseRepository<TradeOrder> TradeOrderRepst { get; set; }
+
+        public object GetTradeDataPaging(NameValueCollection reqParams, out int totalCount)
+        {
+            //查询参数 fishtodo:PayChannel的对应值
+            var queryParams = new
+            {
+                SourceType = reqParams["SourceType"].ToString(),
+                PayChannel = reqParams["PayChannel"].ToString(),
+                CID = reqParams["CID"].ToString(),
+                TradeNo = reqParams["TradeNo"].ToString(),
+                TradeDate = reqParams["TradeDate"].ToString(),
+                OutTradeNo = reqParams["OutTradeNo"].ToString(),
+                MchId3 = reqParams["MchId3"].ToString(),
+                StoreId3 = reqParams["StoreId3"].ToString(),
+                DeviceId3 = reqParams["DeviceId3"].ToString()
+            };
+            var queryWhere = TradeOrderRepst.GetQuery();
+            //if (!queryParams.SourceType.IsNullOrEmpty())
+            //{
+            //    var sourceType = queryParams.SourceType.ToType<short>();
+            //    queryWhere = queryWhere.Where(q => q.SourceType == sourceType);
+            //}
+            //if (!queryParams.PayChannel.IsNullOrEmpty())
+            //{
+            //    var payChannel = queryParams.PayChannel.ToString();
+            //    queryWhere = queryWhere.Where(q => q.PayChannel == payChannel);
+            //}
+            //if (!queryParams.CID.IsNullOrEmpty())
+            //{
+            //    var cid = queryParams.CID.ToType<int>();
+            //    queryWhere = queryWhere.Where(q => q.CID == cid);
+            //}
+            //if (!queryParams.TradeNo.IsNullOrEmpty())
+            //{
+            //    var tradeNo = queryParams.TradeNo.ToString();
+            //    queryWhere = queryWhere.Where(q => q.TradeNo == tradeNo);
+            //}
+            //if (!queryParams.OutTradeNo.IsNullOrEmpty())
+            //{
+            //    var outTradeNo = queryParams.OutTradeNo.ToString();
+            //    queryWhere = queryWhere.Where(q => q.OutTradeNo == outTradeNo);
+            //}
+            //if (!queryParams.MchId3.IsNullOrEmpty())
+            //{
+            //    var mchId3 = queryParams.MchId3.ToString();
+            //    queryWhere = queryWhere.Where(q => q.MchId3 == mchId3);
+            //}
+            //if (!queryParams.StoreId3.IsNullOrEmpty())
+            //{
+            //    var storeId3 = queryParams.StoreId3.ToString();
+            //    queryWhere = queryWhere.Where(q => q.StoreId3 == storeId3);
+            //}
+            //if (!queryParams.DeviceId3.IsNullOrEmpty())
+            //{
+            //    var deviceId3 = queryParams.DeviceId3.ToString();
+            //    queryWhere = queryWhere.Where(q => q.DeviceId3 == deviceId3);
+            //}
+
+            //var query = from qw in queryWhere
+            //             select new
+            //             {
+            //                 Id = qw.Id,
+            //                 TradeNo = qw.TradeNo,
+            //                 OutTradeNo = qw.OutTradeNo,
+            //                 CID = qw.CID,
+            //                 SID = qw.SID,
+            //                 DeviceId = qw.DeviceId,
+            //                 MchId3 = qw.MchId3,
+            //                 StoreId3 = qw.StoreId3,
+            //                 DeviceId3 = qw.DeviceId3,
+            //                 FeeType = qw.FeeType,
+            //                 PayChannel = qw.PayChannel,
+            //                 SourceType = qw.SourceType,
+            //                 TradeType = qw.TradeType,
+            //                 TotalAmount = qw.TotalAmount,
+            //                 TradeDate = qw.TradeDate,
+            //                 Status = qw.Status
+            //             };
+            var query = (from q in TradeOrderRepst.GetQuery()
+                         select q);
+            totalCount = query.Count();
+            return query.ToPageList();
+        }
+    }
+}

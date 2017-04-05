@@ -1,0 +1,58 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Devices.POSDevices
+{
+    public class NewLandPOSDevice
+    {
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int OpenComm(int comPort, ulong rate, int timeout);
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int CloseComm();
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int SendReq(int len, string info);
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int RecvResp(ref string respInfo);
+
+        public string DoPay(int type, decimal amount, int machineSn, int saleId, DateTime date, int OrderSn, string old_trace = "", string old_Datetime = "", string old_authCode = "", string old_Refno = "", string remark = "")
+        {
+            var result = 0;
+            result = OpenComm(3, 57600,5000);
+            var code = string.Empty;
+            switch (type)
+            {
+                case 0:
+                    code = "00";
+                    break;
+                case 1:
+                    code = "20";
+                    break;
+            }
+            if (result < 0)
+            {
+                throw new Exception("支付失败，未能打开设备！");
+            }
+            var reqInfo = string.Format("{10}{0:000000000000}{1:00000000}{2:0000}{3}{4:00000000000000000000}{5,6}{6,10}{7,6}{8,12}{9,20}", Math.Round(amount * 100), machineSn, saleId, date.ToString("MMddHHmmss"), OrderSn, old_trace, old_Datetime, old_authCode, old_Refno, remark, code);
+            result = SendReq(110, reqInfo);
+            if (result < 0)
+            {
+                throw new Exception("请求支付失败！");
+            }
+            var info = string.Empty;
+            result = RecvResp(ref info);
+            if (result < 0)
+            {
+                throw new Exception("未能获取支付信息！");
+            }
+            result = CloseComm();
+            if (result < 0)
+            {
+                throw new Exception("关闭设备连接失败！");
+            }
+            return string.Empty;
+        }
+    }
+}

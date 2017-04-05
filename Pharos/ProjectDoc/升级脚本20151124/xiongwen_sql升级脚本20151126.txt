@@ -1,0 +1,39 @@
+---销售库存扣减历史表-------
+
+/****** Object:  Table [dbo].[SaleInventoryHistory]    Script Date: 2015/12/11 16:36:48 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[SaleInventoryHistory](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[PaySn] [nvarchar](50) NOT NULL,
+	[StorageBarcode] [nvarchar](50) NOT NULL,
+	[Mode] [int] NOT NULL,
+	[Number] [money] NOT NULL,
+	[InventoryId] [int] NOT NULL,
+	[SaleBarcode] [nvarchar](50) NOT NULL,
+	[StoreId] [varchar](3) NOT NULL,
+	[CreateDt] [datetime] NOT NULL,
+	[CreateUid] [varchar](40) NOT NULL,
+ CONSTRAINT [PK__SaleInve__3214EC070D99FE17] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+
+
+----销售数据新增整单退出标记
+ALTER TABLE dbo.SaleOrders ADD State int default 0;
+ALTER TABLE dbo.SaleOrders ADD ReturnId  NVARCHAR (50) null; 

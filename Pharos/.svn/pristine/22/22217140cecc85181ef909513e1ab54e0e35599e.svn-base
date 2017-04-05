@@ -1,0 +1,152 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var methodItems = new List<SelectListItem>() { new SelectListItem() { Text = "导出", Value = "1", Selected = true }, 
+        new SelectListItem() { Text = "导入", Value = "2"} };
+
+    var exportItems = new List<SelectListItem>() { new SelectListItem(){Text="店员信息",Value="SysStoreUserInfo"},
+        new SelectListItem(){Text="公告信息",Value="Notice"},new SelectListItem(){Text="支付接口",Value="ApiLibrary"},
+        new SelectListItem(){Text="产品档案",Value="Product"},
+        new SelectListItem(){Text="称重产品",Value="Product2"},
+        new SelectListItem(){Text="促销活动",Value="Promotion"},
+    };
+    var importItems = new List<SelectListItem>() { new SelectListItem(){Text="出入款信息",Value="PosIncomePayout"},
+        new SelectListItem(){Text="退换货信息",Value="SalesReturns"},new SelectListItem(){Text="销售信息",Value="SaleOrders"},
+        new SelectListItem(){Text="店员登陆信息更新",Value="SysStoreUserInfo"},new SelectListItem(){Text="会员积分信息",Value="MemberIntegral"}
+    };  
+}
+<style type="text/css">
+    .import,.export { min-height: 35px;}
+    .cate{display:none;min-height:35px;}
+    .category {padding-right: 20px;display: inline-block;}
+    .category img {cursor: pointer;padding-left: 5px;}
+</style>
+<div id="" style="margin:100px auto 0 auto;width:600px;">
+    <div class="easyui-panel" data-options="iconCls:'icon-export',width:600,height:370,title:'导入导出',footer:'#ft'" style="padding:20px;">
+        @using (Html.BeginForm("FileHandler", "SysAdmin", FormMethod.Post, new { enctype = "multipart/form-data" }))
+        {
+            <div style="width:480px;margin:0 auto;">
+                <table width="100%">
+                    <tr height="40px">
+                        <td width="60" align="right">方 式：</td>
+                        <td>@Html.RadioButtonList(methodItems, "methodItem")</td>
+                    </tr>
+                    <tr class="export">
+                        <td align="right">门 店：</td>
+                        <td>@Html.DropDownList("store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,width:150" })</td>
+                    </tr>
+                    <tr class="export">
+                        <td align="right">导出项：</td>
+                        <td>
+                            @Html.RadioButtonList(exportItems, "exportItem", 4, null, null)
+                        </td>
+                    </tr>
+                    <tr class="import">
+                        <td align="right">导入项：</td>
+                        <td>
+                            @Html.RadioButtonList(importItems, "importItem", 3, null, null)
+                        </td>
+                    </tr>
+                    <tr class="import">
+                        <td align="right">导入文件：</td>
+                        <td><input type="text" class="easyui-filebox" name="file1" data-options="buttonText:'选择文件',prompt:'请选择Excel文件...'" style="width:300px" /></td>
+                    </tr>
+                    <tr class="import import1">
+                        <td align="right"></td>
+                        <td><input type="text" class="easyui-filebox" name="file2" data-options="buttonText:'选择文件',prompt:'请选择Excel文件...'" style="width:300px" /></td>
+                    </tr>
+                    <tr class="import import2">
+                        <td align="right"></td>
+                        <td><input type="text" class="easyui-filebox" name="file3" data-options="buttonText:'选择文件',prompt:'请选择Excel文件...'" style="width:300px" /></td>
+                    </tr>
+                    <tr class="cate">
+                        <td align="right">称重品类：</td>
+                        <td>@Form.CategoryCombobox("Category", showThird: true, panelWidth: 350, controlWidth: 160)  <a href="#" class="easyui-linkbutton" onclick="addCategory()">添加品类</a></td>
+                    </tr>
+                    <tr class="cate">
+                        <td align="right">热键插片：</td>
+                        <td>@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Value = "112", Selected = true }, new SelectListItem() { Value = "224" } }, "MaxRecord")</td>
+                    </tr>
+                </table>
+                <div id="msg" style="color: red;">@Model</div>
+                <div id="selectCategoryText" style="width: 100%;line-height:28px;"></div>
+            </div>
+            <div id="ft" style="padding:5px; text-align:right;">
+                <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-save'" onclick="$('form').submit()">确定</a>
+            </div>
+        }
+    </div>
+</div>
+<script type="text/javascript">
+    $(function () {
+        $(".import").hide().find("input").attr("disabled", true);
+        $("[name='methodItem']").click(function () {
+            $(".cate").hide();
+            $("#msg").html("");
+            $("#selectCategoryText").html("");
+            if ($(this).val() == "1") {
+                $(".import").hide().find("input").attr("disabled", true);
+                $(".export").show().find("input").attr("disabled", false);
+                if ($("[name='exportItem']:checked").val() == "Product2") {
+                    $(".cate").show();
+                }
+            } else {
+                $(".import").show().find("input").attr("disabled", false);
+                $(".export").hide().find("input").attr("disabled", true);
+            }
+        });
+        $("[name='importItem']").click(function () {
+            if ($(this).val() == "SalesReturns") {
+                $(".import1").show();
+                $(".import2").hide();
+            } else if ($(this).val() == "SaleOrders") {
+                $(".import1").show();
+                $(".import2").show();
+            } else {
+                $(".import1").hide();
+                $(".import2").hide();
+            }
+        });
+        $("[name='exportItem']").click(function () {
+            if ($(this).val() == "Product2") {
+                $(".cate").show();
+            } else {
+                $(".cate").hide();
+            }
+        });
+        $('form').submit(function () {
+            var submit = true;
+            if ($(".export").is(":visible")) {
+                if ($(".export").find("input:checked").size() <= 0) {
+                    $.messager.alert("提示", "请选择导出项!");
+                    submit = false;
+                }
+            }
+            if ($(".import").is(":visible")) {
+                if ($(".import").find("input:checked").size() <= 0) {
+                    $.messager.alert("提示", "请选择导入项!");
+                    submit = false;
+                }
+            }
+            return submit;
+        });
+    });
+    function addCategory() {
+        var val = $("#Category_0").combobox("getValue");
+        var txt = $("#Category_0").combobox("getText");
+        if (!val) {
+            $.messager.alert("提示", "请选择品类!", "info"); return;
+        }
+        var vals = $.map($("[name='selectCategorySN']"), function (r) {
+            return $(r).val();
+        })
+        if (vals.indexOf(val) != -1) {
+            $.messager.alert("提示", "该品类已存在!", "warning"); return;
+        }
+        var text = "<span class='category'><input type='hidden' name='selectCategorySN' value='" + val + "'/><label style='display:inline-block;'>" + txt + "</label><img src='" + root + "Content/image/close.png' width='12' height='12' onclick='delCategory(this)' /></span>";
+        $(text).appendTo($("#selectCategoryText"));
+    }
+    function delCategory(obj) {
+        $(obj).parent().remove();
+    }
+</script>

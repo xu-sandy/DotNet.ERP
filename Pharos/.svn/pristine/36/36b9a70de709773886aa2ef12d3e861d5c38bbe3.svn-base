@@ -1,0 +1,80 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideDel: true, hideAdd: true, hideEdit: true, hideSearch: true));
+}
+
+@section toolbar
+{
+    <a href="#" class="easyui-menubutton" style="margin-left:20px;" data-options="menu:'#mm1',iconCls:'icon-edit'">设置状态</a>
+    <div id="mm1" style="width:150px;">
+        <div data-options="iconCls:'icon-putaway-1'" onclick="setEnable(1)">设为可用</div>
+        <div data-options="iconCls:'icon-sold-out-1'" onclick="setEnable(0)">设为禁用</div>
+    </div>
+}
+
+<script type="text/javascript">
+    pharos.manager.pagination = false;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Type', title: '设备类型', width: 70, align:'center', formatter: deviceTypeFormat },
+        { field: 'DeviceSN', title: '设备编码', width: 250 },
+        { field: 'MachineSN', title: 'POS机号', width: 90, align: 'center' },
+        { field: 'Store', title: '门店', width: 160, align: 'center' },
+        { field: 'CreateDT', title: '注册时间', width: 160, align: 'center' },
+        { field: 'State', title: ' 设备状态', width: 70, align: 'center', formatter: deviceStateFormat },
+        { field: 'Auditor', title: '审核人', width: 100, align: 'center' }
+    ]];
+    function setEnable(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var valid = true;
+        $.each(rows, function (i,n) {
+            if (n.State == state) {
+                valid = false;;
+            }
+        });
+        if (!valid) {
+            $.messager.alert("提示", "勾选项中存在状态为\"" + deviceStateFormat(state) + "\"的项，请取消勾选！", "info");
+            return false;
+        }
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetDevState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "所选设备状态成功设为 " + deviceStateFormat(state) + "！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    function deviceTypeFormat(value) {
+        switch (value) {
+            case 1:
+                return "POS机";
+                break;
+            case 2:
+                return "PAD";
+                break;
+            case 3:
+                return "Mobile";
+                break;
+            default:
+                return "";
+        }
+    }
+    function deviceStateFormat(value) {
+        switch (value) {
+            case 0:
+                return "禁用";
+                break;
+            case 1:
+                return "可用";
+                break;
+            default:
+                return "";
+        }
+    }
+</script>

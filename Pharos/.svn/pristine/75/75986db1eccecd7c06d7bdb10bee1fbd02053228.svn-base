@@ -1,0 +1,37 @@
+﻿using Pharos.POS.Retailing.Devices.POSDevices;
+using Pharos.POS.Retailing.Models.PosModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+
+namespace Pharos.POS.Retailing.Devices.StoredValueCardDevice
+{
+    public class NewLandPOSSVCDevice : IStoreValueCardDevice
+    {
+        public StoreValueCardDeviceType StoreValueCardDeviceType
+        {
+            get { return StoreValueCardDeviceType.NewLandPOSSVCDevice; }
+        }
+
+        public bool ReadCard(CancellationToken token, out Models.PosModels.StoreValueCardInfomactions info, out string msg)
+        {
+            NewLandPOSDevice device = new NewLandPOSDevice();
+            var request = new Models.PosModels.POSDevicePayRequest() { Amount = 1, CashierId = "1", OldTransactionCode = "", OrderSn = "1" };
+            POSDevicePayResponse response;
+            var result = device.CallDevice(token, request, out response, out msg, "12");
+            if (result == false)
+            {
+                msg = "读卡失败，请检查设备是否正常连接!";
+                info = new StoreValueCardInfomactions();
+            }
+            else
+            {
+                info = new StoreValueCardInfomactions() { CardNo = response.CardNo.Trim(), Password = response.CardPin.Trim() };
+            }
+            return result;
+        }
+    }
+}

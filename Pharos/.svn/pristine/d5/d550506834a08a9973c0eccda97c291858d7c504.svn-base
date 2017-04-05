@@ -1,0 +1,264 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.产品档案_新品建档);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.产品档案_查看信息) && hideAdd;
+    var hideGroup = !CurrentUser.HasPermiss(SysConstLimits.产品档案_新品建档);
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.产品档案_删除商品);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新品建档", delText: "删除商品", editText: "修改商品", hideAdd: hideAdd, hideDel: hideDel));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>品类：</label>
+            </td>
+            <td class="input-toolbar">
+                @*@Html.DropDownList("parentType", ViewBag.parenttypes as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,onSelect:parentSelect" })*@
+                @Form.CategoryCombobox("parentType", showThird: true, showAll: false, panelWidth: 350,controlWidth:180)
+            </td>
+            <td class="label-toolbar">&nbsp;</td>
+            @*<td class="input-toolbar input-toolbar-1">
+                @Html.DropDownList("childType", new List<SelectListItem>() { new SelectListItem() { Text = "子类", Value = "", Selected = true } }, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+            </td>*@
+            <td class="label-toolbar">
+                <label>品牌：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("brandsn", ViewBag.brands as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", style = "width:120px;" })
+            </td>
+            <td class="label-toolbar">
+                <label>供应商：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.SupplierCombobox("supplierId",emptyTitle:"全部")
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="datacontrol easyui-combobox" name="state" style="width:70px;" data-options="editable: false">
+                    <option selected value="">全部</option>
+                    <option value="1">已上架</option>
+                    <option value="0">已下架</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="货号/品名/条码" data-options="prompt:'货号/品名/条码',width:120"   />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if(!hideGroup)
+    { 
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-group'" onclick="groupSave()">组合新商品</a>
+    }
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-group'" onclick="splitSave()">拆分新商品</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="window.location.href='@Url.Action("Export")?'+$('#frmsearch').serialize()">导出</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="openDialog800('Excel文件导入','@Url.Action("Import")');window.top.$('#lbsave .l-btn-text').width(100).html('开始导入');">导入</a>
+    <a href="#" class="easyui-menubutton" style="margin-left:20px;" data-options="menu:'#mm1',iconCls:'icon-edit'">设置上架</a>
+    <a href="#" class="easyui-menubutton" data-options="menu:'#mm2',iconCls:'icon-edit'">设置退货</a>
+    <a href="#" class="easyui-menubutton" data-options="menu:'#mm3',iconCls:'icon-edit'">设置下单订货</a>
+    <a href="#" class="easyui-menubutton" data-options="menu:'#mm4',iconCls:'icon-edit'">设置前台优惠</a>
+    <div id="mm1" style="width:150px;">
+        <div data-options="iconCls:'icon-putaway-1'" onclick="setEnable(1)">设为上架</div>
+        <div data-options="iconCls:'icon-sold-out-1'" onclick="setEnable(2)">设为下架</div>    
+    </div>
+    <div id="mm2" style="width:150px;">
+        <div data-options="iconCls:'icon-return-yes'" onclick="setEnable(3)">设为允许退货</div>
+        <div data-options="iconCls:'icon-return-no'" onclick="setEnable(4)">设为不允许退货</div>
+    </div>
+    <div id="mm3" style="width:150px;">
+        <div data-options="iconCls:'icon-order-yes'" onclick="setEnable(5)">设为允许下单订货</div>
+        <div data-options="iconCls:'icon-order-no'" onclick="setEnable(6)">设为不允许下单订货</div>
+    </div>
+    <div id="mm4" style="width:150px;">
+        <div data-options="iconCls:'icon-privilege-yes'" onclick="setEnable(7)">设为允许前台优惠</div>
+        <div data-options="iconCls:'icon-privilege-no'" onclick="setEnable(8)">设为不允许前台优惠</div>
+    </div>
+    <input type="hidden" id="hids" />
+}
+<script type="text/javascript">
+    pharos.manager.editurl = "@Url.Action("SaveNew")";
+    pharos.manager.columns = [[
+        { field: 'Size', title: '规格', width: 100 },
+        { field: 'BrandTitle', title: '品牌', width: 80 },
+        { field: 'SupplierTitle', title: '供应商', width: 120 },
+        { field: 'SubUnit', title: '单位', width: 50 },
+        { field: 'ValuationTypeTitle', title: '计价方式', width: 70 },
+        { field: 'StockNums', title: '库存量', width: 70 },
+        { field: 'BuyPrice', title: '进价', width: 70 },
+        {
+            field: 'SysPrice', title: '系统售价', width: 70, formatter: function (value, row, index) {
+                if (row.BuyPrice >= value)
+                    return "<font color='red' title='小于进价'>" + value + "</font>";
+                return value;
+            }
+        },
+        { field: 'FavorTitle', title: '前台优惠', width: 70 },
+        { field: 'ReturnTitle', title: '退货状态', width: 70 },
+        { field: 'AcceptTitle', title: '订货状态', width: 70 },
+        { field: 'StateTitle', title: '产品状态', width: 70 },
+        {
+            field: 'Nature', title: ' 产品性质', width: 70,hidden:true, formatter: function (value, row, index) {
+                return value == 2 ? "拆分" : value == 1 ? "组合" : "单品";
+            }
+        }
+    ]];
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ProductCode', title: '货号', editor: { type: 'text', required: true }, width: 70 },
+        {
+            field: 'Barcode', title: '条码', editor: { type: 'text', required: true }, width: 120,
+            formatter: function (value, row, index) {
+                if (row.Barcodes)
+                    return "<font color='blue' title='一品多码:" + row.Barcodes + "'>" + value + "</font>";
+                return value;
+            }
+        },
+        { field: 'CategoryTitle', title: '品类', width: 150 },
+        {
+            field: 'Title', title: '品名', width: 180, formatter: function (value, row, index) {
+                return row.Nature == 2 ? "[拆] " + value : row.Nature == 1 ? "[组] " + value : value;
+            }
+        }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog1000(this.addText, this.editurlNocache(),true);
+    }
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        @if(showDetail)
+        {
+            @:openDialog("查看详情", this.editurlNocache(),1000,560,true); return false;
+                        }
+        else if(!hideAdd)
+        {
+            @:if (row.Nature == 1)
+                                        @:openDialog1000("修改组合产品", "@Url.Action("GroupNewIndex")?seltab=1&id=" + id);
+                                    @:else
+                                        @:openDialog1000(this.editText, this.editurlNocache());
+                        }
+    }
+    function groupSave() {
+        var rows = pharos.manager.$dg.datagrid('getChecked');
+        if (!rows) return;
+        if (rows.length ==0) {
+            openDialog1000("组合新产品", "@Url.Action("GroupNewIndex")"); return;
+        } else if (rows.length < 2) {
+            //$.messager.alert("提示", "请选择两个商品以上记录！", "info"); return;
+        }
+        var result = true;
+        var num1 = 0, num2 = 0;
+        $.each(rows, function (i, r) {
+            if (r.State == 0) {
+                $.messager.alert("提示", "已下架的商品不能组合！", "info");
+                result = false;
+                return false;
+            }
+            if (r.Nature == 1) {
+                $.messager.alert("提示", "组合商品不能再组合！", "info");
+                result = false;
+                return false;
+            }
+            if (r.ValuationType == 1)
+                num1++;
+            else if (r.ValuationType == 2)
+                num2++;
+        })
+        if (!result) return;
+        if (num1 > 0 && num2 > 0) {
+            //$.messager.alert("提示", "选择商品计价方式必须一样！", "info"); return;
+        }
+        var ids = $.map(rows, function (item) {
+            return item.Barcode;
+        }).join();
+        openDialog1000("组合新产品", "@Url.Action("GroupNewIndex")?seltab=1&barcodes=" + ids);
+    }
+    function splitSave() {
+        var rows = pharos.manager.$dg.datagrid('getChecked');
+        if (!rows || rows.length == 0) {
+            openDialog1000("拆分新产品", "@Url.Action("SplitSave")");
+            return;
+        }
+        $.each(rows, function (i, r) {
+            if (r.Nature==1) {
+                $.messager.alert("提示", "组合商品不能再拆分！", "info");
+                rows = null;
+                return false;
+            }
+            if (r.ValuationType == 2) {
+                $.messager.alert("提示", "称重商品不能再拆分！", "info");
+                rows = null;
+                return false;
+            }
+            //if (r.ChildCount > 0) {
+            //    $.messager.alert("提示", "该商品已拆分不能再拆分！", "info");
+            //    rows = null;
+            //    return false;
+            //}
+            if (r.Nature > 0) {
+                $.messager.alert("提示", "该商品已拆分不能继续拆分！", "info");
+                rows = null;
+                return false;
+            }
+        });
+        if (!rows) return;
+        if (rows.length > 1) {
+            $.messager.confirm("提示", "折分商品只能操作一条记录,是否继续?", function (r) {
+                if (!r) return;
+                openDialog1000("拆分新产品", "@Url.Action("SplitSave")?Id=" + rows[0].Id);
+            });
+        }else
+            openDialog1000("拆分新产品", "@Url.Action("SplitSave")?Id=" + rows[0].Id);
+    }
+    function parentSelect(record) {
+        $.post("@Url.Action("ParentTypeSelect","Product")", { Id: record.value,showTitle:1, t: Math.random() }, function (data) {
+            $("#childType").combobox("clear").combobox("loadData", data);
+        }, "json");
+    }
+    function setEnable(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    var hids = [];
+    $(function () {
+        //保留在分页时的选中状态
+        //var pager = pharos.manager.$dg.datagrid("getPager");
+        //var op= $(pager).pagination("options").onSelectPage;
+        //$(pager).pagination({
+        //    onSelectPage: function (pageNumber, pageSize) {
+        //        var rows = pharos.manager.$dg.datagrid('getChecked');
+        //        var curRows = pharos.manager.$dg.datagrid("getRows");
+        //        var items = $.map(curRows, function (item) {
+        //            return item.Id;
+        //        });
+        //        hids.removeRange(items);
+        //        if (rows && rows.length > 0) {
+        //            $.each(rows, function (i, item) {
+        //                  hids.add(item.Id);
+        //            })
+        //        }
+        //        op(pageNumber, pageSize);
+        //    }
+        //})
+    })
+
+</script>

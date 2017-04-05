@@ -1,0 +1,76 @@
+﻿using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class SysUserController : BaseController
+    {
+        [Ninject.Inject]
+        SysUserService UserService { get; set; }
+        [Ninject.Inject]
+        DepartMentService DeptService { get; set; }
+        //
+        // GET: /SysUser/
+
+        public ActionResult Index()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindPageList()
+        {
+            int count = 0;
+            var list = UserService.GetPageList(Request.Params,out count);
+            return ToDataGrid(list, count);
+        }
+        [HttpPost]
+        public ActionResult FindTreeList()
+        {
+            var list = DeptService.GetPageList(false);
+            var trees = new List<DepartMentExt>(){
+                new DepartMentExt(){
+                DeptId = 0,
+                Title = "组织机构",
+                Childrens = new List<DepartMentExt>()
+                }
+            };
+            trees[0].Childrens.AddRange(list);
+            return new JsonNetResult(trees);
+        }
+        public ActionResult Save(int? id,int? treeId)
+        {
+            var obj = new SysUser() { DeptId=treeId.GetValueOrDefault()};
+            if (treeId.HasValue)
+            {
+                ViewBag.depttitle= DeptService.GetFullTitle().GetValue(treeId.Value);
+            }
+            if (id.HasValue)
+            {
+                obj = UserService.Get(id.Value);
+                if (obj.DeptId>0)
+                {
+                    ViewBag.depttitle = DeptService.GetFullTitle().GetValue(obj.DeptId);
+                }
+            }
+            return View(obj);
+        }
+        [HttpPost]
+        public ActionResult Save(SysUser obj)
+        {
+            var re = UserService.SaveOrUpdate(obj);
+            return new OpActionResult(re);
+        }
+        [HttpPost]
+        public void SetState(short mode, int id)
+        {
+            UserService.SetState(mode, id);
+        }
+    }
+}

@@ -1,0 +1,472 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.ObjectModels.DTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.BLL
+{
+    public class MarketingService
+    {
+        public MarketingService(string storeId, int companyId)
+        {
+            if (!WarehouseService.IsExist(o => o.CompanyId == companyId && o.StoreId == storeId))
+            {
+                throw new Exception("未找到门店！");
+            }
+            StoreId = storeId;
+            CompanyId = companyId;
+        }
+        public string StoreId { get; set; }
+        public int CompanyId { get; set; }
+
+        #region 促销
+        public IEnumerable<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> GetMarketingRules()
+        {
+            List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> result = new List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>>();
+            result = GetDiscountForMarketing(result);
+            result = GetFreeGiftPurchaseForMarketing(result);
+            result = GetCollectionPromotionForMarketing(result);
+
+            return result;
+        }
+        /// <summary>
+        /// 集合促销（即 满元、组合）
+        /// </summary>
+        /// <param name="collections"></param>
+        /// <returns></returns>
+        private List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> GetCollectionPromotionForMarketing(List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> collections)
+        {
+
+            var today = DateTime.Now.Date;
+            var discountQuery = (from a in PromotionBlendService.CurrentRepository.Entities
+                                 from b in CommodityPromotionService.CurrentRepository.Entities
+                                 where
+                                 a.CommodityId == b.Id
+                                 && b.State != 2
+                                 && b.EndDate >= today
+                                 && (("," + b.StoreId + ",").Contains("," + StoreId + ",") || ("," + b.StoreId + ",").Contains(",-1,"))
+                                 && (b.PromotionType == 3 || b.PromotionType == 5) && a.CompanyId == CompanyId && b.CompanyId == CompanyId
+                                 select new { a, b }).ToList();
+            foreach (var item in discountQuery)
+            {
+                try
+                {
+                    var marketingTimelinessLimit = GetMarketingTimelinessLimit(item.b);
+                    var marketingRules = GetMarketingRule(item.b);
+                    marketingRules.IsRepeatMarketing = Convert.ToBoolean(item.a.AllowedAccumulate);
+                    marketingRules.Type = item.a.RuleType == 1 ? MarketingType.Zuhe : MarketingType.Manyuan;
+                    var promotionBlendList = PromotionBlendListService.CurrentRepository.Entities.Where(o => o.CommodityId == item.a.CommodityId).ToList();
+                    var barcodeRanges = new List<string>();
+                    var giftRanges = new List<KeyValuePair<string, decimal>>();
+                    var ignoreBarcodeRanges = new List<string>();
+                    foreach (var child in promotionBlendList)
+                    {
+                        switch (child.BlendType)
+                        {
+                            case 1:
+                                barcodeRanges.Add(child.BarcodeOrCategorySN);
+                                break;
+                            case 2:
+                                if (child.BrandSN != 0)
+                                {
+                                    var productList = GetProductRanges(Convert.ToInt32(child.BarcodeOrCategorySN), child.CategoryGrade ?? 3, child.BrandSN);
+                                    barcodeRanges.AddRange(productList);
+                                }
+                                else
+                                {
+                                    var productList = GetProductRanges(Convert.ToInt32(child.BarcodeOrCategorySN), child.CategoryGrade ?? 3);
+                                    barcodeRanges.AddRange(productList);
+                                }
+                                break;
+                            case 3:
+                                giftRanges.Add(new KeyValuePair<string, decimal>(child.BarcodeOrCategorySN, 1));
+                                break;
+                            case 4:
+                                if (child.BrandSN != 0)
+                                {
+                                    var productList = GetProductRanges(Convert.ToInt32(child.BarcodeOrCategorySN), child.CategoryGrade ?? 3, child.BrandSN);
+                                    giftRanges.AddRange(productList.Select(o => new KeyValuePair<string, decimal>(o, 1)).ToList());
+                                }
+                                else
+                                {
+                                    var productList = GetProductRanges(Convert.ToInt32(child.BarcodeOrCategorySN), child.CategoryGrade ?? 3);
+                                    giftRanges.AddRange(productList.Select(o => new KeyValuePair<string, decimal>(o, 1)).ToList());
+                                }
+                                break;
+                            case 5:
+                                ignoreBarcodeRanges.Add(child.BarcodeOrCategorySN);
+                                break;
+                            case 6:
+                                if (child.BrandSN != 0)
+                                {
+                                    var productList = GetProductRanges(Convert.ToInt32(child.BarcodeOrCategorySN), child.CategoryGrade ?? 3, child.BrandSN);
+                                    ignoreBarcodeRanges.AddRange(productList);
+                                }
+                                else
+                                {
+                                    var productList = GetProductRanges(Convert.ToInt32(child.BarcodeOrCategorySN), child.CategoryGrade ?? 3);
+                                    ignoreBarcodeRanges.AddRange(productList);
+                                }
+                                break;
+
+                        }
+                    }
+                    marketingRules.BarcodeRange = barcodeRanges;
+                    marketingRules.IgnoreBarcodeRange = ignoreBarcodeRanges;
+                    marketingRules.RuleNumber = item.a.FullNumber;
+                    marketingRules.MarketingAction = new MarketingAction()
+                    {
+                        AddMoney = 0m,
+                        Discount = 0m,
+                        MarketingActionMode = MarketingActionMode.Gift,
+                        DiscountAmount = 0m,
+                        MarketingActionNumber = 0m,
+                        Repeatable = Convert.ToBoolean(item.a.AllowedAccumulate)
+                    };
+                    switch (item.a.PromotionType)
+                    {
+                        case 1:
+                            marketingRules.MarketingAction.MarketingActionMode = MarketingActionMode.NowCash;
+                            marketingRules.MarketingAction.Amount = item.a.DiscountOrPrice;
+
+                            break;
+                        case 2:
+                            marketingRules.MarketingAction.MarketingActionMode = MarketingActionMode.CashCoupon;
+                            marketingRules.MarketingAction.Amount = item.a.DiscountOrPrice;
+                            break;
+                        case 3:
+                            marketingRules.MarketingAction.MarketingActionMode = MarketingActionMode.Discount;
+                            marketingRules.MarketingAction.Discount = item.a.DiscountOrPrice;
+                            break;
+                        case 4:
+                            if (item.a.DiscountOrPrice > 0)
+                            {
+                                marketingRules.MarketingAction.MarketingActionMode = MarketingActionMode.AddMoneyToGive;
+                            }
+                            marketingRules.MarketingAction.AddMoney = item.a.DiscountOrPrice;
+                            marketingRules.MarketingAction.Gifts = giftRanges;
+                            break;
+                        case 5:
+                            if (item.a.DiscountOrPrice > 0)
+                            {
+                                marketingRules.MarketingAction.MarketingActionMode = MarketingActionMode.AddMoneyToGive;
+                            }
+                            marketingRules.MarketingAction.AddMoney = item.a.DiscountOrPrice;
+                            var products = WarehouseService.CheckedPrice(StoreId, CompanyId, null, 0, item.a.PriceRange);
+                            var ranges = products.Select(o => o.Barcode).Distinct().Select(o => new KeyValuePair<string, decimal>(o, 1)).ToList();
+                            marketingRules.MarketingAction.Gifts = ranges;
+                            break;
+                    }
+
+
+
+                    switch (item.a.RuleType)
+                    {
+                        case 1:
+                            marketingRules.MeteringMode = MeteringMode.QiGouLiang;
+                            break;
+                        case 2:
+                            marketingRules.MeteringMode = MeteringMode.ManYuan;
+                            break;
+                    }
+
+
+                    collections.Add(new KeyValuePair<MarketingTimelinessLimit, MarketingRule>(marketingTimelinessLimit, marketingRules));
+                }
+                catch (Exception ex)
+                {
+                    goto Continue;
+                }
+            Continue:
+                continue;
+            }
+            return collections;
+        }
+        /// <summary>
+        /// 买赠促销信息
+        /// </summary>
+        /// <param name="collections"></param>
+        /// <returns></returns>
+        private List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> GetFreeGiftPurchaseForMarketing(List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> collections)
+        {
+            var today = DateTime.Now.Date;
+            var discountQuery = (from a in FreeGiftPurchaseService.CurrentRepository.Entities
+                                 from b in CommodityPromotionService.CurrentRepository.Entities
+                                 where
+                                 a.CommodityId == b.Id
+                                 && b.State != 2
+                                 && b.EndDate >= today
+                                 && (("," + b.StoreId + ",").Contains("," + StoreId + ",") || ("," + b.StoreId + ",").Contains(",-1,"))
+
+                                 && b.PromotionType == 4 && a.CompanyId == CompanyId && b.CompanyId == CompanyId
+                                 select new { a, b }).ToList();
+            foreach (var item in discountQuery)
+            {
+                var marketingTimelinessLimit = GetMarketingTimelinessLimit(item.b);
+                var marketingRules = GetMarketingRule(item.b);
+                marketingRules.Type = MarketingType.Maizeng;
+                marketingRules.Id = item.a.GiftId;
+                marketingRules.RestrictionBuyCount = item.a.RestrictionBuyNum;
+                marketingRules.MarketingQuotaMode = item.a.RestrictionBuyNum == 0 ? MarketingQuotaMode.NotLimit : MarketingQuotaMode.EveryDay;
+                var barcodeRange = new List<string>();
+                if (item.a.GiftType == 1 && !string.IsNullOrEmpty(item.a.BarcodeOrCategorySN))
+                {
+                    barcodeRange.Add(item.a.BarcodeOrCategorySN);
+                }
+                else if (item.a.GiftType == 2 && !string.IsNullOrEmpty(item.a.BarcodeOrCategorySN))
+                {
+                    try
+                    {
+                        var categorySN = int.Parse(item.a.BarcodeOrCategorySN);
+                        var ranges = GetProductRanges(categorySN, item.a.CategoryGrade ?? 0);
+                        barcodeRange.AddRange(ranges);
+                    }
+                    catch
+                    {
+                        goto Continue;
+                    }
+                }
+                else
+                {
+                    goto Continue;
+                }
+                marketingRules.BarcodeRange = barcodeRange;
+                marketingRules.MeteringMode = MeteringMode.QiGouLiang;
+                marketingRules.RuleNumber = item.a.MinPurchaseNum;
+
+
+                var gifts = FreeGiftPurchaseListService.CurrentRepository.Entities.Where(o => o.GiftId == item.a.GiftId).ToList();
+                var giftRanges = new List<KeyValuePair<string, decimal>>();
+                foreach (var gift in gifts)
+                {
+                    if (string.IsNullOrEmpty(gift.BarcodeOrCategorySN))
+                    {
+                        goto Continue;
+                    }
+                    switch (gift.GiftType)
+                    {
+                        case 1:
+                            giftRanges.Add(new KeyValuePair<string, decimal>(gift.BarcodeOrCategorySN, gift.GiftNumber));
+                            break;
+                        case 2:
+                            try
+                            {
+                                var categorySN = int.Parse(gift.BarcodeOrCategorySN);
+                                var ranges = GetProductRanges(categorySN, gift.CategoryGrade ?? 0).Select(o => new KeyValuePair<string, decimal>(o, gift.GiftNumber));
+                                giftRanges.AddRange(ranges);
+                            }
+                            catch
+                            {
+                                goto Continue;
+                            }
+                            break;
+                    }
+                }
+                marketingRules.MarketingAction = new MarketingAction()
+                {
+                    AddMoney = 0m,
+                    Discount = 0m,
+                    MarketingActionMode = MarketingActionMode.Gift,
+                    Gifts = giftRanges,
+                    DiscountAmount = 0m,
+                    MarketingActionNumber = item.a.RestrictionBuyNum,
+                    Repeatable = false
+                };
+
+
+                collections.Add(new KeyValuePair<MarketingTimelinessLimit, MarketingRule>(marketingTimelinessLimit, marketingRules));
+            Continue:
+                continue;
+            }
+            return collections;
+        }
+
+        /// <summary>
+        /// 获取单品折扣信息
+        /// </summary>
+        /// <param name="collections"></param>
+        /// <returns></returns>
+        private List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> GetDiscountForMarketing(List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> collections)
+        {
+            //Discount 不匹配称重商品
+            var today = DateTime.Now.Date;
+            var discountQuery = (from a in CommodityDiscountService.CurrentRepository.Entities
+                                 from b in CommodityPromotionService.CurrentRepository.Entities
+                                 where
+                                 a.CommodityId == b.Id && a.CompanyId == CompanyId && b.CompanyId == CompanyId
+                                 && b.State != 2
+                                 && b.EndDate >= today
+                                 && (("," + b.StoreId + ",").Contains("," + StoreId + ",") || ("," + b.StoreId + ",").Contains(",-1,"))
+                                 && b.PromotionType == 1
+                                 select new { a, b }).ToList();
+            foreach (var item in discountQuery)
+            {
+                var marketingTimelinessLimit = GetMarketingTimelinessLimit(item.b);
+                var marketingRules = GetMarketingRule(item.b);
+                marketingRules.Type = MarketingType.Danpinzhekou;
+                var barcodeRange = new List<string>();
+                if (!string.IsNullOrEmpty(item.a.Barcode))
+                {
+                    barcodeRange.Add(item.a.Barcode);
+                }
+                else if (item.a.CategorySN != -1)
+                {
+                    var ranges = GetProductRanges(item.a.CategorySN, item.a.CategoryGrade ?? 0);
+                    barcodeRange.AddRange(ranges);
+                }
+                else
+                {
+                    goto Continue;
+                }
+                marketingRules.BarcodeRange = barcodeRange;
+                marketingRules.RuleNumber = item.a.MinPurchaseNum;
+                marketingRules.MarketingAction = new MarketingAction()
+                {
+                    AddMoney = 0m,
+                    Discount = item.a.DiscountRate.GetValueOrDefault(),
+                    DiscountAmount = item.a.DiscountPrice ?? 0m,
+                    Gifts = null,
+                    MarketingActionNumber = 0m,
+                    Repeatable = true
+                };
+
+                switch (item.a.Way)
+                {
+                    case 1:
+                        marketingRules.MeteringMode = MeteringMode.GuDingLiang;
+                        marketingRules.MarketingAction.MarketingActionMode = MarketingActionMode.RepetitionDiscountAmount;
+                        break;
+                    case 2:
+                        marketingRules.MeteringMode = MeteringMode.QiGouLiang;
+                        marketingRules.MarketingAction.MarketingActionMode = MarketingActionMode.Discount;
+                        break;
+                    case 3:
+                        marketingRules.MeteringMode = MeteringMode.GuDingLiang;
+                        marketingRules.MarketingAction.MarketingActionMode = MarketingActionMode.DiscountAmount;
+                        break;
+                    default:
+                        goto Continue;
+                }
+                collections.Add(new KeyValuePair<MarketingTimelinessLimit, MarketingRule>(marketingTimelinessLimit, marketingRules));
+            Continue:
+                continue;
+            }
+            return collections;
+        }
+        /// <summary>
+        /// 获取促销规则的主表信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        private MarketingRule GetMarketingRule(CommodityPromotion entity)
+        {
+            var marketingRules = new MarketingRule()
+            {
+                Id = entity.Id,
+                RestrictionBuyCount = entity.RestrictionBuyNum,
+                MarketingQuotaMode = entity.RestrictionBuyNum == 0 ? MarketingQuotaMode.NotLimit : MarketingQuotaMode.EveryDay,
+                CreateRuleDate = entity.CreateDT,
+                Enable = true,
+                IsRepeatMarketing = false
+            };
+            switch (entity.CustomerObj)
+            {
+                case 0:
+                    marketingRules.CustomerType = Pharos.ObjectModels.DTOs.CustomerType.Whole;
+                    break;
+                case 1:
+                    marketingRules.CustomerType = Pharos.ObjectModels.DTOs.CustomerType.Insider;
+                    break;
+                case 2:
+                    marketingRules.CustomerType = Pharos.ObjectModels.DTOs.CustomerType.VIP;
+                    break;
+                default:
+                    marketingRules.CustomerType = Pharos.ObjectModels.DTOs.CustomerType.Whole;
+                    break;
+            }
+            return marketingRules;
+        }
+        /// <summary>
+        /// 获取时效信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        private MarketingTimelinessLimit GetMarketingTimelinessLimit(CommodityPromotion entity)
+        {
+            //时效限制参数
+            var timeRanges = new List<KeyValuePair<string, string>>();
+            if (entity.Timeliness == 1)
+            {
+                timeRanges = ParseTimeRange(timeRanges, entity.StartAging1, entity.EndAging1);
+                timeRanges = ParseTimeRange(timeRanges, entity.StartAging2, entity.EndAging2);
+                timeRanges = ParseTimeRange(timeRanges, entity.StartAging3, entity.EndAging3);
+            }
+            var timelinessLimit = new MarketingTimelinessLimit()
+            {
+                StartTime = entity.StartDate ?? default(DateTime),
+                OverTime = (entity.EndDate ?? default(DateTime)).AddDays(1),
+                TimeRanges = timeRanges
+            };
+            return timelinessLimit;
+        }
+        /// <summary>
+        /// 解析验证时间范围
+        /// </summary>
+        /// <param name="timeRanges"></param>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// <returns></returns>
+        private List<KeyValuePair<string, string>> ParseTimeRange(List<KeyValuePair<string, string>> timeRanges, string startTime, string endTime)
+        {
+
+            if (ParseTimeRange(startTime, endTime))
+            {
+                timeRanges.Add(new KeyValuePair<string, string>(startTime, endTime));
+            }
+            return timeRanges;
+        }
+        /// <summary>
+        /// 解析时间范围
+        /// </summary>
+        /// <param name="timeRanges"></param>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// <returns></returns>
+        private bool ParseTimeRange(string startTime, string endTime)
+        {
+            if (!string.IsNullOrEmpty(startTime) && !string.IsNullOrEmpty(endTime))
+            {
+                try
+                {
+                    var start = DateTime.Parse(startTime);
+                    var end = DateTime.Parse(endTime);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                }
+            }
+            return false;
+
+        }
+
+        public IEnumerable<string> GetProductRanges(int category, int depth)
+        {
+            var lastDepthStoreCategories = ProductCategoryService.GetLastDepthStoreCategories(StoreId, category, depth, CompanyId);
+            var categories = lastDepthStoreCategories.Select(o => o.CategorySN).ToList();
+            var ranges = ProductService.CurrentRepository.Entities.Where(o => o.CompanyId == CompanyId && categories.Contains(o.CategorySN)).Select(o => o.Barcode).ToList();
+            return ranges;
+        }
+        public IEnumerable<string> GetProductRanges(int category, int depth, int brandSn)
+        {
+            var lastDepthStoreCategories = ProductCategoryService.GetLastDepthStoreCategories(StoreId, category, depth, CompanyId);
+            var categories = lastDepthStoreCategories.Select(o => o.CategorySN).ToList();
+            var ranges = ProductService.CurrentRepository.Entities.Where(o => o.CompanyId == CompanyId && categories.Contains(o.CategorySN) && o.BrandSN == brandSn).Select(o => o.Barcode).ToList();
+            return ranges;
+        }
+
+        #endregion 促销
+    }
+}

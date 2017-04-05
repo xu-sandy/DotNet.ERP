@@ -1,0 +1,73 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新建计划", editText: "编辑计划", delText: "删除计划", hideDel: true, hideAdd: true, hideEdit: false));
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>执行人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("AssignerUID", ViewBag.users as List<SelectListItem>, multiple: true, dataOptions: "editable:false")
+            </td>
+            <td class="label-toolbar">
+                <label>计划类型：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("Type", ViewBag.types as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "width:100,editable:false" })
+            </td>
+            <td class="label-toolbar">
+                <label>执行状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("Status", ViewBag.status as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "width:120,editable:false" })
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="SearchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'请输入查询条件...',width:120" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("IndexPageList")";
+    pharos.manager.editurl = "@Url.Action("SavePlan","Plan")?isdetail=1";
+    pharos.manager.delurl = "@Url.Action("DeletePlan")";
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ReplyCount', title: '总结批复', width: 100, formatter: function (value, row) { return value > 0 ? "已批复" : "未批复"; } },
+        { field: 'TypeTitle', title: '计划类型', width: 180, formatter: typeTitle },
+        { field: 'StatuTitle', title: '执行状态', width: 80},
+        { field: 'Assigner', title: '执行人', width: 100 },
+        { field: 'Content', title: '计划内容', width: 250, formatter: function (value, row, index) { return value + (row.AttachCount > 0 ? "<div class='icon-atth' title='有附件' />" : "") } },
+        { field: 'CreateDT', title: '创建时间', width: 150, formatter: function (value, row, index) { return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd hh:mm") } },
+        { field: 'Creater', title: '创建人', width: 100 }
+    ]];
+    function typeTitle(value, row, index) {
+        var title = "<div>" + value + "</div>";
+        if (row.StartDate && row.EndDate) {
+            title += row.StartDate + "~" + row.EndDate;
+        } else if (row.StartDate) {
+            title += row.StartDate;
+        }
+        return title;
+    }
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache(),true);
+    };
+    pharos.manager.editItem = function (id,row) {
+        this.Id = id;
+        openDialog(this.detailText, this.editurlNocache(), 800, 450, true);
+    }
+
+</script>

@@ -1,0 +1,256 @@
+﻿@model SysMailSender
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var colcount = 5;
+    var i = 0;
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.邮件管理_写信);
+}
+<script type="text/javascript" charset="utf-8" src="@Url.Content("~/Scripts/ueditor/ueditor.config2.js")"></script>
+<script type="text/javascript" charset="utf-8" src="@Url.Content("~/Scripts/ueditor/ueditor.all.min.js")"> </script>
+<!--建议手动加在语言，避免在ie下有时因为加载语言失败导致编辑器加载失败-->
+<!--这里加载的语言文件会覆盖你在配置项目里添加的语言类型，比如你在配置项目里配置的是英文，这里加载的中文，那最后就是中文-->
+<script type="text/javascript" charset="utf-8" src="@Url.Content("~/Scripts/ueditor/lang/zh-cn/zh-cn.js")"></script>
+<script src="~/Scripts/jquery-ui.min.js"></script>
+<link href="~/Content/themes/jquery-ui.css" rel="stylesheet" />
+<div class="default-form" style="margin-top:20px">
+    @using (Html.BeginForm("Send", "Mail", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o=>o.State)
+        @Html.HiddenFor(o=>o.BatchNo)
+        <input type="hidden" name="Id" value="@Model.Id" />
+        <table width="100%">
+            <tr style="height:40px">
+                <td class="name">收件人：</td>
+                <td class="input-width">
+                    @*@Html.DropDownListFor(o => o.ReceiverCodes, new List<SelectListItem>(), new { @class = "easyui-combobox", data_options = "required:true,novalidate:true,multiple:true,editable:true,mode:'remote',valueField:'Id',textField:'FullName',loader:comboload,onSelect:comboSelect" })*@
+                    @Html.TextBoxFor(o => o.ReceiverCodes, new { @class = "easyui-validatebox datacontrol", data_options = "required:true,novalidate:true" })
+                    <span class="icon-man" style="width:20px;height:20px;display:inline-block;cursor:pointer;"></span>
+                </td>
+            </tr>
+            <tr style="height:40px">
+                <td class="name">抄  送：</td>
+                <td class="input-width">
+                    @Html.TextBoxFor(o => o.CopytoCodes, new { @class = "easyui-validatebox datacontrol", data_options = "" })
+                    <span class="icon-man" style="width:20px;height:20px;display:inline-block;cursor:pointer;"></span>
+                </td>
+            </tr>
+            <tr style="height:40px;">
+                <td class="name">主  题：</td>
+                <td class="input-width">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-validatebox datacontrol", data_options = "required:true,novalidate:true" })</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <a class="send_Button easyui-linkbutton cus1 linkbtn" onclick="addFile()">添加附件</a>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    @if (Model.Attachments != null)
+                    {
+                        <table class="ListPartial">
+                            <tr>
+                                @foreach (var file in Model.Attachments)
+                                {
+                                    if (i == colcount)
+                                    {
+                                        ViewContext.Writer.Write("</tr><tr>");
+                                        i = 0;
+                                    }
+                                    <td><input type="hidden" value="@file.Id" name="fileId" /><a href="@Url.Action("DownFile", "Attach", new { id=file.Id})">@file.Title</a><img src="~/Content/image/close.png" width="12" height="12" onclick="delFile(this,'@file.Id')" /></td>
+                                    i++;
+                                }
+                            </tr>
+                        </table>
+                    }
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><span id="dfs" style=" display:inline-block;width:300px; "></span></td>
+            </tr>
+            <tr>
+                <td class="name">正  文：</td>
+                <td>@Html.TextAreaFor(o => o.Body)</td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center">
+                    @if(Model.State==0)
+                    { 
+                        if(!hideAdd)
+                        { 
+                        <a class="send_Button easyui-linkbutton cus1 linkbtn" onclick="$('#State').val(1); $('form').submit()">发 送</a>
+                        }
+                    <a class="send_Button easyui-linkbutton cus1 linkbtn" onclick="$('#State').val(0); $('form').submit()">存草稿</a>
+                    <a class="send_Button easyui-linkbutton cus1 linkbtn" onclick="Reset()">重 置</a>
+                    }
+                    else
+                    {
+                    <a class="send_Button easyui-linkbutton cus1 linkbtn" onclick="window.location.href=window.location.href+'&reback=1'">回 复</a>
+                    <a class="send_Button easyui-linkbutton cus1 linkbtn" onclick="window.location.href = window.location.href + '&reback=2'">转 发</a>
+                    }
+                    
+                </td>
+            </tr>
+        </table>
+    }
+</div>
+<div id="win" class="easyui-dialog" data-options="title:'选择人员',buttons:btns,cache:false,modal:true,width:900,height:500,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+<script type="text/javascript">
+    var editor = null;
+    var content = "";
+    var $receiver = null;
+    var popWinId = 'send_win_0';
+    $(function () {
+        var width = $(window).width() - 150;
+        $(".default-form").width(width);
+        width -= 100;
+        $("#Title").width(width); 
+        var root = "@Url.Content("~/")"=="/"?"":"@Url.Content("~/")";
+        editor = new baidu.editor.ui.Editor({
+            UEDITOR_HOME_URL:root+ '/Scripts/ueditor/',//配置编辑器路径
+            iframeCssUrl: root + '/Scripts/ueditor/themes/iframe.css',//样式路径
+            initialContent: '',//初始化编辑器内容
+            autoHeightEnabled: true,//高度自动增长
+            minFrameHeight: 500,//最小高度
+            initialFrameHeight:300,
+            initialFrameWidth: width
+        });
+        editor.render('Body');
+        $("#ReceiverCodes").autocomplete(combOption).width(width);;
+        $("#CopytoCodes").autocomplete(combOption).width(width);
+        setTimeout(function () { content = editor.getContent();}, 1000);
+        $(".icon-man").click(function () {
+            $receiver = $(this).prev();
+            var url = "@Url.Action("SelectUser", "SysAdmin")?t=" + Math.random();
+            url += "&code=" + $receiver.val();
+
+            openWin({ 'title': '选择人员', 'width': 900, 'height': 500, 'url': url, buttons: btns, id: popWinId });
+        })
+    });
+    var combOption = {
+        source: function (request, response) {
+            var q = request.term || "";
+            if (q.lastIndexOf(";") != -1)
+                q = q.substring(q.lastIndexOf(";") + 1);
+            if (q.length <= 0) return;
+            $.ajax({
+                url: "@Url.Action("GetUserInput", "SysAdmin")",
+                dataType: "json",
+                type: "post",
+                cache: false,
+                data: {
+                    maxRows: 12,
+                    term: q
+                },
+                success: function (data) {
+                    response($.map(data.rows, function (item) {
+                        if (item.FullName) {
+                            return {
+                                value: item.FullName + "(" + item.LoginName + ")",
+                                label: item.FullName
+                            }
+                        }
+                    }));
+                }
+            });
+        },
+        minLength: 2,
+        select: function (event, ui) {
+            var terms = split(this.value);
+            // remove the current input
+            terms.pop();
+            // add the selected item
+            terms.remove(ui.item.value);
+            terms.push(ui.item.value);
+            // add placeholder to get the comma-and-space at the end
+            terms.push("");
+            this.value = terms.join(";");
+            return false;
+        },
+        focus: function () {
+            return false;
+        }
+    };
+    var btns = [{
+        text: '确定',
+        iconCls: 'icon-ok',
+        handler: function () {
+            var chks = window.top.$('#' + popWinId + ' iframe')[0].contentWindow.$dg.datagrid("getChecked");
+
+            //var texts = $receiver.val();
+            var texts = '';
+            $.each(chks, function (idx, row) {
+                //if (texts.indexOf(row.LoginName + ")") == -1) {
+                    texts+= row.FullName + "(" + row.LoginName + ");";
+                //}
+            });
+            $receiver.val(texts);
+
+            pharos.easyui.dialog.topClose(popWinId);
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            pharos.easyui.dialog.topClose(popWinId);
+        }
+    }];
+    // 按逗号分隔多个值
+    function split(val) {
+        return val.split(/;\s*/);
+    }
+    // 提取输入的最后一个值
+    function extractLast(term) {
+        return split(term).pop();
+    }
+    // 按Tab键时，取消为输入框设置value
+    function keyDown(event) {
+        if (event.keyCode === $.ui.keyCode.TAB &&
+                $(this).data("autocomplete").menu.active) {
+            event.preventDefault();
+        }
+    }
+
+    var i = 1;
+    function addFile() {
+        var obj = $('<input type="file" name="File1" id="File1" style="margin-bottom:5px;"/> <img src="@Url.Content("~/Content/image/close.png")" width="12" height="12" onclick="$(this).prev().remove();$(this).remove()" style="cursor:pointer" />').attr({ name: "File" + i, id: "File" + i });
+        $("#dfs").prepend(obj);
+        i++;
+    }
+    function Reset() {
+        $('form').form('reset');
+        editor.setContent(content);
+        try {
+            pharos.easyui.dialog.topClose("formDiv");
+            pharos.easyui.dialog.curJquery("formDiv")("#grid").datagrid("reload").datagrid("clearSelections").datagrid("clearChecked");
+        } catch (e) { }
+    }
+    function Refresh() {
+        $.messager.alert("提示", "操作成功!");
+        Reset();
+    }
+    function delFile(obj, fid) {
+        $.messager.confirm("提示","是否确定删除该附件?",function(r){
+            if (!r) {return r;}
+            $.post("@Url.Action("DeleteFile")",{fileId:fid,isBack:'@Request["reback"]',t:Math.random()},function(d){
+                if (d.successed) {
+                    $(obj).parent().remove();
+                } else {
+                    $.messager.alert("提示", "删除失败！" + d.message, "error");
+                }
+            },"json")
+        });
+    }
+</script>
+<style type="text/css">
+    .ListPartial{
+        width:96.4%;
+        margin:auto 0;
+    }
+    .input-width input{
+        width:95%!important;
+    }
+</style>

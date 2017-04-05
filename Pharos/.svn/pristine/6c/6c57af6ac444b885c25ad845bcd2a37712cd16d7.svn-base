@@ -1,0 +1,127 @@
+﻿@model Pharos.Logic.Entity.CardInfo
+@{
+    ViewBag.Title = "CreateMemberCardType";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%" height="250px">
+                <tr>
+                    <td class="name">名称：</td>
+                    <td class="input">
+                        <input type="text" name="CardName" class="easyui-textbox" value="@Model.CardName" />
+                    </td>
+                    <td class="name"></td>
+                    <td class="input"></td>
+                </tr>
+                <tr>
+                    <td class="name">类型名称：</td>
+                    <td class="input">
+                        <select id="Category" name="Category" class="easyui-combobox">
+                            <option value="-1">请选择</option>
+                            <option value="1">充值卡</option>
+                            <option value="2">折扣卡</option>
+                        </select>
+                    </td>
+                    <td class="name">卡片种类：</td>
+                    <td class="input">
+                        <select id="CardType" name="CardType" class="easyui-combobox">
+                            <option value="-1">请选择</option>
+                            <option value="1">电子卡</option>
+                            <option value="2">磁卡</option>
+                            <option value="3">IC卡</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">优惠方式：</td>
+                    <td class="input">
+                        <select name="CouponType" id="couponType" class="easyui-combobox">
+                            <option value="0">无</option>
+                            @*<option value="1">方案折扣</option>*@
+                            <option value="2">固定折扣</option>
+                        </select>
+                    </td>
+                    <td class="name discount">折扣：</td>
+                    <td class="discount">
+                        <input type="text" name="Discount" class="easyui-textbox" value="@Model.Discount" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">积分方式：</td>
+                    <td class="input">
+                        <select id="IntegrationType" name="IntegrationType" class="easyui-combobox">
+                            <option value="0">无</option>
+                            @*<option value="1">方案积分</option>*@
+                        </select>
+                    </td>
+                    @*<td class="name">
+                            积分：
+                        </td>
+                        <td>
+                            <input type="text" name="Integral" class="easyui-textbox" />
+                        </td>*@
+                </tr>
+                <tr>
+                    <td class="name">最低充值金额：</td>
+                    <td class="input"><input type="text" name="MinRecharge" class="easyui-textbox" value="@Model.MinRecharge" /></td>
+                    <td class="name">初始金额：</td>
+                    <td class="input"><input type="text" name="DefaultPrice" class="easyui-textbox" value="@Model.DefaultPrice" /></td>
+                </tr>
+                <tr>
+                    <td class="name">初始积分：</td>
+                    <td class="input"><input type="text" name="DefaultIntegr" class="easyui-textbox" value="@Model.DefaultIntegr" /></td>
+                    @*<td class="name">办卡押金：</td>
+                        <td class="input"><input type="text" name="" class="easyui-textbox" /></td>*@
+                </tr>
+                <tr>
+                    <td class="name">状态：</td>
+                    <td class="input">
+                        @*@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "可用", Selected = true }, new SelectListItem() { Text = "注销" } }, "state")*@
+                        <input type="radio" id="stateTrue" name="state" value="0" /><label for="stateTrue">可用</label>
+                        <input type="radio" id="stateFalse" name="state" value="1" /><label for="stateFalse">注销</label>
+
+                    </td>
+
+                </tr>
+                <tr>
+                    <td class="name">备 注：</td>
+                    <td class="input" colspan="3">
+                        <textarea name="Memo" class="easyui-validatebox" style="width:320px;height:50px;">@Model.Memo</textarea>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+        $(".discount").hide();
+        if ('@Model.Category' != '0')
+            $("#Category").combobox("setValue", '@Model.Category');
+        if ('@Model.CardType' != '0')
+            $("#CardType").combobox("setValue", '@Model.CardType');
+        if ('@Model.CouponType' != '0')
+            $("#couponType").combobox("setValue", '@Model.CouponType');
+        $("#IntegrationType").combobox("setValue", "@Model.IntegrationType");
+        if ("@Model.State" == "0") {
+            //可用
+            $("#stateTrue").click();
+        } else {
+            $("#stateFalse").click();
+        }
+
+        $("#couponType").combobox({
+            onChange: function (n, o) {
+                if (n == 2) {
+                    $(".discount").show();
+                } else {
+                    $(".discount").hide();
+                }
+            }
+        });
+        $("#couponType").combobox('setValue', '0');
+    })
+</script>

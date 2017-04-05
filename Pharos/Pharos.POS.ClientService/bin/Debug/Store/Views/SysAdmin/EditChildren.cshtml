@@ -1,0 +1,135 @@
+﻿@{
+    ViewBag.Title = "EditChildren";
+}
+
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'center',split:false,border:false">
+        <table id="treegrid"></table>
+    </div>
+</div>
+<script src="~/Scripts/managerlist.js"></script>
+
+<script type="text/javascript">
+    var $treegrid = $('#treegrid');
+    $treegrid.treegrid({
+        toolbar: '#toolbar',
+        border: false,
+        fit: true,
+        //fitColumns: true,
+        url: "@Url.Action("GetLimits")" + "?id=" + @ViewBag.Id +"&depth="+@ViewBag.Depth,
+        rownumbers: true,
+        idField: 'Id',
+        singleSelect: true,
+        treeField: 'Title',
+        columns: [[
+            { title: '功能名称', field: 'Title', width: 250 },
+            { title: '编码', field: 'LimitId', width: 100 },
+            {
+                title: '状态', field: 'Status', align: 'center', formatter: function (value, row) {
+                    return DealWithStatus(value);
+                }, width: 60
+            },
+            {
+                title: '操作', field: 'Id', align: 'center', formatter: function (value, row) {
+                    var operat = "";
+                    if (row.Depth > 3) {
+                        operat += "<a style='color:#555'>[添加]</a>&nbsp;&nbsp;&nbsp;";
+                    } else {
+                        operat += "<a href='javascript:addLimits(\"" + value + "\",\"" + row.LimitId + "\")'>[添加]</a>&nbsp;&nbsp;&nbsp;";
+                    }
+                    if (!(row.children != null && row.children.length > 0)&&!row.HasChild) {
+                        operat += '<a href=\'javascript:removeLimit("' + value + '")\'>[移除]</a>';
+                    } else {
+                        operat += '<a  style="color:#a3a3a3">[移除]</a>';
+
+                    }
+
+                    return operat;
+                }, width: 150
+            },
+
+        ]],
+        onClickCell: function (field, row) {
+            if (field == 'Title') {
+                openWin({ 'title': '编辑权限信息', 'width': 550, 'height': 350, 'url': "@Url.Action("LimitsSave")?id=" + row.Id + "&pobjid=" + row.PLimitId });
+            }
+        }
+    });
+    function changeStatus(status) {
+        return status > 0 ? "关闭" : "显示";
+    }
+    function DealWithStatus(status) {
+        switch (status) {
+            case 0:
+                return "关闭";
+            case 1:
+                return "显示";
+            case 2:
+                return "可选";
+            default:
+                return "未知";
+        }
+    }
+    function closeDialog() {
+        $treegrid.treegrid('reload');
+    }
+    function addLimits(id, pobjid) {
+        var level = $treegrid.treegrid("getLevel", id);
+        if (id) {
+            openWin({ 'title': level == 1 ? '新增权限' : "新增子权限", 'width': 550, 'height': 240, 'url': "@Url.Action("LimitsSave")?pobjid=" + pobjid + "&id=0" });
+        } else {
+            openWin({ 'title': '新增权限', 'width': 550, 'height': 240, 'url': "@Url.Action("LimitsSave")?id=0&pobjid=0" });
+        }
+    }
+    function removeLimit(id) {
+        id = getId(id);
+        if (!id) { return; }
+        $.messager.confirm('提示', "是否确定更改权限状态?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { id: id },
+                url: "@Url.Action("ChangeLimitStatusById")",
+                success: function (data) {
+                    $treegrid.treegrid('reload');
+
+                }, error: function (data) {
+                    $.messager.alert("提示", "权限状态更改失败！", "info");
+                }
+            });
+        });
+    }
+    @*function removeLimit(id) {
+        id = getId(id);
+        if (!id) { return; }
+        $.messager.confirm('提示', "是否确定移除该权限?", function (r) {
+            if (!r) {
+                return r;
+            }
+
+            $.ajax({
+                type: 'post',
+                data: { id: id },
+                url: "@Url.Action("RemoveLimitById")",
+                success: function (data) {
+                    //     $.messager.alert("提示", "移除机构（或部门）成功！", "info");
+                    $treegrid.treegrid('reload');
+
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除权限失败！", "info");
+
+                }
+            });
+        });
+    }*@
+    function getId(id) {
+        id = id || $treegrid.treegrid("getSelected").id;
+        if (!id) {
+            $.messager.alert("提示", "请选择一条数据！", "info");
+        }
+        return id;
+    }
+</script>
+

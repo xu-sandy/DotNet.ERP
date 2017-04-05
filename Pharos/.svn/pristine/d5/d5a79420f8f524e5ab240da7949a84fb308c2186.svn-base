@@ -1,0 +1,123 @@
+﻿@model Pharos.CRM.Retailing.Models.CompanyAuthorize
+@{
+    ViewBag.Title = "Register";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var msg = Request["msg"];
+}
+<style>
+    th {
+        text-align: right;
+    }
+    .textbox{height:120px!important;}
+</style>
+<div class="WebSettingBox" style="margin:20px auto;width:500px;">
+    @if (ViewBag.code == "404")
+    {
+        <div style="color:red;font-size:16px;height:26px;line-height:26px;">网络不通，请稍候重试！</div>
+    }
+    else if (Model == null)
+    {
+        <div class="default-form">
+            @using (Html.BeginForm())
+            {
+                @Html.HiddenFor(o => o.CID)
+                @Html.Hidden("hidadd", "1")
+                <div style="color:red;font-size:16px;height:26px;line-height:26px;">@msg</div>
+                if(msg.IsNullOrEmpty() || !msg.Contains("连接OMS"))
+                { 
+                <div>请输入序列号：<input type="text" name="serialNo" id="serialNo" class="easyui-textbox" data-options="required:true,multiline:true" style="width:400px;height:120px;"></div>
+                <div style="margin:10px 0 0 50px;">
+                    @*<a class="easyui-linkbutton cus4 linkbtn btn" href="@Url.Action("RegisterUpdate")" >返回修改</a>*@
+                    <a class="easyui-linkbutton cus4 linkbtn btn" href="#" onclick="$('form').submit()">注册激活</a>
+                </div>
+                }
+            }
+        </div>
+        <script type="text/javascript">
+            function Refresh() {
+                $.messager.alert("提示", "注册成功！", "info", function () {
+                    window.location.href = "@Url.Action("Login", "Account")";
+                });
+            }
+        </script>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="2" style="text-align:left">注册信息</th>
+                </tr>
+            </thead>
+            <tr>
+                <th>商户号：</th>
+                <td>@Html.DisplayTextFor(o => o.CID)</td>
+            </tr>
+            <tr>
+                <th>入驻方式：</th>
+                <td>@(Model.Way == 1 ? "在线" : "独立")</td>
+            </tr>
+            <tr>
+                <th>客户名称：</th>
+                <td>@Html.DisplayTextFor(o => o.Title)</td>
+            </tr>
+            <tr>
+                <th>开通版本：</th>
+                <td>@Html.DisplayTextFor(o => o.OpenVersion)</td>
+            </tr>
+            <tr>
+                <th>经营类目：</th>
+                <td>@Html.DisplayTextFor(o => o.OpenScopeId)</td>
+            </tr>
+            <tr>
+                <th>用户数量：</th>
+                <td>@Html.DisplayTextFor(o => o.UserNum)</td>
+            </tr>
+            <tr>
+                <th>门店数量：</th>
+                <td>@Html.DisplayTextFor(o => o.StoreNum)</td>
+            </tr>
+            <tr>
+                <th>分店专属后台：</th>
+                <td>@(Model.StoreProper == "Y" ? "是" : "否")</td>
+            </tr>
+            <tr>
+                <th>APP手机端：</th>
+                <td>@(Model.AppProper == "Y" ? "是" : "否")</td>
+            </tr>
+            <tr>
+                <th>POS次屏显示：</th>
+                <td>@(Model.PosMinorDisp == "Y" ? "是" : "否")</td>
+            </tr>
+            <tr>
+                <th>生效日期：</th>
+                <td>@Html.DisplayTextFor(o => o.EffectiveDT)</td>
+            </tr>
+            <tr>
+                <th>截止日期：</th>
+                <td>@Html.DisplayTextFor(o => o.ExpirationDT)</td>
+            </tr>
+            <tr>
+                <th>状态：</th>
+                <td>@(Model.StatusTitle)</td>
+            </tr>
+            <tr>
+                <td></td>
+                @*<td><a href="javascript:" class="easyui-linkbutton" onclick="window.location.href='@Url.Action("OutRegister", new { again = 1,cid=Model.CID })'">重新注册</a></td>*@
+            </tr>
+        </table>
+        <script type="text/javascript">
+            function registerAgain() {
+                $.messager.confirm("提示", "是否确定重新注册产品?", function (r) {
+                    if (!r) return;
+                    $.post("@Url.Action("RegisterAgain")", { t: Math.random() }, function (d) {
+                        if (d) {
+                            $.messager.al("提示", d);
+                        }else
+                            window.location.href = "@Url.Action("Register", new { again=1})";
+                    });
+                })
+            }
+        </script>
+    }
+</div>

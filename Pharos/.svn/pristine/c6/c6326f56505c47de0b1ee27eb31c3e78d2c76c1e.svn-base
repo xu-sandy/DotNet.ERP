@@ -1,0 +1,122 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <configSections>
+    <sectionGroup name="common">
+      <section name="logging" type="Common.Logging.ConfigurationSectionHandler, Common.Logging" />
+      <!--<section name="RedisConfig" type="Pharos.Infrastructure.Data.Redis.RedisConfiguration,Pharos.Infrastructure.Data" />-->
+    </sectionGroup>
+    <!-- For more information on Entity Framework configuration, visit http://go.microsoft.com/fwlink/?LinkID=237468 -->
+    <section name="entityFramework" type="System.Data.Entity.Internal.ConfigFile.EntityFrameworkSection, EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" requirePermission="false" />
+  </configSections>
+  <!--<RedisConfig ConnectionString="127.0.0.1:6379,password=pharos@2016" />-->
+
+  <!--<connectionStrings>
+    <add name="ConnectionString" connectionString="Data Source=192.168.10.126;Initial Catalog=Pharos_TestSync;Persist Security Info=True;User ID=pharos_admin;Password=pharos_admin;"/>
+  </connectionStrings>-->
+  <appSettings>
+    <add key="ConnEncrypt" value="False" />
+    <add key="aspnet:UseTaskFriendlySynchronizationContext" value="true" />
+    <add key="ConnectionString" value="Data Source=192.168.10.126;Initial Catalog=Pharos_TestSync;Persist Security Info=True;User ID=pharos_admin;Password=pharos_admin;" />
+  </appSettings>
+  <system.web>
+    <compilation debug="true" targetFramework="4.5" />
+    <!--请求大小限2048MB，最大超时限1h-->
+    <httpRuntime targetFramework="4.5" maxRequestLength="2097152" executionTimeout="3600" />
+  </system.web>
+  <system.serviceModel>
+    <bindings>
+      <wsHttpBinding>
+        <binding name="nonesecurity" maxReceivedMessageSize="2147483647" maxBufferPoolSize="2147483647">
+          <readerQuotas maxDepth="32" maxStringContentLength="2147483647" maxArrayLength="2147483647" maxBytesPerRead="2147483647" maxNameTableCharCount="2147483647" />
+          <!--<reliableSession enabled="true" />-->
+          <security mode="None">
+            <!--此属性控制安全上下文令牌是否通过客户端与服务之间的 WS-SecureConversation 交换建立。将它设置为 true 要求远程方支持 WS-SecureConversation。-->
+            <message establishSecurityContext="true" />
+          </security>
+        </binding>
+      </wsHttpBinding>
+
+     <netTcpBinding>
+        <binding name="netTcpBindConfig" closeTimeout="00:30:00" portSharingEnabled="true" openTimeout="00:30:00" receiveTimeout="00:30:00" sendTimeout="00:30:00" transactionFlow="false" transferMode="Buffered" transactionProtocol="OleTransactions" hostNameComparisonMode="StrongWildcard" listenBacklog="10" maxBufferPoolSize="2147483647" maxReceivedMessageSize="2147483647">
+          
+
+          <readerQuotas maxDepth="32" maxStringContentLength="2147483647" maxArrayLength="2147483647" maxBytesPerRead="2147483647" maxNameTableCharCount="2147483647" />
+          <!--<reliableSession enabled="true" />-->
+          <security mode="None" />
+        </binding>
+      </netTcpBinding>
+      
+    </bindings>
+    <services>
+      <service name="Pharos.SyncService.PosServerDbSyncService" behaviorConfiguration="MyBehavior">
+        <endpoint address="" binding="netTcpBinding" contract="Pharos.SyncService.IPosServerDbSyncService" bindingConfiguration="netTcpBindConfig"></endpoint>
+        <!-- 
+              Upon deployment, the following identity element should be removed or replaced to reflect the 
+              identity under which the deployed service runs.  If removed, WCF will infer an appropriate identity 
+              automatically.
+          -->
+
+        <!-- Service Endpoints -->
+        <!--<endpoint address="" binding="wsHttpBinding" bindingConfiguration="nonesecurity" contract="Pharos.SyncService.IPosServerDbSyncService">
+
+        </endpoint>-->
+        <endpoint address="mex" binding="mexTcpBinding" contract="IMetadataExchange" />
+      </service>
+    </services>    
+    <behaviors>
+      <serviceBehaviors>
+         <behavior name="MyBehavior">
+          <serviceMetadata />
+          <serviceDebug includeExceptionDetailInFaults="true" />
+          <dataContractSerializer maxItemsInObjectGraph="6553600" />
+        </behavior>
+        <!--<behavior name="ServiceBehavior">
+          --><!-- To avoid disclosing metadata information, set the value below to false and remove the metadata endpoint above before deployment --><!--
+          <serviceMetadata httpGetEnabled="true"/>
+          --><!-- To receive exception details in faults for debugging purposes, set the value below to true.  Set to false before deployment to avoid disclosing exception information --><!--
+          <serviceDebug includeExceptionDetailInFaults="true"/>
+        </behavior>-->
+      </serviceBehaviors>
+    </behaviors>
+    <protocolMapping>
+      <add binding="basicHttpsBinding" scheme="https" />
+      <add binding="wsHttpBinding" scheme="http" />
+    <add scheme="tcp" binding="netTcpBinding" />
+    </protocolMapping>
+    <serviceHostingEnvironment aspNetCompatibilityEnabled="true" multipleSiteBindingsEnabled="true" />
+  </system.serviceModel>
+  <system.webServer>
+    <modules runAllManagedModulesForAllRequests="true" />
+    <!--
+        若要在调试过程中浏览 Web 应用程序根目录，请将下面的值设置为 True。
+        在部署之前将该值设置为 False 可避免泄露 Web 应用程序文件夹信息。
+      -->
+    <directoryBrowse enabled="true" />
+  </system.webServer>
+  <entityFramework>
+    <defaultConnectionFactory type="System.Data.Entity.Infrastructure.SqlConnectionFactory, EntityFramework" />
+    <providers>
+      <provider invariantName="System.Data.SqlClient" type="System.Data.Entity.SqlServer.SqlProviderServices, EntityFramework.SqlServer" />
+    </providers>
+  </entityFramework>
+  <common>
+    <logging>
+      <factoryAdapter type="Common.Logging.Log4Net.Log4NetLoggerFactoryAdapter, Common.Logging.Log4Net1211">
+        <arg key="configType" value="FILE-WATCH" />
+        <arg key="configFile" value="~/Config/log4net.config" />
+      </factoryAdapter>
+    </logging>
+  </common>
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <assemblyIdentity name="Common.Logging.Core" publicKeyToken="af08829b84f0328e" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-3.3.1.0" newVersion="3.3.1.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Common.Logging" publicKeyToken="af08829b84f0328e" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-3.3.1.0" newVersion="3.3.1.0" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+</configuration>

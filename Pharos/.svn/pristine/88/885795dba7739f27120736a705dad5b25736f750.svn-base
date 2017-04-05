@@ -1,0 +1,65 @@
+﻿using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class SalesReturnsService : BaseGeneralService<Pharos.Logic.Entity.SalesReturns, EFDbContext>
+    {
+        public static void DayMonthReport(DateTime from, DateTime to, ref DayReportResult result, string storeId, string machineSn = "")
+        {
+            var entities = CurrentRepository.Entities.Where(o => o.CreateDT >= from && (o.ReturnType == 0 || o.ReturnType == 2) && o.CreateDT < to && o.StoreId == storeId);
+            if (!string.IsNullOrEmpty(machineSn))
+            {
+                entities = entities.Where(o => o.MachineSN == machineSn);
+            }
+            //用户
+            var users = (from a in entities
+                         from b in SysStoreUserInfoService.CurrentRepository.Entities
+                         where a.CreateUID == b.UID
+                         select new { b.UserCode, a.CreateUID, b.FullName }
+                             ).ToList();
+            var refundDict = entities.GroupBy(o => o.CreateUID, o => o.ReturnPrice).ToDictionary(o => o.Key, o => o.Sum());
+            foreach (var item in refundDict)
+            {
+                var record = result.SalesmanRecords.FirstOrDefault(o => o.UserCode == item.Key);
+                var user = users.FirstOrDefault(o => o.CreateUID == item.Key);
+
+                if (record == null)
+                {
+
+                    record = new SalesmanDayReportResult()
+                    {
+                        UserCode = user.UserCode,
+                        Salesman = user.FullName,
+                        StartTime = DateTime.Now,
+                        EndTime = DateTime.Now,
+                        Sale = new SalesmanDayReportSaleResult()
+                        {
+                            SaleInfo = new DayReportDetailItem() { Number = 0, Amount = 0m, Project = "销售合计" },
+                            PayWay = new List<PayWayItem>()
+                        },
+                        Other = new List<DayReportDetailItem>()
+                    };
+                    result.SalesmanRecords.Add(record);
+                }
+                record.Other.Add(new DayReportDetailItem()
+                {
+                    Project = "退货合计",
+                    Amount = refundDict[item.Key],
+                    Number = entities.Where(o => o.CreateUID == item.Key).Count()
+                });
+            }
+            result.Summary.Add(new DayReportDetailItem()
+            {
+                Project = "退货合计",
+                Amount = refundDict.Sum(o => o.Value),
+                Number = entities.Count()
+            });
+        }
+    }
+}

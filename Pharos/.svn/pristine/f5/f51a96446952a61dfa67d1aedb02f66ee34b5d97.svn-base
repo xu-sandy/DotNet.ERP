@@ -1,0 +1,242 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.供应合同_新增合同);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.供应合同_查看合同) || !hideAdd; 
+    var hidePass = !CurrentUser.HasPermiss(SysConstLimits.供应合同_审批通过);
+    var hideSubmit = !CurrentUser.HasPermiss(SysConstLimits.供应合同_提交审批);
+    var hideGoon = !CurrentUser.HasPermiss(SysConstLimits.供应合同_续签合同);
+    var hideStop = !CurrentUser.HasPermiss(SysConstLimits.供应合同_中止合同);
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.供应合同_删除合同);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增合同", hideDel: true, editText: "修改合同",hideAdd:hideAdd));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>合同状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("state", ViewBag.states as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+            </td>
+            <td class="label-toolbar">
+                <label>创建人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.UserCombobox("createUID")
+            </td>
+            <td class="label-toolbar">
+                <label>签订日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="beginSigningDate" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td>
+                <label style="width:10px;margin-left:7px;margin-right:7px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="endSigningDate" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+        </tr>
+    </table>
+}
+@*
+    //todo:后续开发还需要做：打印合同的功能
+    @section toolbar
+    {
+        <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-print'" onclick="print()">打印合同</a>
+    }
+*@
+<script type="text/javascript">
+
+    pharos.manager.geturl = "@Url.Action("FindPageList")";
+    pharos.manager.editurl = "@Url.Action("AddContract")";
+
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+                { field: 'Id', hidden: 'hidden', width: 30 },
+                { field: 'ContractSN', title: '合同编号', width: 100, align: 'center' },
+                { field: 'StateTitle', title: '审批状态', width: 70, align: 'center' },
+                { field: 'Title', title: '合同名称', width: 120, align: 'center' },
+                { field: 'AttCount', title: '附件个数', width: 80, align: 'center', formatter: function (value, row, index) { return (row.AttCount == 0 || row.AttCount == "" || row.AttCount == null) ? 0 : row.AttCount; } },
+                { field: 'Version', title: '版本类型', width: 80, align: 'center' },
+                { field: 'ClassifyTitle', title: '分类', width: 80, align: 'center' },
+                { field: 'SupplierTitle', title: '供应商', width: 80, align: 'center' },
+                { field: 'StartDate', title: '生效日期', width: 80, align: 'center' },
+                { field: 'EndDate', title: '结束日期', width: 80, align: 'center' },
+                { field: 'CreateDT', title: '创建时间', width: 80, align: 'center' },
+                { field: 'CreateTitle', title: '创建人', width: 70, align: 'center' },
+                { field: 'isExtend', hidden: 'hidden', title: '是否续签', width: 0, align: 'center' },
+                {
+                    title: '操作', field: 'Editor', width: 105, formatter: function (value, row, index) {
+                        var html = "<a href='javascript:void(0)'></a>";
+                        var arr = row.EndDate.split('-');
+                        var endValue = Number(arr[0] + arr[1] + arr[2]);
+                        var month=(arr[1] - 1 < 10 ? "0" + (arr[1] - 1).toString() : arr[1] - 1);
+
+                        var endLastMonth = Number(arr[0] + month + arr[2]);
+
+                        var tarr = getToday().split('-');
+                        var today = Number(tarr[0] + tarr[1] + tarr[2]);
+
+                        var lastMonth = Number(getLastMonth());
+                        var preDate = DateDiff(getToday(),row.EndDate);
+                       
+                        if (row.StateTitle == "未提交") {
+                            @if (!hideSubmit) { 
+                                @:html = "<a href='javascript:void(0)' onclick=\"setState_Editor('" + row.Id + "',1)\" >[提交审批]</a>";
+                            }
+                            @if(!hideDel)
+                            { 
+                                @:html += "  <a href='javascript:void(0)' onclick='pharos.manager.removeItem(\"" + row.Id + "\")' >[删除]</a>";
+                            }
+                        }
+                        if (row.StateTitle == "待审批") {
+                            @if(!hidePass)
+                            { 
+                                @:html = "<a href='javascript:void(0)' onclick=\"setState_Editor('" + row.Id + "',2)\">[审批通过]</a>";
+                            }
+                        }
+                        if (row.StateTitle == "已审批" && endValue > today) {
+                            @if(!hideStop)
+                            { 
+                                @:html = "<a href='javascript:void(0)' onclick=\"setState_Editor('" + row.Id + "',3)\">[中止]</a>";                          
+                            }
+                        }                      
+                        if (row.StateTitle == "已中止" )
+                            html = "<a href='javascript:void(0)'></a>";
+
+                        if (row.StateTitle == "已结束" || (row.StateTitle == "已审批" && endValue <= today))
+                            @if (!hideGoon) { 
+                                @:html = " <a href='javascript:void(0)' onclick=\"EntendContract('" + row.Id + "')\">[续签]</a>";
+                            }
+  
+                        if (((row.StateTitle == "已结束") || (row.StateTitle == "已审批" && endValue <= today) ) && (row.isExtend != "") && (row.isExtend != null))
+                            html = "<a href='javascript:void(0)' onclick=\"\" style='color:#a3a3ab; cursor:default'>[续签]</a>";
+
+                        if (row.StateTitle == "已审批" && endValue > today && today <= endValue && today >= endLastMonth) {
+                            @if(!hideStop)
+                            { 
+                                @:html = "<a href='javascript:void(0)' onclick=\"setState_Editor('" + row.Id + "',3)\">[中止]</a>";
+                            }
+                            @if (!hideGoon) { 
+                                @:html += " <a href='javascript:void(0)' onclick=\"EntendContract('" + row.Id + "')\">[续签]</a>";
+                            }
+                        }
+
+                        if (((row.StateTitle == "已结束") || (row.StateTitle == "已审批" && endValue > today && today <= endValue && today >= endLastMonth)) && (row.isExtend != "") && (row.isExtend != null)) {
+                            @if(!hideStop)
+                            { 
+                                @:html = "<a href='javascript:void(0)' onclick=\"setState_Editor('" + row.Id + "',3)\">[中止]</a>";
+                            }
+                            html += " <a href='javascript:void(0)' onclick=\"\" style='color:#a3a3ab; cursor:default'>[续签]</a>";
+                        }
+                        return html;
+                    }
+                }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog(this.addText, this.editurlNocache(), $(window.parent).width() - 200, $(window.parent).height() - 50);
+    }
+
+    pharos.manager.editItem = function (Id, row) {
+        if(row.StateTitle == "已审批" || row.StateTitle == "已结束" || row.state == "已中止")
+        {
+            @if(showDetail)
+            {
+                @:openDialog(this.detailText, this.editurlNocache() + "&Id=" + Id, $(window.parent).width() - 200, $(window.parent).height() - 50,true);
+            }
+        }else{
+            @if (!hideAdd)
+            {
+                @:openDialog(this.editText, this.editurlNocache() + "&Id=" + Id, $(window.parent).width() - 200, $(window.parent).height() - 50);
+            }
+        }
+    }
+
+    function setState_Editor(id, state) {
+        $.post("@Url.Action("setState_Editor")", { id: id, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+    function editBefore(row, field) {
+        if (field == "Editor") {
+            return false;
+        }
+        if (row.StateTitle == "已审批" || row.StateTitle == "已中止" || row.StateTitle == "已结束") {
+            @if(showDetail)
+            {
+                @:openDialog("查看详情", "@Url.Action("ContractDetail")?id=" + row.Id + "&t=" + Math.random(), $(window.parent).width() - 200, $(window.parent).height() - 100, true);
+                @:return false;
+            }
+        }
+        return true;
+    }
+
+    function EntendContract(id) {
+        openDialog("合同续签", "@Url.Action("EntendContract")?id=" + id, $(window.parent).width() - 200, $(window.parent).height() - 50);
+    }
+
+    function getToday() {
+        var date = new Date();
+        var y = date.getFullYear();
+        var m = date.getMonth() + 1;
+        m = m < 10 ? ('0' + m) : m;
+        var d = date.getDate();
+        d = d < 10 ? ('0' + d) : d;
+        //var today = y + m + d;
+        var today = y+"-" + m+"-" + d;
+        return today;
+    }
+    function getLastMonth() {
+        var date = new Date();
+        var y = date.getFullYear();
+        var m = date.getMonth();
+        m = ((m == 0) ? (12) : (m));
+        m = m < 10 ? ('0' + m) : m;
+        var d = date.getDate();
+        d = d < 10 ? ('0' + d) : d;
+        var lastMonth = y + m + d;
+        return lastMonth;
+    }
+    function getLastMonth() {
+        var date = new Date();
+        var y = date.getFullYear();
+        var m = date.getMonth();
+        m = ((m == 0) ? (12) : (m));
+        m = m < 10 ? ('0' + m) : m;
+        var d = date.getDate();
+        d = d < 10 ? ('0' + d) : d;
+        var lastMonth = y + m + d;
+        return lastMonth;
+    }
+
+    //计算日期之差
+    function getDays(strDateStart, strDateEnd) {      
+        iDays = parseInt((strDateStart - strDateEnd) / 1000 / 60 / 60 / 24)//把相差的毫秒数转换为天数 
+        return iDays;
+    }
+
+
+
+    //计算天数差的函数，通用  
+    function DateDiff(sDate1, sDate2) {    //sDate1和sDate2是2006-12-18格式  
+        var aDate, oDate1, oDate2, iDays
+        aDate = sDate1.split("-")
+        oDate1 = new Date(aDate[1] + '-' + aDate[2] + '-' + aDate[0])    //转换为12-18-2006格式  
+        aDate = sDate2.split("-")
+        oDate2 = new Date(aDate[1] + '-' + aDate[2] + '-' + aDate[0])
+        iDays = parseInt((oDate1 - oDate2) / 1000 / 60 / 60 / 24)    //把相差的毫秒数转换为天数  
+        return iDays
+    }
+
+
+</script>

@@ -1,0 +1,107 @@
+﻿using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Pharos.Logic.BLL;
+using Pharos.Logic.Entity;
+using Pharos.Logic;
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class DanpinZhekouController : BaseController
+    {
+        //
+        // GET: /DanpinZhekou/
+
+        public ActionResult Index()
+        {
+            ViewBag.parenttypes = ListToSelect(ProductCategoryService.GetParentTypes().Select(o => new SelectListItem() { Value = o.CategorySN.ToString(), Text = o.Title }), emptyTitle: "全部");
+            ViewBag.states = EnumToSelect(typeof(SaleState),emptyTitle:"全部");
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindPageList()
+        {
+            int count = 0;
+            var list = CommodityPromotionService.DanPingPageList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+        [HttpPost]
+        public ActionResult LoadDetailList(string zhekouId)
+        {
+            int count = 0;
+            var list = CommodityPromotionService.FindDanPingDetailsById(zhekouId, out count);
+            return ToDataGrid(list, count);
+        }
+        public ActionResult Save(int? id)
+        {
+            ViewBag.customers = EnumToSelect(typeof(CustomerType),selectValue:0);
+            ViewBag.ways = EnumToSelect(typeof(DiscountWay),selectValue:1).ToJson();
+            ViewBag.shops = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "全部",emptyValue:"-1");
+            ViewBag.times = CommonRules.TimeLines;
+            var obj = new CommodityPromotion();
+            if (id.HasValue)
+            {
+                var detail = BaseService<CommodityDiscount>.FindById(id);
+                obj = CommodityPromotionService.FindById(detail.CommodityId);
+                if (obj.Timeliness == 1)
+                    ViewBag.times = new List<string>() { obj.StartAging1, obj.EndAging1, obj.StartAging2, obj.EndAging2, obj.StartAging3, obj.EndAging3 };
+            }
+            return View(obj.IsNullThrow());
+        }
+        [HttpPost]
+        [SysPermissionValidate(Code = Sys.SysConstLimits.促销管理_创建促销)]
+        public ActionResult Save(CommodityPromotion obj)
+        {
+            obj.StoreId = Request["StoreId"];
+            var re = CommodityPromotionService.DanPingSaveOrUpdate(obj, Request["Times"]);
+            return Content(re.ToJson());
+        }
+        [HttpPost]
+        [SysPermissionValidate(Code = Sys.SysConstLimits.促销管理_移除促销)]
+        public ActionResult Delete(long[] ids)
+        {
+            var re = CommodityDiscountService.DeleteById(ids);
+            return new JsonNetResult(re);
+        }
+        [HttpPost]
+        [SysPermissionValidate(Code = Sys.SysConstLimits.促销管理_状态设定)]
+        public ActionResult SetState(string ids, short state)
+        {
+            var sid = ids.Split(',').Distinct();
+            var list = CommodityPromotionService.FindList(o => sid.Contains(o.Id));
+            list.ForEach(o => { o.State = state; });
+            var re = CommodityPromotionService.Update(list);
+            return new JsonNetResult(re);
+        }
+        public ActionResult Detail(int? id, string commodityId)
+        {
+            ViewBag.customers = EnumToSelect(typeof(CustomerType), selectValue: 0);
+            ViewBag.shops = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "全部");
+            ViewBag.times = CommonRules.TimeLines;
+            var obj = new CommodityPromotion();
+            if (id.HasValue)
+            {
+                var detail = BaseService<CommodityDiscount>.FindById(id);
+                obj = CommodityPromotionService.FindById(detail.CommodityId);
+                if (obj.Timeliness == 1)
+                    ViewBag.times = new List<string>() { obj.StartAging1, obj.EndAging1, obj.StartAging2, obj.EndAging2, obj.StartAging3, obj.EndAging3 };
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(commodityId))
+                {
+                    obj = CommodityPromotionService.FindById(commodityId);
+                    if (obj.Timeliness == 1)
+                        ViewBag.times = new List<string>() { obj.StartAging1, obj.EndAging1, obj.StartAging2, obj.EndAging2, obj.StartAging3, obj.EndAging3 };
+                }
+            }
+            return View(obj.IsNullThrow());
+        }
+
+    }
+}

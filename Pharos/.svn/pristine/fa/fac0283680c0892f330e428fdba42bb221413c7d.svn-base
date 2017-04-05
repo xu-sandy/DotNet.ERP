@@ -1,0 +1,25 @@
+﻿using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.SyncService.SyncEntities
+{
+    public class SingleSyncDataObject<T> : SyncDataObject
+    {
+        public T Enity { get; set; }
+
+        public T InitDbEntity(T dbEnity)
+        {
+            var type = typeof(T);
+            var properties = type.GetProperties();
+            foreach (var item in properties)
+            {
+                if (item.CanWrite)
+                    item.SetValue(dbEnity, item.GetValue(Enity, null), null);
+            }
+            return dbEnity;
+        }
+    }
+}

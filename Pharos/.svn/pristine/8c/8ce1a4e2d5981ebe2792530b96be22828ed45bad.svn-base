@@ -1,0 +1,82 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: false, hideDel: true));
+    var hasModifyAuthority = false;//是否有修改订单权限
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" id="date" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',maxDate:'#F{$dp.$D(\'date2\')}'})" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+            </td>
+            <td>-</td>
+            <td class="input-toolbar">
+                <input name="date2" id="date2" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',minDate:'#F{$dp.$D(\'date\')}'})" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datecontrol", data_options = (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelHeight:'auto',panelMaxHeight:200" })
+            </td>
+            <td class="label-toolbar">
+                <label>收银员：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("cashier", ViewBag.cashiers as List<SelectListItem>, new { @class = "easyui-combobox datecontrol", data_options = "editable:false,panelHeight:'auto',panelMaxHeight:200" })
+            </td>
+            <td class="label-toolbar">
+                <label>导购员：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("saler", ViewBag.salers as List<SelectListItem>, new { @class = "easyui-combobox datecontrol", data_options = "editable:false,panelHeight:'auto',panelMaxHeight:200" })
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+<script type="text/javascript">
+    pharos.manager.editurl = "@Url.Action("SaleOrderDetail")";
+    pharos.manager.pagination = true;
+    pharos.manager.showFooter = true;
+    pharos.manager.columns = [[
+        { field: 'Store', title: '门店', width: 150 },
+        { field: 'PaySNFormat', title: '流水号', width: 150 },
+
+        { field: 'BarcodeFormat', title: '条码', width: 110 },
+        { field: 'Title', title: '品名', width: 150 },
+        { field: 'SalesClassifyId', title: '销售方式', width: 60 },
+        { field: 'PurchaseNumber', title: '销售数量', width: 80 },
+        { field: 'SysPrice', title: '系统售价', width: 80 },
+        { field: 'ActualPrice', title: '实际售价', width: 80 },
+
+        { field: 'TotalAmount', title: '销售金额', width: 80 },
+        { field: 'PreferentialPrice', title: '优惠', width: 80 },
+        { field: 'ApiTitle', title: '结算方式', width: 100 },
+        { field: 'CreateDT', title: '销售时间', width: 150 },
+        { field: 'Cashier', title: '收银员', width: 80 },
+        { field: 'Saler', title: '导购员', width: 80 },
+    ]];
+    pharos.manager.editItem = function (id, row) {
+        openDialog("订单详情", "@Url.Action("SaleOrderDetail")?paysn=" + row.PaySN + "&" + $('#frmsearch').serialize(), 900, 560, @(hasModifyAuthority?"false":"true"));
+    };
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'CreateDT', columns: ['Store', 'CreateDT', 'Cashier', 'Saler', 'PaySNFormat', 'TotalAmount', 'PreferentialPrice', 'ApiTitle'] });
+    }
+
+    function Export() {
+        var date = $("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        window.location.href = '@Url.Action("ForegroundSaleOrderExport", "Report")?' + $('#frmsearch').serialize();
+    }
+</script>

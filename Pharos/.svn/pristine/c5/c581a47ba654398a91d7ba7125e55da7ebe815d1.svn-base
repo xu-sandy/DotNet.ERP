@@ -1,0 +1,414 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  AgentsInfo
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    //结算账户
+    BankCardInfo card = ViewBag.BankCardInfo as BankCardInfo;
+    //支付渠道
+    AgentPay agentPay = ViewBag.AgentPay as AgentPay;
+}
+
+<style type="text/css">
+    .formbox td {
+        padding: 5px 0px;
+    }
+
+    .a_del a {
+        color: #8cc152;
+    }
+
+    .a_del {
+        color: #8cc152;
+    }
+
+    #tr_OrderList td div {
+        height: 28px;
+        line-height: 28px;
+        overflow: hidden;
+        margin: 5px 0px;
+    }
+
+        #tr_OrderList td div span {
+            display: block;
+            float: left;
+            width: 200px;
+            overflow: hidden;
+        }
+
+    #tab {
+        overflow: hidden;
+    }
+
+        #tab a {
+            display: block;
+            width: 100px;
+            height: 35px;
+            line-height: 35px;
+            text-align: center;
+            color: #232323;
+            font-size: 104%;
+            float: left;
+            border: 1px solid #d4d4d4;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        #tab .sel {
+            background-color: #d4d4d4;
+        }
+
+    #tabSummary {
+        border-collapse: collapse;
+    }
+
+        #tabSummary, #tabSummary th, #tabSummary td {
+            border: 1px solid #ccc;
+        }
+
+            #tabSummary td {
+                padding: 7px 0px;
+            }
+
+                #tabSummary td .noedit {
+                    border: 0px;
+                    text-align: center;
+                }
+
+
+    #table_OrderList {
+        border-collapse: collapse;
+    }
+
+        #table_OrderList, #table_OrderList th, #table_OrderList td {
+            border: 1px solid #ccc;
+        }
+
+            #table_OrderList td {
+                padding: 7px;
+            }
+</style>
+
+<script type="text/javascript">
+
+    //加载次数
+    var loadNum = 0;
+
+    //加载省份
+    function loadProvince() {
+        $('#Province').combobox({
+            url: '/Member/getProvince',
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: false,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                loadCity(newValue);
+                loadDistrict(0);
+            },
+            onLoadSuccess: function () {
+                $(this).combobox('setValue', '@Model.CurrentProvinceId');
+                //所有客户
+                if (all == "0") {
+                    $(this).combobox("readonly");
+                }
+            }
+        });
+
+    }
+
+    //加载城市
+    function loadCity(provinceKey) {
+        $('#City').combobox({
+            url: '/Member/getCity?ProvinceID=' + provinceKey,
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: isRequired,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                loadDistrict(newValue);
+            },
+            onLoadSuccess: function () {
+                if (loadNum<2)
+                {
+                    $(this).combobox('setValue', '@Model.CurrentCityId');
+                }
+                //所有客户
+                if (all == "0") {
+                    $(this).combobox("readonly");
+                }
+            }
+        });
+
+    }
+
+    //加载区县
+    function loadDistrict(cityKey) {
+        $('#District').combobox({
+            url: '/Member/getDistrict?CityID=' + cityKey,
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            required: isRequired,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            width: 130,
+            onLoadSuccess: function () {
+                if (loadNum < 2)
+                {
+                    $(this).combobox('setValue', '@Model.CurrentCounty');
+                }
+                //所有客户
+                if (all == "0") {
+                    $(this).combobox("readonly");
+                }
+                //加载次数
+                loadNum = loadNum + 1;
+            }
+        });
+    }
+
+    //加载省市区
+    function loadPCD() {
+        loadProvince();
+    }
+
+    $(function () {
+
+        loadPCD();
+
+        $("#tab a").click(function (){
+            v=$(this).attr("v");
+            $("#tab a").removeClass("sel");
+            $(this).addClass("sel");
+            $(".formbox").hide();
+            $("."+v).show();
+        }).eq(0).trigger("click");
+
+        //上级代理商编号
+        $("#PAgentsId").next().find(".combo-arrow").removeClass("combo-arrow");
+
+        //成本费率、下级费率
+        var cl = $("input[txt=cl]");
+
+
+        cl.keyup(function () {
+            //单价只能输入两个小数
+            $(this).val($(this).val().replace(/[^\d.]/g, "")); //清除"数字"和"."以外的字符
+            $(this).val($(this).val().replace(/^\./g, "")); //验证第一个字符是数字而不是
+            $(this).val($(this).val().replace(/\.{2,}/g, ".")); //只保留第一个. 清除多余的
+            $(this).val($(this).val().replace(".", "$#$").replace(/\./g, "").replace("$#$", "."));
+            $(this).val($(this).val().replace(/^(\-)*(\d+)\.(\d\d).*$/, '$1$2.$3')); //只能输入两个小数
+            if ($(this).val() == "") {
+                var p = 0.00;
+                $(this).val(p.toFixed(2));
+            }
+        }).css("ime-mode", "disabled");   //CSS设置输入法不可用
+        //失去焦点
+        cl.blur(function () {
+            //保留两位小数（四舍五入）
+            $(this).val(parseFloat($(this).val()).toFixed(2));
+        });
+
+    });
+
+    function SaveBefore() {
+        addOrderList();
+        addVisitTrack();
+        //禁用验证
+        dis();
+        return true;
+    }
+
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        $.ajax({
+            url: "@Url.Action("getUserWhere", "Plan")",
+            type: "post",
+        data: {
+            //传值，还是JSON数据搜索
+            keyword: q
+        },
+        dataType: "json",
+        success: function (data) {
+            comboRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function (item) {
+                return { UserId: item.UserId, FullName: item.FullName };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm(new { enctype = "multipart/form-data" }))
+    {
+
+        <div class="content">
+
+            <div id="tab">
+                <a href="javascript:;" v="tab1">基本信息</a>
+                <a href="javascript:;" v="tab2" style="border-left-style:none; border-right-style:none;">结算账户</a>
+                <a href="javascript:;" v="tab3">支付渠道</a>
+            </div>
+
+            <div class="formbox tab1" style="border-bottom:0px; display:none;">
+                <table class="table-form" width="100%" height="100px">
+
+                    <tr>
+                        <td class="name">代理商类型：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.Type, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name" style="width:8%;">代理商简称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Name, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'限20个字符',validType: 'length[1,20]',width:120" })</td>
+                        <td class="name">代理商全称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'限50个字符',validType: 'length[1,50]',width:140" })</td>
+                        <td class="name" style="width:8%;">代理商状态：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.Status, ViewBag.ModeId as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">有效期：</td>
+                        <td class="input" colspan="7">
+                            @Html.DropDownListFor(o => o.ValidityYear, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })
+                            &nbsp;&nbsp;
+                            @Html.TextBoxFor(o => o.StartTime, new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'',width:120" }) - @Html.TextBoxFor(o => o.EndTime, new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'',width:120" })
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">代理区域：</td>
+                        <td class="input" colspan="7">
+                            <input id="Province" name="CurrentProvinceId" class="easyui-combobox datacontrol" /> - <input id="City" name="CurrentCityId" class="easyui-combobox datacontrol" />
+                            &nbsp;
+                            <a href="javascript:;" class="easyui-linkbutton" onclick="addArea()" id="addVisit">添加区域</a>
+                            &nbsp;
+                            <input type="text" value="@ViewBag.AgentAreaIdsName" class="easyui-textbox" data-options="novalidate:true,required:true,prompt:'支持添加多个代理区域',width:200" />
+                            <input type="hidden" value="" name="AgentAreaIds">
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">上级代理商编号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.PAgentsId, new { @class = "easyui-combobox", data_options = "required:true,prompt:'请输入',width:120,editable:true,mode:'remote',valueField:'CID',textField:'CID',loader:comboload" })</td>
+                        <td class="name">合同编号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Contract, new { @class = "easyui-textbox", data_options = "prompt:'合同编号',validType:'length[0,20]',width:120" })</td>
+                        <td class="name">法人姓名：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.CorporateName, new { @class = "easyui-textbox", data_options = "required:true,prompt:'法人姓名',validType:'length[1,20]',width:120" })</td>
+                        <td class="name">法人身份证号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.IdCard, new { @class = "easyui-textbox", data_options = "required:true,prompt:'限20个字符',validType:'length[1,20]',width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">证件照：</td>
+                        <td class="input" colspan="7">
+                            <input type="text" class="easyui-filebox" name="IdCardPhoto" data-options="buttonText:'选择文件',prompt:'请选择证件照',required:false,missingMessage:'请选择证件照'" style="width:300px;" />
+                            &nbsp;
+                            <img src=""  style="width:100px; height:100px;"/>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">公司电话：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.CompanyPhone, new { @class = "easyui-textbox", data_options = "required:false,prompt:'公司电话',validType:'length[7,20]',width:120" })</td>
+                        <td class="name">公司地址：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Address, new { @class = "easyui-textbox", data_options = "prompt:'公司地址',validType:'length[0,100]',width:120" })</td>
+                        <td class="name">联系人：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.LinkMan, new { @class = "easyui-textbox", data_options = "required:true,prompt:'联系人',validType:'length[1,20]',width:120" })</td>
+                        <td class="name">联系电话1：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Phone1, new { @class = "easyui-textbox", data_options = "required:true,prompt:'联系电话1',validType:'length[1,20]',width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">联系电话2：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Phone2, new { @class = "easyui-textbox", data_options = "required:false,prompt:'联系电话2',validType:'length[7,20]',width:120" })</td>
+                        <td class="name">QQ：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.QQ, new { @class = "easyui-textbox", data_options = "prompt:'QQ',validType:'length[0,20]',width:120" })</td>
+                        <td class="name">Email：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Email, new { @class = "easyui-textbox", data_options = "required:false,prompt:'邮箱',validType:'length[1,50]',width:120" })</td>
+                        <td class="name">微信号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Weixin, new { @class = "easyui-textbox", data_options = "required:false,prompt:'微信号',validType:'length[1,50]',width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">指派人：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AssignUid, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox tab2" style="display:none;border-bottom:0px;">
+
+                <table class="table-form" width="100%" >
+                  
+                    <tr>
+                        <td class="name">结算银行机构：</td>
+                        <td class="input"><input name="Agency" type="text" value="@card.Agency" data-options="novalidate:true,required:true,prompt:'限100个字符',validtype: 'length[1,100]' ,width:120" /></td>
+                        <td class="name" style="width:8%;">结算账户类型：</td>
+                        <td class="input">@Html.DropDownList("BillingType", ViewBag.BiType as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name">结算卡号：</td>
+                        <td class="input"><input name="CardNum" type="text" value="@card.CardNum" data-options="novalidate:true,required:true,prompt:'限50个字符',validtype: 'length[1,50]' ,width:120" /></td>
+                        <td class="name" style="width:8%;">账户名称：</td>
+                        <td class="input"><input name="CardName" type="text" value="@card.CardName" data-options="novalidate:true,required:true,prompt:'账户名称',validtype: 'length[1,50]' ,width:120" /></td>
+                    </tr>
+
+                    <tr>
+                        <td class="name" style="width:8%;">账户状态：</td>
+                        <td class="input">
+                            <select id="Status" class="easyui-combobox datacontrol" name="Status" style="width:120px;">
+                                <option value="1" @(Html.Raw(card.Status == 1 ? "selected=\"selected\"" : ""))>已启用</option>
+                                <option value="0" @(Html.Raw(card.Status == 0 ? "selected=\"selected\"" : ""))>未启用</option>
+                                <option value="2" @(Html.Raw(card.Status == 2 ? "selected=\"selected\"" : ""))>已停用</option>
+                            </select> 
+                        </td>
+                    </tr>
+
+                </table>
+
+            </div>
+
+            <div class="formbox tab3" style="display:none; border-bottom:0px;">
+                <table class="table-form" width="100%" >
+                    <tr>
+                        <td class="name">交易支付通道：</td>
+                        <td class="input">@Html.DropDownList("PayChannel", ViewBag.PayC as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name" style="width:8%;">成本费率（%）：</td>
+                        <td class="input"><input name="Cost" txt="cl" maxlength="5" type="text" value="@agentPay.Cost" data-options="novalidate:true,required:true,prompt:'成本费率' ,width:120" /></td>
+                        <td class="name">下级费率（%）：</td>
+                        <td class="input"><input name="Lower" txt="cl" maxlength="5" type="text" value="@agentPay.Lower" data-options="novalidate:true,required:true,prompt:'下级费率',width:120" /></td>
+                        <td class="name" style="width:8%;">通道状态：</td>
+                        <td class="input">
+                            <select id="payStatus" class="easyui-combobox datacontrol" name="payStatus" style="width:120px;">
+                                <option value="1" @(Html.Raw(agentPay.Status == 1 ? "selected=\"selected\"" : ""))>已启用</option>
+                                <option value="0" @(Html.Raw(agentPay.Status == 0 ? "selected=\"selected\"" : ""))>未启用</option>
+                                <option value="2" @(Html.Raw(agentPay.Status == 2 ? "selected=\"selected\"" : ""))>已停用</option>
+                            </select> 
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+        </div>
+    }
+</div>
+

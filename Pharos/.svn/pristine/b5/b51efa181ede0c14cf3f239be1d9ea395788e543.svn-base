@@ -1,0 +1,121 @@
+﻿using Pharos.Logic.MemberDomain.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+
+namespace Pharos.Logic.MemberDomain
+{
+    /// <summary>
+    /// 基础积分规则提供程序
+    /// </summary>
+    /// <typeparam name="TScene"></typeparam>
+    public abstract class BaseIntegralRuleProvider<TScene> : IIntegralRuleProvider
+        where TScene : IScene, new()
+    {
+        /// <summary>
+        /// 提供程序ID
+        /// </summary>
+        public virtual int ProviderId
+        {
+            get { return GetProviderId(); }
+        }
+        /// <summary>
+        /// 获取规则数据
+        /// </summary>
+        /// <param name="info">参数信息</param>
+        /// <returns>提供程序的规则</returns>
+        public abstract IEnumerable<IIntegralRule> GetRuleDatas(object info = null);
+        /// <summary>
+        /// 获取提供程序ID
+        /// </summary>
+        public abstract int GetProviderId();
+        /// <summary>
+        /// 获取规则数据
+        /// </summary>
+        /// <param name="info">参数信息</param>
+        /// <returns>提供程序的规则</returns>
+        public IEnumerable<IIntegralRule> GetRules(object info = null)
+        {
+            return GetRuleDatas(info);
+        }
+        /// <summary>
+        /// 获取所有计量方式
+        /// </summary>
+        /// <param name="providerRules">规则</param>
+        /// <returns>所有计量方式</returns>
+        public virtual IEnumerable<int> GetMeteringModes(IEnumerable<IIntegralRule> providerRules)
+        {
+            return providerRules.Select(o => o.MeteringMode).Distinct();
+        }
+        /// <summary>
+        /// 验证规则有效性
+        /// </summary>
+        /// <param name="providerRules">规则</param>
+        /// <param name="scene">场景数据</param>
+        /// <returns>有效规则</returns>
+        public virtual IEnumerable<IIntegralRule> VerifyRules(IEnumerable<IIntegralRule> providerRules, TScene scene)
+        {
+            return providerRules.Where(item =>
+            {
+                var rule = (IIntegralRule<TScene>)item;
+                return rule.VerifyExpression.Compile()(scene);
+            }).ToList();
+        }
+        /// <summary>
+        /// 验证规则有效性
+        /// </summary>
+        /// <param name="providerRules">规则</param>
+        /// <param name="scene">场景数据</param>
+        /// <returns>有效规则</returns>
+        public virtual IEnumerable<IIntegralRule> VerifyRules(IEnumerable<IIntegralRule> providerRules, IScene scene)
+        {
+            return VerifyRules(providerRules, (TScene)scene);
+        }
+        /// <summary>
+        /// 计算积分规则
+        /// </summary>
+        /// <param name="efficientRules">有效积分规则</param>
+        /// <param name="scene">场景数据</param>
+        /// <returns>规则积分</returns>
+        public virtual IDictionary<IIntegralRule, decimal> RunExpression(IEnumerable<IIntegralRule> efficientRules, TScene scene)
+        {
+            var result = new Dictionary<IIntegralRule, decimal>();
+            foreach (var item in efficientRules)
+            {
+                var rule = (IIntegralRule<TScene>)item;
+                var integral = rule.IntegralExpression.Compile()(scene);
+                result.Add(rule, integral);
+            }
+            return result;
+        }
+        /// <summary>
+        /// 计算积分规则
+        /// </summary>
+        /// <param name="efficientRules">有效积分规则</param>
+        /// <param name="scene">场景数据</param>
+        /// <returns>规则积分</returns>
+        public IDictionary<IIntegralRule, decimal> RunExpression(IEnumerable<IIntegralRule> efficientRules, IScene scene)
+        {
+            return RunExpression(efficientRules, (TScene)scene);
+        }
+        /// <summary>
+        /// 初始化场景数据
+        /// </summary>
+        /// <param name="channelMessage">通道消息</param>
+        /// <param name="providerRule">提供程序规则</param>
+        /// <returns>场景数据</returns>
+        public abstract TScene GetTScene(object channelMessage, IIntegralRule rule);
+        /// <summary>
+        /// 初始化场景数据
+        /// </summary>
+        /// <param name="channelMessage">通道消息</param>
+        /// <param name="providerRule">提供程序规则</param>
+        /// <returns>场景数据</returns>
+        public virtual IScene GetScene(object channelMessage, IIntegralRule rule)
+        {
+            return GetTScene(channelMessage, rule);
+        }
+    }
+}

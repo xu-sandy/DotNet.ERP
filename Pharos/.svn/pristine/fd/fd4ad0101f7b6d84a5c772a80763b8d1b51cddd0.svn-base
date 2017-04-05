@@ -1,0 +1,212 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.DTOs;
+using Pharos.POS.Retailing.Models.Payment;
+using System;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    ///支付方式界面
+    /// </summary>
+    public partial class PayWay : Window
+    {
+        public PayWay()
+        {
+            PosMachine.Current.BillList.Discount();
+
+            PayWayDto model = new PayWayDto() { Receivable = PosMachine.Current.BillList.Receivable, Preferential = PosMachine.Current.BillList.Preferential, IsReturnProduct = false };
+            InitializeComponent();
+            this.InitPublicSettings();
+            InfoPanel.DataContext = model;
+            CurrentModel = model;
+            this.Closing += PayWay_Closing;
+        }
+
+
+        public PayWay(PayWayDto model)
+        {
+            InitializeComponent();
+            this.InitPublicSettings();
+            InfoPanel.DataContext = model;
+            CurrentModel = model;
+            this.Closing += PayWay_Closing;
+
+        }
+
+        private bool isOk = false;
+        void PayWay_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!isOk)
+            {
+                PosMachine.Current.BillList.CannelDiscount();
+
+            }
+        }
+        private PayWayDto CurrentModel { get; set; }
+
+        private void SetPayDetails(BasePay pay)
+        {
+            var money = CurrentModel.Receivable;
+            var receivable = Math.Truncate((money * 10m)) / 10m;
+            pay.Pay(new PayDetails()
+            {
+                Preferential = CurrentModel.Preferential,
+                MoneyNeedPay = receivable,
+                IsReturnProduct = CurrentModel.IsReturnProduct,
+                Remark = CurrentModel.Remark,
+                PaySN = DateTime.Now.ToString("yyyyMMddHHmmssfff"),
+                BillDiscount = money - receivable,
+                Unit = "元"
+            });
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            isOk = false;
+
+            this.Close();
+        }
+
+        private void Image_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            //ZhiFuBaoScan page = new ZhiFuBaoScan();
+            //this.Hide();
+            //var show = page.ShowDialog();
+            //if (show.Value)
+            //{
+            //    this.ShowDialog();
+            //}
+            //else { this.Close(); }
+
+        }
+
+
+        internal void Cash_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            CashPay pay = new CashPay();
+            SetPayDetails(pay);
+            this.Hide();
+            PayCash page = new PayCash(pay);
+            page.ShowDialogInScreen(this, (o) =>
+            {
+                if (o ?? true)
+                {
+                    isOk = true;
+                    this.Close();
+                }
+                else
+                {
+                    isOk = false;
+
+                    this.Close();
+                }
+            });
+        }
+
+        internal void btnMultiMode_Click(object sender, RoutedEventArgs e)
+        {
+            MultiModePay pay = new MultiModePay();
+            SetPayDetails(pay);
+            this.Hide();
+            Duofangshizhifu page = new Duofangshizhifu(pay);
+            page.ShowDialogInScreen(this, (o) =>
+            {
+                if (o ?? true)
+                {
+                    isOk = true;
+                    this.Close();
+                }
+                else
+                {
+                    isOk = false;
+
+                    this.Close();
+                }
+            });
+
+        }
+
+        internal void UnionPay_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            var pay = new UnionPay();
+            SetPayDetails(pay);
+            this.Hide();
+            Unionpay page = new Unionpay(pay);
+            page.ShowDialogInScreen(this, (o) =>
+            {
+                if (o ?? true)
+                {
+                    isOk = true;
+                    this.Close();
+                }
+                else
+                {
+                    isOk = false;
+
+                    this.Close();
+                }
+            });
+
+
+        }
+
+        private void Coupon_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Toast.DoShow("功能待完善！");
+
+        }
+
+        internal void ZhiFuBao_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            var pay = new ZhiFuBaoPay();
+            SetPayDetails(pay);
+            this.Hide();
+            ZhiFuBaoScan page = new ZhiFuBaoScan(pay as ZhiFuBaoPay);
+            page.ShowDialogInScreen(this, (o) =>
+            {
+                if (o ?? true)
+                {
+                    isOk = true;
+                    this.Close();
+                }
+                else
+                {
+                    isOk = false;
+
+                    this.Close();
+                }
+            });
+        }
+
+        private void Weixin_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            var pay = new WeixinPay();
+            SetPayDetails(pay);
+            this.Hide();
+            WeixinScan page = new WeixinScan(pay as WeixinPay);
+            page.ShowDialogInScreen(this, (o) =>
+            {
+                if (o ?? true)
+                {
+                    isOk = true;
+                    this.Close();
+                }
+                else
+                {
+                    isOk = false;
+
+                    this.Close();
+                }
+            });
+
+        }
+
+        private void PetCard_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Toast.DoShow("功能待完善！");
+
+        }
+    }
+}

@@ -1,0 +1,100 @@
+﻿using Microsoft.Synchronization;
+using Microsoft.Synchronization.Files;
+using Pharos.SyncService.SyncProviders;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.SyncService
+{
+    public class SyncController : SyncOrchestrator
+    {
+
+        public void DoSynchronize(int companyId, string storeId, string endpointConfigurationName, LocalSyncContext localSyncContext, CancellationToken token)
+        {
+            var dataServiceGroups = SyncDataServiceGroupFactory.Factory(localSyncContext);
+            var task = Task.Factory.StartNew(() =>
+             {
+                 foreach (var item in dataServiceGroups)
+                 {
+                     try
+                     {
+                         var temp = item;
+                         var localProvider = new PosDbSyncProvider(companyId, storeId, temp);
+                         localProvider.DestinationCallbacks.ItemConstraint += new EventHandler<ItemConstraintEventArgs>(DestinationCallbacks_ItemConstraint);
+                         localProvider.DestinationCallbacks.ProgressChanged += new EventHandler<SyncStagedProgressEventArgs>(DestinationCallbacks_ProgressChanged);
+                         localProvider.DestinationCallbacks.ProgressChanged += new EventHandler<SyncStagedProgressEventArgs>(DestinationCallbacks_ProgressChanged);
+                         localProvider.DestinationCallbacks.ItemConflicting += DestinationCallbacks_ItemConflicting;
+
+                         localProvider.Configuration.CollisionConflictResolutionPolicy = CollisionConflictResolutionPolicy.ApplicationDefined;
+                         localProvider.Configuration.ConflictResolutionPolicy = ConflictResolutionPolicy.ApplicationDefined;
+                         var remoteProvider = new RemoteProviderProxy(companyId, storeId, endpointConfigurationName, temp.SyncDirectionOrder);
+                         remoteProvider.DestinationCallbacks.ItemConflicting += DestinationCallbacks_ItemConflicting;
+
+                         remoteProvider.Configuration.CollisionConflictResolutionPolicy = CollisionConflictResolutionPolicy.ApplicationDefined;
+                         remoteProvider.Configuration.ConflictResolutionPolicy = ConflictResolutionPolicy.ApplicationDefined;
+                         remoteProvider.DestinationCallbacks.ItemConstraint += new EventHandler<ItemConstraintEventArgs>(DestinationCallbacks_ItemConstraint);
+                         remoteProvider.DestinationCallbacks.ProgressChanged += new EventHandler<SyncStagedProgressEventArgs>(DestinationCallbacks_ProgressChanged);
+                         remoteProvider.DestinationCallbacks.ProgressChanged += new EventHandler<SyncStagedProgressEventArgs>(DestinationCallbacks_ProgressChanged);
+                         this.LocalProvider = localProvider;
+                         this.RemoteProvider = remoteProvider;
+                         this.Direction = temp.SyncDirectionOrder;
+                         SyncOperationStatisticsShow(this.Synchronize(), temp.SyncDirectionOrder);
+                         token.ThrowIfCancellationRequested();
+                     }
+                     catch (Exception ex)
+                     {
+                         Console.WriteLine(ex);
+                     }
+                 }
+             }, token);
+            task.Wait();
+        }
+
+        void DestinationCallbacks_ItemConflicting(object sender, ItemConflictingEventArgs e)
+        {
+            Console.WriteLine(e);
+        }
+
+
+        static void DestinationCallbacks_ProgressChanged(object sender, SyncStagedProgressEventArgs e)
+        {
+            if (e.Stage != SessionProgressStage.ChangeDetection)
+            {
+                Console.WriteLine(sender);
+                Console.Write("Event Progress Changed: provider - {0}, ", e.ReportingProvider.ToString());
+                Console.Write("stage - {0}, ", e.Stage.ToString());
+                Console.WriteLine("work - {0} of {1}", e.CompletedWork, e.TotalWork);
+            }
+        }
+
+        static void DestinationCallbacks_ItemConstraint(object sender, ItemConstraintEventArgs e)
+        {
+            // Console.Write("Event Item conflicting: source data - {0}, ", e.SourceChangeData != null ? ((IFileDataRetriever)e.SourceChangeData).AbsoluteSourceFilePath : null);
+            //  Console.WriteLine("destination data - {0}", e.DestinationChangeData != null ? ((IFileDataRetriever)e.DestinationChangeData).AbsoluteSourceFilePath : null);
+            // e.SetResolutionAction(ConstraintConflictResolutionAction.RenameSource);
+        }
+
+        static void DestinationCallbacks_ItemChangeSkipped(object sender, ItemChangeSkippedEventArgs e)
+        {
+            Console.Write("Event Item Change Skipped: provider {0}, ", e.ReportingProvider.ToString());
+            Console.Write("stage - {0}, ", e.Stage.ToString());
+            Console.WriteLine("item  - {0} ", e.ItemChange.ItemId.ToString());
+        }
+
+        public void SyncOperationStatisticsShow(SyncOperationStatistics syncOperationStatistics, SyncDirectionOrder _SyncDirectionOrder)
+        {
+
+            Console.WriteLine("{1} Download Applied:\t {0}", syncOperationStatistics.DownloadChangesApplied, _SyncDirectionOrder);
+            Console.WriteLine("{1} Download Failed:\t {0}", syncOperationStatistics.DownloadChangesFailed, _SyncDirectionOrder);
+            Console.WriteLine("{1} Download Total:\t\t {0}", syncOperationStatistics.DownloadChangesTotal, _SyncDirectionOrder);
+            Console.WriteLine("{1} Upload Applied Total:\t\t {0}", syncOperationStatistics.UploadChangesApplied, _SyncDirectionOrder);
+            Console.WriteLine("{1} Upload Failed Total:\t\t {0}", syncOperationStatistics.UploadChangesFailed, _SyncDirectionOrder);
+            Console.WriteLine("{1} Upload Total:\t\t {0}", syncOperationStatistics.UploadChangesTotal, _SyncDirectionOrder);
+        }
+
+    }
+}

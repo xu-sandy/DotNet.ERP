@@ -1,0 +1,247 @@
+﻿using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using Pharos.Sys.Entity;
+
+namespace Pharos.Logic.BLL
+{
+    public class OrderReturnBLL : BaseService<OrderReturns>
+    {
+        /// <summary>
+        /// 退换管理列表
+        /// </summary>
+        /// <param name="nvl">查询条件</param>
+        /// <param name="recordCount">总记录数</param>
+        /// <returns>订货退换列表</returns>
+        public static object OrderReturnList(NameValueCollection nvl, out int recordCount)
+        {
+            var queryOrderReturn = BaseService<OrderReturns>.CurrentRepository.QueryEntity.Where(o=>o.CompanyId==CommonService.CompanyId);
+            var queryOrderList = BaseService<IndentOrderList>.CurrentRepository.QueryEntity;
+            var queryProduct = BaseService<VwProduct>.CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            var queryOrderDistribution = BaseService<OrderDistribution>.CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            var queryIndentOrder = BaseService<VwOrder>.CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            var queryUser = UserInfoService.CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            string userID = Pharos.Sys.SupplierUser.SupplierId;
+            var query = from x in queryOrderReturn
+                        join y in queryOrderList on x.IndentOrderId equals y.IndentOrderId
+                        join z in queryOrderDistribution on x.DistributionId equals z.DistributionId
+                        join a in queryProduct on x.Barcode equals a.Barcode into tempProduct
+                        from h in tempProduct.DefaultIfEmpty()
+                        join i in queryIndentOrder on y.IndentOrderId equals i.IndentOrderId
+                        join j in queryUser on x.CreateUID equals j.UID into tempUser
+                        from k in tempUser.DefaultIfEmpty()
+                        where (x.Barcode == y.Barcode && i.SupplierID == userID)
+                        select new
+                        {
+                            x.Id,
+                            x.ReturnType,
+                            x.State,
+                            h.ProductCode,
+                            h.Barcode,
+                            h.Title,
+                            h.BrandTitle,
+                            h.SubUnit,
+                            x.ReturnNum,
+                            y.Price,
+                            x.CreateDT,
+                            i.StoreId,
+                            i.StoreTitle,
+                            x.Memo,
+                            x.CreateUID,
+                            CreateTitle = k.FullName,
+                        };
+            var returnType = nvl["ReturnType"];
+            var returnState = nvl["State"];
+            var searchText = nvl["SearchText"];
+
+            if (!returnType.IsNullOrEmpty())
+            {
+                var rt = short.Parse(returnType);
+                query = query.Where(r => r.ReturnType == rt);
+            }
+            if (!returnState.IsNullOrEmpty())
+            {
+                var rs = short.Parse(returnState);
+                query = query.Where(r => r.State == rs);
+            }
+
+            if (!searchText.IsNullOrEmpty())
+            {
+                query = query.Where(r => (r.ProductCode != null && r.ProductCode.Contains(searchText)) ||
+                    (r.Title != null && r.Title.Contains(searchText)));
+            }
+
+
+            recordCount = query.Count();
+            var reason = SysDataDictService.GetReasonTitle();
+            return query.ToPageList(nvl).Select(o => new
+            {
+                o.Id,
+                o.ReturnType,
+                o.State,
+                o.ProductCode,
+                o.Barcode,
+                o.Title,
+                o.BrandTitle,
+                o.SubUnit,
+                ReturnNum = (o.ReturnNum??0).ToAutoString(3),
+                o.Price,
+                o.CreateDT,
+                o.StoreId,
+                o.StoreTitle,
+                o.Memo,
+                o.CreateUID,
+                o.CreateTitle,
+                StateTitle = Enum.GetName(typeof(OrderReturnState), o.State),
+                ReType = Enum.GetName(typeof(OrderReturnType), o.ReturnType),
+            });
+        }
+
+        /// <summary>
+        /// 退换详情
+        /// </summary>
+        /// <param name="returnId">退换Id</param>
+        /// <returns>商品退换详细信息</returns>
+        public static object FindByReturnId(int returnId)
+        {
+            var queryOrderReturn = BaseService<OrderReturns>.CurrentRepository.QueryEntity;
+            var queryOrderList = BaseService<IndentOrderList>.CurrentRepository.QueryEntity;
+            var queryProduct = BaseService<VwProduct>.CurrentRepository.QueryEntity;
+            var queryOrderDistribution = BaseService<OrderDistribution>.CurrentRepository.QueryEntity;
+            var queryIndentOrder = BaseService<VwOrder>.CurrentRepository.QueryEntity;
+            var query = from x in queryOrderReturn
+                        join y in queryOrderList on new { x.IndentOrderId, x.Barcode } equals new { y.IndentOrderId, y.Barcode }
+                        join z in queryOrderDistribution on x.DistributionId equals z.DistributionId
+                        join a in queryProduct on x.Barcode equals a.Barcode into tempProduct
+                        from h in tempProduct.DefaultIfEmpty()
+                        join i in queryIndentOrder on y.IndentOrderId equals i.IndentOrderId
+                        where x.Id == returnId
+                        select new
+                        {
+                            x.Id,
+                            x.DistributionId,
+                            h.ProductCode,
+                            h.Barcode,
+                            h.Title,
+                            y.IndentNum,
+                            h.SubUnit,
+                            y.DeliveryNum,
+                            i.CreateDT,     //订货日期
+                            y.AcceptNum,
+                            i.DeliveryDate, //收货日期
+                            x.ReturnType,
+                            x.ReasonId,
+                            x.ReturnNum
+                        };
+
+            var list = query.ToList();
+            var reason = SysDataDictService.GetReasonTitle();
+            var obj = list.Select(o => new
+            {
+                o.Id,
+                o.ProductCode,
+                o.Barcode,
+                o.Title,
+                IndentNum = o.IndentNum.ToAutoString(3),
+                o.SubUnit,
+                DeliveryNum = o.DeliveryNum.ToAutoString(3),
+                CreateDT = o.CreateDT.ToString("yyyy-MM-dd"),     //订货日期
+                AcceptNum = o.AcceptNum.ToAutoString(3),
+                o.DeliveryDate, //收货日期
+                o.ReturnType,
+                o.ReasonId,
+                ReturnNum = (o.ReturnNum ?? 0).ToAutoString(3),
+                ReType = Enum.GetName(typeof(OrderReturnType), o.ReturnType),
+                ReReason = GetReasonTitle(reason, o.ReasonId)
+            }).FirstOrDefault();
+            return obj;
+        }
+        /// <summary>
+        /// 退换详情(收货明细使用)
+        /// </summary>
+        /// <param name="returnId"></param>
+        /// <returns></returns>
+        public static object FindDetailById(int returnId)
+        {
+            var queryOrderReturn = BaseService<OrderReturns>.CurrentRepository.QueryEntity;
+            var queryOrderList = BaseService<IndentOrderList>.CurrentRepository.QueryEntity;
+            var queryProductRecord = BaseService<VwProduct>.CurrentRepository.QueryEntity;
+            var queryOrderDistribution = BaseService<OrderDistribution>.CurrentRepository.QueryEntity;
+            var queryIndentOrder = BaseService<VwOrder>.CurrentRepository.QueryEntity;
+            var query = from x in queryOrderReturn
+                        join y in queryOrderList on x.IndentOrderId equals y.IndentOrderId
+                        join z in queryOrderDistribution on x.DistributionId equals z.IndentOrderId
+                        join h in queryProductRecord on y.Barcode equals h.Barcode
+                        join i in queryIndentOrder on y.IndentOrderId equals i.IndentOrderId
+                        where x.Id == returnId
+                        select new
+                        {
+                            x.Id,
+                            x.DistributionId,
+                            h.ProductCode,
+                            h.Barcode,
+                            h.Title,
+                            y.IndentNum,
+                            h.SubUnit,
+                            z.DeliveryNum,
+                            i.CreateDT,     //订货日期
+                            z.ReceivedNum,
+                            z.ReceivedDT,
+                            i.DeliveryDate, //收货日期
+                            x.ReturnType,
+                            x.ReasonId,
+                            x.ReturnNum,
+                            z.DistributionBatch,
+                            x.IndentOrderId,
+                            h.ValuationType
+                        };
+
+            var list = query.ToList();
+            var reason = SysDataDictService.GetReasonTitle();
+            var obj = list.Select(o => new
+            {
+                o.Id,
+                o.ProductCode,
+                o.Barcode,
+                o.Title,
+                IndentNum = o.IndentNum.ToAutoString(3) + o.SubUnit,
+                o.SubUnit,
+                DeliveryNum = (o.DeliveryNum??0).ToAutoString(3) + o.SubUnit,
+                o.CreateDT,     //订货日期
+                ReceivedNum = (o.ReceivedNum??0).ToAutoString(3) + o.SubUnit,
+                ReceiveNum = (o.ReceivedNum??0).ToAutoString(3),
+                o.ReceivedDT, //收货日期
+                o.ReturnType,
+                o.ReasonId,
+                ReturnNum=(o.ReturnNum??0).ToAutoString(3),
+                ReceivedNums = ReceivedNums(o.IndentOrderId, o.Barcode).ToAutoString(3) + o.SubUnit,
+                o.DistributionBatch,
+                o.IndentOrderId,
+                o.DistributionId,
+                o.ValuationType
+            }).FirstOrDefault();
+            return obj;
+        }
+        /// <summary>
+        /// 获取退换理由名称
+        /// </summary>
+        /// <param name="reason">退换理由_来自数据字典</param>
+        /// <param name="reasonId">退换理由Id</param>
+        /// <returns>退换理由名称</returns>
+        static string GetReasonTitle(List<SysDataDictionary> reason, int reasonId)
+        {
+            var obj = reason.FirstOrDefault(o => o.DicSN == reasonId);
+            if (obj == null) return reasonId.ToString();
+            return obj.Title;
+        }
+        static decimal ReceivedNums(string orderid, string barcode)
+        {
+            var num = BaseService<OrderDistribution>.CurrentRepository.QueryEntity.Where(o => o.IndentOrderId == orderid && o.Barcode == barcode).Sum(o => o.ReceivedNum);
+            return num.GetValueOrDefault();
+        }
+    }
+}

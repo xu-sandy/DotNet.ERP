@@ -1,0 +1,79 @@
+﻿using Pharos.POS.Retailing.Models.ChildPagesModels;
+using Pharos.POS.Retailing.Models.Payment;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// Duofangshizhifu.xaml 的交互逻辑
+    /// </summary>
+    public partial class Duofangshizhifu : Window
+    {
+        public Duofangshizhifu(MultiModePay payWay)
+        {
+            InitializeComponent();
+            this.InitPublicSettings();
+            CurrentViewModel = new MultiModePayModel() { Receivable = payWay.ThePayDetails.MoneyNeedPay };
+            this.DataContext = CurrentViewModel;
+            CurrentPayWay = payWay;
+
+        }
+        MultiModePay CurrentPayWay { get; set; }
+
+        MultiModePayModel CurrentViewModel { get; set; }
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (CurrentViewModel.Receivable != 0 && CurrentViewModel.Receipt == 0)
+            {
+                Toast.DoShow("请输入实收金额！", this);
+                return;
+            }
+            else if (CurrentViewModel.Receivable > CurrentViewModel.Receipt)
+            {
+                Toast.DoShow("实收金额不能小于应收金额！", this);
+                return;
+            }
+            else if (CurrentViewModel.Receivable < CurrentViewModel.UnionPay)
+            {
+                Toast.DoShow("银联支付金额不能大于应收金额！", this);
+                return;
+            }
+            //else if (CurrentViewModel.UnionPay > 0 && string.IsNullOrEmpty(CurrentViewModel.BackCard))
+            //{
+            //    Toast.DoShow("请输入银行卡！", this);
+            //    return;
+            //}
+            else if (CurrentViewModel.VerifySaleMan())
+            {
+                CurrentPayWay.ThePayDetails.SaleManUid = CurrentViewModel.SalesmanUid;
+                CurrentPayWay.ThePayDetails.Receipt = CurrentViewModel.Receipt;
+                CurrentPayWay.UnionPay = CurrentViewModel.UnionPay;
+                CurrentPayWay.CashPay = CurrentViewModel.CashPay - CurrentViewModel.Change;
+                CurrentPayWay.BankCardNo = CurrentViewModel.BackCard;
+                CurrentPayWay.ThePayDetails.Change = CurrentViewModel.Change;
+                CurrentPayWay.SetComplete();
+                this.DialogResult = true;
+                this.Close();
+            }
+
+        }
+
+        private void btnBack_Click(object sender, RoutedEventArgs e)
+        {
+            this.DialogResult = false;
+            this.Close();
+        }
+
+    }
+}

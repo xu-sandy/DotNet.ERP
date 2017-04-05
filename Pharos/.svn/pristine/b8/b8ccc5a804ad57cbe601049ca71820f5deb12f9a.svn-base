@@ -1,0 +1,132 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Sys.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+
+namespace Pharos.Logic.BLL
+{
+    public class MakingMembershipCardService : BaseService<MakingMembershipCard>
+    {
+        public OpResult CreateMakingMembershipCard(MakingMembershipCard _shipCard)
+        {
+            return MakingMembershipCardService.Add(_shipCard);
+        }
+
+        public MakingMembershipCard GetShipCardById(int id)
+        {
+            return MakingMembershipCardService.FindById(id);
+        }
+
+        public object GetMakingMembershipCardByWhere(string cardType, string batchSN, short? state, string createUID, DateTime? beginDate, DateTime? endDate, out int count)
+        {
+            var query = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId);
+            if (!string.IsNullOrEmpty(cardType))
+            {
+                query = query.Where(o => o.CardType == cardType);
+            }
+            if (!string.IsNullOrEmpty(batchSN))
+            {
+                query = query.Where(o => o.BatchSN == batchSN);
+            }
+            if (state != null)
+            {
+                query = query.Where(o => o.State == state);
+            }
+            if (!string.IsNullOrEmpty(createUID))
+            {
+                query = query.Where(o => o.CreateUID == createUID);
+            }
+            if (beginDate != null)
+            {
+                query = query.Where(o => o.CreateDT > beginDate);
+            }
+            if (endDate != null)
+            {
+                query = query.Where(o => o.CreateDT > endDate);
+            }
+            count = query.Count();
+            if (count > 0)
+            {
+                var result = (from a in query
+                              join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                              on a.CreateUID equals b.UID
+                              join c in BaseService<CardInfo>.CurrentRepository.Entities
+                              on a.CardType equals c.CardType.ToString()
+                              select new
+                              {
+                                  Id = a.Id,
+                                  BatchSN = a.BatchSN,
+                                  CardType = c.CardName,
+                                  NumberStart = a.NumberStart,
+                                  NumberEnd = a.NumberEnd,
+                                  MakeNumber = a.MakeNumber,
+                                  State = a.State,
+                                  ExpiryStart = a.ExpiryStart,
+                                  ExpiryEnd = a.ExpiryEnd,
+                                  SecurityCode = a.SecurityCode,
+                                  CreateDT = a.CreateDT,
+                                  CreateUID = b.FullName,
+                                  //
+                                  AllRechange = c.CardType == 1 ? "是" : "否",
+                                  MinRecharge = c.MinRecharge,
+                                  CouponType = c.CouponType,
+                                  IntegrationType = c.IntegrationType
+                              }).ToPageList();
+                return result;
+
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        public OpResult UpdateState(short state, string ids)
+        {
+            try
+            {
+                var query = CurrentRepository.Entities.Where(o => ("," + ids + ",").Contains("," + o.Id + ",")).ToList();
+                //query.Each(o => o.State = state);
+                foreach (var item in query)
+                {
+                    item.State = state;
+                    if (state == 1)
+                    {
+                        for (int i = 0; i < item.MakeNumber; i++)
+                        {
+                            MembershipCard _memberCard = new MembershipCard()
+                            {
+                                CompanyId = CommonService.CompanyId,
+                                BatchSN = item.BatchSN,
+                                CardSN = (CommonService.CompanyId.ToString() + (item.NumberStart + i).ToString()),
+                                CardType = Convert.ToInt32(item.CardType),
+                                ReChargeTotal = 0,
+                                GiveTotal = 0,
+                                Balance = 0,
+                                Integer = 0,
+                                Deposit = 0,
+                                State = 0,
+                                ExpiryStart = item.ExpiryStart,
+                                ExpiryEnd = item.ExpiryEnd,
+                                CreateDT = DateTime.Now,
+                                CreateUID = Sys.CurrentUser.UID
+                            };
+                            BaseService<MembershipCard>.CurrentRepository.Add(_memberCard);
+                        }
+                    }
+                }
+
+                CurrentRepository.Update(new MakingMembershipCard());
+                return new OpResult() { Successed = true, Message = "操作成功！" };
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+    }
+}

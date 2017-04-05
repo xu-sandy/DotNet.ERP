@@ -1,0 +1,83 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.Entity;
+namespace Pharos.Logic.BLL
+{
+    /// <summary>
+    /// 公共类
+    /// </summary>
+    public class CommonService
+    {
+        /// <summary>
+        /// 分解类别条件
+        /// </summary>
+        /// <param name="category">原传递值</param>
+        /// <param name="big">大类</param>
+        /// <param name="mid">中类</param>
+        /// <param name="sub">子类</param>
+        public static void GetCategory(string category, ref int? big, ref int? mid, ref int? sub)
+        {
+            if (category.IsNullOrEmpty()) return;
+            var cates = category.TrimEnd(',').Split(',');
+            if (cates.Length == 3)
+            {
+                big = int.Parse(cates[0]);
+                mid = int.Parse(cates[1]);
+                sub = int.Parse(cates[2]);
+            }
+            else if (cates.Length == 2)
+            {
+                big = int.Parse(cates[0]);
+                mid = int.Parse(cates[1]);
+            }
+            else if (cates.Length == 1
+                && !cates[0].IsNullOrEmpty())
+            {
+                big = int.Parse(cates[0]);
+            }
+        }
+
+        /// <summary>
+        /// 适用门店名称
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public static string GetStoreTitleList(string storeId) 
+        {
+            string storeTitleList = "",storeTitle = "";
+            string[] arr = storeId.Split(',');
+            for (int i = 0; i < arr.Length; i++)
+            {
+                if (arr[0] == "")
+                {
+                    storeTitleList = "全部";
+                    break;
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(arr[i]))
+                    {
+                        var sId = arr[i];
+                        storeTitle = WarehouseService.Find(o => o.StoreId == sId).Title;
+                    }
+                    storeTitleList += i > 0 ? ("、" + storeTitle) : storeTitle;
+                }
+            }
+            return storeTitleList;     
+        }
+        public static int CompanyId
+        {
+            get
+            {
+                var companyId = System.Configuration.ConfigurationManager.AppSettings["CompanyId"];
+                var cid=1;
+                if (!companyId.IsNullOrEmpty())
+                    cid = int.Parse(companyId);
+                return cid;
+            }
+        }
+    }
+}

@@ -1,0 +1,110 @@
+﻿@model object
+@{
+    ViewBag.Title = "Detail";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true, hideSearch: false));
+}
+<style type="text/css">
+    .table-toolbar .input-toolbar { line-height: 29px; min-width: 60px; height: 29px; }
+</style>
+@section search{
+
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>收银员：</label>
+            </td>
+            <td class="input-toolbar">
+                <span id="cashier_span"></span>
+            </td>
+            <td class="label-toolbar">
+                <label>导购员：</label>
+            </td>
+            <td class="input-toolbar">
+                <span id="shoppingGuide_span"></span>
+            </td>
+            <td class="label-toolbar">
+                <label>流水号：</label>
+            </td>
+            <td class="input-toolbar" style="width:145px;">
+                <span id="paySN_span"></span>
+            </td>
+            <td class="label-toolbar">
+                <label>销售时间：</label>
+            </td>
+            <td class="input-toolbar">
+                <span id="createDT_span"></span>
+            </td>
+        </tr>
+    </table>
+}
+
+<script type="text/javascript">
+
+    var footer =@Html.Raw(ViewBag.footer)
+    pharos.manager.data =@Html.Raw(Model.ToJson())
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = true;
+    pharos.manager.geturl = "";
+    pharos.manager.columns = [[
+        //{ field: 'Cashier', title: '收银员', width: 80 },
+        //{ field: 'CreateDT', title: '销售时间', width: 130 },
+        //{ field: 'PaySN', title: '流水号', width: 130 },
+        { field: 'Barcode', title: '条码', width: 110 },
+        { field: 'ProductName', title: '品名', width: 150 },
+        { field: 'PurchaseNumber', title: '销售数量', width: 60 },
+        {
+            field: 'BuyPrice', title: '进价', width: 60, formatter: function (value) {
+                if (!isNaN(value)) {
+                    return Number(value).toFixed(2);
+                }
+                return "";
+            }
+        },
+        {
+            field: 'SysPrice', title: '系统售价', width: 60, formatter: function (value) {
+                if (!isNaN(value)) {
+                    return Number(value).toFixed(2);
+                }
+                return "";
+            }
+        },
+        {
+            field: 'ActualPrice', title: '实际售价', width: 60, formatter: function (value) {
+                if (!isNaN(value)) {
+                    return Number(value).toFixed(2);
+                }
+                return "";
+            }
+        },
+        {
+            field: 'SubTotal', title: '小计', width: 70, formatter: function (value) {
+                if (!isNaN(value)) {
+                    return Number(value).toFixed(2);
+                }
+                return "";
+            }
+        }
+    ]];
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid('reloadFooter', footer);
+    }
+
+    var detailList = @Html.Raw(Model.ToJson())
+    $(function () {
+        $("#searchBtn").css("display", "none");
+        var detailTitle = detailList[0];
+        if (detailTitle != undefined) {
+            if (detailTitle.Cashier != undefined)
+                $("#cashier_span").html(detailTitle.Cashier);
+            if (detailTitle.ShoppingGuide != undefined)
+                    $("#shoppingGuide_span").html(detailTitle.ShoppingGuide);
+            if (detailTitle.PaySN != undefined)
+                $("#paySN_span").html(detailTitle.PaySN);
+            if (detailTitle.CreateDT != undefined)
+                $("#createDT_span").html(detailTitle.CreateDT);
+
+
+        }
+    })
+</script>

@@ -1,0 +1,492 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale.Barcodes;
+using Pharos.Logic.ApiData.Pos.Sale.Members;
+using Pharos.Logic.ApiData.Pos.Sale.Marketings;
+
+namespace Pharos.Logic.ApiData.Pos.Sale
+{
+    /// <summary>
+    /// 购物车
+    /// </summary>
+    public class ShoppingCart
+    {
+        IEnumerable<MarketingContext> _Marketings;
+
+        /// <summary>
+        /// 初始化购物车，生成订单编号
+        /// </summary>
+        public ShoppingCart()
+        {
+            OrderList = new List<IBarcode>();
+            NewAndResetOrderSN();
+        }
+
+        #region 属性
+
+        /// <summary>
+        /// 会员Id
+        /// </summary>
+        public string MemberId { get; private set; }
+
+
+        public MemberInfo MemberInfo { get; private set; }
+        /// <summary>
+        /// 特殊活动编号
+        /// </summary>
+        public int ActivityId { get; private set; }
+
+        /// <summary>
+        /// 购物车与结算POS机关联信息
+        /// </summary>
+        internal MachineInformation MachineInformation { get; set; }
+
+        /// <summary>
+        /// 购物车编号/订单编号
+        /// </summary>
+        public string OrderSN { get; private set; }
+
+        /// <summary>
+        /// 订单列表
+        /// </summary>
+        internal List<IBarcode> OrderList { get; set; }
+
+        /// <summary>
+        /// 件数
+        /// </summary>
+        public int RecordCount
+        {
+            get
+            {
+                var products = OrderList.Where(o => o.ProductType != ProductType.Weigh);
+                var weighProducts = OrderList.Where(o => o.ProductType == ProductType.Weigh);
+                var count = Convert.ToInt32(products.Sum(o => o.SaleNumber));
+                count += weighProducts.Count();
+                return count;
+            }
+        }
+        public decimal TotalPreferential { get; set; }
+        #endregion 属性
+
+        #region 方法
+
+        internal void AddRange(IEnumerable<IBarcode> barcodes)
+        {
+            foreach (var item in barcodes)
+            {
+                var barcode = Add(item.CurrentString, item.Details.SaleStatus);
+                Edit(item.CurrentString, item.SaleNumber, item.SalePrice, item.Details.SaleStatus, item.HasEditPrice, barcode.RecordId);
+            }
+        }
+        public IBarcode Add(string barcodeString, SaleStatus status)
+        {
+            //重置订单历史小计
+            EditTotal = -1;
+
+            //重置促销信息，并处理单品折扣
+            foreach (var item in OrderList)
+            {
+                item.Details.SaleStatus = (item.Details.SaleStatus == SaleStatus.Promotion ? SaleStatus.Normal : item.Details.SaleStatus);
+                item.MarketingMarks = new List<MarketingRule>();
+            }
+
+            //重置促销造成的同商品分条目显示（合并促销的同商品条目）
+            var groupOrders = OrderList.Where(o => !o.HasEditPrice).GroupBy(o => new { o.MainBarcode, o.Details.SaleStatus }).ToList();//合并商品
+            foreach (var item in groupOrders)
+            {
+                if (item.Count() > 1)
+                {
+                    IBarcode barcode = item.FirstOrDefault();
+                    var list = item.Where(o => o.VerfyEnableCombine(item.Key.MainBarcode, barcode.Details.SaleStatus)).ToList();
+                    //  IBarcode barcode = list.FirstOrDefault();
+                    if (list.Count > 0)
+                    {
+                        barcode.SaleNumber = list.Sum(o => o.SaleNumber);
+                        list.Remove(barcode);
+                        OrderList.RemoveAll(o => list.Exists(p => p == o));
+                    }
+                }
+            }
+
+            //对条码去格式化
+            var tempBarcode = barcodeString.Replace(" ", "").Trim();
+            //查找历史纪录（满足合并条件的历史纪录）
+            IBarcode record = OrderList.Where(o => !o.HasEditPrice).FirstOrDefault(o => o.VerfyEnableCombine(tempBarcode, status));
+            if (record == null)
+            {
+                record = BarcodeFactory.Factory(MachineInformation.StoreId, MachineInformation.MachineSn, MachineInformation.CompanyToken, tempBarcode, status);
+                switch (status)
+                {
+                    case SaleStatus.POSGift:
+                    case SaleStatus.ActivityGifts:
+                        record.SalePrice = 0;
+                        break;
+                    //case SaleStatus.ActivityAddMoneyGifts:
+                    //    record.SalePrice = salePrice;
+                    //    break;
+                }
+                record.Details.Total = record.SalePrice * record.SaleNumber;
+                // record.MarketingPrice = record.SalePrice;
+                record.MarketingMarks = new List<MarketingRule>();
+                OrderList.Add(record);
+            }
+            else
+            {
+                if (!record.Details.EnableEditNum)
+                {
+                    throw new SaleException("603", "该商品不允许修改数量！");
+                }
+                if (record.Details.EnableEditNum)
+                {
+                    record.SaleNumber++;
+                }
+                record.Details.Total = record.SalePrice * record.SaleNumber;
+                //   record.MarketingPrice = record.SalePrice;
+                record.MarketingMarks = new List<MarketingRule>();
+            }
+            foreach (var item in OrderList)
+            {
+                if (item.ProductType == ProductType.Bundling && item is BundlingBarcode)
+                {
+                    item.Details.SaleStatus = SaleStatus.Promotion;
+                }
+                item.MarketingPrice = item.SalePrice;
+                item.Details.Total = item.SalePrice * item.SaleNumber;
+                item.Details.CollectionMarketingPrice = item.MarketingPrice;
+            }
+            return record;
+        }
+
+        public void Edit(string barcodeString, decimal number, decimal salePrice, SaleStatus status, bool recordHadEditPrice, string recordId)
+        {
+            //重置订单历史小计
+            EditTotal = -1;
+            //重置促销信息，并处理单品折扣
+            foreach (var item in OrderList)
+            {
+                item.Details.SaleStatus = (item.Details.SaleStatus == SaleStatus.Promotion ? SaleStatus.Normal : item.Details.SaleStatus);
+                item.MarketingMarks = new List<MarketingRule>();
+            }
+
+            //重置修改项销售状态，以便重新计算促销
+            if (status == SaleStatus.Promotion)
+            {
+                status = SaleStatus.Normal;
+            }
+            var tempBarcode = barcodeString.Replace(" ", "").Trim();
+
+            //重置促销造成的同商品分条目显示（合并促销的同商品条目）并确认是否存在改价或者改价
+
+            var EditPrice = false;
+            var EditNum = false;
+            var groupOrders = OrderList.Where(o => !o.HasEditPrice).GroupBy(o => new { o.MainBarcode, o.Details.SaleStatus }).ToList();//合并商品
+            foreach (var item in groupOrders)
+            {
+                if (item.Count() >= 1)
+                {
+                    IBarcode barcode = item.FirstOrDefault();
+                    var list = item.Where(o => o.VerfyEnableCombine(item.Key.MainBarcode, barcode.Details.SaleStatus)).ToList();
+                    var enableEdit = !recordHadEditPrice && barcode.SameProduct(tempBarcode) && barcode.Details.SaleStatus == status;
+                    if (enableEdit && salePrice >= 0)
+                    {
+                        EditPrice = !list.Exists(o => Math.Abs(o.MarketingPrice - salePrice) < 0.01m);
+                        recordId = barcode.RecordId;
+                    }
+                    if (list.Count > 0)
+                    {
+                        barcode.SaleNumber = list.Sum(o => o.SaleNumber);
+                        if (enableEdit && number > 0)
+                        {
+                            EditNum = (Math.Abs(barcode.SaleNumber - number) > 0.0001m);
+                            recordId = barcode.RecordId;
+                        }
+                        list.Remove(barcode);
+                        OrderList.RemoveAll(o => list.Exists(p => p == o));
+                    }
+                }
+            }
+            if (recordHadEditPrice)
+            {
+                var product = OrderList.FirstOrDefault(o => o.HasEditPrice && o.RecordId == recordId);
+                if (salePrice >= 0)
+                    EditPrice = Math.Abs(product.MarketingPrice - salePrice) >= 0.01m;
+                if (number > 0)
+                    EditNum = (Math.Abs(product.SaleNumber - number) >= 0.0001m);
+            }
+
+
+            IBarcode record = OrderList.FirstOrDefault(o => o.VerfyEnableCombine(tempBarcode, status, recordHadEditPrice, recordId));
+
+            if (EditNum && !record.Details.EnableEditNum)
+            {
+                throw new SaleException("603", "该商品不允许修改数量！");
+            }
+            else if (EditNum && record.Details.EnableEditNum)
+            {
+                record.SaleNumber = number;
+
+            }
+            if (EditPrice && !record.Details.EnableEditPrice)
+            {
+                throw new SaleException("603", "该商品不允许修改售价！");
+            }
+            else if (EditPrice && record.Details.BuyPrice > salePrice)
+            {
+                throw new SaleException("603", "该商品修改售价，应大于进价！");
+            }
+            else if (EditPrice && record.Details.EnableEditPrice)
+            {
+                record.SalePrice = salePrice;
+                record.EnableMarketing = false;
+                record.HasEditPrice = true;
+            }
+
+            record.Details.Total = record.SalePrice * record.SaleNumber;
+            record.MarketingMarks = new List<MarketingRule>();
+            foreach (var item in OrderList)
+            {
+                if (item.ProductType == ProductType.Bundling && item is BundlingBarcode)
+                {
+                    item.Details.SaleStatus = SaleStatus.Promotion;
+                }
+                item.MarketingPrice = item.SalePrice;
+                item.Details.Total = item.SalePrice * item.SaleNumber;
+                item.Details.CollectionMarketingPrice = item.MarketingPrice;
+            }
+        }
+
+        public void Remove(string barcodeString, SaleStatus status, bool recordHadEditPrice, string recordId)
+        {
+            //重置订单历史小计
+            EditTotal = -1;
+            //重置促销信息，并处理单品折扣
+            foreach (var item in OrderList)
+            {
+                item.Details.SaleStatus = (item.Details.SaleStatus == SaleStatus.Promotion ? SaleStatus.Normal : item.Details.SaleStatus);
+                item.MarketingMarks = new List<MarketingRule>();
+            }
+
+            //重置修改项销售状态，以便重新计算促销
+            if (status == SaleStatus.Promotion)
+            {
+                status = SaleStatus.Normal;
+            }
+            var tempBarcode = barcodeString.Replace(" ", "").Trim();
+
+
+
+
+            IBarcode record = OrderList.FirstOrDefault(o => o.VerfyEnableCombine(tempBarcode, status, recordHadEditPrice, recordId));
+            OrderList.Remove(record);
+
+            //重置促销造成的同商品分条目显示（合并促销的同商品条目）
+
+            var groupOrders = OrderList.Where(o => !o.HasEditPrice).GroupBy(o => new { o.MainBarcode, o.Details.SaleStatus }).ToList();//合并商品
+            foreach (var item in groupOrders)
+            {
+                if (item.Count() >= 1)
+                {
+                    IBarcode barcode = item.FirstOrDefault();
+                    var list = item.Where(o => o.VerfyEnableCombine(item.Key.MainBarcode, barcode.Details.SaleStatus)).ToList();
+                    if (list.Count > 0)
+                    {
+                        barcode.SaleNumber = list.Sum(o => o.SaleNumber);
+                        list.Remove(barcode);
+                        OrderList.RemoveAll(o => list.Exists(p => p == o));
+                    }
+                }
+            }
+
+
+            record.MarketingMarks = new List<MarketingRule>();
+            foreach (var item in OrderList)
+            {
+                if (item.ProductType == ProductType.Bundling && item is BundlingBarcode)
+                {
+                    item.Details.SaleStatus = SaleStatus.Promotion;
+                }
+                item.MarketingPrice = item.SalePrice;
+                item.Details.Total = item.SalePrice * item.SaleNumber;
+                item.Details.CollectionMarketingPrice = item.MarketingPrice;
+            }
+        }
+
+
+
+
+
+        /// <summary>
+        /// 获取当前订单信息
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<IBarcode> GetOrdeList()
+        {
+            return OrderList;
+        }
+        /// <summary>
+        /// 运算促销获取总额优惠
+        /// </summary>
+        /// <returns></returns>
+        public void RunMarketings()
+        {
+            TotalPreferential = StoreManager.GetMarketing(MachineInformation.CompanyToken, MachineInformation.StoreId).Match(this, out _Marketings);
+        }
+
+        /// <summary>
+        /// 获取销售清单
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<OrderItem> GetBuyList()
+        {
+            return OrderList.Select(o => new OrderItem()
+            {
+                ActualPrice = o.MarketingPrice,
+                Price = o.Details.SystemPrice,
+                Number = o.SaleNumber,
+                Barcode = o.CurrentString,
+                EnableEditNum = o.Details.EnableEditNum,
+                EnableEditPrice = o.Details.EnableEditPrice,
+                Status = o.Details.SaleStatus,
+                Title = o.Details.Title,
+                Total = o.Details.Total,
+                Unit = o.Details.Unit,
+                Category = o.Details.Category,
+                Brand = o.Details.Brand,
+                Size = o.Details.Size,
+                IsMultiCode = o.IsMultiCode,
+                RecordId = o.RecordId,
+                HasEditPrice = o.HasEditPrice
+            });
+        }
+        /// <summary>
+        /// 订单统计
+        /// </summary>
+        /// <returns>统计结果</returns>
+        public SaleStatistics GetSaleStatistics()
+        {
+            var totalPreferential = TotalPreferential;
+            var total = OrderList.Sum(o => o.Details.SystemPrice * o.SaleNumber);
+            var receivable = EditTotal >= 0 ? EditTotal : (OrderList.Sum(o => o.Details.Total) - totalPreferential);//实收
+            var preferential = total - receivable;
+            return new SaleStatistics()
+            {
+                Total = total,
+                Receivable = receivable,
+                Preferential = (preferential > 0 ? preferential : 0m),
+                Num = RecordCount,
+                ManJianPreferential = TotalPreferential,
+                OrderSn = OrderSN
+            };
+        }
+        private decimal EditTotal { get; set; }
+        /// <summary>
+        /// 导购员
+        /// </summary>
+        public string SaleMan { get; set; }
+
+        public decimal WipeZeroAfter { get; set; }
+        /// <summary>
+        /// 清空订单
+        /// </summary>
+        public void Clear()
+        {
+            EditTotal = -1;
+            TotalPreferential = 0m;
+            OrderList.Clear();
+            ActivityId = 0;
+            NewAndResetOrderSN();
+        }
+        /// <summary>
+        /// 更新订单编号，返回新订单编号
+        /// </summary>
+        /// <returns></returns>
+        public string NewAndResetOrderSN()
+        {
+            OrderSN = Pharos.Logic.ApiData.Pos.Common.PaySn.New();
+            return OrderSN;
+        }
+        /// <summary>
+        /// 设置购物车与会员关联
+        /// </summary>
+        /// <param name="phone">手机</param>
+        /// <param name="mode">会员来源模式</param>
+        public MemberInfo SetMember(string cardNo, string phone, MembersSourseMode mode)
+        {
+            var memberCardManager = new MemberCardManager();
+            var memberInfo = memberCardManager.GetMemberInfo(MachineInformation.StoreId, MachineInformation.MachineSn, MachineInformation.CompanyToken, phone, cardNo, mode, MachineInformation.CashierUid);
+            MemberInfo = memberInfo;
+            if (memberInfo != null)
+                MemberId = memberInfo.MemberId;
+            return memberInfo;
+        }
+        /// <summary>
+        /// 处理，过滤特殊活动编号
+        /// </summary>
+        /// <param name="id">活动编号</param>
+        public void SetActivityId(int id)
+        {
+            ActivityId = id;
+        }
+        #endregion 方法
+
+        /// <summary>
+        /// 记录销售信息
+        /// </summary>
+        /// <param name="apiCodes">支付方式编码（多个以，隔开）</param>
+        /// <param name="amount">账单整单优惠后的金额，或者账单应收金额</param>
+        /// <param name="wipeZeroAfter">账单抹零之后的金额</param>
+        public void Record(string apiCodes, decimal amount, decimal wipeZeroAfter, string deviceSn)
+        {
+
+            EditTotal = amount;
+            WipeZeroAfter = wipeZeroAfter;
+
+            var total = GetSaleStatistics().Receivable;
+            var detailsTotal = OrderList.Sum(o => o.Details.CollectionMarketingPrice * o.SaleNumber);
+            var oldReceivable = (total - detailsTotal);
+            foreach (var item in OrderList)
+            {
+                if (detailsTotal != 0)
+                {
+                    item.AveragePrice = (oldReceivable * (item.Details.CollectionMarketingPrice / detailsTotal)) + item.Details.CollectionMarketingPrice;
+                }
+                else
+                {
+                    item.AveragePrice = 0;
+                }
+            }
+            foreach (var item in _Marketings)
+            {
+                item.MarketingRule.SetMarketingRecordNumber(MachineInformation.StoreId, MachineInformation.MachineSn, MachineInformation.CompanyToken);
+            }
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, MachineInformation.StoreId, MachineInformation.MachineSn, MachineInformation.CompanyToken, deviceSn);
+            dataAdapter.SaveOrder(this, apiCodes);
+            this.Clear();
+        }
+
+        public string SetSaleMan(string saleMan)
+        {
+            if (saleMan == "0")
+            {
+                SaleMan = string.Empty;
+                return string.Empty;
+            }
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, MachineInformation.StoreId, MachineInformation.MachineSn, MachineInformation.CompanyToken, DataAdapterFactory.DEFUALT);
+            var saleManInfo = dataAdapter.GetUser(saleMan);
+            if (saleManInfo != null)
+            {
+                SaleMan = saleManInfo.UID;
+                return string.Format("[{0}{1}]", saleManInfo.UserCode, saleManInfo.FullName);
+            }
+            else
+            {
+                throw new PosException("606", "导购员不存在！");
+            }
+        }
+    }
+}

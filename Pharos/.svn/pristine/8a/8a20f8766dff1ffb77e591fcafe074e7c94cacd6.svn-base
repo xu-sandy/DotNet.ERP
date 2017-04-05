@@ -1,0 +1,53 @@
+﻿@{
+    ViewBag.Title = "CreateIntegralRule";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%" height="180px">
+                <tr>
+                    <td class="name">有效期：</td>
+                    <td class="input">
+                        <input type="text" id="date1" class="easyui-validatebox Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',maxDate:'#F{$dp.$D(\'date2\')}'})" /> -
+                        <input type="text" id="date2" class="easyui-validatebox Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',minDate:'#F{$dp.$D(\'date1\')}'})" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">适用客户群：</td>
+                    <td class="input"><select type="text" class="easyui-combobox"><option>请选择</option></select></td>
+                </tr>
+                <tr>
+                    <td class="name">规则方式：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>
+                                    <select class="easyui-combobox">
+                                        <option>请选择</option>
+                                        <option>按消费金额</option>
+                                        <option>按付款方式</option>
+                                        <option>按指定品类</option>
+                                        <option>按具体商品</option>
+                                        <option>按消费次数</option>
+                                    </select>
+                                </td>
+                                <td><input type="text" class="easyui-textbox" /></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">转换比例：</td>
+                    <td class="input"><input type="text" class="easyui-textbox" /></td>
+                </tr>
+                <tr>
+                    <td class="name"></td>
+                    <td class="input">@Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "是否包含促销" } }, "Commodity")</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>

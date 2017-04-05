@@ -1,0 +1,268 @@
+﻿using Pharos.POS.Retailing.ObjectModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows.Input;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    public class PosViewModel : BaseViewModel
+    {
+        public PosViewModel()
+        {
+            MachineSn = Global.MachineSettings.MachineInformations.MachineSn;
+            this.OnPropertyChanged(o => o.MachineSn);
+            MemberInfo = new MemberInfo();
+            Current = this;
+        }
+
+        public static PosViewModel Current { get; private set; }
+
+        public string MachineSn { get; private set; }
+        /// <summary>
+        /// 销售状态
+        /// </summary>
+        private PosStatus saleStatus = PosStatus.Normal;
+
+        public PosStatus SaleStatus
+        {
+            get { return saleStatus; }
+            set
+            {
+                saleStatus = value;
+                this.OnPropertyChanged(o => o.SaleStatus);
+            }
+        }
+        /// <summary>
+        /// 小票状态
+        /// </summary>
+        private PrintStatus printStatus;
+
+        public PrintStatus PrintStatus
+        {
+            get { return printStatus; }
+            set
+            {
+                printStatus = value;
+                this.OnPropertyChanged(o => o.PrintStatus);
+            }
+        }
+        /// <summary>
+        /// 订单列表
+        /// </summary>
+        private ObservableCollection<Product> orderList;
+
+        public ObservableCollection<Product> OrderList
+        {
+            get { return orderList; }
+            set
+            {
+                orderList = value;
+                this.OnPropertyChanged(o => o.OrderList);
+            }
+        }
+
+        private MemberInfo memberInfo;
+        /// <summary>
+        /// 会员信息
+        /// </summary>
+        public MemberInfo MemberInfo
+        {
+            get
+            {
+                return memberInfo;
+            }
+            set
+            {
+                memberInfo = value;
+                this.OnPropertyChanged(o => o.MemberInfo);
+            }
+        }
+
+        /// <summary>
+        /// 优惠合计
+        /// </summary>
+        private decimal preferential;
+
+        public decimal Preferential
+        {
+            get { return preferential; }
+            set
+            {
+                preferential = value;
+                this.OnPropertyChanged(o => o.Preferential);
+            }
+        }
+        /// <summary>
+        /// 应收
+        /// </summary>
+        private decimal receivable;
+
+        public decimal Receivable
+        {
+            get { return receivable; }
+            set
+            {
+                receivable = value;
+                this.OnPropertyChanged(o => o.Receivable);
+            }
+        }
+
+        /// <summary>
+        /// 件数
+        /// </summary>
+        private decimal num;
+
+        public decimal Num
+        {
+            get { return num; }
+            set
+            {
+                num = value;
+                this.OnPropertyChanged(o => o.Num);
+            }
+        }
+
+
+
+        /// <summary>
+        /// 商品条码
+        /// </summary>
+        private string barcode;
+
+        public string Barcode
+        {
+            get { return barcode; }
+            set
+            {
+                barcode = value;
+                //api/sale
+                var _machineInfo = Global.MachineSettings.MachineInformations;
+                SaleParams _params = new SaleParams() { StoreId = _machineInfo.StoreId, MachineSn = _machineInfo.MachineSn, Barcode = Barcode, Status = SaleStatus, CompanyToken = _machineInfo.CompanyToken };
+                Task.Factory.StartNew(() =>
+                {
+                    var result = ApiManager.Post<SaleParams, ApiRetrunResult<ApiSaleReturn>>(@"api/Sale", _params);
+                    if (result.Code == "200")
+                    {
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            OrderList = result.Result.BuyList;
+                            Preferential = result.Result.Statistics.Preferential;
+                            Receivable = result.Result.Statistics.Receivable;
+                            Num = result.Result.Statistics.Num;
+                        }));
+                    }
+                    else
+                    {
+                        Toast.ShowMessage(result.Message, CurrentWindow);
+                    }
+                    barcode = string.Empty;
+                    this.OnPropertyChanged(o => o.Barcode);
+                });
+
+            }
+        }
+        /// <summary>
+        /// 结算
+        /// </summary>
+        public ICommand PayCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+
+                });
+            }
+        }
+
+
+        public ICommand CloseCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    CurrentWindow.Close();
+                });
+
+            }
+        }
+
+        /// <summary>
+        /// 清空当前商品数据
+        /// </summary>
+        public ICommand ClearOrder
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    var _machineInfo = Global.MachineSettings.MachineInformations;
+                    BaseApiParams _params = new BaseApiParams() { StoreId = _machineInfo.StoreId, MachineSn = _machineInfo.MachineSn, CompanyToken = _machineInfo.CompanyToken };
+                    Task.Factory.StartNew(() =>
+                    {
+                        var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<ApiSaleReturn>>(@"api/ClearOrder", _params);
+                        if (result.Code == "200")
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                OrderList = result.Result.BuyList;
+                                Preferential = result.Result.Statistics.Preferential;
+                                Receivable = result.Result.Statistics.Receivable;
+                                Num = result.Result.Statistics.Num;
+                            }));
+                        }
+                        else
+                        {
+                            Toast.ShowMessage(result.Message, CurrentWindow);
+                        }
+                    });
+                });
+            }
+        }
+
+        public ICommand HandBill
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (OrderList.Count > 0)
+                    {
+                        var _machineInfo = Global.MachineSettings.MachineInformations;
+                        BaseApiParams _params = new BaseApiParams() { StoreId = _machineInfo.StoreId, MachineSn = _machineInfo.MachineSn, CompanyToken = _machineInfo.CompanyToken };
+                        Task.Factory.StartNew(() =>
+                        {
+                            var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<ApiSaleReturn>>(@"api/HandBill", _params);
+                            if (result.Code == "200")
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    OrderList = result.Result.BuyList;
+                                    Preferential = result.Result.Statistics.Preferential;
+                                    Receivable = result.Result.Statistics.Receivable;
+                                    Num = result.Result.Statistics.Num;
+                                }));
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }
+                        });
+                    }
+                    else
+                    {
+                        Toast.ShowMessage("无需挂单数据！", CurrentWindow);
+                    }
+                });
+            }
+        }
+
+
+    }
+}

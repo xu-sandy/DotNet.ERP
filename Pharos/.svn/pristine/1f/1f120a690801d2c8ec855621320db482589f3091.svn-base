@@ -1,0 +1,82 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.SyncService.LocalDataServices
+{
+    public class SyncBundlingSyncLocalService : ISyncDataService
+    {
+        public IEnumerable<ISyncDataObject> GetSyncObjects(int companyId, string storeId)
+        {
+            try
+            {
+                using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+                {
+                    var result = db.Bundlings.Where(o => o.CompanyId == companyId).Select(o => new SyncDataObject() { SyncItemId = o.SyncItemId, SyncItemVersion = o.SyncItemVersion }).ToList();
+                    return result;
+                }
+            }
+            catch
+            {
+                return new List<ISyncDataObject>();
+            }
+        }
+
+        public ISyncDataObject GetItem(Guid guid, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                return db.Bundlings
+                    .Select(o => new SingleSyncDataObject<Bundling>()
+                    {
+                        Enity = o,
+                        SyncItemId = o.SyncItemId,
+                        SyncItemVersion = o.SyncItemVersion
+                    })
+                    .FirstOrDefault(o => o.Enity.SyncItemId == guid && o.Enity.CompanyId == companyId);
+            }
+        }
+
+        public void CreateItem(ISyncDataObject data, Guid guid, int companyId, string storeId)
+        {
+            var temp = data as SingleSyncDataObject<Bundling>;
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                db.Bundlings.Add(temp.Enity);
+                db.SaveChanges();
+            }
+        }
+
+        public byte[] UpdateItem(Guid guid, ISyncDataObject mergedData, int companyId, string storeId)
+        {
+            var temp = mergedData as SingleSyncDataObject<Bundling>;
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var dbEntity = db.Bundlings.FirstOrDefault(o => o.SyncItemId == guid && o.CompanyId == companyId);
+                temp.InitDbEntity(dbEntity);
+                db.SaveChanges();
+                dbEntity = db.Bundlings.FirstOrDefault(o => o.SyncItemId == guid);
+                return dbEntity.SyncItemVersion;
+            }
+        }
+
+        public void DeleteItem(Guid syncItemId, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var dbEntity = db.Bundlings.FirstOrDefault(o => o.SyncItemId == syncItemId && o.CompanyId == companyId);
+                db.Bundlings.Remove(dbEntity);
+                db.SaveChanges();
+            }
+        }
+
+        public ISyncDataObject Merge(ISyncDataObject syncDataObject1, ISyncDataObject syncDataObject2, int companyId, string storeId)
+        {
+            return syncDataObject2;
+        }
+    }
+}

@@ -1,0 +1,67 @@
+// --------------------------------------------------
+// Copyright (C) 2015 版权所有
+// 创 建 人：蔡少发
+// 创建时间：2015-06-05
+// 描述信息：用于管理本系统的商品随机组合促销活动信息和整单满元促销信息（主表：PromotionBlend）
+// --------------------------------------------------
+
+using System;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Runtime.Serialization;
+using Pharos.Utility;
+
+namespace Pharos.Logic.Entity
+{
+    /// <summary>
+    /// 组合促销清单
+    /// </summary>
+    [Serializable]
+
+    [Excel("组合促销商品")]
+    public class PromotionBlendList 
+    {
+        public int Id { get; set; }
+
+        [Pharos.Utility.Exclude]
+        public byte[] SyncItemVersion { get; set; }
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Pharos.Utility.Exclude]
+        public Guid SyncItemId { get; set; }
+        [Excel("促销ID",1)]
+        /// <summary>
+        /// 促销ID
+        /// [长度：40]
+        /// [不允许为空]
+        /// </summary>
+        public string CommodityId { get; set; }
+        
+
+        /// <summary>
+        /// 商品分类（1:组合单品、2:组合系列、3:赠送单品、4:赠送系列、5:不参与促销单品、6:不参与促销系列）
+        /// [长度：5]
+        /// [不允许为空]
+        /// </summary>
+        [Excel("商品分类", 2)]
+        public short BlendType { get; set; }
+        
+
+        /// <summary>
+        /// 品牌
+        /// </summary>
+        [Excel("品牌", 3)]
+        public int BrandSN { get; set; }
+        
+
+        /// <summary>
+        /// 条码或系列ID
+        /// [长度：30]
+        /// [不允许为空]
+        /// </summary>
+        [Excel("条码或系列ID", 4)]
+        public string BarcodeOrCategorySN { get; set; }
+        /// <summary>
+        /// 类别层级
+        /// </summary>
+        public short? CategoryGrade { get; set; }
+    }
+}

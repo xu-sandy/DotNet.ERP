@@ -1,0 +1,41 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.DAL
+{
+    public class PromotionDAL:BaseDAL
+    {
+        public PromotionDAL() { 
+        }
+        /// <summary>
+        /// 验证促销保存
+        /// </summary>
+        /// <param name="type">当前类型 1-单品2-捆绑3-组合4-买赠5-满元</param>
+        /// <param name="startDate"></param>
+        /// <param name="barcodes"></param>
+        /// <param name="categorysns"></param>
+        /// <returns></returns>
+        public string PromotionValidMsg(string type, DateTime startDate, IEnumerable<string> barcodes, IEnumerable<string> categorysns = null)
+        {
+            if ((barcodes != null && barcodes.Any()) || (categorysns != null && categorysns.Any()))
+            {
+                using (EFDbContext db = new EFDbContext())
+                {
+                    var sql = string.Format("SELECT dbo.F_PromotionValidMsg('{0}','{1}','{2}','{3}')", type, startDate.ToShortDateString(), string.Join(",", barcodes), categorysns == null ? "" : string.Join(",", categorysns));
+                    return db.Database.SqlQuery<string>(sql).FirstOrDefault();
+                }
+            }
+            return "";
+        }
+        /// <summary>
+        /// 获取新捆绑条码
+        /// </summary>
+        /// <returns></returns>
+        internal string GetNewBarcode() {
+            var result = base._db.ExecuteScalar("Sys_GenerateNewBundlingCode", null);
+            return result.ToString();
+        }
+    }
+}

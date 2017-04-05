@@ -1,0 +1,282 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "申请支付许可", hideDel: true, searchHeight: 50));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+
+            <td class="label-toolbar">
+                <label>指派人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("AssignerUID", ViewBag.user as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>申请日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_begin" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_end" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label>服务商号：</label>
+            </td>
+            <td class="input-toolbar">
+                <input type="text" id="AgentsId" name="AgentsId" class="easyui-combobox" data-options="required:false,prompt:'请输入',width:120,editable:true,mode:'remote',valueField:'AgentsId',textField:'AgentsId',loader:comboload" />
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按商户号", Value = "0" }, new SelectListItem() { Text = "按客户名称", Value = "1" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+            </td>
+
+        </tr>
+
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(3)">将所选商户资料设为通过</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="Overrule()">驳回商户信息申请</a>
+    @Html.DropDownList("AssignUid", new List<SelectListItem>() { new SelectListItem() { Text = "设置所选商户支付状态", Value = "" }, new SelectListItem() { Text = "暂停支付许可", Value = "7" }, new SelectListItem() { Text = "注销支付许可", Value = "8" }, new SelectListItem() { Text = "设为可用支付", Value = "6" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true,editable: true,width:200,onSelect:upStatusSel" })
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="blacklist(9)">列入黑名单</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="del()">删除支付许可</a>
+}
+<script type="text/javascript">
+
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        var id = getUrlParam('id');
+        if (id == null) {
+            id = 0;
+        }
+        $.ajax({
+            url: "@Url.Action("getAgentsIdWhere", "AgentsInfo")",
+            type: "post",
+            data: {
+                //传值，还是JSON数据搜索
+                keyword: q,
+                id: id
+            },
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function (item) {
+                    return { AgentsId: item.AgentsId, AgentsId: item.AgentsId };
+                });
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status > 6) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Title', title: '指派人', editor: { type: 'text', required: true }, width: 100 },
+        {
+            field: 'State', title: '许可状态', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) {
+                if (value == "1") {
+                    return "商户信息审核中";
+                } else if (value == "2") {
+                    return "商户信息不符合";
+                } else if (value == "3") {
+                    return "结算账户审核中";
+                } else if (value == "4") {
+                    return "结算账户不符合";
+                } else if (value == "5") {
+                    return "正在签署分配账号中";
+                } else if (value == "6") {
+                    return "可用支付";
+                } else if (value == "7") {
+                    return "暂停支付";
+                } else if (value == "8") {
+                    return "注销支付";
+                } else if (value == "9") {
+                    return "列入黑名单";
+                } else if (value == "10") {
+                    return "无效支付";
+                }
+            }
+        },
+        { field: 'CID', title: '商户号', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'FullTitle', title: '商家公司名称', editor: { type: 'text', required: true }, width: 240 }
+    ]];
+
+    pharos.manager.columns = [[
+        { field: 'city', title: '城市', editor: { type: 'text', required: true }, width: 120 },
+        {
+            field: 'SourceType', title: '所属体系', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) {
+                if (value == "1") {
+                    return "云平台";
+                } else if (value == "2") {
+                    return "外部系统";
+                }
+            }
+        },
+        { field: 'RegisterAddress', title: '注册地址', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'RegisterNumber', title: '营业执照注册号', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'BusinessScope', title: '经营范围', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'Linkman', title: '商家业务联系人', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'Phone', title: '商家业务联系人电话', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'Email', title: '商家业务联系人邮箱', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'Remark', title: '备注', editor: { type: 'text', required: true }, width: 250 },
+        { field: 'CreateDT', title: '申请时间', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'CreateFullName', title: '申请人', editor: { type: 'text', required: true }, width: 100 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 1000, 'height': 560, hideSave: false, 'url': this.editurlNocache() });
+    };
+
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        openWin({ 'title': this.editText, 'width': 1000, 'height': 560, hideSave: false, 'url': this.editurlNocache() });
+    }
+
+
+
+    //设为通过
+    function upStatus(s) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("upStatus")", { ids: ids, state: s, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "设置成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "设置失败," + d.message, "error");
+            }
+        }, "json");
+
+    }
+
+    //列入黑名单
+    function blacklist(s) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+
+        $.messager.confirm('确认', '列入黑名单后，该服务商将停止所有业务操作，且1年内无法重新申请！', function (f) {
+            if (f) {
+                $.post("@Url.Action("upStatus")", { ids: ids, state: s, t: Math.random() }, function (d) {
+                    if (d.successed) {
+                        $.messager.alert("提示", " 列入黑名单成功！", "info");
+                        pharos.manager.gridReload();
+                    } else {
+                        $.messager.alert("提示", "列入黑名单失败," + d.message, "error");
+                    }
+                }, "json");
+            }
+        });
+
+
+
+    }
+
+    //驳回商户信息申请
+    function Overrule() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("ExistOverrule")", { ids: ids, t: Math.random() }, function (d) {
+            if (d.successed) {
+                openWin({ 'title': '驳回商户信息申请', 'width': 500, 'height': 350, hideSave: false, 'url': '/PayLicense/Overrule?ids=' + ids });
+            } else {
+                $.messager.alert("提示", d.message, "error");
+            }
+        }, "json");
+    }
+
+    //设置所选商户支付状态
+    function upStatusSel(record) {
+        if (record.value == "" || record.value == null) {
+            return;
+        }
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("ExistStatusSel")", { ids: ids, state: record.value, t: Math.random() }, function (d) {
+            if (d.successed) {
+                openWin({ 'title': '设置商户支付状态', 'width': 500, 'height': 350, hideSave: false, 'url': '/PayLicense/SetStatus?ids=' + ids + '&state=' + record.value });
+            } else {
+                $.messager.alert("提示", d.message, "error");
+            }
+        }, "json");
+    }
+
+    function removeBefore(row) {
+        if (row.State > 1) {
+            $.messager.alert("提示", "删除失败，只能删除许可状态为商户信息审核中");
+            return false;
+        }
+        return true;
+    }
+
+    //删除
+    function del() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("delete")", { ids: ids, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", " 删除成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "删除失败," + d.message, "error");
+            }
+        }, "json");
+    }
+
+    $(function () {
+        //服务商号
+        $("#AgentsId").next().find(".combo-arrow").removeClass("combo-arrow");
+    });
+</script>
+
+

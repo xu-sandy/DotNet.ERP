@@ -1,0 +1,87 @@
+﻿@{
+    ViewBag.Title = "支付接口";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增支付接口", editText: "编辑所选项",
+        //openText:"开启所选项",
+        //closeText: "关闭所选项",
+        delText: "移除所选项", hideDel: false));
+}
+
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setStatus(1)">开启所选项</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setStatus(2)">关闭所选项</a>
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+<script type="text/javascript">
+    window.statusList = [];
+    window.statusList["0"] = "未启用";
+    window.statusList["1"] = "已启用";
+    window.statusList["2"] = "已关闭";
+    pharos.manager.geturl = "@Url.Action("GetPayApiPageing")";
+    pharos.manager.editurl = "@Url.Action("PayApiForm")";
+    pharos.manager.delurl = "@Url.Action("RemovePayApi")";
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ApiNo', title: '接口编号', width: 100 },
+        { field: 'PayType', title: '类型', width: 80 },
+        { field: 'ApiName', title: '名称', width: 100 },
+        { field: 'ApiAlias', title: '简称', width: 100 },
+        { field: 'PayMode', title: '支付方式', width: 80 },
+        {
+            field: 'ApiStatus', title: '接口状态', width: 100, formatter: function (value, row) {
+                return window.statusList[row.Status];
+            }
+        },
+        { field: 'TechnicalContact', title: '接口方技术联系人', width: 120 },
+        { field: 'TechnicalPhone', title: '接口方技术联系电话', width: 120 },
+        { field: 'Memo', title: '备注', width: 250 },
+        { field: 'CreateDT', title: '创建时间', width: 120, formatter: function (value, row, index) { return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd") } },
+        //{ field: 'CreateUID', title: '创建人', width: 100 },
+        { field: 'Creater', title: '创建人', width: 100 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache(), true);
+    };
+    pharos.manager.editItem = function (id, row) {
+        alert(id);
+        this.Id = id;
+        openDialog800(this.editText, this.editurlNocache());
+    }
+
+    function removeBefore(row) {
+        var uid = '@Pharos.Logic.OMS.CurrentUser.UID';
+        if (row.Status != "1") {
+            $.messager.alert("提示", window.statusList[row.status] + "状态不能移除!");
+            return false;
+        }
+        //fishtodo:待确定如何判断是否已经有关联数据;
+        return true;
+    }
+
+    //设置接口启用或关闭
+    function setStatus(status) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        if (rows.length > 1) {
+            $.messager.alert("提示", "只能选择一项数据进行操作", "error");
+            return false;
+        }
+        if (rows[0].Status == status) {
+            $.messager.alert("提示", "选中项已经是" + window.statusList[status] + "状态", "error");
+            return false;
+        }
+        $.post("@Url.Action("SetStatus")", { id: rows[0].Id, status: status }, function (r) {
+            if (r.successed) {
+                $.messager.alert("提示", "操作执行成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作执行失败！" + r.message, "error");
+            }
+        }, "json");
+        //fishtodo: 1 按钮图标设置
+    }
+</script>

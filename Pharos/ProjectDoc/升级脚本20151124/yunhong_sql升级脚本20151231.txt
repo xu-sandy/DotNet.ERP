@@ -1,0 +1,14 @@
+﻿
+-----更新 销售明细（包含售后退换信息）视图-----
+
+CREATE VIEW [dbo].[Vw_SaleDetail]
+AS
+SELECT     d.Id, d.PaySN, d.Barcode, dbo.F_CommodityTitleByBarcode(d.Barcode) AS Title, d.PurchaseNumber, d.BuyPrice, d.SysPrice, d.ActualPrice, d.SalesClassifyId,
+                          (SELECT     COUNT(*) AS Expr1
+                            FROM          dbo.SalesReturnsDetailed AS b
+                            WHERE      (ReceiptsNumber = d.PaySN)  AND (Barcode = d.Barcode)) AS HasReturned,
+                          (SELECT     SUM(Number) AS Expr1
+                            FROM          dbo.SalesReturnsDetailed AS b
+                            WHERE       (ReceiptsNumber = d.PaySN)  AND (Barcode = d.Barcode)) AS ReturnedNumber, o.ReturnId, o.StoreId, o.Type, o.State
+FROM         dbo.SaleOrders AS o INNER JOIN
+                      dbo.SaleDetail AS d ON o.PaySN = d.PaySN

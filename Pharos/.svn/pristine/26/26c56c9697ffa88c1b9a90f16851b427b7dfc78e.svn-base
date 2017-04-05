@@ -1,0 +1,46 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.BLL;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class DeviceController : BaseController
+    {
+        [Ninject.Inject]
+        DevicesService devicesService { get; set; }
+
+        public ActionResult Index()
+        {
+
+            return View();
+        }
+
+        public ActionResult Save(int? id)
+        {
+            ViewBag.Category = ListToSelect(devicesService.getDataList().Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+            var obj = new Devices();
+            if (id.HasValue)
+            {
+                obj = devicesService.GetOne(id.Value);
+            }
+            return View(obj.IsNullThrow());
+        }
+
+        //[HttpPost]
+        //public ActionResult Save(Devices obj)
+        //{
+        //    obj.Source = 1;
+        //    var op = BrandService.SaveOrUpdate(obj);
+        //    return new OpActionResult(op);
+        //}
+
+    }
+}

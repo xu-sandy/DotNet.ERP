@@ -1,0 +1,66 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System.Windows.Controls;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// ZhiFuFangShi.xaml 的交互逻辑
+    /// </summary>
+    public partial class ZhiFuFangShi : DialogWindow02
+    {
+        PayWayViewModel model;
+        public ZhiFuFangShi(decimal price, Models.PosModels.PayAction payAction, int reason = 0)
+        {
+            Price = price;
+            PayAction = payAction;
+            Reason = reason;
+            InitializeComponent();
+            this.InitDefualtSettings();
+            model = new PayWayViewModel(price, payAction, reason);
+            this.ApplyBindings(this, model);
+            this.PreviewKeyDown += ZhiFuFangShi_PreviewKeyDown;
+            this.Loaded += ZhiFuFangShi_Loaded;
+        }
+        public decimal Price { get; set; }
+        public int Reason { get; set; }
+        public Models.PosModels.PayAction PayAction { get; set; }
+        void ZhiFuFangShi_Loaded(object sender, System.Windows.RoutedEventArgs e)
+        {
+            this.Focus();
+        }
+
+        void ZhiFuFangShi_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Return)
+            {
+                var payitem = model.Payways.FirstOrDefault();
+                if (payitem != null)
+                {
+                    payitem.DoPayCommand.Execute(null);
+                    return;
+                }
+            }
+            //    //ASCII 65 KEY 44
+            //    var iChar = ((int)e.Key + 21);
+            //    if (iChar >= 65 && iChar <= 90)
+            //    {
+            //        var payitem = model.Payways.FirstOrDefault(o => o.Key == (char)iChar);
+            //        if (payitem != null)
+            //        {
+            //            payitem.DoPayCommand.Execute(null);
+            //            return;
+            //        }
+            //    }
+        }
+
+        private void ItemsControl_PreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var ctrl = sender as ItemsControl;
+            ctrl.IsEnabled = false;
+        }
+    }
+}

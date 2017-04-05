@@ -1,0 +1,84 @@
+﻿using Pharos.POS.Retailing.Models;
+using System.Linq;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// ConfigKeyboardShortcuts.xaml 的交互逻辑
+    /// </summary>
+    public partial class ConfigKeyboardShortcuts : Window
+    {
+        private HelpCell info;
+        public ConfigKeyboardShortcuts(HelpCell _info)
+        {
+            if (_info != null)
+            {
+                info = _info;
+                Describe = _info.Describe;
+                InitializeComponent();
+                txtKs.Text = _info.Keys;
+                this.DataContext = this;
+                this.KeyDown += ConfigKeyboardShortcuts_KeyDown;
+            }
+        }
+
+        void ConfigKeyboardShortcuts_KeyDown(object sender, KeyEventArgs e)
+        {
+            string keys = string.Empty;
+            if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift))
+            {
+                keys = "Ctrl+Shift+";
+            }
+            else if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) == (ModifierKeys.Control | ModifierKeys.Alt))
+            {
+                keys = "Ctrl+Alt+";
+            }
+            else if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                keys = "Ctrl+";
+            }
+            else if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+            {
+                keys = "Alt+";
+            }
+            else if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+            {
+                keys = "Shift+";
+            }
+            if (e.Key == Key.System)
+            {
+                keys += e.SystemKey.ToString();
+            }
+            else
+            {
+                keys += e.Key.ToString();
+            }
+            txtKs.Text = keys;
+            e.Handled = true;
+        }
+
+        public GeneralCommand Save
+        {
+
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+
+                    var keys = txtKs.Text;
+                    if (!string.IsNullOrEmpty(keys))
+                    {
+                        KeyboardShortcuts.Current.Rules.FirstOrDefault(o => o.Name == info.Name).Keys = keys;
+                        KeyboardShortcuts.Current.SaveConfig();
+                    }
+                    this.Close();
+                });
+
+
+            }
+        }
+        public string Describe { get; set; }
+    }
+}

@@ -1,0 +1,59 @@
+﻿using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.HotKeyHelper;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.HotKeyCommands
+{
+    public class ChongDaYinCommand : IHotKeyCommand
+    {
+        public Action<Window> Handler
+        {
+            get
+            {
+                return new Action<Window>((win) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        win.Dispatcher.Invoke(new Action(() =>
+                        {
+                            var model = new FindBills();
+                            model.CurrentWindow = win;
+                            model.SearchTime = DateTime.Now.Date;
+                            model.Callback = () =>
+                            {
+                                if (model.OrderItems != null)
+                                {
+                                    var order = model.OrderItems.FirstOrDefault();
+                                    if (order != null)
+                                    {
+                                        order.Print.Execute(null);
+                                    }
+                                    else
+                                    {
+                                        goto Error;
+                                    }
+                                }
+                                else
+                                {
+                                    goto Error;
+                                }
+                            Error:
+                                {
+                                    Toast.ShowMessage("无订单数据，不能打印！", win);
+                                }
+                            };
+                            model.SearchCommand.Execute(Range.Local);
+                           
+                        }));
+                    });
+                });
+            }
+        }
+    }
+}

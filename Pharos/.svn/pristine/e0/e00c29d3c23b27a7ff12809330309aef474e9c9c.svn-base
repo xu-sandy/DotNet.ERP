@@ -1,0 +1,105 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Sys.Entity;
+using System.Data.SqlClient;
+
+namespace Pharos.Sys.DAL
+{
+    internal class SysPaymentSettingDAL : BaseSysEntityDAL<SysPaymentSetting>
+    {
+        public SysPaymentSettingDAL() : base("SysPaymentSetting") { }
+
+        /// <summary>
+        /// 获取支付宝配置信息列表
+        /// </summary>
+        /// <returns></returns>
+        internal List<SysPaymentSetting> GetList(int PayType, string StoreId, int State)
+        {
+            string sql = string.Format("select * from {0} where 1=1 ", TableName);
+
+            if (PayType != -1)
+            {
+                sql += " and PayType=" + PayType;
+            }
+            if (!string.IsNullOrEmpty(StoreId))
+            {
+                sql += " and StoreId like '%" + StoreId + "%'";
+            }
+            if (State != -1)
+            {
+                sql += " and State=" + State;
+            }
+
+            var result = DbHelper.DataTableText<SysPaymentSetting>(sql, null);
+            return result;
+        }
+
+        /// <summary>
+        /// 修改支付宝配置信息
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal bool Update(SysPaymentSetting model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@Id", model.Id),
+                    new SqlParameter("@StoreId", model.StoreId),
+                    new SqlParameter("@State", model.State),
+                    new SqlParameter("@PartnerId", model.PartnerId),
+                    new SqlParameter("@AppId", model.AppId),
+                    new SqlParameter("@CheckKey", model.CheckKey),
+                    new SqlParameter("@NotifyUrl", model.NotifyUrl),
+                    new SqlParameter("@AlterDT", model.AlterDT),
+                    new SqlParameter("@AlterUID", model.AlterUID)                              
+            };
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("update {0} set ", TableName);
+            sql.Append("StoreId=@StoreId,");
+            sql.Append("State=@State,");
+            sql.Append("AppId=@AppId,");
+            sql.Append("CheckKey=@CheckKey,");
+            sql.Append("NotifyUrl=@NotifyUrl,");
+            sql.Append("AlterDT=@AlterDT,");
+            sql.Append("AlterUID=@AlterUID");
+
+            sql.Append(" where Id=@Id");
+
+            int rows = DbHelper.ExecuteNonQueryText(sql.ToString(), parms);
+
+            return rows > 0 ? true : false;
+        }
+
+        /// <summary>
+        /// 新增支付宝配置信息
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal int Insert(SysPaymentSetting model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@Id", model.Id),
+                    new SqlParameter("@StoreId", model.StoreId),
+                    new SqlParameter("@PayType", model.PayType),
+                    new SqlParameter("@State", model.State),
+                    new SqlParameter("@PartnerId", model.PartnerId),
+                    new SqlParameter("@AppId", model.AppId),
+                    new SqlParameter("@CheckKey", model.CheckKey),
+                    new SqlParameter("@NotifyUrl", model.NotifyUrl),
+                    new SqlParameter("@CreateDT", model.CreateDT),
+                    new SqlParameter("@CreateUID", model.CreateUID)  
+            };
+
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("insert into {0} (", TableName);
+            sql.Append("StoreId,PayType,State,PartnerId,AppId,CheckKey,NotifyUrl,CreateDT,CreateUID)");
+            sql.Append(" values (@StoreId,@PayType,@State,@PartnerId,@AppId,@CheckKey,@NotifyUrl,@CreateDT,@CreateUID)");
+            sql.Append(";select @@IDENTITY");
+
+            object obj = DbHelper.ExecuteScalarText(sql.ToString(), parms);
+            return (obj == null) ? 0 : Convert.ToInt32(obj);
+        }
+
+    }
+}

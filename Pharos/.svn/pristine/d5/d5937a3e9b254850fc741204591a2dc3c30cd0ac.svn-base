@@ -1,0 +1,61 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.BLL;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class MemberController : BaseController
+    {
+
+        [Ninject.Inject]
+        TradersService tradersService { get; set; }
+
+        public ActionResult Index()
+        {
+            return View();
+        }
+
+        public ActionResult Save(int? id)
+        {
+            ViewBag.sysUserState = EnumToSelect(typeof(SysUserState), emptyTitle: "请选择");
+            return View(new CompanyAuthorize());
+        }
+
+        /// <summary>
+        /// 获取省
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult getProvince()
+        {
+            var province = tradersService.getProvince();
+            return new JsonNetResult(province);
+        }
+
+        /// <summary>
+        /// 获取城市
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult getCity(int ProvinceID)
+        {
+            var city = tradersService.getCity(ProvinceID);
+            return new JsonNetResult(city);
+        }
+
+        /// <summary>
+        /// 获取区县
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult getDistrict(int CityID)
+        {
+            var district = tradersService.getDistrict(CityID);
+            return new JsonNetResult(district);
+        }
+    }
+}

@@ -1,0 +1,132 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Pharos.Logic.OMS.IDAL;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class DevicesService : BaseService
+    {
+        [Ninject.Inject]
+        // 设备档案信息
+        public IBaseRepository<Devices> DevicesRepository { get; set; }
+
+        [Ninject.Inject]
+        //数据字典信息
+        public IBaseRepository<SysDataDictionary> SysDataDictionaryRepository { get; set; }
+
+        [Ninject.Inject]
+        //帐户管理
+        public IBaseRepository<SysUserInfo> SysUserInfoRepository { get; set; }
+        public Utility.OpResult SaveOrUpdate(Devices model)
+        {
+            if (model.Id == 0)
+            {
+                DevicesRepository.Add(model);
+            }
+            else
+            {
+                var source = DevicesRepository.Get(model.Id);
+                model.ToCopyProperty(source);
+            }
+
+            if (DevicesRepository.SaveChanges())
+            {
+                LogEngine.WriteUpdate(model.Id + "," + model.Title, LogModule.设备管理);
+            }
+            return OpResult.Success();
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+
+            //设备
+            var query = DevicesRepository.GetQuery(null);
+            //账户
+            var userInfo = SysUserInfoRepository.GetQuery(null);
+            //数据字典
+            var dataDictionary = SysDataDictionaryRepository.GetQuery(null);
+
+
+
+            //分类
+            var CategoryId = (nvl["CategoryId"] ?? "").Trim();
+            //品牌
+            var Brand = (nvl["Brand"] ?? "").Trim();
+            //维护人
+            var FullName = (nvl["FullName"] ?? "").Trim();
+            //设备名称
+            var Title = (nvl["Title"] ?? "").Trim();
+
+            if (!CategoryId.IsNullOrEmpty())
+            {
+                var c = short.Parse(CategoryId);
+                query = query.Where(w=>w.CategoryId==c);
+            }
+            if (!Brand.IsNullOrEmpty())
+            {
+                query = query.Where(w => w.Brand.Contains(Brand));
+            }
+            if (!FullName.IsNullOrEmpty())
+            {
+                userInfo = userInfo.Where(w => w.FullName.Contains(FullName));
+            }
+            if (!Title.IsNullOrEmpty())
+            {
+                query = query.Where(w => w.Title.Contains(Title));
+            }
+
+            var q = from quer in query
+                    join u in userInfo on quer.CreateUID equals u.UserId
+                    join d in dataDictionary on quer.CategoryId equals d.Id
+                    select new
+                    {
+                        quer.Id,
+                        quer.DeviceId,
+                        quer.CategoryId,
+                        quer.Title,
+                        quer.Brand,
+                        quer.Spec,
+                        quer.Status,
+                        quer.CreateDT,
+                        quer.CreateUID,
+                        dTitle=d.Title,
+                        u.FullName
+                    };
+
+            recordCount = q.Count();
+            return q.ToPageList();
+        }
+
+        public List<SysUserInfo> GetList()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Utility.OpResult Deletes(object[] ids)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Devices GetOne(object id)
+        {
+            return DevicesRepository.Get(id);
+        }
+        /// <summary>
+        /// 获取设备分类
+        /// </summary>
+        /// <returns></returns>
+        public List<SysDataDictionary> getDataList()
+        {
+            return SysDataDictionaryRepository.GetQuery(w=>w.DicPSN==197).OrderBy(o=>o.DicSN).ToList();
+        }
+
+    }
+}

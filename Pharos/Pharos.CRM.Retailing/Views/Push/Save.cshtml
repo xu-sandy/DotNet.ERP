@@ -1,0 +1,67 @@
+﻿@model Push
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div id="noticeDetail" style="margin:0 auto; padding:15px; line-height:40px; text-align:center; ">
+    <div class="default-form">
+        @using (Html.BeginForm())
+        {
+            @Html.HiddenFor(a => a.Id)
+            @Html.HiddenFor(a => a.PushId)
+            @Html.HiddenFor(a => a.State)
+            <table>
+                <tr style="line-height:35px;">
+                    <td class="left_td" valign="top">
+                        <label>推送方式：</label>
+                    </td>
+                    <td class="notice-right">
+                        @Html.CheckBoxList(ViewBag.type as List<SelectListItem>, "Type")
+                    </td>
+                </tr>
+                <tr style="line-height:35px;">
+                    <td class="left_td" valign="top">
+                        <label>推送消息：</label>
+                    </td>
+                    <td class="notice-right">
+                        @Html.TextAreaFor(a => a.Content, new { @class = "easyui-validatebox datacontrol", data_options = "required: true, validType:'length[1,200]',deltaX:130", style = "width:90%;height:100px;padding-left:5px;padding-right:5px;padding-top:1px;padding-bootm:1px;font-size:12px;" })
+                        <div style="color:gray;font-style:italic;">（当前 <span id="currentWrodNumber" style="color: red">0</span> 个字符，最多 200 个字符）</div>
+                    </td>
+                </tr>
+            </table>
+        }
+    </div>
+</div>
+
+<script>
+    $(function () {
+        //全选按钮
+        var $checkAll = $("#Type_1");
+        //子按钮组
+        var $checkboxs = $('[name=Type]:checkbox').not('#Type_1');
+        $checkAll.click(function () {
+            $checkboxs.prop("checked", this.checked);
+        });
+        $checkboxs.click(function () {
+            $checkAll.prop('checked', $checkboxs.length == $checkboxs.filter(':checked').length);
+        });
+        var $wordNumber = $('#currentWrodNumber').text($('#Content').val().length);
+        $('#Content').keyup(function () {
+            $wordNumber.text($(this).val().length);
+        });
+
+        var modelTypeList = '@Model.Type'.split(',');
+        for (var i = 0; i < modelTypeList.length; i++) {
+            if (modelTypeList[i] != '')
+                $checkboxs.filter('[value=' + modelTypeList[i] + ']').trigger('click');
+        }
+    })
+    function SaveBefore() {
+        if ($('[name=Type]:checkbox').filter(':checked').length <= 0) {
+            $.messager.alert('提示', '勾选项需要至少选择一项!', 'info');
+            return false;
+        }
+        return true;
+    }
+</script>

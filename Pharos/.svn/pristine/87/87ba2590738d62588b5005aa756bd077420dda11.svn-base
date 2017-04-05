@@ -1,0 +1,102 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: false, hideDel: true, searchHeight: 80));
+    var hasModifyAuthority = false;//是否有修改订单权限
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" id="date" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',maxDate:'#F{$dp.$D(\'date2\')}'})" value="@DateTime.Now.ToString("yyyy-MM-dd")" style="width:100px" />-
+            </td>
+            <td class="input-toolbar">
+                <input name="date2" id="date2" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',minDate:'#F{$dp.$D(\'date\')}'})" value="@DateTime.Now.ToString("yyyy-MM-dd")" style="width:100px" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("store", ViewBag.stores as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>收银员：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("cashier", ViewBag.cashiers as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>导购员：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("saler", ViewBag.salers as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+            </td>
+        </tr>
+        <tr>
+            <td class="label-toolbar">
+                <label>结算方式：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("apiCodes", ViewBag.apiCodes as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:205")
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="条码/品名/会员/流水号" data-options="prompt:'条码/品名/会员/流水号',width:200" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" id="btnExcel" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+<script type="text/javascript">
+    pharos.manager.editurl = "@Url.Action("SaleOrderDetail")";
+    pharos.manager.pagination = true;
+    pharos.manager.showFooter = true;
+    pharos.manager.pageSize = 50;
+    pharos.manager.pageList = [50, 100, 200];
+    pharos.manager.columns = [[
+        { field: 'Store', title: '门店', width: 150 },
+        { field: 'PaySNFormat', title: '流水号', width: 150 },
+        { field: 'BarcodeFormat', title: '条码', width: 150 },
+        { field: 'Title', title: '品名', width: 150 },
+        { field: 'SalesClassifyId', title: '销售方式', width: 60 },
+        { field: 'PurchaseNumber', title: '销售数量', width: 80 },
+        { field: 'SysPrice', title: '系统售价', width: 80 },
+        { field: 'ActualPrice', title: '实际售价', width: 80 },
+
+        { field: 'TotalAmount', title: '销售金额', width: 80 },
+        { field: 'PreferentialPrice', title: '优惠', width: 80 },
+        { field: 'ApiTitle', title: '结算方式', width: 100 },
+        { field: 'ApiOrderSN', title: '第三方交易号', width: 250 },
+        { field: 'CreateDT', title: '销售时间', width: 150 },
+        { field: 'Cashier', title: '收银员', width: 80 },
+        { field: 'Saler', title: '导购员', width: 80 },
+        { field: 'MobilePhone', title: '会员手机', width: 100 },
+    ]];
+    pharos.manager.editItem = function (id, row) {
+        openDialog("订单详情", "@Url.Action("SaleOrderDetail")?paysn=" + row.PaySN + "&" + $('#frmsearch').serialize(), 900, 560, @(hasModifyAuthority?"false":"true"));
+    };
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'CreateDT', columns: ['Store', 'CreateDT', 'Cashier', 'Saler', 'PaySNFormat', 'TotalAmount', 'PreferentialPrice', 'ApiTitle', 'ApiOrderSN', 'MobilePhone'] });
+    }
+
+    function Export() {
+        var date = $("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        window.location.href = '@Url.Action("ForegroundSaleOrderExport", "Report")?' + $('#frmsearch').serialize();
+    }
+    $(function () {
+        $("#btnExcel").insertAfter($("#searchBtn"));
+        $("#toolbar").hide();
+    });
+</script>

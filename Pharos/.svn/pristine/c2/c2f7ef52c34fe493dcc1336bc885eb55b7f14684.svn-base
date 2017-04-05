@@ -1,0 +1,51 @@
+﻿using Pharos.POS.Retailing.Models;
+using System;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// VerifyPassword.xaml 的交互逻辑
+    /// </summary>
+    public partial class VerifyPassword : Window
+    {
+        public VerifyPassword(Action callBack, bool isShopManager)
+        {
+            InitializeComponent();
+            this.DataContext = PosMachine.Current.CurrentOperator;
+            this.InitPublicSettings();
+            CallBack = callBack;
+            IsShopManager = isShopManager;
+        }
+        private bool IsShopManager { get; set; }
+        private Action CallBack { get; set; }
+
+        public GeneralCommand LoginAction
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    var win = o as Window;
+
+                    if (!IsShopManager && PosMachine.Current.CurrentOperator.Verify())
+                    {
+                        this.Hide();
+                        CallBack();
+                        this.Close();
+                    }
+                    else if (IsShopManager && PosMachine.Current.CurrentOperator.VerifyShopManager(PosMachine.Current.CurrentOperator.Password))
+                    {
+                        this.Hide();
+                        CallBack();
+                        this.Close();
+                    }
+                    else
+                    {
+                        Toast.DoShow("密码验证失败！", win);
+                    }
+                });
+            }
+        }
+    }
+}

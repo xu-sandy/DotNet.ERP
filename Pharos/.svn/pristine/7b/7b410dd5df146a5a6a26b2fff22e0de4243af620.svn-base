@@ -1,0 +1,43 @@
+﻿@model object
+@{
+    ViewBag.Title = "Detail";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: false, hideSearch: true));
+}
+<script type="text/javascript">
+    var footer=@Html.Raw(ViewBag.footer)
+    pharos.manager.data =@Html.Raw(Model.ToJson());
+    pharos.manager.editurl="@Url.Action("ReportDetail","Order")";
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = true;
+    pharos.manager.geturl = "";
+    pharos.manager.columns = [[
+        { field: 'OrderType', title: '进货类型', width: 80 },
+        { field: 'OperatDT', title: '采购时间', width: 100 },
+        { field: 'IndentOrderId', title: '采购单号', width: 110 },
+        { field: 'Barcode', title: '条码', width: 120 },
+        { field: 'Title', title: '品名', width: 150 },
+        { field: 'IndentNum', title: '采购数量', width: 60 },
+        { field: 'Price', title: '采购单价', width: 60 },
+        { field: 'OrderTotal', title: '采购金额', width: 60 },
+        { field: 'StockNum', title: '库存量', width: 60 },
+        { field: 'Flag', title: '标记', width: 60 }
+    ]];
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid('reloadFooter', footer);
+    }
+    function editBefore(row){
+        var url=pharos.manager.editurl+"?orderId="+row.IndentOrderId+"&type="+row.OrderType;
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("#win").dialog({ content: cont, buttons: btns }).dialog("open");
+        return false;
+    }
+    var btns=[{
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+</script>
+<div id="win" class="easyui-dialog" data-options="title:'采购信息详情',buttons:btns,cache:false,modal:true,width:800,height:450,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>

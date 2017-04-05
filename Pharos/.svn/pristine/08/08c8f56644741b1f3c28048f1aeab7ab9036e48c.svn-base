@@ -1,0 +1,65 @@
+﻿using Pharos.DBFramework;
+using Pharos.Sys.DAL;
+using Pharos.Sys.Entity;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.Sys.BLL
+{
+    public class SysCustomMenusBLL
+    {
+        private SysCustomMenusDAL _dal = new SysCustomMenusDAL();
+        /// <summary>
+        /// 获得菜单权限
+        /// </summary>
+        /// <param name="objId"></param>
+        /// <returns></returns>
+        public SysCustomMenus GetSysCustomMenusByObjId(int objId)
+        {
+            DataTable dt = _dal.GetSysCustomMenusByObjId(objId);
+
+            var list = DBHelper.ToEntity.ToList<SysCustomMenus>(dt);
+            if (list == null)
+                list = new List<SysCustomMenus>();
+            var cm = list.FirstOrDefault();
+            if (cm == null)
+                cm = new SysCustomMenus();
+            cm.ObjId = objId;
+            return cm; ;
+        }
+        /// <summary>
+        /// 保存菜单权限
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public object SaveModel(SysCustomMenus model)
+        {
+            var result = OpResult.Fail("数据保存失败!");
+            try
+            {
+                //16.03.24添加companyid 
+                model.CompanyId = Sys.SysCommonRules.CompanyId;
+                if (_dal.ExistsById(model.Id))
+                {
+                    var re = _dal.Update(model);
+                    if (re) { result = OpResult.Success("数据保存成功"); }
+                }
+                else
+                {
+                    var re = _dal.Insert(model);
+                    if (re > 0) { result = OpResult.Success("数据保存成功"); }
+                }
+            }
+            catch (Exception ex)
+            {
+                result = OpResult.Fail("数据保存失败!" + ex.Message);
+            }
+            return result;
+        }
+    }
+}

@@ -1,0 +1,174 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("insertolded")
+        <div class="content">
+            <table width="100%" height="50px">
+                <tr>
+                    <td class="name">原条码：@Html.Hidden("sysPrice") @Html.Hidden("productCode") @Html.Hidden("OldBarcode")</td>
+                    <td >@Html.DropDownList("barcode", new List<SelectListItem>(), new { @class = "easyui-combobox", data_options = "prompt:'请输入条码...',width:150,mode:'remote',valueField:'barcode',textField:'title',loader:comboload,onChange:comboSelect" })</td>
+                    <td class="name">换货理由：</td>
+                    <td >@Html.DropDownList("reason", ViewBag.reasons as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+                    <td class="name">顾客补价：</td>
+                    <td class="180">@Html.TextBox("retprice", 0, new { @class = "easyui-numberbox", data_options = "width:100,required:true,precision:2" })</td>
+                    <td><a href="#" class="send_Button easyui-linkbutton cus1 linkbtn" onclick="add()">添加</a></td>
+                </tr>
+            </table>
+            <table class="easyui-datagrid" id="gridOld"
+                   data-options="url:'@Url.Action("FindOldPageList")',idField:'Id',checkOnSelect:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,onClickCell:clickCell,onAfterEdit:afterEdit,onLoadError:loadError">
+                <thead>
+                    <tr>
+                        <th data-options="field:'OldBarcode',hidden:true" width="100">对应条码</th>
+                        <th data-options="field:'ProductCode'" width="100">编码</th>
+                        <th data-options="field:'Barcode'" width="150">条码</th>
+                        <th data-options="field:'Title'" width="150">品名</th>
+                        <th data-options="field:'SysPrice',editor:{type:'numberbox',options:{required:true,min:0}}" width="90">售价</th>
+                        <th data-options="field:'Number',editor:{type:'numberspinner',options:{required:true,max:0}}" width="80">数量</th>
+                        <th data-options="field:'Total'" width="90">小计</th>
+                        <th data-options="field:'Editor',formatter:operold" width="50">操作</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    var $dgold = null, comboRows = [];
+    $(function () {
+        $dgold = $("#gridOld");
+    });
+    var comboload=function (param, success, error) {
+        var q = param.q || "";
+        if(q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url:"@Url.Action("GetProductInput")",
+            type:"post",
+            data:{
+                //传值，还是JSON数据搜索
+                searchName:q
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType:"json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function(item){
+                    return { barcode: item.Barcode, title: item.Barcode };
+                });
+                //执行loader的success方法
+                success(items);
+                var val = $combo.combobox("getValue");
+                if (val) {
+                    comboSelect(val);
+                }
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    function comboSelect(newValue, oldValue) {
+        var obj = getRow(newValue);
+        if (!obj) return;
+        $("#sysPrice").val(obj.SysPrice);
+        $("#productCode").val(obj.ProductCode);
+        $("#OldBarcode").val(obj.OldBarcode);
+    }
+    var combRow = null;
+    function getRow(cd) {
+        combRow = null;
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == cd) {
+                combRow = row; return;
+            }
+        });
+        return combRow;
+    }
+    function add() {
+        if (!$("form").form('validate') || !combRow) return;
+        var rows = $dgold.datagrid("getRows");
+        var number = -1;
+        var obj = null, k = -1;
+        $.each(rows, function (i, row) {
+            if (row.Barcode == combRow.Barcode && row.Number < 0) {
+                k = i;
+                obj = row; return false;
+            }
+        });
+        if (obj && k >= 0) {
+            number += obj.Number;
+            $dgold.datagrid('updateRow', { index: k, row: { Number: number, Total: obj.SysPrice * number } });
+        } else {
+            $dgold.datagrid('appendRow',
+            {
+                ProductCode: combRow.ProductCode, Barcode: combRow.Barcode, Title: combRow.Title, SysPrice: combRow.SysPrice, Number: number, Total: combRow.SysPrice * number, OldBarcode: combRow.OldBarcode, Id: guidGenerator()
+            });
+        }
+        returnPrice();
+    }
+    function operold(value, row, index) {
+        return "<a href='jabascript:void(0)' onclick=\"removeItem(" + row.Id + ")\">删除</a>"
+    }
+    function removeItem(id) {
+        $.messager.confirm("提示", "是否确定删除该项信息?", function (r) {
+            if (!r) return r;
+            $dgold.datagrid("selectRecord", id);
+            var row = $dgold.datagrid("getSelected")
+            var index = $dgold.datagrid("getRowIndex", row);
+            $dgold.datagrid('deleteRow', index);
+        })
+    }
+    var clickIndex = undefined;
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dgold.datagrid('validateRow', clickIndex)) {
+            $dgold.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function clickCell(index, field) {
+        if (endClickEditing() && (field == "SysPrice" || field == "Number")) {
+            var row = $dgold.datagrid('selectRow', index).datagrid("getSelected");
+            $dgold.datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+        }
+    }
+    function afterEdit(rowIndex, rowData, changes) {
+        //rowData.Total = rowData.SysPrice * rowData.Number;
+        $dgold.datagrid('updateRow', { index: rowIndex, row: { Total: rowData.SysPrice * rowData.Number } });
+        returnPrice();
+    }
+    function SaveBefore() {
+        var inserted1 = $dgold.datagrid('getChanges', "inserted");
+        $("#insertolded").val(JSON.stringify(inserted1));
+        return true;
+    }
+    //计算每条明细退还金额
+    function returnPrice() {
+        var rows = $dgold.datagrid('getRows'); 
+        var total = 0;
+        $.each(rows, function (i, row) {
+            total += row.Total;
+        });
+        $("#retprice").numberbox("setValue", total);
+    }
+    function guidGenerator() {
+        //debugger;
+        var rows = $dgold.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? row.Id : 0;
+        });
+        var maxId = Math.max.apply(null, ids);
+        if (maxId == -Infinity) maxId = 0;
+        return maxId + 1;
+    }
+</script>

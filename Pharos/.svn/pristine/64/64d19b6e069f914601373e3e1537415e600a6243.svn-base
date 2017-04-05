@@ -1,0 +1,100 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using Pharos.DBFramework;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.DAL
+{
+    /// <summary>
+    /// 库存
+    /// </summary>
+    public class StoreDAL:BaseDAL
+    {
+        public DataTable QueryInventorys(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var activeState = nvl["activeState"].IsNullOrEmpty() ? -1 : int.Parse(nvl["activeState"]);//活动状态
+            var state = nvl["state"].IsNullOrEmpty() ? -1 : short.Parse(nvl["state"]);//状态
+            var searchText = nvl["searchText"].Trim();
+            var store = nvl["store"];
+            var supplierId = nvl["supplierId"];
+            var brandsn = nvl["brandsn"];
+            var startDate = nvl["StartDate"];
+            var endDate = nvl["EndDate"];
+            var parentType = nvl["parentType"];
+            var ispage = nvl["ispage"].IsNullOrEmpty() ? 1 : int.Parse(nvl["ispage"]);
+            var pageIndex = 1;
+            var pageSize = 30;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@companyId",Sys.SysCommonRules.CompanyId),
+                new SqlParameter("@title",searchText),
+                new SqlParameter("@categorySn",parentType),
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@supplierId",supplierId),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize),
+                new SqlParameter("@ispage",ispage)
+            };
+            return _db.DataTable("StockQuery", pmrs);
+        }
+        public DataTable QueryStoreInventorys(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var activeState = nvl["activeState"].IsNullOrEmpty() ? -1 : int.Parse(nvl["activeState"]);//活动状态
+            var state = nvl["state"].IsNullOrEmpty() ? -1 : short.Parse(nvl["state"]);//状态
+            var searchText = nvl["searchText"];
+            var store = nvl["store"];
+            var supplierId = nvl["supplierId"];
+            var brandsn = nvl["brandsn"];
+
+            string sql = @"SELECT  t.* ,CASE WHEN t.DiscountPrice IS NULL THEN '常规' ELSE '促销中' END StateTitle2 from(   
+                SELECT b.Id,b.Title,b.Barcode,b.ProductCode,b.CategoryTitle,b.Size,b.BrandTitle,b.SubUnit,b.CategorySN,b.State,ISNULL((SELECT SUM(StockNumber) FROM dbo.Commodity WHERE Barcode=b.barcode AND StoreId='{0}'),0) StockNumber,
+                ISNULL([dbo].[F_SysPriceByBarcode]('{0}', b.Barcode),b.SysPrice) SysPrice,b.SupplierId,b.BrandSN,
+                (CASE WHEN b.State = 1 THEN '上架' ELSE '下架' END) StateTitle,
+                ( SELECT TOP 1 DiscountPrice FROM dbo.CommodityDiscount WHERE Barcode = b.Barcode
+                AND EXISTS ( SELECT 1 FROM   dbo.CommodityPromotion WHERE  Id = CommodityId AND State = 1
+                AND ','+CommodityPromotion.StoreId+',' LIKE '%{0}%' )) DiscountPrice
+                 FROM dbo.Vw_Product b) t INNER JOIN dbo.SplitString('{1}',',',1) s ON s.Value = t.CategorySN where 1=1 ";
+            sql = string.Format(sql, store, nvl["parentType"]);
+
+            if (state != -1)
+            {
+                sql += string.Format(" and state={0}", state);
+            }
+            if (activeState == 1)
+            {
+                sql += " and DiscountPrice IS NOT null";
+            }
+            if (activeState == 0)
+            {
+                sql += " and DiscountPrice IS null";
+            }
+            if (!searchText.IsNullOrEmpty())
+            {
+                sql += string.Format(" and (Barcode like '%{0}%' or ProductCode like  '%{0}%' or Title like  '%{0}%')", searchText);
+            }
+            if (!supplierId.IsNullOrEmpty())
+            {
+                sql += string.Format(" and supplierId='{0}'", supplierId);
+            }
+            if (!brandsn.IsNullOrEmpty())
+            {
+                sql += string.Format(" and brandsn={0}", brandsn);
+            }
+            var dt = base.ExceuteSqlForPage(sql, out recordCount);
+            return dt;
+        }
+        public int MaxSn()
+        {
+            var obj= _db.ExecuteScalarText("SELECT MAX(CONVERT(int,StoreId)) from Warehouse",null);
+            return Convert.ToInt32(obj)+1;
+        }
+    }
+}

@@ -1,0 +1,371 @@
+﻿@model MakingCouponCard
+@{
+    ViewBag.Title = "CreateCoupon";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @*@Html.HiddenFor(o => o.Inserted)
+        @Html.HiddenFor(o => o.Deleted)
+        @Html.HiddenFor(o => o.Updated)*@
+        <span style="display:none">@Html.TextBox("tod", DateTime.Now.ToString("yyyy-MM-dd"), new { @class = "easyui-datebox" })</span>
+
+        <div class="content">
+            <table class="table-form" width="100%" height="117px">
+                <tr>
+                    <td class="name">类别：</td>
+                    <td class="input">
+                        @Html.DropDownListFor(o => o.CouponType, ViewBag.types as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo'" })
+                    </td>
+                    <td class="name">形式：</td>
+                    <td class="input">
+                        @Html.DropDownListFor(o => o.CouponFrom, ViewBag.forms as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo'" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">新增数量：</td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.MakeNumber, new { @class = "easyui-validatebox", data_options = "validType:'integer', novalidate:true", @title = "新增数量为0或空表示不限" })
+                    </td>
+                    <td class="name">有效期：</td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.ExpiryStart, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", id = "StartDate", data_options = "required:true, validType:'greaterEqualDate[\"#tod\"]',invalidMessage:'开始日期必须大于当前日期'", autocomplete = "off" }) -
+                        @Html.TextBoxFor(o => o.ExpiryEnd, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", id = "EndDate", data_options = "validType:'greaterEqualDate[\"#StartDate\"]',invalidMessage:'结束日期必须大于等于开始日期' ", autocomplete = "off", @title = "结束日期为空表示永久" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">适用门店：</td>
+                    <td class="input choose" colspan="3">
+                        @Html.CheckBoxListFor(o => o.StoreIds, ViewBag.shops as List<SelectListItem>, new { data_options = "required:true,novalidate:true,missingMessage:'必勾选一项'", @class = "easyui-validatebox", id = "store" }, 5)
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">适用商品：</td>
+                    <td class="input" colspan="3">
+                        @Html.RadioButtonFor(o => o.ProductTypes, "-1", new { id = "proType_1", @checked = "checked" }) <label for="proType_1">全部商品</label>
+                        @Html.RadioButtonFor(o => o.ProductTypes, "2", new { id = "proType_2", style = "margin-left:15px;" }) <label for="proType_2">指定品类</label>
+                        @Html.RadioButtonFor(o => o.ProductTypes, "3", new { id = "proType_3", style = "margin-left:15px;" }) <label for="proType_3">具体商品</label>
+                        @Html.RadioButtonFor(o => o.ProductTypes, "4", new { id = "proType_4", style = "margin-left:15px;" }) <label for="proType_4">指定品牌</label>
+                    </td>
+                </tr>
+            </table>
+
+            <div id="winType" class="easyui-dialog" data-options="title:'选择品类',cache:false,modal:true,width:800,height:450,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+            <div id="ptype_2" style="margin-top:10px;">
+                <input type="button" id="btnapp" onclick="append()" value="add" style="display:none" />
+                <a href="#" class="easyui-linkbutton" onclick="SelectType('grid_type')" style="margin:5px 0px;">添加指定品类</a>
+                <table class="easyui-datagrid" id="grid_type"
+                       data-options="url:'@Url.Action("LoadCategoryList")',queryParams:{zhekouId:'',type:2},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onLoadSuccess:appClick,onLoadError:loadError">
+                    @*,onLoadSuccess:appClick,onBeforeEdit:beforeEdit,onClickCell:clickCell,onLoadError:loadError*@
+                    <thead>
+                        <tr>
+                            <th data-options="field:'Id',hidden:true,editor:{type:'textbox'}" width="120">ID</th>
+                            @*<th data-options="field:'StrId',hidden:true,editor:{type:'textbox'}" width="120">ID</th>*@
+                            <th data-options="field:'CategorySN',hidden:true,editor:{type:'textbox'}" width="120">类别</th>
+                            <th data-options="field:'CategoryGrade',hidden:true,editor:{type:'textbox'}" width="80">层级</th>
+                            @*<th data-options="field:'BrandSN',hidden:true,editor:{type:'textbox'}" width="120">品牌ID</th>*@
+                            <th data-options="field:'BigCategoryTitle',editor:{type:'combobox'}" width="150">大类</th>
+                            <th data-options="field:'MidCategoryTitle',editor:{type:'combobox'}" width="150">中类</th>
+                            <th data-options="field:'SubCategoryTitle',editor:{type:'combobox'}" width="150">子类</th>
+                            @*<th data-options="field:'BrandTitle',editor:{type:'combobox'}" width="120">品牌</th>
+                            <th data-options="field:'StockNums',editor:{type:'textbox',options:{disabled:true}}" width="120">库存</th>*@
+                            <th data-options="field:'Editor',formatter:operationType " width=" 120">操作</th>
+                            
+
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <div id="ptype_3" style="margin-top:10px;">
+                <a href="#" class="easyui-linkbutton" onclick="selectProduct('grid2')" style="margin:5px 0px;">添加具体商品</a>
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>货号</th>
+                            <th>条码</th>
+                            <th>品名</th>
+                            <th>品类</th>
+                            <th>单位</th>
+                            <th>系统售价</th>
+                            <th>库存量</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <div id="ptype_4" style="margin-top:10px;">
+                <a href="#" class="easyui-linkbutton" onclick="selectProduct('grid2')" style="margin:5px 0px;">添加指定品牌</a>
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>货号</th>
+                            <th>条码</th>
+                            <th>品名</th>
+                            <th>品类</th>
+                            <th>单位</th>
+                            <th>系统售价</th>
+                            <th>库存量</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        //适用门店点击事件
+        $("[name='StoreIds']").click(function () {
+            if ($(this).val() == "-1") {
+                var chk = this.checked;
+                $("[name='StoreIds']:not(:first)").each(function (i, r) {
+                    r.checked = chk;
+                })
+            } else {
+                $("[name='StoreIds']:first")[0].checked = $("[name='StoreIds']:not(:first):checked").size() == $("[name='StoreIds']:not(:first)").size();
+            }
+            storeRequired();
+        });
+        storeRequired();
+
+        setTimeout("SelectedType()", 1000);
+
+        //选择不同适用商品，显示不同的网格列表
+        $("[name='ProductTypes']").click(function () {
+            if ($(this).val() == "2") {
+                document.getElementById("ptype_2").style.display = "block";
+                document.getElementById("ptype_3").style.display = "none";
+                document.getElementById("ptype_4").style.display = "none";
+            }
+            else if ($(this).val() == "3") {
+                document.getElementById("ptype_2").style.display = "none";
+                document.getElementById("ptype_3").style.display = "block";
+                document.getElementById("ptype_4").style.display = "none";
+            }
+            else if ($(this).val() == "4") {
+                document.getElementById("ptype_2").style.display = "none";
+                document.getElementById("ptype_3").style.display = "none";
+                document.getElementById("ptype_4").style.display = "block";
+            } else {
+                document.getElementById("ptype_2").style.display = "none";
+                document.getElementById("ptype_3").style.display = "none";
+                document.getElementById("ptype_4").style.display = "none";
+            }
+        });
+
+    });
+
+    //适用门店必填校验
+    if ($("[name='StoreIds']:first").attr("checked")) {
+        $("[name='StoreIds']:not(:first)").attr("checked", true);
+    }
+    storeRequired();
+    function storeRequired() {
+        if ($("[name='StoreIds']:checked").size() <= 0)
+            $("#store").validatebox("enableValidation");
+        else
+            $("#store").validatebox("disableValidation");
+    }
+
+    //根据所选的适用商品不用，显示不同的网格列表
+    function SelectedType() {
+        var selectedType = $("[name='ProductTypes']:checked").val();
+        if (selectedType == -1) {
+            document.getElementById("ptype_2").style.display = "none";
+            document.getElementById("ptype_3").style.display = "none";
+            document.getElementById("ptype_4").style.display = "none";
+        }
+        else if (selectedType == 2) {
+            document.getElementById("ptype_2").style.display = "block";
+            document.getElementById("ptype_3").style.display = "none";
+            document.getElementById("ptype_4").style.display = "none";
+        }
+        else if (selectedType == 3) {
+            document.getElementById("ptype_2").style.display = "none";
+            document.getElementById("ptype_3").style.display = "block";
+            document.getElementById("ptype_4").style.display = "none";
+        }
+        else if (selectedType == 4) {
+            document.getElementById("ptype_2").style.display = "none";
+            document.getElementById("ptype_3").style.display = "none";
+            document.getElementById("ptype_4").style.display = "block";
+        }
+    }
+
+    var editIndex = undefined, clickIndex = undefined, opadd = false;
+    var first = true;
+    var $dgType = $("#grid_type");
+
+    //网格加载完成之后，追加一行
+    function appClick() {
+        setTimeout(function () {
+            $("#btnapp").click();
+        }, 150);
+    }
+
+    //网格【操作】列
+    function operationType(value, row, index) {
+        if (opadd) {
+            opadd = false;
+            return "<a href='javascript:void(0)' onclick='append()'>添加</a>";
+        } else if (row.SubCategoryTitle != undefined) {
+            return "<a href='javascript:void(0)' onclick=\"removeItem('" + row.Id + "')\">删除</a>";
+        }
+    }
+
+    //网格【操作】列 - 添加
+    function append() {
+        if (endClickEditing() && endEditing()) {
+            $dgType = $dgType ? $dgType : $("#grid_type");
+            opadd = true;
+            $dgType.datagrid('appendRow', {
+                Id: "",
+                CategorySN: "",
+                CategoryGrade: "",
+                BigCategoryTitle: "",
+                MidCategoryTitle: "",
+                SubCategoryTitle: "",
+                Editor: ""
+            })
+            editIndex = $dgType.datagrid('getRows').length - 1;
+            $dgType.datagrid('selectRow', editIndex)
+                .datagrid('beginEdit', editIndex);
+            if (!first) {
+                clickIndex = editIndex - 1;
+                //numChange('a', '2');
+            }
+            changeValue();
+            first = false;
+        }
+    }
+
+    //网格【操作】列-删除
+    function removeItem(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dgType.datagrid("selectRecord", id);
+            var row = $dgType.datagrid("getSelected")
+            var index = $dgType.datagrid("getRowIndex", row);
+            $dgType.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+
+
+    //有的没的
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dgType.datagrid('validateRow', clickIndex)) {
+            $dgType.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            changeValue();
+            return true;
+        } else {
+            return false;
+        }
+    }
+    function endEditing() {
+        if (editIndex == undefined) { return true }
+        if ($dgType.datagrid('validateRow', editIndex)) {
+            var ed = $dgType.datagrid('getEditor', { index: editIndex, field: 'Barcode' });
+            if (!ed) return true;
+            var barcode = $(ed.target).combobox('getValue');
+            var ed2 = $dgType.datagrid('getEditor', { index: editIndex, field: 'ProductCode' });
+            if (!$(ed2.target).textbox('getValue')) {
+                $.messager.alert("提示", "该条码不存在!"); return false;
+            }
+            var data = $dgType.datagrid("getData");
+            if (isExists(data.rows, barcode)) {
+                $.messager.alert("提示", "该条码已存在", "warning", function () {
+                    $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                });
+                return false;
+            } else {
+                $dgType.datagrid('endEdit', editIndex);
+                editIndex = undefined;
+                return true;
+            }
+        } else {
+            return false;
+        }
+    }
+    function changeValue() {
+        var inserted = $dgType.datagrid('getChanges', "inserted");
+        var deleted = $dgType.datagrid('getChanges', "deleted");
+        var updated = $dgType.datagrid('getChanges', "updated");
+        $("#Inserted").val(JSON.stringify(inserted));
+        $("#Deleted").val(JSON.stringify(deleted));
+        $("#Updated").val(JSON.stringify(updated));
+        var rows = $dgType.datagrid("getRows");
+        editIndex = rows.length - 1;
+        //var total = 0;
+        //$.each(rows, function (i, r) {
+        //    if (r.Price && r.IndentNum) {
+        //        total += r.Price * r.IndentNum;
+        //    }
+        //});
+        //$("#OrderTotal").val(total);
+    }
+
+
+    //打开选择品类窗口
+    function SelectType(dg) {
+        $dgt = $("#"+dg);
+        //var url = "@Url.Action("Index", "ProductType")?t="+Math.random();
+        var url = "@Url.Action("SelectProductType")?t=" + Math.random();
+        var rows = $dgt.datagrid("getRows");
+        var cds = $.map(rows, function (row) {
+            return row.StrId;
+        }).join(",");
+        //url += "&cds=" + cds;
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("#winType").dialog({ content: cont, buttons: btntypes }).dialog("open");
+    }
+    var btntypes = [{
+        text: '添加所选系列',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            var chks = $('#winType iframe')[0].contentWindow.$dgType.datagrid("getChecked");
+            var data = $dgt.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            var names = $.map(data.rows, function (item) { return item.StrId; });
+            $.each(chks, function (idx, row) {
+                if (names.indexOf(row.Id) == -1) {
+                    $dgt.datagrid('insertRow',
+                    {
+                        index: lastIndex,
+                        row: {
+                            CategorySN: row.CategorySN, MidCategoryTitle: row.MidCategoryTitle, SubCategoryTitle: row.SubCategoryTitle, BigCategoryTitle: row.BigCategoryTitle, BrandTitle: row.BrandTitle, BrandSN: row.BrandSN,
+                            StockNums: row.StockNums, StrId: row.CategorySN + '~' + row.BrandSN, Id: maxId()
+                        }
+                    });
+                    lastIndex++;
+                }
+            });
+            changeValue();
+            $('#winType').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#winType').dialog('close');
+        }
+    }];
+
+
+
+
+
+
+
+</script>

@@ -1,0 +1,113 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// 金融接口-支付接口相关业务操作
+    /// </summary>
+    public class PayApiService
+    {
+        [Ninject.Inject]
+        IBaseRepository<PayApi> PayApiRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<SysUserInfo> UserRepository { get; set; }
+
+        /// <summary>
+        /// 支付接口列表-获取分页数据 fishtodo:待添加分页
+        /// </summary>
+        /// <returns></returns>
+        public List<PayApiExt> GetPayApiPageing(System.Collections.Specialized.NameValueCollection nvl, out int totalCount)
+        {
+            var query = from upay in PayApiRepository.GetQuery()
+                        join u in UserRepository.GetQuery() on upay.CreateUID equals u.UserId into utb
+                        from user in utb.DefaultIfEmpty()
+                        select new PayApiExt()
+                        {
+                            Id = upay.Id,
+                            ApiAlias = upay.ApiAlias,
+                            ApiName = upay.ApiName,
+                            ApiNo = upay.ApiNo,
+                            Status = upay.Status,
+                            PayType = upay.PayType,
+                            CreateDT = upay.CreateDT,
+                            CreateUID = upay.CreateUID,
+                            PayMode = upay.PayMode,
+                            TechContact = upay.TechContact,
+                            TechPhone = upay.TechPhone,
+                            Memo = upay.Memo,
+                            Creater = user.FullName
+                        };
+            totalCount = query.Count();
+            return query.ToPageList();
+        }
+        /// <summary>
+        /// 支付接口列表-新增或编辑支付接口表单-保存
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveOrUpdate(PayApi model)
+        {
+            var source = model;
+            if (source.Id>0)
+            {
+                source = PayApiRepository.GetQuery(o => o.Id == model.Id).FirstOrDefault();
+                model.ToCopyProperty(source, new List<string>() { "CreateDT", "CreateUID"});
+            }
+            else
+            {
+                source.CreateDT = DateTime.Now;
+                source.CreateUID = CurrentUser.UID;
+                source.ApiNo = GetMaxApiNo();
+                PayApiRepository.Add(source, false);
+            }
+
+            PayApiRepository.SaveChanges();
+            return OpResult.Success(data:source);
+        }
+        /// <summary>
+        /// 获取最大接口编号
+        /// </summary>
+        /// <returns></returns>
+        public int GetMaxApiNo()
+        {
+            var value = PayApiRepository.GetQuery().Max(o => (int?)o.ApiNo).GetValueOrDefault();
+            return value + 1;
+        }
+        /// <summary>
+        /// 支付接口列表-新增或编辑支付接口表单-获取支付接口Model
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public PayApi GetOne(object id)
+        {
+            var obj = PayApiRepository.Get(id);
+            return obj;
+        }
+        /// <summary>
+        /// 设置启用或关闭接口
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="apiStatus"></param>
+        /// <returns></returns>
+        public OpResult SetStatus(int id, short status)
+        {
+            var entity = PayApiRepository.GetQuery(o => o.Id==id).FirstOrDefault();
+            if (entity!=null)
+            {
+                entity.Status = status;
+                return OpResult.Result(PayApiRepository.SaveChanges());
+            }
+            else
+            {
+                return OpResult.Fail("所选项已失效！");
+            }
+        }
+    }
+}

@@ -1,0 +1,438 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Logic.OMS.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.OMS.DAL;
+using System.ComponentModel;
+using QCT.Pay.Common;
+using QCT.Pay.Common.Models;
+using QCT.Pay.Common.Helpers;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// 支付接口Service类
+    /// </summary>
+    public class PayService
+    {
+        /// <summary>
+        /// 构造函数，并初始化仓储对象
+        /// </summary>
+        public PayService()
+        {
+            TradeOrderRepost = new BaseRepository<TradeOrder>();
+            TradeResultRepost = new BaseRepository<TradeResult>();
+            TPayLicenseRepost = new BaseRepository<PayLicense>();
+            TPaySecretKeyRepost = new BaseRepository<TradersPaySecretKey>();
+            TPayChannelRepost = new BaseRepository<TradersPayChannel>();
+            TStoreRepost = new BaseRepository<TradersStore>();
+            PayApiRepost = new BaseRepository<PayApi>();
+            LogEngine = new LogEngine();
+        }
+        /// <summary>
+        /// 支付订单记录仓储
+        /// </summary>
+        IBaseRepository<TradeOrder> TradeOrderRepost { get; set; }
+        /// <summary>
+        /// 支付结果通知仓储
+        /// </summary>
+        IBaseRepository<TradeResult> TradeResultRepost { get; set; }
+        /// <summary>
+        /// 商家支付许可
+        /// </summary>
+        IBaseRepository<PayLicense> TPayLicenseRepost { get; set; }
+        /// <summary>
+        /// 商家支付主密钥
+        /// </summary>
+        IBaseRepository<TradersPaySecretKey> TPaySecretKeyRepost { get; set; }
+        /// <summary>
+        /// 商家支付通道
+        /// </summary>
+        IBaseRepository<TradersPayChannel> TPayChannelRepost { get; set; }
+        /// <summary>
+        /// 商家门店
+        /// </summary>
+        IBaseRepository<TradersStore> TStoreRepost { get; set; }
+        /// <summary>
+        /// 交易支付接口
+        /// </summary>
+        IBaseRepository<PayApi> PayApiRepost { get; set; }
+        /// <summary>
+        /// 日志记录引擎
+        /// </summary>
+        protected LogEngine LogEngine { get; set; }
+
+        /// <summary>
+        /// 检查商户通道是否可用
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <param name="method"></param>
+        /// <returns></returns>
+        public QctPayReturn CheckMerchAccess(int cid, string method, decimal version)
+        {
+            var payLicense = GetPayLicense(cid, (short)PayLicenseState.Enabled);
+            if(payLicense==null)
+                return QctPayReturn.Fail(msg: "请先申请支付许可");
+            var payApiObj = GetPayApi(method, version);
+            if (payApiObj == null)
+                return QctPayReturn.Fail(msg: "非法支付接口参数名");
+            var merchObj = GetMerchByID(cid, payApiObj.ChannelNo, payApiObj.ChannelPayMode);
+            if (merchObj == null)
+                return QctPayReturn.Fail(msg: "找不到对应商户密钥配置信息，请先申请开通商户");
+            merchObj.SourceType = payLicense.SourceType;
+            merchObj.ApiNo = payApiObj.ApiNo;
+            merchObj.Method = payApiObj.Method;
+            merchObj.OptType = payApiObj.OptType;
+            return QctPayReturn.Success(data: merchObj);
+        }
+        /// <summary>
+        /// 检查商户是否许可
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        public PayLicense GetPayLicense(int cid, short state)
+        {
+            var obj = TPayLicenseRepost.GetQuery(o => o.CID == cid && o.State == (short)PayLicenseState.Enabled).FirstOrDefault();
+            return obj;
+        }
+        /// <summary>
+        /// 根据接口参数名获得接口实体对象
+        /// </summary>
+        /// <param name="method"></param>
+        /// <returns></returns>
+        public PayApi GetPayApi(string method, decimal version)
+        {
+            var entity = PayApiRepost.GetQuery(o => o.Method == method && o.Version == version && o.State == (short)PayApiState.HasReleased).FirstOrDefault();
+            return entity;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="tradeOrder"></param>
+        /// <returns></returns>
+        public bool SaveTradeOrder(TradeOrder tradeOrder)
+        {
+            using (var trans = new EFDbContext().Database.BeginTransaction())
+            {
+                TradeOrderRepost.Add(tradeOrder, false);
+                var result = TradeOrderRepost.SaveChanges();
+                return result;
+            }
+        }
+        /// <summary>
+        /// 保存商家收款扫码结果
+        /// </summary>
+        /// <returns></returns>
+        public bool SaveMerchScanResult(SxfScanPayResponse sxfResult, out TradeOrder order)
+        {
+            var tradeResult = new TradeResult(sxfResult);
+            var succ = SaveMchTradeResult(tradeResult, out order);
+            return succ;
+        }
+        /// <summary>
+        /// 保存购买者付款扫码返回结果
+        /// </summary>
+        /// <param name="tradeResult"></param>
+        /// <returns></returns>
+        public bool SaveMchTradeResult(TradeResult tradeResult, out TradeOrder tradeOrder)
+        {
+            //fishtodo:保存交易结果
+            tradeOrder = null;
+            try
+            {
+                var tradeResultObj = TradeResultRepost.GetQuery(o => o.OutTradeNo == tradeResult.OutTradeNo).FirstOrDefault();
+                //using (var trans = new EFDbContext().Database.BeginTransaction())
+                //{
+                if (tradeResultObj != null)
+                {
+                    tradeResult.ToCopyProperty(tradeResultObj, new List<string>() { "CreateDT", "OutTradeNo", "Id" });
+                }
+                else
+                {
+                    TradeResultRepost.Add(tradeResult);
+                }
+                LogEngine.WriteError(string.Format("[SaveMchTradeResult1#调试#{0}]{1}", tradeResult.ToJson(), ""), null, LogModule.支付交易);
+                //变更TradeOrder数据状态
+                tradeOrder = TradeOrderRepost.GetQuery(o => o.OutTradeNo == tradeResult.OutTradeNo && o.MchId3 == tradeResult.MchId3).FirstOrDefault();
+                tradeOrder.ReceiptAmount = tradeResult.ReceiptAmount;
+                tradeOrder.TradeNo3 = tradeResult.TradeNo3;
+                tradeOrder.State = tradeResult.TradeState;
+                tradeOrder.TradeDate = tradeResult.TradeDate;
+                tradeOrder.TradeTime = tradeResult.TradeTime;
+                tradeOrder.UpdateDT = DateTime.Now;
+                tradeOrder.PayChannel = tradeResult.PayChannel;
+                var result = TradeResultRepost.SaveChanges();
+                var result1 = TradeOrderRepost.SaveChanges();
+                return result;
+                //}
+            }
+            catch (Exception ex)
+            {
+                LogEngine.WriteError(string.Format("[SaveMchTradeResult2#保存后台结果通知并更新状态#{0}]{1}", tradeResult.OutTradeNo, ex.Message), ex, LogModule.支付交易);
+                return false;
+            }
+        }
+        /// <summary>
+        /// 根据第三方商户号，商户订单号获得唯一订单
+        /// </summary>
+        /// <param name="mchId3"></param>
+        /// <param name="outTradeNo"></param>
+        /// <returns></returns>
+        public TradeOrder GetTradeOrder(string mchId3, string outTradeNo)
+        {
+            var trade = TradeOrderRepost.GetQuery(o => o.MchId3 == mchId3 && o.OutTradeNo == outTradeNo).FirstOrDefault();
+            return trade;
+        }
+        /// <summary>
+        /// 获取最大订单交易流水号
+        /// </summary>
+        /// <param name="prefix"></param>
+        /// <returns></returns>
+        public string GetMaxTradeNo(string prefix)
+        {
+            var result = TradeOrderRepost.GetQuery(o => o.TradeNo.StartsWith(prefix)).Max(o => o.TradeNo);
+            return result;
+        }
+
+        #region 商户、商户门店、收单渠道、商户收单渠道费率信息
+        /// <summary>
+        /// 根据商户ID及收单渠道编号获取商户信息 fishtodo:待确认查询接口的操作类型
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <param name="channelNo"></param>
+        /// <returns></returns>
+        public MerchantChannelModel GetMerchByID(int cid, int channelNo, short channelPayMode)
+        {
+            var query = (from tpsk in TPaySecretKeyRepost.GetQuery()
+                         join jtpc in TPayChannelRepost.GetQuery() on tpsk.TPaySecrectId equals jtpc.TPaySecrectId into itpc
+                         from tpc in itpc.DefaultIfEmpty()
+                         where tpsk.CID == cid && tpsk.ChannelNo == channelNo && tpsk.State == (short)TradersState.Enabled
+                         && tpc.ChannelPayMode == channelPayMode && tpc.State == (short)TradersState.Enabled
+                         select new MerchantChannelModel()
+                         {
+                             CID = tpsk.CID,
+                             SecretKey = tpsk.SecretKey,
+                             MerchId3 = tpsk.MchId3,
+                             SecretKey3 = tpsk.SecretKey3,
+                             ChannelNo = tpsk.ChannelNo,
+                             PayNotifyUrl = tpc.PayNotifyUrl,
+                             RfdNotifyUrl = tpc.RfdNotifyUrl,
+                             ChannelPayMode = channelPayMode
+                         });
+            return query.FirstOrDefault();
+        }
+        /// <summary>
+        /// 获取可用的支付商户
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <returns></returns>
+        public TradersPaySecretKey GetMerchByCID(int cid)
+        {
+            var query = (from tpsk in TPaySecretKeyRepost.GetQuery()
+                         where tpsk.CID == cid && tpsk.State == (short)TradersState.Enabled
+                         select tpsk);
+            return query.FirstOrDefault();
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="merchObj"></param>
+        /// <param name="sid"></param>
+        /// <returns></returns>
+        public MerchantStoreChannelModel GetMerchStore(MerchantChannelModel merchObj, int sid)
+        {
+            var query = from tstore in TStoreRepost.GetQuery()
+                        where tstore.CID == merchObj.CID && tstore.StoreNum == sid && tstore.State == (short)PayTradersStoreState.Enabled
+                        select new MerchantStoreChannelModel()
+                        {
+                            SID = tstore.StoreNum,
+                            StoreId3 = tstore.StoreNum3
+                        };
+            var store = query.FirstOrDefault();
+            if (store != null)
+            {
+                var obj = new MerchantStoreChannelModel(merchObj);
+                obj.SID = store.SID;
+                obj.StoreId3 = store.StoreId3;
+                return obj;
+            }
+            return null;
+        }
+        /// <summary>
+        /// 判断是否存在商户订单
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <param name="outTradeNo"></param>
+        /// <returns></returns>
+        public bool CanCreateOrder(int cid, string outTradeNo)
+        {
+            var order = TradeOrderRepost.GetQuery(o => o.CID == cid && o.OutTradeNo == outTradeNo).FirstOrDefault();
+            if (order == null)
+                return true;
+            else
+                return false;
+        }
+        #endregion
+
+        #region 过期
+        ///// <summary>
+        ///// 创建商户主扫支付动态二维码订单
+        ///// </summary>
+        ///// <param name="pms"></param>
+        ///// <param name="secretKey3"></param>
+        ///// <returns></returns>
+        //public TradeOrder CreateBuyerScanDynaOrder(PayBuyerScanDynaRequest pms, MerchantChannelModel merchObj)
+        //{
+        //    var hasOutTradeNo = HasTradeOrder(pms.CID, pms.OutTradeNo);
+        //    if (!hasOutTradeNo)
+        //    {
+        //        var storeObj = GetMerchStoreByStoreId(merchObj, pms.SID);
+        //        pms.ResetPayNotifyUrl(merchObj.PayNotifyUrl);
+        //        if (merchObj != null && storeObj != null)
+        //        {
+        //            var tradeRcd = new TradeOrder(pms, storeObj)
+        //            {
+        //                TradeNo = OrderHelper.GenerateId(),
+        //                OutTradeNo = pms.OutTradeNo,
+        //                TotalAmount = pms.TotalAmount,
+        //                SourceType = merchObj.SourceType,
+        //                ApiNo = merchObj.ApiNo,
+        //                State = (short)PayState.NotPay,
+        //                PayNotifyUrl = pms.PayNotifyUrl,
+        //                Fee = PayRules.CalcFee(pms.TotalAmount, merchObj),
+        //                OrderType3 = short.Parse(pms.OrderType3),
+        //                TradeType = (short)QctTradeType.Income,
+        //                FeeType = (short)FeeType.RMB,
+        //                BuyerMobile = ""
+        //            };
+        //            using (var trans = new EFDbContext().Database.BeginTransaction())
+        //            {
+        //                TradeOrderRepost.Add(tradeRcd, false);
+        //                var result = TradeOrderRepost.SaveChanges();
+        //                if (result)
+        //                {
+        //                    return tradeRcd;
+        //                }
+        //            }
+        //        }
+        //    }
+
+        //    return null;
+        //}
+        ///// <summary>
+        ///// 创建商户被扫支付订单
+        ///// </summary>
+        ///// <param name="pms"></param>
+        ///// <param name="secretKey3"></param>
+        ///// <returns></returns>
+        //public TradeOrder CreateBuyerScanDynaOrder(PayMerchScanRequest pms, MerchantChannelModel merchObj)
+        //{
+        //    var hasOutTradeNo = HasTradeOrder(pms.CID, pms.OutTradeNo);
+        //    if (!hasOutTradeNo)
+        //    {
+        //        var storeObj = GetMerchStoreByStoreId(merchObj, pms.SID);
+        //        pms.ResetPayNotifyUrl(merchObj.PayNotifyUrl);
+
+        //        if (merchObj != null && storeObj != null)
+        //        {
+        //            var tradeRcd = new TradeOrder(pms, storeObj)
+        //            {
+        //                TradeNo = OrderHelper.GenerateId(),
+        //                OutTradeNo = pms.OutTradeNo,
+        //                TotalAmount = pms.TotalAmount,
+        //                BuyerPayToken = pms.BuyerPayToken,
+        //                SourceType = merchObj.SourceType,
+        //                ApiNo = merchObj.ApiNo,
+        //                State = (short)PayState.NotPay,
+        //                PayNotifyUrl = pms.PayNotifyUrl,
+        //                Fee = PayRules.CalcFee(pms.TotalAmount, merchObj),
+        //                OrderType3 = short.Parse(pms.OrderType3),
+        //                TradeType = (short)QctTradeType.Income,
+        //                FeeType = (short)FeeType.RMB,
+        //                BuyerMobile = ""
+        //            };
+        //            using (var trans = new EFDbContext().Database.BeginTransaction())
+        //            {
+        //                TradeOrderRepost.Add(tradeRcd, false);
+        //                var result = TradeOrderRepost.SaveChanges();
+        //                if (result)
+        //                {
+        //                    return tradeRcd;
+        //                }
+        //            }
+        //        }
+        //    }
+        //    return null;
+        //}
+        ///// <summary>
+        ///// 创建商户退款申请单
+        ///// </summary>
+        ///// <param name="pms"></param>
+        ///// <param name="secretKey3"></param>
+        ///// <returns></returns>
+        //public TradeOrder CreateRefundApplyOrder(RefundApplyRequest pms, MerchantChannelModel merchObj)
+        //{
+        //    var hasOutTradeNo = HasTradeOrder(pms.CID, pms.OutTradeNo);
+        //    if (!hasOutTradeNo)
+        //    {
+        //        var storeObj = GetMerchStoreByStoreId(merchObj, pms.SID);
+        //        pms.ResetRfdNotifyUrl(merchObj.PayNotifyUrl);
+
+        //        if (merchObj != null && storeObj != null)
+        //        {
+        //            var tradeRcd = new TradeOrder(pms, storeObj)
+        //            {
+        //                TradeNo = OrderHelper.GenerateId(),
+        //                OutTradeNo = pms.OutTradeNo,
+        //                OldOutTradeNo = pms.OldOutTradeNo,
+        //                TotalAmount = pms.RefundAmount,
+        //                SourceType = merchObj.SourceType,
+        //                ApiNo = merchObj.ApiNo,
+        //                State = (short)RefundState.RefundIng,
+        //                RfdNotifyUrl = pms.RfdNotifyUrl,
+        //                OrderType3 = ((short)SxfOrderType.CommonOrder),
+        //                TradeType = (short)QctTradeType.Expense,
+        //                FeeType = (short)FeeType.RMB,
+        //                BuyerMobile = ""
+        //            };
+        //            using (var trans = new EFDbContext().Database.BeginTransaction())
+        //            {
+        //                TradeOrderRepost.Add(tradeRcd, false);
+        //                var result = TradeOrderRepost.SaveChanges();
+        //                if (result)
+        //                {
+        //                    return tradeRcd;
+        //                }
+        //            }
+        //        }
+        //    }
+        //    return null;
+        //}
+        //static object objlock = new object();
+        ///// <summary>
+        ///// 生成支付交易流水号
+        ///// </summary>
+        //public string NewTradeNo
+        //{
+        //    get
+        //    {
+        //        lock (objlock)
+        //        {
+        //            var prefix = DateTime.Now.ToString("yyyyMMddHHmmss");
+        //            var maxNo = GetMaxTradeNo(prefix);
+        //            int defNo = 0;
+        //            if (!string.IsNullOrEmpty(maxNo))
+        //                defNo = int.Parse(maxNo.Substring(14));
+        //            defNo++;
+        //            return prefix + defNo.ToString("0000");
+        //        }
+        //    }
+        //}
+        #endregion
+    }
+}

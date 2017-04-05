@@ -1,0 +1,100 @@
+﻿using Pharos.Logic.OMS.BLL;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net;
+using System.Text;
+using System.Web.Mvc;
+using System.Linq;
+using System.Security.Cryptography;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS;
+using Pharos.Utility;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    /// <summary>
+    /// 金融接口
+    /// </summary>
+    public class FinanceController : BaseController
+    {
+        [Ninject.Inject]
+        DictionaryService DicSvc { get; set; }
+        [Ninject.Inject]
+        UnitPayService UnitPaySvc { get; set; }
+        //
+        // GET: /Finance/
+
+        #region 支付接口列表
+        /// <summary>
+        /// 支付接口列表-页面加载
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult PayApiIndex()
+        {
+            ViewBag.apiTypes = ListToSelect(DicSvc.GetChildList(380).Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }));
+            return View();
+        }
+        /// <summary>
+        /// 支付接口列表-获取分页数据
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult GetPayApiPageing()
+        {
+            var count = 0;
+            var list = UnitPaySvc.GetPayApiPageing(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+
+        /// <summary>
+        /// 支付接口列表-移除所选项
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult RemovePayApi()
+        {
+            //fishtodo:待确定使用关联判断再完成删除功能
+            return View();
+        }
+        /// <summary>
+        /// 支付接口列表-设置启用关闭所选项
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="apiStatus"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public JsonResult SetApiStatus(string id, short apiStatus)
+        {
+            return new JsonNetResult(UnitPaySvc.SetApiStatus(id, apiStatus));
+        }
+        #endregion
+
+        #region 支付接口表单
+        /// <summary>
+        /// 支付接口列表-新增支付接口表单
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult PayApiForm(string id)
+        {
+            ViewBag.payTypes = ListToSelect(DicSvc.GetChildList(380).Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }));
+            ViewBag.payModes = ListToSelect(DicSvc.GetChildList(381).Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }));
+            ViewBag.apiStatus = EnumToSelect(typeof(ApiStatus), selectValue: 0);
+            var entity = UnitPaySvc.GetModelById(id);
+            return View(entity);
+        }
+        /// <summary>
+        /// 支付接口列表-新增或编辑支付接口表单-保存
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult SavePayApi(UnitPay unitPay)
+        {
+            var op = UnitPaySvc.SaveOrUpdate(unitPay);
+            return View("PayApiForm", (UnitPay)op.Data);
+        }
+        #endregion
+
+        
+
+    }
+    
+}

@@ -1,0 +1,39 @@
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Payment
+{
+    public interface IPay
+    {
+        string Title { get; set; }
+
+        [JsonIgnore]
+        string ApiUrl { get; set; }
+
+        string EnableIcon { get; set; }
+        string DisableIcon { get; set; }
+
+        [JsonIgnore]
+        int ApiCode { get; set; }
+
+        [JsonIgnore]
+        PayDetails PayDetails { get; set; }
+
+
+        [JsonIgnore]
+        Action<IPay> CallBack { get; set; }
+
+        bool Enable { get; set; }
+
+        string ApiCodes { get; set; }
+
+        PayMode Mode { get; set; }
+
+        void SetComplete();
+        void RefreshStatus(string storeId, int companyToken);
+
+    }
+}

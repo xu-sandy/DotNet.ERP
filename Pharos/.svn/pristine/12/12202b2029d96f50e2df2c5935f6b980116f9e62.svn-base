@@ -1,0 +1,147 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.Models.DTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    /// <summary>
+    /// 查库存
+    /// </summary>
+    public class CheckInventory : BaseObservable
+    {
+        string goodsId;
+        /// <summary>
+        /// 货号
+        /// </summary>
+        public string GoodsId
+        {
+            get { return goodsId; }
+            set
+            {
+                goodsId = value;
+                OnPropertyChanged("GoodsId");
+            }
+        }
+        string code;
+        /// <summary>
+        /// 条码
+        /// </summary>
+        public string Code
+        {
+            get { return code; }
+            set
+            {
+                code = value;
+                OnPropertyChanged("Code");
+            }
+        }
+        string goodsName;
+        /// <summary>
+        /// 货品名称
+        /// </summary>
+        public string GoodsName
+        {
+            get { return goodsName; }
+            set
+            {
+                goodsName = value;
+                OnPropertyChanged("GoodsName");
+            }
+
+        }
+
+        List<TreeModel> categoryTree = new List<TreeModel>() { new TreeModel("全部", -1) { IsSelected = true }.SetChild(0) };
+        public List<TreeModel> CategoryTree
+        {
+            get
+            {
+                return categoryTree;
+            }
+            set { }
+        }
+
+        /// <summary>
+        /// 查询结果集
+        /// </summary>
+        public IEnumerable<CheckInventoryDto> Commodities { get; private set; }
+        /// <summary>
+        /// 查询命令
+        /// </summary>
+        public GeneralCommand Search
+        {
+            get
+            {
+
+                return new GeneralCommand(() =>
+                {
+
+                    var selectItem = TreeModel.FindSelectItem(CategoryTree);
+                    var categorySNlist = selectItem.GetSN();
+
+
+                    Commodities = ProductInfoLocalService.FindCommodity(PosMachineInfo.Infos.StoreId,  Code, GoodsName, categorySNlist).Select(o => new CheckInventoryDto(o));
+                    if (Commodities.Count() == 0)
+                    {
+                        Commodities = new List<CheckInventoryDto>()
+                        {
+                           new CheckInventoryDto(new CheckInventoryDAO() { Barcode = "无数据！"})
+                        };
+                    }
+
+                    OnPropertyChanged("Commodities");
+
+                });
+            }
+        }
+        public static bool AddToBill(string barcode)
+        {
+            return PosMachine.Current.BillList.AddFromBarcode(barcode);
+
+        }
+    }
+
+
+    public static class TreeModelExtensions
+    {
+        public static TreeModel SetChild(this TreeModel _this, int categoryPSN)
+        {
+            var childrens = ProductCategoryLocalService.GetSubCategorySelectItem(categoryPSN);
+            foreach (var item in childrens)
+            {
+                var tree = new TreeModel(item.Title, item.CategorySN);
+                tree = tree.SetChild(item.CategorySN);
+                _this.CreateTreeWithChildren(tree, false);
+            }
+            return _this;
+        }
+
+        private static List<int> GetSN(this TreeModel _this, List<int> list)
+        {
+            if (_this != null && Convert.ToInt32(_this.Id) == -1)
+            {
+                list.Add(-1);
+                return list;
+            }
+            if (_this != null && _this.Id is int)
+            {
+                list.Add(Convert.ToInt32(_this.Id));
+            }
+            if (_this != null && _this.Children != null && _this.Children.Count > 0)
+            {
+                foreach (var item in _this.Children)
+                {
+                    GetSN(item, list);
+                }
+
+            }
+            return list;
+        }
+        public static List<int> GetSN(this TreeModel _this)
+        {
+
+            return GetSN(_this, new List<int>());
+        }
+    }
+}

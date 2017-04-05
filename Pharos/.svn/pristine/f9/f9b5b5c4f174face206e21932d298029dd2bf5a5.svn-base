@@ -1,0 +1,81 @@
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ObjectModels
+{
+    internal class ApiManager
+    {
+        static ApiManager()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                CurrentApiPath = Global.MachineSettings.ServicesConfiguration.ServerHost;
+            });
+        }
+
+        public static string CurrentApiPath { get; set; }
+
+        public static string PostJson<TParams>(string apiUrl, TParams obj)
+        {
+
+            try
+            {
+                string url = Path.Combine(CurrentApiPath, apiUrl);
+                var _params = JsonConvert.SerializeObject(obj);
+                var content = Post(url, _params);
+                return content;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public static TResult Post<TParams, TResult>(string apiUrl, TParams obj)
+        {
+            try
+            {
+                string url = Path.Combine(CurrentApiPath, apiUrl);
+                var _params = JsonConvert.SerializeObject(obj);
+                var content = Post(url, _params);
+                var result = JsonConvert.DeserializeObject<TResult>(content);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        public static string Post(string Url, string JSONData)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(JSONData);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(Url);
+            request.Method = "POST";
+            request.ContentLength = bytes.Length;
+            request.ContentType = "text/json";
+            Stream reqstream = request.GetRequestStream();
+            reqstream.Write(bytes, 0, bytes.Length);
+
+            //声明一个HttpWebRequest请求  
+            request.Timeout = 90000;
+            //设置连接超时时间  
+            request.Headers.Set("Pragma", "no-cache");
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            Stream streamReceive = response.GetResponseStream();
+            Encoding encoding = Encoding.UTF8;
+
+            StreamReader streamReader = new StreamReader(streamReceive, encoding);
+            string strResult = streamReader.ReadToEnd();
+            streamReceive.Dispose();
+            streamReader.Dispose();
+
+            return strResult;
+        }
+    }
+}

@@ -1,0 +1,86 @@
+﻿@model Pharos.Logic.OMS.Entity.SysUserInfo
+@{
+    ViewBag.Title = "ChangePassword";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";    
+}
+
+<style type="text/css">
+    .table-form td {
+        padding:7px 0px;
+    }
+</style>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" style="width:100%;">
+                <tr>
+                    <td class="name" style="width:25%;">
+                        <span>员工姓名：</span>
+                    </td>
+                    <td class="input">
+                        <label>@Model.FullName</label>
+                    </td>
+                    <td class="name" style="width:25%;">
+                        <span>员工编号：</span>
+                    </td>
+                    <td class="input width-168">
+                        <label>@Model.UserCode</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>登录帐号：</span>
+                    </td>
+                    <td class="input width-168">
+                        <label>@Model.LoginName</label>
+                    </td>
+
+                    <td class="name">
+                        <span>登录密码：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.LoginPwd, new { type = "password", @class = "easyui-textbox", data_options = "novalidate:true", @Value = "" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>管理员：</span>
+                    </td>
+                    <td class="input">
+                        <label>@(Model.IsAdmin?"是":"否")</label>
+                    </td>
+                    <td class="name">
+                        <span>在职状态：</span>
+                    </td>
+                    <td class="input">
+                        @if (Model.Status == 1)
+                        {
+                            <label>正常</label>
+                        }
+                        else if (Model.Status == 2)
+                        {
+                            <label>停用</label>
+                        }
+                        else if (Model.Status == 3)
+                        {
+                            <label>注销</label>
+                        }
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    function SaveBefore() {
+        var lpwd = $("#LoginPwd");
+        if ($.trim(lpwd.val()) != "" && $.trim(lpwd.val()).length < 4) {
+            $.messager.alert('提示', '密码长度至少为4位。');
+            return false;
+        }
+        return true;
+    }
+</script>

@@ -1,0 +1,104 @@
+﻿@model ProductRecord
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var num = Request["num"].IsNullOrEmpty() ? 0 : int.Parse(Request["num"]);
+    var childs = ViewBag.childs as List<ProductRecord>;
+    string childmsg = "";
+    childs.Each(o => { childmsg += o.Title + "(" + o.Barcode + ")<br>"; });
+}
+<style type="text/css">
+    .table-form tr {
+        height: 32px;
+    }
+    .name label {
+        font-weight:700;
+        display:inline-block;
+        color: red;
+        margin-right: 5px;
+    }
+</style>
+<script type="text/javascript">
+    function add() {
+        $(".table-form").clone(true).appendTo($(".content"));
+    }
+    function SaveBefore() {
+        $("#SysPrice").numberbox("disableValidation");
+        return confirm("拆分后主商品不能再次拆分，是否继续？");
+    }
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Nature)
+        @Html.HiddenFor(o => o.ProductCode2)
+        @Html.HiddenFor(o => o.SupplierId)
+        @Html.HiddenFor(o => o.IsAcceptOrder)
+        @Html.HiddenFor(o => o.Favorable)
+        @Html.HiddenFor(o => o.ValuationType)
+        @Html.HiddenFor(o => o.IsReturnSale)
+        @Html.HiddenFor(o => o.ExpiryUnit)
+        @Html.HiddenFor(o => o.PriceInserted)
+        @Html.HiddenFor(o => o.PriceDeleteed)
+        @Html.HiddenFor(o => o.PriceUpdateed)
+        @Html.HiddenFor(o => o.OldBarcode)
+        <div class="content">
+            <table width="100%">
+                <tr>
+                    <td align="right">所选商品：</td>
+                    <td>
+                        @{
+        ViewContext.Writer.Write("条码：" + Model.Barcode + " 品名：" + Model.Title + " 售价：" + Model.SysPrice);
+        Model.ProductCode = Model.Barcode = Model.Title = null;
+        Model.BuyPrice = Model.SysPrice = 0;
+                        }
+                    </td>
+                    @if (!childmsg.IsNullOrEmpty())
+                    {
+                        <td><a href="#" class="easyui-tooltip" data-options="content:'已存在如下折分商品:<br/>@childmsg'"><span class="icon-note" style="display:inline-block;width:20px;height:20px;"></span></a></td>
+                    }
+                    <td>拆分数量:<input type="text" class="easyui-numberspinner" id="num" value="@num" data-options="width:50,min:1" /></td>
+                    <td>
+                        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-group'" onclick="window.location.href='@Url.Action("SplitSave")?id=@(Model.Id)&num='+$('#num').numberbox('getValue')">确定</a>
+                    </td>
+                </tr>
+            </table>
+            @for (int i = 0; i < num; i++)
+            {
+            <table class="table-form formbox" width="100%">
+                <tr>
+                    <td class="name"><label>@(num==1?"":(i+1)+".")</label>新货号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.ProductCode, new { @class = "easyui-textbox", data_options = "prompt:'系统自动生成',readonly:true" })</td>
+                    <td class="name">条形码：</td>
+                    <td class="input width-161">@Html.TextBoxFor(o => o.Barcode, new { @class = "easyui-textbox", data_options = "prompt:'系统自动生成',readonly:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">新品名：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true" })</td>
+                    <td class="name">品 牌：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.BrandSN, ViewBag.brands as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+                </tr>
+                <tr>
+                    <td class="name">品 类：</td>
+                    <td class="input">@Form.CategoryCombobox("Category", ViewBag.Category, showThird: true, empty: "请选择", panelWidth: 350, i: i,controlWidth:160)</td>
+                    <td class="name">计量单位：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.SubUnitId, ViewBag.subunits as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">规 格：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Size, new { @class = "easyui-textbox", data_options = "" })</td>
+                    <td class="name">可售数量：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.SaleNum, new { @class = "easyui-numberbox", data_options = "required:true,precision:2" })</td>
+                </tr>
+                <tr>
+                    <td class="name">进 价：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.BuyPrice, new { @class = "easyui-numberbox", data_options = "precision:2" })</td>
+                    <td class="name">系统售价：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.SysPrice, new { @class = "easyui-numberbox", data_options = "precision:2,validType:'greaterThan[\"#BuyPrice\"]',invalidMessage:'系统售价小于进价'" })</td>
+                </tr>
+            </table>
+            }
+        </div>
+    }
+</div>

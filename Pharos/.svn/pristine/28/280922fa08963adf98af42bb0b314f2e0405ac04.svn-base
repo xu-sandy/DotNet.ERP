@@ -1,0 +1,52 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.BLL
+{
+    public class MembersService : BaseService<Members>
+    {
+        /// <summary>
+        /// 用于datagrid列表
+        /// </summary>
+        /// <param name="searchText">传递条件</param>
+        /// <param name="recordCount">返回总行数</param>
+        /// <returns>list</returns>
+        public static IEnumerable<dynamic> FindMemberPageList(NameValueCollection nvl, ref int rowCount, ref object footer)
+        {
+            var dicts = nvl.ToDictionary();
+            DynamicallyLinqHelper.Empty<Members>().And(o => o.StoreId == dicts["StoreId"], dicts["StoreId"].IsNullOrEmpty());
+            return null;
+        }
+        /// <summary>
+        /// 获得新增会员数量
+        /// </summary>
+        /// <param name="beginTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public static int GetNewMemberNumber(DateTime beginTime, DateTime endTime, string storeId = "")
+        {
+            int memberNumber = 0;
+            var query = CurrentRepository.QueryEntity.Where(o => o.CreateDT >= beginTime && o.CreateDT <= endTime && o.CompanyId==CommonService.CompanyId);
+            if (!string.IsNullOrEmpty(storeId))
+                query = query.Where(o => o.StoreId == storeId);
+            var memberList = query.ToList();
+            if (memberList != null)
+                memberNumber = memberList.Count();
+            return memberNumber;
+        }
+        public static bool CheckMsg(Members obj,ref string msg)
+        {
+            return new DAL.MemberDAL().CheckMessage(obj,CommonService.CompanyId, ref msg);
+        }
+        public static List<Members> GetList()
+        {
+            return CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId).ToList();
+        }
+    }
+}

@@ -1,0 +1,318 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.BLL
+{
+    public class InventoryRecordService : BaseService<InventoryRecord>
+    {
+        /// <summary>
+        /// 库存操作写入日志(事务中)
+        /// </summary>
+        /// <param name="records">写入对象，Barcode、StoreId、Number和Source必填</param>
+        /// <param name="isSave">是否立即保存，即不在事务中</param>
+        public static void SaveRecord(List<InventoryRecord> records,bool isSave=false)
+        {
+            var recordList = new List<InventoryRecord>();
+            var storeIds= records.Select(o=>o.StoreId).Distinct();
+            var barcodes= records.Select(o=>o.Barcode).Distinct();
+            var inventList= BaseService<Inventory>.FindList(o =>barcodes.Contains(o.Barcode) && storeIds.Contains(o.StoreId));
+            foreach(var rd in records)
+            {
+                if (rd.StoreId.IsNullOrEmpty() || rd.Barcode.IsNullOrEmpty()
+                    || rd.Number == 0 || rd.Source == 0)
+                    throw new Exception("操作日志中Barcode、StoreId、Number、OperatType和Source必填!");
+                var invent=inventList.FirstOrDefault(o=>o.StoreId==rd.StoreId && o.Barcode==rd.Barcode);
+                if(invent!=null)
+                {
+                    if(rd.OperatType==2)
+                        invent.StockNumber -= rd.Number;
+                    else
+                        invent.StockNumber += rd.Number;
+                }
+                else
+                {
+                    invent = new Inventory() { 
+                        Barcode=rd.Barcode,
+                        StoreId=rd.StoreId,
+                        StockNumber=rd.OperatType==2? 0-rd.Number:rd.Number
+                    };
+                    BaseService<Inventory>.Add(invent,false);
+                }
+                recordList.Add(new InventoryRecord()
+                {
+                    Barcode = rd.Barcode,
+                    CreateDT = DateTime.Now,
+                    CreateUID = Sys.CurrentUser.UID,
+                    StoreId = rd.StoreId,
+                    Source = rd.Source,
+                    Number = invent.StockNumber
+                });
+            }
+            AddRange(recordList, isSave);
+        }
+        public static void SaveLog(List<InventoryRecord> records)
+        {
+            var storeIds = records.Select(o => o.StoreId).Distinct();
+            var barcodes = records.Select(o => o.Barcode).Distinct();
+            var procs = ProductService.FindList(o => !(o.Barcodes==null || o.Barcodes=="") || barcodes.Contains(o.Barcode));
+            foreach(var rd in records)
+            {
+                rd.CreateDT = DateTime.Now;
+                rd.CreateUID = Sys.CurrentUser.UID;
+                if(rd.Source==13)//批发 (含一品多码,组合,拆分,单品)
+                {
+                    OutboundUpdateProduct(rd.Number, rd.Barcode, rd.StoreId, rd.OperatId, procs);
+                    continue;
+                }
+                var info = procs.FirstOrDefault(o => o.Barcode == rd.Barcode || ("," + o.Barcodes + ",").Contains("," + rd.Barcode + ","));
+                if(info.Nature==1)//组合
+                {
+                    var groups = BaseService<ProductGroup>.CurrentRepository.Entities.Where(o => o.Barcode == info.Barcode).ToList();
+                    barcodes= groups.Select(o => o.GroupBarcode).ToList();
+                    var inventList2 = BaseService<Inventory>.FindList(o => barcodes.Contains(o.Barcode) && o.StoreId==rd.StoreId);
+                    foreach(var g in groups)
+                    {
+                        rd.Number = g.Number * rd.Number;
+                        UpdateInvent(inventList2, rd);
+                    }
+                    continue;
+                }
+                var inventList = BaseService<Inventory>.FindList(o => (o.Barcode == rd.Barcode || o.Barcode==info.Barcode) && o.StoreId == rd.StoreId);
+                if (rd.Barcode != info.Barcode && !info.Barcodes.IsNullOrEmpty())//一品多码
+                {
+                    rd.Barcode = info.Barcode;
+                    UpdateInvent(inventList, rd);
+                }
+                else
+                    UpdateInvent(inventList, rd);//拆分和单品
+            }
+            AddRange(records.Where(o=>o.Number>0 && o.Source!=13).ToList(), false);
+        }
+
+        private static void UpdateInvent(List<Inventory> inventList, InventoryRecord rd)
+        {
+            var outSource = new int[] { 2, 4, 6, 8, 9, 10, 12, 13,14 };//减库存
+            var invent = inventList.FirstOrDefault(o => o.StoreId == rd.StoreId && o.Barcode == rd.Barcode);
+            if (invent != null)
+            {
+                if (outSource.Contains(rd.Source))
+                    invent.StockNumber -= rd.Number;
+                else
+                    invent.StockNumber += rd.Number;
+            }
+            else
+            {
+                invent = new Inventory()
+                {
+                    Barcode = rd.Barcode,
+                    StoreId = rd.StoreId,
+                    StockNumber = outSource.Contains(rd.Source) ? 0 - rd.Number : rd.Number
+                };
+                BaseService<Inventory>.Add(invent, false);
+            }
+        }
+        //入库和收货
+        static void InboundUpdateProduct(decimal purchaseNumber, string barcode, string storeId, string paySn, List<ProductRecord> products)
+        {
+            
+            
+        }
+        //批发
+        static bool OutboundUpdateProduct(decimal purchaseNumber, string barcode, string storeId, string paySn, List<ProductRecord> products)
+        {
+            var info = products.FirstOrDefault(o => o.Barcode == barcode || ("," + o.Barcodes + ",").Contains("," + barcode + ","));
+            string uid = Sys.CurrentUser.UID;
+            var result = true;
+            if(barcode!=info.Barcode && !info.Barcodes.IsNullOrEmpty())
+            {
+                return UpdateSingleProduct(purchaseNumber, info.Barcode, storeId, paySn, barcode, 5, uid);//一品多码
+            }
+            switch (info.Nature)
+            {
+                case 2://拆分
+                    {
+                        var childProductInventory = BaseService<Inventory>.CurrentRepository.QueryEntity.FirstOrDefault(o => o.StockNumber > 0 && o.StoreId == storeId && o.Barcode == info.Barcode);
+
+                        if (childProductInventory != null)
+                        {
+                            var stockNum = childProductInventory.StockNumber;
+                            if (stockNum >= purchaseNumber)
+                            {
+                                result = UpdateSingleProduct(purchaseNumber, info.Barcode, storeId, paySn, info.Barcode, 1, uid);
+                            }
+                            else if (stockNum < purchaseNumber)
+                            {
+                                result = UpdateSingleProduct(stockNum, info.Barcode, storeId, paySn, info.Barcode, 1, uid);
+                                if (!result)
+                                {
+                                    break;
+                                }
+                                result = SplitSingleProduct(info, purchaseNumber - stockNum, info.Barcode, storeId, paySn, info.Barcode, uid);
+                            }
+                        }
+                        else
+                        {
+                            result = SplitSingleProduct(info, purchaseNumber, info.Barcode, storeId, paySn, info.Barcode, uid);
+                        }
+                        break;
+
+                    }
+                case 1://组合
+                    {
+                        var barcodes = BaseService<ProductGroup>.CurrentRepository.Entities.Where(o => o.Barcode == info.Barcode).ToList();
+                        foreach (var item in barcodes)
+                        {
+                            if (!UpdateSingleProduct(purchaseNumber * item.Number, item.GroupBarcode, storeId, paySn, info.Barcode, 2, uid))
+                            {
+                                result = false;
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                case 0://单品
+                    {
+                        if (!UpdateSingleProduct(purchaseNumber, info.Barcode, storeId, paySn, info.Barcode, 1, uid))
+                        {
+                            result = false;
+                        }
+                        break;
+                    }
+            }
+            return result;
+        }
+        static bool SplitSingleProduct(ProductRecord product, decimal purchaseNumber, string barcode, string storeId, string outboundId, string saleBarcode, string uid)
+        {
+
+            var oldProductNum = Math.Ceiling(purchaseNumber / (product.SaleNum ?? 1m));
+            var result = UpdateSingleProduct(oldProductNum, product.OldBarcode, storeId, outboundId, saleBarcode, 2, uid);
+            if (!result)
+            {
+                return false;
+            }
+
+            var InventoryDict = ProductService.FindList(o => o.OldBarcode == product.OldBarcode).ToDictionary(o => o.Barcode, o => o.SaleNum ?? 1 * oldProductNum);
+            InventoryDict[barcode] -= purchaseNumber;
+
+            foreach (var item in InventoryDict)
+            {
+                var childInventory = BaseService<Inventory>.CurrentRepository.Find(o => o.Barcode == item.Key && o.StoreId == storeId);
+                if (childInventory != null)
+                {
+                    childInventory.StockNumber = childInventory.StockNumber + item.Value;
+                    BaseService<Inventory>.CurrentRepository.Update(childInventory);
+                }
+                else
+                {
+                    childInventory = new Inventory()
+                    {
+                        StoreId = storeId,
+                        StockNumber = item.Value,
+                        Barcode = item.Key
+                    };
+                    BaseService<Inventory>.CurrentRepository.Add(childInventory);
+                }
+                if (item.Key == barcode)
+                {
+                    BaseService<OutboundGoodsHistory>.CurrentRepository.Add(new OutboundGoodsHistory()
+                    {
+                        CreateDt = DateTime.Now,
+                        Mode = 4,
+                        Number = (item.Value + purchaseNumber),
+                        SaleBarcode = saleBarcode,
+                        StorageBarcode = item.Key,
+                        OutboundId = outboundId,
+                        CreateUid = uid,
+                        StoreId = storeId,
+                    }, false);
+                    BaseService<OutboundGoodsHistory>.CurrentRepository.Add(new OutboundGoodsHistory()
+                    {
+                        CreateDt = DateTime.Now,
+                        Mode = 1,
+                        Number = purchaseNumber,
+                        SaleBarcode = saleBarcode,
+                        StorageBarcode = item.Key,
+                        OutboundId = outboundId,
+                        CreateUid = uid,
+                        StoreId = storeId,
+                    }, false);
+                }
+                else
+                {
+                    BaseService<OutboundGoodsHistory>.CurrentRepository.Add(new OutboundGoodsHistory()
+                    {
+                        CreateDt = DateTime.Now,
+                        Mode = 4,
+                        Number = item.Value,
+                        SaleBarcode = saleBarcode,
+                        StorageBarcode = item.Key,
+                        OutboundId = outboundId,
+                        CreateUid = uid,
+                        StoreId = storeId,
+                    }, false);
+                }
+            }
+
+            //BaseService<Inventory>.CurrentRepository.Update(new Inventory());
+            return true;
+        }
+        static bool UpdateSingleProduct(decimal purchaseNumber, string barcode, string storeId, string outboundId, string saleBarcode, int mode, string uid)
+        {
+            try
+            {
+                Inventory Inventory = BaseService<Inventory>.CurrentRepository.QueryEntity.FirstOrDefault(o => o.StoreId == storeId && o.Barcode == barcode);
+                if (Inventory != null) //存在库存记录
+                {
+                    Inventory.StockNumber -= purchaseNumber;
+                    BaseService<OutboundGoodsHistory>.CurrentRepository.Add(new OutboundGoodsHistory()
+                    {
+                        CreateDt = DateTime.Now,
+                        Mode = mode,
+                        Number = purchaseNumber,
+                        SaleBarcode = saleBarcode,
+                        StorageBarcode = barcode,
+                        OutboundId = outboundId,
+                        CreateUid = uid,
+                        StoreId = storeId
+
+                    }, false);
+                    purchaseNumber = 0;
+
+                }
+                else //不存在库存记录
+                {
+                    var entity = new Inventory()
+                    {
+                        StoreId = storeId,
+                        StockNumber = -purchaseNumber,
+                        Barcode = barcode
+                    };
+                    BaseService<Inventory>.CurrentRepository.Add(entity, false);
+                    BaseService<OutboundGoodsHistory>.CurrentRepository.Add(new OutboundGoodsHistory()
+                    {
+                        CreateDt = DateTime.Now,
+                        Mode = mode,
+                        Number = purchaseNumber,
+                        SaleBarcode = saleBarcode,
+                        StorageBarcode = barcode,
+                        OutboundId = outboundId,
+                        CreateUid = uid,
+                        StoreId = storeId,
+
+                    }, false);
+                    purchaseNumber = 0;
+                }
+                //BaseService<Inventory>.CurrentRepository.Update(new Inventory());//激发更新
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+}

@@ -1,0 +1,658 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  AgentsInfo
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    //结算账户
+    BankCardInfo card = ViewBag.BankCardInfo as BankCardInfo;
+    //支付渠道
+    AgentPay agentPay = ViewBag.AgentPay as AgentPay;
+}
+
+@*<script src="~/Scripts/fancybox/jquery.fancybox-1.3.4.pack.js"></script>
+<link href="~/Scripts/fancybox/jquery.fancybox-1.3.4.css" rel="stylesheet" />*@
+
+<style type="text/css">
+    .formbox td {
+        padding: 5px 0px;
+    }
+
+    .a_del a {
+        color: #8cc152;
+    }
+
+    .a_del {
+        color: #8cc152;
+    }
+
+    #tr_OrderList td div {
+        height: 28px;
+        line-height: 28px;
+        overflow: hidden;
+        margin: 5px 0px;
+    }
+
+        #tr_OrderList td div span {
+            display: block;
+            float: left;
+            width: 200px;
+            overflow: hidden;
+        }
+
+    #tab {
+        overflow: hidden;
+    }
+
+        #tab a {
+            display: block;
+            width: 100px;
+            height: 35px;
+            line-height: 35px;
+            text-align: center;
+            color: #232323;
+            font-size: 104%;
+            float: left;
+            border: 1px solid #d4d4d4;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        #tab .sel {
+            background-color: #d4d4d4;
+        }
+
+    #tabSummary {
+        border-collapse: collapse;
+    }
+
+        #tabSummary, #tabSummary th, #tabSummary td {
+            border: 1px solid #ccc;
+        }
+
+            #tabSummary td {
+                padding: 7px 0px;
+            }
+
+                #tabSummary td .noedit {
+                    border: 0px;
+                    text-align: center;
+                }
+
+
+    #table_OrderList {
+        border-collapse: collapse;
+    }
+
+        #table_OrderList, #table_OrderList th, #table_OrderList td {
+            border: 1px solid #ccc;
+        }
+
+            #table_OrderList td {
+                padding: 7px;
+            }
+</style>
+
+<script type="text/javascript">
+
+    //获取url的参数
+    function getUrlParam(name) {
+
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+
+        var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+
+        if (r != null) return unescape(r[2]); return null; //返回参数值
+
+    }
+
+    //加载次数
+    var loadNum = 0;
+
+    //加载省份
+    function loadProvince() {
+        $('#Province').combobox({
+            url: '/Member/getProvince',
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: false,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                loadCity(newValue);
+                $('#City').combobox('disableValidation');
+            }
+        });
+    }
+
+    //加载城市
+    function loadCity(provinceKey) {
+        $('#City').combobox({
+            url: '/Member/getCity?ProvinceID=' + provinceKey,
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: false,
+            novalidate: false,
+            validType: 'requiredForCombo'
+        });
+    }
+
+    //加载省市
+    function loadPCD() {
+        loadProvince();
+        loadCity(0);
+        $('#Province').combobox('disableValidation');
+        $('#City').combobox('disableValidation');
+    }
+
+    $(function () {
+
+        loadPCD();
+
+        $("#tab a").click(function (){
+            v=$(this).attr("v");
+            $("#tab a").removeClass("sel");
+            $(this).addClass("sel");
+            $(".formbox").hide();
+            $("."+v).show();
+        }).eq(0).trigger("click");
+
+        //上级代理商编号
+        $("#PAgentsId").next().find(".combo-arrow").removeClass("combo-arrow");
+        var PAgentsIdValue = $("#PAgentsId").textbox("getValue");
+        if (PAgentsIdValue == "0") {
+            $("#PAgentsId").textbox("setValue","")
+        }
+
+        //是否存在下级代理商（0不存在，1是存在）
+        var rOnly = "@ViewBag.ReadOnly";
+        if (rOnly == "1")
+        {
+            $('#PAgentsId').combobox('readonly', true);
+        }
+
+        //成本费率、下级费率
+        var cl = $("input[txt=cl]").next().find("input[type=text]");
+
+
+        cl.keyup(function () {
+            //单价只能输入两个小数
+            $(this).val($(this).val().replace(/[^\d.]/g, "")); //清除"数字"和"."以外的字符
+            $(this).val($(this).val().replace(/^\./g, "")); //验证第一个字符是数字而不是
+            $(this).val($(this).val().replace(/\.{2,}/g, ".")); //只保留第一个. 清除多余的
+            $(this).val($(this).val().replace(".", "$#$").replace(/\./g, "").replace("$#$", "."));
+            $(this).val($(this).val().replace(/^(\-)*(\d+)\.(\d\d).*$/, '$1$2.$3')); //只能输入两个小数
+            if ($(this).val() != "") {
+                //var p = 0.00;
+                $(this).val(p.toFixed(2));
+            }
+        }).css("ime-mode", "disabled");   //CSS设置输入法不可用
+        //失去焦点
+        cl.blur(function () {
+            //保留两位小数（四舍五入）
+            $(this).val(parseFloat($(this).val()).toFixed(2));
+        });
+
+        //放大图片
+        //fan("#aIdCardPhoto");
+
+        //结算卡号
+        $("#CardNum").keyup(function () {
+            //先把非数字的都替换掉，除了数字
+            $(this).val($(this).val().replace(/[^0-9]/g, ""));
+        }).css("ime-mode", "disabled");   //CSS设置输入法不可用
+
+        //结算账户类型
+        var BillingType = "@card.BillingType";
+        if (BillingType != "0")
+        {
+            $("#BillingType").combobox("setValue", BillingType);
+        }
+        
+        //交易支付通道
+        var PayChannel = "@agentPay.PayChannel";
+        if (PayChannel != "0") {
+            $("#PayChannel").combobox("setValue", PayChannel);
+        }
+
+    });
+
+    function SaveBefore() {
+        //禁用验证
+        $('#Province').combobox('disableValidation');
+        $('#City').combobox('disableValidation');
+
+        return Verification();
+    }
+
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        var id = getUrlParam('id');
+        if (id == null) {
+            id = 0;
+        }
+        $.ajax({
+            url: "@Url.Action("getAgentsIdWhere", "AgentsInfo")",
+            type: "post",
+        data: {
+            //传值，还是JSON数据搜索
+            keyword: q,
+            id:id
+        },
+        dataType: "json",
+        success: function (data) {
+            comboRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function (item) {
+                return { AgentsId: item.AgentsId, AgentsId: item.AgentsId };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+
+    //获取有效 - 起始日期、有效 - 终止日期
+    var getStartEndDT = function (newValue, oldValue) {
+        if (newValue == "") {
+            $('#StartTime').textbox('setValue', '');
+            $('#EndTime').textbox('setValue', '');
+        }
+        else {
+            $.ajax({
+                url: "/AgentsInfo/getStartEndDT?DicSN="+newValue,
+                type: "post",
+                async: false,
+                dataType: "html",
+                data: {},
+                success: function (data) {
+                    if (data != "") {
+                        $('#StartTime').textbox('readonly', false);
+                        $('#StartTime').textbox('setValue', data.split('|')[0]);
+                        $('#StartTime').textbox('readonly', true);
+
+                        $('#EndTime').textbox('readonly', false);
+                        $('#EndTime').textbox('setValue', data.split('|')[1]);
+                        $('#EndTime').textbox('readonly', true);
+                    }
+                }
+            });
+        }
+    }
+
+    //添加区域
+    function addArea() {
+
+        //省
+        $('#Province').combobox('enableValidation');
+        var isProvince = $("#Province").combobox("isValid");
+        if (!isProvince) {
+            $('#Province').combobox().next('span').find('input').focus();
+            return false;
+        }
+
+        //市
+        $('#City').combobox('enableValidation');
+        var isCity = $("#City").combobox("isValid");
+        if (!isCity) {
+            $('#City').combobox().next('span').find('input').focus();
+            return false;
+        }
+
+        //市
+        var cityV = $.trim($("#City").combobox("getValue"));
+        var cityT = $.trim($("#City").combobox("getText"));
+
+        $('#AgentAreaNames').textbox('readonly', false);
+        var txt = $.trim($('#AgentAreaNames').textbox("getValue"));
+        var ids = $.trim($("#AgentAreaIds").val());
+
+        //没有包含cityT
+        if (txt.indexOf(cityT) == -1)
+        {
+            if (txt == "") {
+                txt = cityT;
+            }
+            else {
+                txt = txt + "," + cityT;
+            }
+        }
+
+        //没有包含cityV
+        if (ids.indexOf(cityV) == -1)
+        {
+            if (ids == "") {
+                ids = cityV;
+            }
+            else {
+                ids = ids + "," + cityV;
+            }
+        }
+
+        $('#AgentAreaNames').textbox("setValue", txt);
+        $("#AgentAreaIds").val(ids);
+
+        $('#AgentAreaNames').textbox('readonly', true);
+        $('#Province').combobox('disableValidation');
+        $('#City').combobox('disableValidation');
+    }
+
+    //清空区域
+    function deleteArea() {
+        $("#AgentAreaIds").val("");
+        $('#AgentAreaNames').textbox("setValue", "");
+    }
+
+
+    //选择图片
+    function selFile(_obj) {
+        var _imgsrc=$(_obj).filebox("getValue"); 
+        var _file=$(_obj).context.ownerDocument.activeElement.files[0];
+        $("#imgIdCardPhoto").attr("src", getObjectURL(_file));
+        $("#aIdCardPhoto").attr("href", getObjectURL(_file));
+        //放大图片
+       // fan("#aIdCardPhoto");
+    }
+
+    //建立一个可存取到该file的url
+    function getObjectURL(file) {
+        var url = null;
+        if (window.createObjectURL != undefined) { // basic
+            url = window.createObjectURL(file);
+        } else if (window.URL != undefined) { // mozilla(firefox)
+            url = window.URL.createObjectURL(file);
+        } else if (window.webkitURL != undefined) { // webkit or chrome
+            url = window.webkitURL.createObjectURL(file);
+        }
+        return url;
+    }
+
+    //放大图片
+    function fan(f) {
+        $(f).fancybox({
+            'titlePosition': 'outside',
+            'overlayColor': '#000',
+            'transitionIn': 'elastic',
+            'transitionOut': 'elastic',
+            'overlayOpacity': 0.8
+        });
+    }
+
+    //下级费率是否小于成本费率
+    function isLower() {
+        var cost = parseFloat($("input[name=Cost]").val());
+        var lower = parseFloat($("input[name=Lower]").val());
+        if (cost != "NaN" && lower != "NaN")
+        {
+            if (lower < cost) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    //验证
+    function Verification()
+    {
+        var id = getUrlParam('Id') == null ? 0 : getUrlParam('Id');
+        var d = "";
+        $.ajax({
+            url: "/AgentsInfo/Verification?" + $('.default-form form').serialize(),
+            type: "post",
+            async: false,
+            dataType: "json",
+            data: {},
+            success: function (data) {
+                d = data;
+            }
+        });
+        if (d == "") {
+            $.messager.alert("提示", "发生错误!", "error");
+            return false;
+        }
+        else {
+            var json = d;
+            if (!json.successed) {
+                $.messager.alert("提示", json.message, "error");
+                return false;
+            }
+        }
+        //下级费率是否小于成本费率
+        if (isLower()) {
+            $.messager.alert("提示", "下级费率不能小于成本费率!", "error");
+            return false;
+        }
+        return true;
+    }
+
+    //选择交易支付通道
+    var SelPayApi = function (newValue, oldValue) {
+        if (newValue == "")
+        {
+            newValue = "0";
+        }
+        $.ajax({
+            url: "/AgentsInfo/SelPayApi?ApiNo=" + newValue,
+            type: "post",
+            async: false,
+            dataType: "json",
+            data: {},
+            success: function (data) {
+                var json = data;
+                if (json.ApiNo != "0") {
+                    $("#Cost").textbox('setValue', json.CostRate);
+                    $("#Lower").textbox('setValue', json.CostRate);
+                    if (json.Status == "0") {
+                        $("#tdStatus").html("<span>未启用</span>");
+                    } else if (json.Status == "1") {
+                        $("#tdStatus").html("<span>已启用</span>");
+                    } else if (json.Status == "2") {
+                        $("#tdStatus").html("<span>已关闭</span>");
+                    }
+                    else {
+                        $("#tdStatus").html("<span>无</span>");
+                    }
+                }
+                else {
+                    $("#Cost").textbox('setValue', "0.00");
+                    $("#Lower").textbox('setValue', "0.00");
+                    $("#tdStatus").html("<span>无</span>");
+                }
+            }
+        });
+    }
+
+    function seeImg(i) {
+        var src = $(i).find("img").attr("src");
+        if (src != "") {
+            window.open(src);
+        }
+        return false;
+    }
+
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm("Save", "AgentsInfo", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.AgentsId)
+        <div class="content">
+
+            <div id="tab">
+                <a href="javascript:;" v="tab1">基本信息</a>
+                <a href="javascript:;" v="tab2" style="border-left-style:none; border-right-style:none;">结算账户</a>
+                <a href="javascript:;" v="tab3">支付渠道</a>
+            </div>
+
+            <div class="formbox tab1" style="border-bottom:0px; display:none;">
+                <table class="table-form" width="100%" height="100px">
+
+                    <tr>
+                        <td class="name">代理商类型：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.Type, ViewBag.ty as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name" style="width:8%;">代理商简称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Name, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'限20个字符',validType: 'length[1,20]',width:120" })</td>
+                        <td class="name">代理商全称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'限50个字符',validType: 'length[1,50]',width:140" })</td>
+                        <td class="name" style="width:9%;">代理商状态：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.Status, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "待审", Value = "1" }, new SelectListItem() { Text = "正常", Value = "2" }, new SelectListItem() { Text = "终止", Value = "3" }, new SelectListItem() { Text = "到期", Value = "4" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">有效期：</td>
+                        <td class="input" colspan="7">
+                            @Html.DropDownListFor(o => o.ValidityYear, ViewBag.ValidityY as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120,onChange:getStartEndDT" })
+                            &nbsp;&nbsp;
+                            @Html.TextBoxFor(o => o.StartTime, new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'',width:120,readonly:true" }) - @Html.TextBoxFor(o => o.EndTime, new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'',width:120,readonly:true" })
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">代理区域：</td>
+                        <td class="input" colspan="7">
+                            <input id="Province" name="CurrentProvinceId" class="easyui-combobox datacontrol" /> - <input id="City" name="CurrentCityId" class="easyui-combobox datacontrol" />
+                            &nbsp;
+                            <a href="javascript:;" class="easyui-linkbutton" onclick="addArea()" id="addArea">添加</a>
+                            &nbsp;
+                            <a href="javascript:;" class="easyui-linkbutton" onclick="deleteArea()" id="addArea">清空</a>
+                            &nbsp;
+                            <input id="AgentAreaNames" name="AgentAreaNames" type="text" value="@ViewBag.AgentAreaIdsName" class="easyui-textbox" data-options="novalidate:true,prompt:'支持添加多个代理区域',width:200,readonly:true,validType:'agentsArea'" />
+                            <input type="hidden" value="" id="AgentAreaIds" name="AgentAreaIds">
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">上级代理商编号：</td>
+                        <td class="input">
+                             @Html.TextBoxFor(o => o.PAgentsId, new { @class = "easyui-combobox", data_options = "required:false,prompt:'为空是一级代理商',width:130,editable:true,mode:'remote',valueField:'AgentsId',textField:'AgentsId',loader:comboload" })
+                        </td>
+                        <td class="name">合同编号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Contract, new { @class = "easyui-textbox", data_options = "prompt:'',validType:'length[0,20]',width:120" })</td>
+                        <td class="name">法人姓名：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.CorporateName, new { @class = "easyui-textbox", data_options = "required:true,prompt:'法人姓名',validType:'length[1,20]',width:120" })</td>
+                        <td class="name">法人身份证号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.IdCard, new { @class = "easyui-textbox", data_options = "required:true,prompt:'限20个字符',validType:'length[1,20]',width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">证件照：</td>
+                        <td class="input" colspan="7">
+                            <input type="text" class="easyui-filebox" name="IdCardPhoto" data-options="buttonText:'选择文件',prompt:'请选择证件照',required:false,missingMessage:'请选择证件照',onChange:function(){selFile(this)}" style="width:300px;" />
+                            &nbsp;
+                            <a href="javascript:void(0)" class="showpic" id="aIdCardPhoto" style="" onclick="return seeImg(this)">
+                                <img id="imgIdCardPhoto" src="@ViewBag.img" style="width:25px; height:25px; vertical-align:middle;" />
+                            </a>   
+                         </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">公司电话：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.CompanyPhone, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',validType:'length[7,20]',width:120" })</td>
+                        <td class="name">公司地址：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Address, new { @class = "easyui-textbox", data_options = "prompt:'公司地址',validType:'length[0,100]',width:120" })</td>
+                        <td class="name">联系人：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.LinkMan, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',validType:'length[1,20]',width:120" })</td>
+                        <td class="name">联系电话1：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Phone1, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',validType:'length[1,20]',width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">联系电话2：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Phone2, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',validType:'length[7,20]',width:120" })</td>
+                        <td class="name">QQ：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.QQ, new { @class = "easyui-textbox", data_options = "prompt:'',validType:'length[0,20]',width:120" })</td>
+                        <td class="name">Email：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Email, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',validType:'length[1,50]',width:120" })</td>
+                        <td class="name">微信号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Weixin, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',validType:'length[1,50]',width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">指派人：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AssignUid, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox tab2" style="display:none;border-bottom:0px;">
+
+                <table class="table-form" width="100%" >
+                  
+                    <tr>
+                        <td class="name" style="width:9%;">结算银行机构：</td>
+                        <td class="input"><input name="Agency" class="easyui-textbox" type="text" value="@card.Agency" data-options="novalidate:true,required:true,prompt:'限100个字符',validtype: 'length[1,100]' ,width:120" /></td>
+                        <td class="name" style="width:9%;">结算账户类型：</td>
+                        <td class="input">@Html.DropDownList("BillingType", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "对公", Value = "1" }, new SelectListItem() { Text = "对私", Value = "2" }}, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name">结算卡号：</td>
+                        <td class="input"><input id="CardNum" name="CardNum" class="easyui-textbox" type="text" value="@card.CardNum" data-options="novalidate:true,required:true,prompt:'限50个字符',validtype: 'length[1,50]' ,width:120" /></td>
+                        <td class="name" style="width:8%;">账户名称：</td>
+                        <td class="input"><input name="CardName" class="easyui-textbox" type="text" value="@card.CardName" data-options="novalidate:true,required:true,prompt:'',validtype: 'length[1,50]' ,width:120" /></td>
+                    </tr>
+
+                    <tr>
+                        <td class="name" style="width:8%;">账户状态：</td>
+                        <td class="input">
+                            <select id="cardStatus" class="easyui-combobox datacontrol" data-options="validType:'requiredForCombo', editable: false,width:120" name="cardStatus">
+                                <option value="">请选择</option>
+                                <option value="1" @(Html.Raw(card.Status == 1 ? "selected=\"selected\"" : ""))>已启用</option>
+                                <option value="2" @(Html.Raw(card.Status == 2 ? "selected=\"selected\"" : ""))>未启用</option>
+                                <option value="3" @(Html.Raw(card.Status == 3 ? "selected=\"selected\"" : ""))>已停用</option>
+                            </select> 
+                        </td>
+                    </tr>
+
+                </table>
+
+            </div>
+
+            <div class="formbox tab3" style="display:none; border-bottom:0px;">
+                <table class="table-form" width="100%" >
+                    <tr>
+                        <td class="name" style="width:9%;">交易支付通道：</td>
+                        <td class="input">@Html.DropDownList("PayChannel", ViewBag.PayC as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120,onChange:SelPayApi" })</td>
+                        <td class="name" style="width:11%;">成本费率（%）：</td>
+                        <td class="input"><input name="Cost" id="Cost" class="easyui-textbox" txt="cl" maxlength="5" type="text" value="@agentPay.Cost.ToString("#0.00")" data-options="novalidate:true,required:true,prompt:'' ,width:120" /></td>
+                        <td class="name" style="width:11%;">下级费率（%）：</td>
+                        <td class="input"><input name="Lower" id="Lower" class="easyui-textbox" txt="cl" maxlength="5" type="text" value="@agentPay.Lower.ToString("#0.00")" data-options="novalidate:true,required:true,prompt:'',width:120" /></td>
+                        <td class="name" style="width:8%;">通道状态：</td>
+                        <td class="input" id="tdStatus" style="width:5%;">
+                            @if (agentPay.Status == -1)
+                            {
+                                <span>无</span>
+                            }
+                            else if (agentPay.Status == 1)
+                            {
+                                <span>已启用</span>
+                            }
+                            else if (agentPay.Status == 0)
+                            {
+                                <span>未启用</span>
+                            }
+                            else if (agentPay.Status == 2)
+                            {
+                                <span>已停用</span>
+                            }
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+        </div>
+    }
+</div>
+

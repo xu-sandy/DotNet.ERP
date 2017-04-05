@@ -1,0 +1,198 @@
+﻿@using Pharos.Sys.Entity;
+@model Pharos.Sys.Entity.SysStoreUserInfo
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.UID)
+        <div class="content">
+            <table class="table-toolbar" style="width:100%;height:200px;">
+                <tr>
+                    <td class="name">
+                        <span>当前门店：</span>
+                    </td>
+                    <td class="input width-168">@ViewBag.storeTitle</td>
+                </tr>
+                <tr>
+
+                    <td class="name">
+                        <span>员工姓名：</span>
+                    </td>
+                    <td class="input width-168">
+                        @if (Model.Id > 0)
+                        {
+                            <label>@Model.FullName</label>
+                            <input type="hidden" name="FullName" value="@Model.FullName" />
+                        }
+                        else
+                        {
+                            @Html.TextBoxFor(o => o.FullName, new { @class = "easyui-textbox", data_options = "events:{blur:checkName},required:true,novalidate:true" })
+                        }
+                    </td>
+                    <td class="name">
+                        <span>后台帐号：</span>
+                    </td>
+                    <td class="input width-168">
+                        @Html.TextBoxFor(o => o.LoginName, new { @class = "easyui-textbox", data_options = "events:{blur:checkName},required:true" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>收银工号：</span>
+                    </td>
+                    <td class="input width-168">
+                        @if (Model.Id > 0)
+                        {
+                            <label>@Model.UserCode</label>
+                            <input type="hidden" name="UserCode" value="@Model.UserCode" />
+                        }
+                        else
+                        {
+                            @Html.TextBoxFor(o => o.UserCode, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:'[length[4,4]'" })
+                        }
+                    </td>
+                    <td class="name">
+                        <span>登录密码：</span>
+                    </td>
+                    <td class="input width-168">
+                        @*@Html.TextBoxFor(o => o.LoginPwd, new { type = "password", @class = "easyui-textbox", data_options = "novalidate:true" })*@
+                        @Html.TextBoxFor(o => o.LoginPwd, new { type = "password", @class = "easyui-textbox", data_options = "novalidate:true", @Value = "" })
+                    </td>
+                </tr>
+                <tr>
+                    @*<td class="name">
+                            <span>任职岗位：</span>
+                        </td>
+                        <td class="input">
+                            <input id="PositionId" name="PositionId" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text',value:'@Model.PositionId',validType:'requiredForCombo', url:'@Url.Action("GetDicsEasyuiDropdown", "common")?psn=77',required:true, panelHeight: 'auto', editable: false" />
+                        </td>*@
+                    <td class="name">
+                        <span>在职状态：</span>
+                    </td>
+                    <td class="input width-166">
+                        @Html.DropDownListFor(o => o.Status, ViewBag.sysUserState as List<SelectListItem>, new { current = Model.Status.ToString(), @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false" })
+                    </td>
+                    <td class="name">
+                        <span>性别：</span>
+                    </td>
+                    <td class="input">
+                        @Html.RadioButtonFor(o => o.Sex, true, new { data_options = "required:true,novalidate:true" }) 男
+                        @Html.RadioButtonFor(o => o.Sex, false, new { data_options = "required:true,novalidate:true" }) 女
+                    </td>
+                    <td colspan="2"></td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>本店角色：</span>
+                    </td>
+                    <td class="input" colspan="3">
+                        @Html.CheckBoxListFor(n => n.OperateAuth, ViewBag.roles as List<SelectListItem>, new { data_options = "novalidate:true", @class = "easyui-validatebox", id = "OperateAuth" }, 5)
+                        @*@if (Model.RoleIds != null && Model.RoleIds.Split(',').Contains("9"))
+                            {
+                                @Html.Hidden("RoleIds", 9)
+                            }*@
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    function SaveBefore() {
+        var $pwd = $("#LoginPwd");
+        var $id = $("#Id");
+        if ($id.val() == 0) {
+            if ($pwd.val() == "" || $pwd.val().length < 4) {
+                $.messager.alert('提示', '密码长度至少为4位。');
+                return false;
+            }
+        } else {
+            if ($pwd.val().length > 1 && $pwd.val().length < 4) {
+                $.messager.alert('提示', '新密码长度至少为4位。');
+                return false;
+            }
+        }
+        return true;
+    }
+</script>
+<script type="text/javascript">
+    $(function () {
+        if ('@ViewBag.isDz' == 'True') {
+            if (!$("#OperateAuth_1").is(":checked")) {
+                $("#OperateAuth_1").click();
+            }
+        } else {
+            if ($("#OperateAuth_1").is(":checked")) {
+                $("#OperateAuth_1").click();
+            }
+        }
+        if ('@ViewBag.isYyy' == 'True') {
+            if (!$("#OperateAuth_2").is(":checked")) {
+                $("#OperateAuth_2").click();
+            }
+        } else {
+            if ($("#OperateAuth_2").is(":checked")) {
+                $("#OperateAuth_2").click();
+            }
+        }
+        if ('@ViewBag.isSyy' == 'True') {
+            if (!$("#OperateAuth_3").is(":checked")) {
+                $("#OperateAuth_3").click();
+            }
+        } else {
+            if ($("#OperateAuth_3").is(":checked")) {
+                $("#OperateAuth_3").click();
+            }
+        }
+        if ('@ViewBag.isSjwh' == 'True') {
+            if (!$("#OperateAuth_4").is(":checked")) {
+                $("#OperateAuth_4").click();
+            }
+        } else {
+            if ($("#OperateAuth_4").is(":checked")) {
+                $("#OperateAuth_4").click();
+            }
+        }
+
+
+    })
+    //判断用户名是否重复
+    function checkName(type) {
+        debugger
+        var nameVal = $("#FullName").val();
+        var loginName = $("#LoginName").val();
+        if (nameVal == "" && loginName == "") {
+            return false;
+        }
+        $.post("@Url.Action("GetUserData")", { fullName: nameVal, loginName: loginName }, function (data) {
+            if (data != null) {
+                $("#FullName").textbox("setValue", data.FullName);
+                $("#LoginName").textbox("setValue", data.LoginName);
+                $("#UserCode").textbox("setValue", data.UserCode);
+                $("#LoginPwd").textbox("setValue", data.LoginPwd);
+                $("#UID").val(data.UID);
+                $("#Id").val(data.Id);
+                $('#LoginPwd').textbox('textbox').attr('readonly', true);
+                $('#LoginName').textbox('textbox').attr('readonly', true);
+                $('#UserCode').textbox('textbox').attr('readonly', true);
+            } else {
+                $('#LoginPwd').textbox('textbox').removeAttr("readonly")
+                $('#LoginName').textbox('textbox').removeAttr("readonly")
+                $('#UserCode').textbox('textbox').removeAttr("readonly")
+            }
+        }, "JSON")
+    }
+
+</script>
+<style type="text/css">
+    .input td {
+        padding: 0 5px 0 0 !important;
+        vertical-align: top;
+    }
+</style>

@@ -1,0 +1,74 @@
+﻿@model Pharos.Logic.OMS.Entity.SysRoles
+@{
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增主菜单", delText: "删除产品", editText: "修改主菜单", hideDel: true, hideSearch: true, hideAdd: true, hideEdit: true));
+    var roleId = Request["roleIds"].Split(',')[0];
+}
+@section toolbar
+{
+<table width="100%">
+    <tr>
+        <td >所选角色：@ViewBag.titles</td>
+    </tr>
+</table>
+}
+
+<script type="text/javascript">
+    pharos.managertree.geturl = "@Url.Action("FindMenuList", new { roleId = roleId })";
+    pharos.managertree.editurl = "@Url.Action("Save")";
+    pharos.managertree.sortName = "Id";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "Title";
+    pharos.managertree.pagination = false;
+    pharos.managertree.checkOnSelect = true;
+    pharos.managertree.columns = [[
+        { field: 'Id', checkbox: true, hidden: true },
+        { field: 'MenuId', title: '编号', width: 60 },
+        {
+            field: 'Title', title: '菜单名称', width: 200
+        },
+        {
+            field: 'Editor', title: '菜单顺序', width: 120, formatter: function (value, row, index) {
+                var operat = "";
+                if (row.Index == 0)
+                    operat += "<a style='color:#555'>[上移]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveMenuItem(1,\"" + row.MenuId + "\")'>[上移]</a>&nbsp;&nbsp;";
+                var childcount = 0;
+                if (row.ParentId > 0) {
+                    var po = pharos.managertree.$dg.treegrid("find", row.ParentId);
+                    childcount = po.children.length - 1;
+                } else {
+                    childcount = pharos.managertree.$dg.treegrid("getData").length - 1;
+                }
+                if (row.Index == childcount)
+                    operat += "<a style='color:#555'>[下移]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveMenuItem(2,\"" + row.MenuId + "\")'>[下移]</a>&nbsp;&nbsp;";
+                return operat;
+            }
+        }
+    ]];
+    
+    var roleIds = "@Request["roleIds"]";
+    function moveMenuItem(mode, menuId) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, menuId: menuId, roleIds: roleIds, t: Math.random() },
+            url: "@Url.Action("MoveMenuItems")",
+            success: function (data) {
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "菜单移动失败！", "info");
+            }
+        });
+    }
+    function checkClose() {
+        return true;
+    }
+    function compare() {
+        return function (a, b) {
+            return a - b;
+        }
+    }
+</script>

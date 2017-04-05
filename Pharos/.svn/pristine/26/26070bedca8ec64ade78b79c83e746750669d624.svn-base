@@ -1,0 +1,87 @@
+﻿@using QCT.Pay.Common
+@model Pharos.Logic.OMS.Entity.PayChannelInfoExt
+@{
+    ViewBag.Title = "新增收单渠道";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var disabled = Model.Status == 0 ? "data-notdisabled" : "disabled";
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+
+<style type="text/css">
+    .name {
+        width: 80px;
+    }
+
+    .table-form td {
+    }
+
+    .notes {
+        font-size: 12px;
+        color: red;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm("SavePayChannel", "Finance", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.Status)
+        <div class="content">
+            <table class="table-form" style="width:400px;">
+                @if (Model.Id > 0)
+                {
+                    <tr>
+                        <td class="name">渠道编号：</td>
+                        <td class="input">@Model.ChannelNo</td>
+                        <td class="name">状态：</td>
+                        <td class="input">@EnumHelper.GetDescription((PayChannelStatus)Model.Status)</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">审核信息：</td>
+                        <td class="input" colspan="3">
+                            @if (Model.AuditUID != null)
+                            {
+                                @Html.Raw(Model.Auditer + "审核于" + Model.AuditDT.ToString("yyyy-MM-dd"))
+                            }
+                            else
+                            {
+                                @Html.Raw("--")
+                            }
+                        </td>
+                    </tr>
+
+                }
+
+                <tr>
+                    <td class="name">收单渠道：</td>
+                    <td class="input" colspan="3">
+                        @Html.TextBoxFor(o => o.ChannelCode, new Dictionary<string, object>() { { "class", "easyui-textbox" }, { disabled, "disabled" }, { "data-options", "novalidate:true,required:true,prompt:'2-10个字符',validType: 'length[2,30]',width:200" } })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">名称：</td>
+                    <td class="input" colspan="3">@Html.TextBoxFor(o => o.ChannelTitle, new Dictionary<string, object>() { { "class", "easyui-textbox" }, { disabled, "disabled" }, { "data-options", "novalidate:true,required:true,prompt:'2-30个字符',validType: 'length[2,30]',width:200" } })</td>
+                </tr>
+                @*<tr>
+                        <td class="name">状态：</td>
+                        <td class="input" data-options="width:160,editable:true,required:true" colspan="3">
+                            @Html.RadioButtonListFor(o => o.Status, ViewBag.StatusList as List<SelectListItem>)
+                        </td>
+                    </tr>*@
+
+                <tr>
+                    <td class="name">备注：</td>
+                    <td class="input" colspan="3">
+                        @Html.TextAreaFor(o => o.Memo, new Dictionary<string, object>() { { "class", "easyui-validatebox" }, { "data_options", "required:false,validType: 'length[0,500]'," }, { "style", "width:200px;height:80px;" }, { "maxlength", 500 } })
+                        <div>限长500个字</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    $(function () {
+
+    });
+</script>

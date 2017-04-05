@@ -1,0 +1,497 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using System.Collections.Specialized;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Sys.Entity;
+
+namespace Pharos.Logic.BLL
+{
+    public class InboundGoodsBLL : BaseService<InboundGoods>
+    {
+        /// <summary>
+        /// 获得入库单信息
+        /// </summary>
+        /// <param name="nvl">传递条件</param>
+        /// <param name="recordCount">返回总行数</param>
+        /// <returns>list</returns>
+        public static object FindInboundGoodsList(NameValueCollection nvl, out int recordCount)
+        {
+            var queryInboundGoods = BaseService<InboundGoods>.CurrentRepository.QueryEntity;
+            var queryInboundList = BaseService<InboundList>.CurrentRepository.QueryEntity;
+            var queryWarehouse = BaseService<Warehouse>.CurrentRepository.QueryEntity;
+            var queryProduct = BaseService<VwProduct>.CurrentRepository.QueryEntity;
+            var queryUser = UserInfoService.CurrentRepository.QueryEntity;
+            var querySupplier = BaseService<Supplier>.CurrentRepository.QueryEntity;
+
+            var groupbyInboundList = from a in queryInboundList
+                                     group a by a.InboundGoodsId into g
+                                     select new
+                                     {
+                                         g.Key,
+                                         InboundPrice = g.Sum(a => a.BuyPrice * a.InboundNumber),
+                                         InboundNumber = g.Sum(a => a.InboundNumber)
+                                     };
+
+            var query = from x in queryInboundGoods
+                        join y in groupbyInboundList on x.InboundGoodsId equals y.Key
+                        join z in queryWarehouse on x.StoreId equals z.StoreId into temp1
+                        from m in temp1.DefaultIfEmpty()
+                        join j in queryUser on x.CreateUID equals j.UID into temp2
+                        from k in temp2.DefaultIfEmpty()
+                        join n in querySupplier on x.SupplierID equals n.Id into temp3
+                        from p in temp3.DefaultIfEmpty()
+                        join q in queryUser on x.BuyerUID equals q.UID into temp4
+                        from r in temp4.DefaultIfEmpty()
+                        select new
+                        {
+                            x.Id,
+                            x.InboundGoodsId,
+                            StoreTitle = m.Title,
+                            x.StoreId,
+                            x.IndentOrderId,
+                            x.BuyerUID,
+                            Buyer = r.FullName,
+                            x.ReceivedDT,
+                            x.SupplierID,
+                            SupplierTitle = p.Title,
+                            x.DistributionBatch,
+                            y.InboundPrice,
+                            y.InboundNumber,
+                            x.CreateDT,
+                            Creater = k.FullName,
+                            x.CreateUID,
+                            x.State
+                        };
+            var CreateUID = nvl["CreateUID"];
+            var Store = nvl["Store"];
+            var IndentOrderId = nvl["IndentOrderId"];
+            var StartDate = nvl["StartDate"];
+            var EndDate = nvl["EndDate"];
+            var InBoundState = nvl["State"];
+            var SupplierID = nvl["SupplierID"];
+
+            if (!CreateUID.IsNullOrEmpty())
+            {
+                query = query.Where(o => o.CreateUID == CreateUID);
+            }
+            if (!Store.IsNullOrEmpty())
+            {
+                query = query.Where(o => o.StoreId == Store);
+            }
+            if (!IndentOrderId.IsNullOrEmpty())
+            {
+                query = query.Where(o => o.IndentOrderId.Contains(IndentOrderId));
+            }
+            if (!StartDate.IsNullOrEmpty())
+            {
+                var st1 = DateTime.Parse(StartDate);
+                query = query.Where(o => o.CreateDT >= st1);
+            }
+            if (!EndDate.IsNullOrEmpty())
+            {
+                var st2 = DateTime.Parse(EndDate).AddDays(1);
+                query = query.Where(o => o.CreateDT < st2);
+            }
+            if (!InBoundState.IsNullOrEmpty())
+            {
+                var inBoundStateValue = short.Parse(InBoundState);
+                query = query.Where(o => o.State == inBoundStateValue);
+            }
+            if (!SupplierID.IsNullOrEmpty())
+            {
+                query = query.Where(o => o.SupplierID == SupplierID);
+            }
+
+            recordCount = query.Count();
+            return query.ToPageList(nvl).Select(o => new
+            {
+                o.Id,
+                o.InboundGoodsId,
+                o.StoreTitle,
+                o.StoreId,
+                o.IndentOrderId,
+                o.BuyerUID,
+                o.Buyer,
+                o.ReceivedDT,
+                o.SupplierID,
+                SupplierTitle = o.SupplierID == "-1" ? "其它" : o.SupplierTitle,
+                o.DistributionBatch,
+                o.InboundPrice,
+                o.InboundNumber,
+                o.CreateDT,
+                CreateDTStr = o.CreateDT.ToString("yyyy-MM-dd"),
+                o.Creater,
+                o.CreateUID,
+                o.State,
+                StateTitle = Enum.GetName(typeof(InboundState), o.State)
+            });
+        }
+
+        /// <summary>
+        /// 级联删除入库记录
+        /// </summary>
+        /// <param name="Ids">InboundGood主键ID</param>
+        /// <returns>执行结果</returns>
+        public static OpResult DeleteInboundById(string[] ids)
+        {
+            var op = new OpResult();
+            try
+            {
+                var queryInGoods = BaseService<InboundGoods>.CurrentRepository;
+                var queryInList = BaseService<InboundList>.CurrentRepository;
+                var InGoods = queryInGoods.FindList(o => ids.Contains(o.Id.ToString())).ToList();
+                if (InGoods.Any(o => o.State == 1))
+                {
+                    var goods = InGoods.Where(o => o.State == 1).FirstOrDefault();
+                    op.Message = string.Format("入库单：{0} 为已验状态，无法删除", goods.InboundGoodsId);
+                    return op;
+                }
+                var InGoodIds = InGoods.Select(o => o.InboundGoodsId).ToList();
+                var InGoodLists = new List<InboundList>();
+                foreach (var inGoodId in InGoodIds)
+                {
+                    var inGoodList = queryInList.FindList(o => o.InboundGoodsId == inGoodId);
+                    if (inGoodList.Count() > 0)
+                        InGoodLists.AddRange(inGoodList);
+                }
+                queryInList.RemoveRange(InGoodLists, false);
+                queryInGoods.RemoveRange(InGoods, true);
+
+                op.Successed = true;
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                Log.WriteError("删除失败", ex);
+            }
+            return op;
+        }
+
+        /// <summary>
+        /// 保存或修改
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static OpResult SaveOrUpdate(InboundGoods obj)
+        {
+            var re = new OpResult();
+            try
+            {
+                var details = new List<InboundList>();
+                var inboundGoodsId = Logic.CommonRules.InboundSN;
+                if (!string.IsNullOrWhiteSpace(obj.Rows))
+                {
+                    var inboundList = obj.Rows.ToObject<List<InboundList>>();
+                    if (inboundList.Any())
+                        details.AddRange(inboundList.Where(o => !string.IsNullOrWhiteSpace(o.Barcode)));
+
+
+                }
+                if (obj.Id == 0)
+                {
+                    //新增
+                    if (!string.IsNullOrEmpty(obj.IndentOrderId))
+                    {
+                        var inboundGood = Find(o => o.IndentOrderId == obj.IndentOrderId);
+                        if (inboundGood != null)
+                        {
+                            re.Message = "该订货单号已入库";
+                            return re;
+                        }
+                    }
+                    if (string.IsNullOrEmpty(obj.SupplierID))
+                    {
+                        obj.SupplierID = "-1";
+                    }
+
+                    obj.InboundGoodsId = inboundGoodsId;
+                    obj.State = 0;
+                    foreach (var d in details)
+                    {
+                        d.InboundGoodsId = inboundGoodsId;
+                        d.State = 0;
+
+                        var oProduct = BaseService<VwProduct>.Find(o => o.Barcode == d.Barcode || (","+o.Barcodes+",").Contains(","+d.Barcode+","));
+                        if (oProduct != null)
+                        {
+                            if (d.Barcode != oProduct.Barcode && !oProduct.Barcodes.IsNullOrEmpty())
+                            {
+                                d.AssistBarcode = d.Barcode;
+                                d.Barcode = oProduct.Barcode;
+                            }
+                            //进价
+                            //d.BuyPrice = oProduct.BuyPrice;
+                            //生产日期非必填
+                            if (!string.IsNullOrEmpty(d.ProducedDate))
+                            {
+                                //如果保质期>0,截止保质日期=生产日期+保质期
+                                if (oProduct.Expiry > 0)
+                                {
+                                    d.ExpiryDateUnit = oProduct.ExpiryUnit;
+                                    d.ExpiryDate = oProduct.Expiry;
+
+                                    if (d.ExpiryDateUnit == 1)
+                                    {
+                                        d.ExpirationDate = DateTime.Parse(d.ProducedDate).AddDays(d.ExpiryDate).ToString("yyyy-MM-dd");
+                                    }
+                                    if (d.ExpiryDateUnit == 2)
+                                    {
+                                        d.ExpirationDate = DateTime.Parse(d.ProducedDate).AddMonths(d.ExpiryDate).ToString("yyyy-MM-dd");
+                                    }
+                                    if (d.ExpiryDateUnit == 3)
+                                    {
+                                        d.ExpirationDate = DateTime.Parse(d.ProducedDate).AddYears(d.ExpiryDate).ToString("yyyy-MM-dd");
+                                    }
+                                }
+                                //如果保质期不限，截止保质日期=当前日期+20年
+                                else if (oProduct.Expiry == 0)
+                                {
+                                    d.ExpiryDateUnit = 3;
+                                    d.ExpiryDate = 20;
+                                    d.ExpirationDate = DateTime.Now.AddYears(d.ExpiryDate).ToString("yyyy-MM-dd");
+                                }
+                            }
+                            else
+                            {
+                                //生产日期为空
+                                //截止保质日期=当前日期+20年
+                                d.ExpiryDateUnit = 3;
+                                d.ExpiryDate = 20;
+                                if (oProduct.Expiry > 0)
+                                {//如果保质期>0,截止保质日期=当前时间+保质期
+                                    d.ExpiryDateUnit = oProduct.ExpiryUnit;
+                                    d.ExpiryDate = oProduct.Expiry;
+                                }
+                                d.ExpirationDate = DateTime.Now.AddYears(d.ExpiryDate).ToString("yyyy-MM-dd");
+                            }
+                        }
+
+                    }
+                    BaseService<InboundList>.CurrentRepository.AddRange(details, false);
+                    re = Add(obj, true);
+                }
+                else
+                {
+                    //编辑
+                    var inboundGood = FindById(obj.Id);
+                    inboundGood.StoreId = obj.StoreId;
+                    inboundGood.BuyerUID = obj.BuyerUID;
+                    inboundGood.ReceivedDT = obj.ReceivedDT;
+                    inboundGood.SupplierID = obj.SupplierID;
+                    inboundGood.DistributionBatch = obj.DistributionBatch;
+                    inboundGood.CreateUID = obj.CreateUID;
+                    inboundGood.CreateDT = obj.CreateDT;
+                    foreach (var d in details)
+                    {
+                        d.InboundGoodsId = inboundGood.InboundGoodsId;
+                        d.State = 0;
+
+                        var oProduct = BaseService<VwProduct>.Find(o => o.Barcode == d.Barcode || ("," + o.Barcodes + ",").Contains("," + d.Barcode + ","));
+                        if (oProduct != null)
+                        {
+                            if (d.Barcode != oProduct.Barcode && !oProduct.Barcodes.IsNullOrEmpty())
+                            {
+                                d.AssistBarcode = d.Barcode;
+                                d.Barcode = oProduct.Barcode;
+                            }
+                            //进价
+                            //d.BuyPrice = oProduct.BuyPrice;
+                            //生产日期非必填
+                            if (!string.IsNullOrEmpty(d.ProducedDate))
+                            {
+                                //如果保质期>0,截止保质日期=生产日期+保质期
+                                if (oProduct.Expiry > 0)
+                                {
+                                    d.ExpiryDateUnit = oProduct.ExpiryUnit;
+                                    d.ExpiryDate = oProduct.Expiry;
+
+                                    if (d.ExpiryDateUnit == 1)
+                                    {
+                                        d.ExpirationDate = DateTime.Parse(d.ProducedDate).AddDays(d.ExpiryDate).ToString("yyyy-MM-dd");
+                                    }
+                                    if (d.ExpiryDateUnit == 2)
+                                    {
+                                        d.ExpirationDate = DateTime.Parse(d.ProducedDate).AddMonths(d.ExpiryDate).ToString("yyyy-MM-dd");
+                                    }
+                                    if (d.ExpiryDateUnit == 3)
+                                    {
+                                        d.ExpirationDate = DateTime.Parse(d.ProducedDate).AddYears(d.ExpiryDate).ToString("yyyy-MM-dd");
+                                    }
+                                }
+                                //如果保质期不限，截止保质日期=当前日期+20年
+                                else if (oProduct.Expiry == 0)
+                                {
+                                    d.ExpiryDateUnit = 3;
+                                    d.ExpiryDate = 20;
+                                    d.ExpirationDate = DateTime.Now.AddYears(d.ExpiryDate).ToString("yyyy-MM-dd");
+                                }
+                            }
+                            else
+                            {
+                                //生产日期为空
+                                //截止保质日期=当前日期+20年
+                                d.ExpiryDateUnit = 3;
+                                d.ExpiryDate = 20;
+                                if (oProduct.Expiry > 0)
+                                {//如果保质期>0,截止保质日期=当前时间+保质期
+                                    d.ExpiryDateUnit = oProduct.ExpiryUnit;
+                                    d.ExpiryDate = oProduct.Expiry;
+                                }
+                                d.ExpirationDate = DateTime.Now.AddYears(d.ExpiryDate).ToString("yyyy-MM-dd");
+                            }
+                        }
+                    }
+                    var oldInboundList = BaseService<InboundList>.CurrentRepository.FindList(o => o.InboundGoodsId == inboundGood.InboundGoodsId).ToList();
+                    BaseService<InboundList>.CurrentRepository.RemoveRange(oldInboundList, false);
+                    BaseService<InboundList>.CurrentRepository.AddRange(details, false);
+                    re = Update(inboundGood, true);
+
+                }
+            }
+            catch (FormatException)
+            {
+                //re.Message = "有保质期的产品生产日期必须填写！";
+                re.Message = "生产日期格式错误！";
+            }
+            catch (Exception ex)
+            {
+                re.Message = ex.Message;
+            }
+            return re;
+        }
+        /// <summary>
+        /// 设置入库单为已验状态
+        /// </summary>
+        /// <param name="Ids"></param>
+        /// <returns></returns>
+        public static OpResult SetInboundStateToChecked(string Ids)
+        {
+            var re = new OpResult() { Successed = false };
+            try
+            {
+                var ids = Ids.Split(',').Select(o =>int.Parse(o));
+                var goods = BaseService<InboundGoods>.FindList(o => ids.Contains(o.Id));
+                var inboundGoodIds = goods.Select(o => o.InboundGoodsId).ToList();
+                var list = BaseService<InboundList>.FindList(o => inboundGoodIds.Contains(o.InboundGoodsId));
+                if (goods.Any(o => o.State == 1))
+                {
+                    var goodChecked = goods.Where(o => o.State == 1).FirstOrDefault();
+                    re.Message = string.Format("入库单：{0} 已为已验状态", goodChecked.InboundGoodsId);
+                    return re;
+                }
+                else
+                {
+                    goods.ForEach(o => { o.State = 1; });
+                    list.ForEach(o => { o.State = 1; });
+
+                    #region 写入库存变化记录
+                    //List<Commodity> commodities = new List<Commodity>();
+                    var invents = new List<InventoryRecord>();
+                    goods.ForEach(o =>
+                    {
+                        //var tempCommodities = BaseService<Commodity>.FindList(c => c.StockNumber < 0 && c.StoreId == o.StoreId);
+                        //var commodityDict = tempCommodities.GroupBy(c => c.Barcode).ToDictionary(c => c.Key, c => c.Sum(p => p.StockNumber));
+
+
+                        var records = list.Where(p => p.InboundGoodsId == o.InboundGoodsId);
+                        foreach (var item in records)
+                        {
+                            invents.Add(new InventoryRecord() { Barcode = item.AssistBarcode ?? item.Barcode, StoreId = o.StoreId, Number = item.InboundNumber, Source = 1, OperatId = item.InboundGoodsId });
+                        }
+                    });
+                    InventoryRecordService.SaveLog(invents);
+                    re = BaseService<InboundGoods>.Update(goods);
+                    re=BaseService<InboundGoods>.Update(goods);
+                    #endregion
+                }
+            }
+            catch (Exception ex)
+            {
+                re.Message = ex.Message;
+                Log.WriteError(ex);
+            }
+            return re;
+        }
+        /// <summary>
+        /// 获得入库单明细
+        /// </summary>
+        /// <param name="inboundGoodsId"></param>
+        /// <returns></returns>
+        public static object GetInboundListByInboundGoodsId(string inboundGoodsId, out int recordCount)
+        {
+            var queryInboundList = BaseService<InboundList>.CurrentRepository.QueryEntity;
+            var queryRecord = BaseService<ProductRecord>.CurrentRepository.QueryEntity;
+            var queryData = BaseService<SysDataDictionary>.CurrentRepository.QueryEntity;
+            var query = from x in queryInboundList
+                        join y in queryRecord on x.Barcode equals y.Barcode
+                        join z in queryData on y.SubUnitId equals z.DicSN into temp
+                        from h in temp.DefaultIfEmpty()
+                        where x.InboundGoodsId == inboundGoodsId
+                        select new
+                        {
+                            y.ProductCode,
+                            y.Title,
+                            Barcode=x.AssistBarcode??x.Barcode,
+                            y.SubUnitId,
+                            x.SysPrice,
+                            x.BuyPrice,
+                            Price = y.SysPrice,
+                            x.InboundNumber,
+                            Subtotal = x.BuyPrice * x.InboundNumber,
+                            x.Memo,
+                            x.Id,
+                            SubUnit = h.Title,
+                            x.ProducedDate,
+                            x.IsGift
+                        };
+
+            recordCount = query.Count();
+            var sql = query.ToString();
+            return query.ToPageList();
+        }
+
+        /// <summary>
+        /// 获得打印入库单
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <returns></returns>
+        public static List<InboundGoods> GetPrintInboundGoods(string Ids)
+        {
+            var ids = Ids.Split(',').Select(o => o.ToString());
+            var queryInGoods = BaseService<InboundGoods>.CurrentRepository;
+            var queryInList = BaseService<InboundList>.CurrentRepository;
+            var queryRecord = BaseService<ProductRecord>.CurrentRepository.QueryEntity;
+            var queryData = BaseService<SysDataDictionary>.CurrentRepository.QueryEntity;
+            var inGoods = queryInGoods.FindList(o => ids.Contains(o.Id.ToString())).ToList();
+
+            foreach (var inGood in inGoods)
+            {
+                inGood.Details = queryInList.FindList(o => o.InboundGoodsId == inGood.InboundGoodsId).ToList();
+                if (inGood.Details != null)
+                {
+                    foreach (var detail in inGood.Details)
+                    {
+                        var productRecode = queryRecord.FirstOrDefault(o => o.Barcode == detail.Barcode);
+                        if (productRecode != null)
+                        {
+                            detail.ProductCode = productRecode.ProductCode;
+                            detail.ProductTitle = productRecode.Title;
+                            var unit = queryData.FirstOrDefault(o => o.DicSN == productRecode.SubUnitId);
+                            if (unit != null)
+                            {
+                                detail.Unit = unit.Title;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return inGoods;
+        }
+
+    }
+}

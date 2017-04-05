@@ -1,0 +1,79 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ChildPagesModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// History.xaml 的交互逻辑
+    /// </summary>
+    public partial class History : Window,IDataGridOperat
+    {
+        HistoryModel model;
+        public History()
+        {
+            InitializeComponent();
+            this.InitPublicSettings();
+            model = new HistoryModel();
+            this.DataContext = model;
+        }
+
+        public void SetDataGridSelectLastItem()
+        {
+            DataGridBill.SelectedItem = PosMachine.Current.LocalBills.LastOrDefault();
+            DataGridBill.ScrollIntoView(DataGridBill.SelectedItem);
+        }
+
+        public object GetDataGridSelectItem()
+        {
+            return DataGridBill.SelectedItem;
+        }
+
+        public void SetPreviousSelectItem()
+        {
+            if (DataGridBill.SelectedIndex > 0)
+            {
+                DataGridBill.SelectedIndex--;
+                DataGridBill.ScrollIntoView(DataGridBill.SelectedItem);
+
+            }
+        }
+
+        public void SetNextSelectItem()
+        {
+            if (model.Orders.Count - 1 > DataGridBill.SelectedIndex)
+            {
+                DataGridBill.SelectedIndex++;
+                DataGridBill.ScrollIntoView(DataGridBill.SelectedItem);
+
+            }
+        }
+        private void DataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var obj = this.GetDataGridSelectItem();
+
+            switch (e.Key)
+            {
+                case Key.Enter:
+                    if (obj != null)
+                    {
+                        var result = obj as OrderDetail;
+                        result.Print.Execute(this);
+                        e.Handled = true;
+                    }
+                    break;
+            }
+        }
+    }
+}

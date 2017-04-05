@@ -1,0 +1,329 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Mobile.Exceptions;
+using Pharos.Logic.ApiData.Mobile.Repository;
+using Pharos.Logic.BLL;
+namespace Pharos.Logic.ApiData.Mobile.Services
+{
+    public class ReportService
+    {
+        static  CommonDAL dal = new CommonDAL();
+        /// <summary>
+        /// 销售类型统计
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <param name="date"></param>
+        /// <param name="lx">1-日结,2-月结</param>
+        /// <returns></returns>
+        public static object SaleTypeReport(string storeId, string date,short lx)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+                throw new MessageException("门店号为空!");
+            if (string.IsNullOrWhiteSpace(date))
+                throw new MessageException("日期为空!");
+            var start = DateTime.Parse(date).Date;
+            var end = start.AddDays(1);
+            if(lx==2)
+            {
+                start = new DateTime(start.Year,start.Month, 1);
+                end = start.AddMonths(1);
+            }
+            
+            var salelist= SaleOrdersService.FindList(o => o.CreateDT >= start && o.CreateDT < end && o.Type==0 && o.StoreId==storeId);
+            var retlist= SalesReturnsService.FindList(o => o.CreateDT >= start && o.CreateDT < end && (o.ReturnType == 0 || o.ReturnType==2) && o.StoreId == storeId);
+            var giftlist = (from a in SaleDetailService.CurrentRepository.Entities
+                            from b in SaleOrdersService.CurrentRepository.Entities
+                        where a.PaySN == b.PaySN && b.Type == 0 && b.CreateDT >= start && b.CreateDT < end && a.ActualPrice == 0
+                        select a).ToList();
+            var huanglist = SaleOrdersService.FindList(o => o.CreateDT >= start && o.CreateDT < end && o.Type == 1 && o.StoreId == storeId);
+            var list = new List<object>()
+            {
+                new{Type="销售",Count=salelist.Count,Total=salelist.Sum(o=>o.TotalAmount)},
+                new{Type="退货",Count=retlist.Count,Total=retlist.Sum(o=>o.ReturnPrice)},
+                new{Type="赠送",Count=giftlist.Count,Total=giftlist.Sum(o=>o.PurchaseNumber*o.SysPrice)},
+                new{Type="换货",Count=huanglist.Count,Total=huanglist.Sum(o=>o.TotalAmount)},
+            };
+            return list;
+        }
+        /// <summary>
+        /// 商品统计
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <param name="date"></param>
+        /// <returns></returns>
+        public static object SaleDetailDayReport(string storeId, string date)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+                throw new MessageException("门店号为空!");
+            if (string.IsNullOrWhiteSpace(date))
+                throw new MessageException("日期为空!");
+            var start = DateTime.Parse(date).Date;
+            var end = start.AddDays(1);
+            var dt = dal.SaleDetailReport(storeId, start, end);
+            return dt;
+        }
+        /// <summary>
+        /// 销售统计
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <param name="date"></param>
+        /// <param name="type">1-品类,2-品牌,3-供应商</param>
+        /// <returns></returns>
+        public static object SaleDayReport(string storeId, string date, string type)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+                throw new MessageException("门店号为空!");
+            if (string.IsNullOrWhiteSpace(date))
+                throw new MessageException("当前日期为空!");
+            
+            int saleDayTakeNum = 10;
+            var start=DateTime.Parse(date).Date;
+            var end = start.AddDays(1);
+            //var query = from a in BaseService<Entity.SaleOrders>.CurrentRepository.Entities
+            //            join b in BaseService<Entity.SaleDetail>.CurrentRepository.Entities on a.PaySN equals b.PaySN
+            //            join c in BaseService<Entity.VwProduct>.CurrentRepository.Entities on b.Barcode equals c.Barcode into tmp
+            //            from d in tmp.DefaultIfEmpty()
+            //            where a.CreateDT >= start && a.CreateDT < end && a.StoreId==storeId && d.MidCategoryTitle!=null
+            //            group new { d,b } by new { d.BigCategoryTitle, d.MidCategoryTitle, d.SubCategoryTitle } into g
+            //            select new
+            //            {
+            //                g.Key.BigCategoryTitle,
+            //                g.Key.MidCategoryTitle,
+            //                g.Key.SubCategoryTitle,
+            //                SaleTotal=g.Sum(o=>o.b.ActualPrice*o.b.PurchaseNumber),
+            //                BuyTotal=g.Sum(o=>o.b.BuyPrice*o.b.PurchaseNumber),
+            //                PurchaseNumber=g.Sum(o=>o.b.PurchaseNumber)
+            //            };
+           
+
+            if (type == "1")
+            {
+                var query = from a in BaseService<Entity.SaleOrders>.CurrentRepository.Entities
+                            join b in BaseService<Entity.SaleDetail>.CurrentRepository.Entities on a.PaySN equals b.PaySN
+                            join c in BaseService<Entity.VwProduct>.CurrentRepository.Entities on b.Barcode equals c.Barcode into tmp
+                            from d in tmp.DefaultIfEmpty()
+                            where a.CreateDT >= start && a.CreateDT < end && a.StoreId == storeId && d.MidCategoryTitle != null
+                            group new { d, b } by new { d.CategoryTitle } into g
+                            select new
+                            {
+                                g.Key.CategoryTitle,
+                                SaleTotal = g.Sum(o => o.b.ActualPrice * o.b.PurchaseNumber),
+                                BuyTotal = g.Sum(o => o.b.BuyPrice * o.b.PurchaseNumber),
+                                PurchaseNumber = g.Sum(o => o.b.PurchaseNumber)
+                            };
+                var list = query.OrderByDescending(o=>o.SaleTotal).ToList();
+                var otherSaleTotal = list.Skip(saleDayTakeNum).Sum(o => (decimal?)o.SaleTotal);
+                var otherBuyTotal = list.Skip(saleDayTakeNum).Sum(o => (decimal?)o.BuyTotal);
+                var total = list.Sum(o => o.SaleTotal);
+                var results = list.Take(saleDayTakeNum).Select(o => new
+                {
+                    Title=o.CategoryTitle,
+                    o.SaleTotal,
+                    Profit= o.SaleTotal-o.BuyTotal,
+                    OccupyRate = (o.SaleTotal / total).ToString("p")
+                }).ToList();
+                if (otherSaleTotal.HasValue && otherSaleTotal!=0)
+                {
+                    results.Add(new { 
+                        Title="其它",
+                        SaleTotal=otherSaleTotal.GetValueOrDefault(),
+                        Profit = otherSaleTotal.GetValueOrDefault() - otherBuyTotal.GetValueOrDefault(),
+                        OccupyRate = (otherSaleTotal.GetValueOrDefault() / total).ToString("p")
+                    });
+                }
+                return results;
+            }
+            else if (type == "2")
+            {
+                var query = from a in BaseService<Entity.SaleOrders>.CurrentRepository.Entities
+                            join b in BaseService<Entity.SaleDetail>.CurrentRepository.Entities on a.PaySN equals b.PaySN
+                            join c in BaseService<Entity.VwProduct>.CurrentRepository.Entities on b.Barcode equals c.Barcode into tmp
+                            from d in tmp.DefaultIfEmpty()
+                            where a.CreateDT >= start && a.CreateDT < end && a.StoreId == storeId && d.BrandTitle != ""
+                            group new { d, b } by new { d.BrandSN,d.BrandTitle } into g
+                            select new
+                            {
+                                g.Key.BrandTitle,
+                                SaleTotal = g.Sum(o => o.b.ActualPrice * o.b.PurchaseNumber),
+                                BuyTotal = g.Sum(o => o.b.BuyPrice * o.b.PurchaseNumber),
+                                PurchaseNumber = g.Sum(o => o.b.PurchaseNumber)
+                            };
+                var list = query.OrderByDescending(o => o.SaleTotal).ToList();
+                var otherSaleTotal = list.Skip(saleDayTakeNum).Sum(o => (decimal?)o.SaleTotal);
+                var otherBuyTotal = list.Skip(saleDayTakeNum).Sum(o => (decimal?)o.BuyTotal);
+                var total = list.Sum(o => o.SaleTotal);
+                var results = list.Take(saleDayTakeNum).Select(o => new
+                {
+                    Title=o.BrandTitle,
+                    o.SaleTotal,
+                    Profit = o.SaleTotal - o.BuyTotal,
+                    OccupyRate = (o.SaleTotal / total).ToString("p")
+                }).ToList();
+                if (otherSaleTotal.HasValue && otherSaleTotal != 0)
+                {
+                    results.Add(new
+                    {
+                        Title = "其它",
+                        SaleTotal = otherSaleTotal.GetValueOrDefault(),
+                        Profit = otherSaleTotal.GetValueOrDefault() - otherBuyTotal.GetValueOrDefault(),
+                        OccupyRate = (otherSaleTotal.GetValueOrDefault() / total).ToString("p")
+                    });
+                }
+                return results;
+            }
+            else if (type == "3")
+            {
+                var query = from a in BaseService<Entity.SaleOrders>.CurrentRepository.Entities
+                            join b in BaseService<Entity.SaleDetail>.CurrentRepository.Entities on a.PaySN equals b.PaySN
+                            join c in BaseService<Entity.VwProduct>.CurrentRepository.Entities on b.Barcode equals c.Barcode into tmp
+                            from d in tmp.DefaultIfEmpty()
+                            where a.CreateDT >= start && a.CreateDT < end && a.StoreId == storeId && d.SupplierId !=""
+                            group new { d, b } by new { d.SupplierId, d.SupplierTitle } into g
+                            select new
+                            {
+                                g.Key.SupplierTitle,
+                                SaleTotal = g.Sum(o => o.b.ActualPrice * o.b.PurchaseNumber),
+                                BuyTotal = g.Sum(o => o.b.BuyPrice * o.b.PurchaseNumber),
+                                PurchaseNumber = g.Sum(o => o.b.PurchaseNumber)
+                            };
+                var list = query.OrderByDescending(o => o.SaleTotal).ToList();
+                var otherSaleTotal = list.Skip(saleDayTakeNum).Sum(o => (decimal?)o.SaleTotal);
+                var otherBuyTotal = list.Skip(saleDayTakeNum).Sum(o => (decimal?)o.BuyTotal);
+                var total = list.Sum(o => o.SaleTotal);
+                var results = list.Take(saleDayTakeNum).Select(o => new
+                {
+                    Title=o.SupplierTitle,
+                    o.SaleTotal,
+                    Profit = o.SaleTotal - o.BuyTotal,
+                    OccupyRate = (o.SaleTotal / total).ToString("p")
+                }).ToList();
+                if (otherSaleTotal.HasValue && otherSaleTotal != 0)
+                {
+                    results.Add(new
+                    {
+                        Title = "其它",
+                        SaleTotal = otherSaleTotal.GetValueOrDefault(),
+                        Profit = otherSaleTotal.GetValueOrDefault() - otherBuyTotal.GetValueOrDefault(),
+                        OccupyRate = (otherSaleTotal.GetValueOrDefault() / total).ToString("p")
+                    });
+                }
+                return results;
+            }
+            else
+                return null;
+        }
+        /// <summary>
+        /// 赠送统计
+        /// </summary>
+        /// <param name="date"></param>
+        /// <returns></returns>
+        public static object SaleGiftReport(string date)
+        {
+            if (string.IsNullOrWhiteSpace(date))
+                throw new MessageException("当前日期为空!");
+            var start = DateTime.Parse(date).Date;
+            start = new DateTime(start.Year, start.Month, 1);
+            var end = start.AddMonths(1);
+
+            var query = from a in SaleDetailService.CurrentRepository.Entities
+                           join b in SaleOrdersService.CurrentRepository.Entities on a.PaySN equals b.PaySN
+                           join c in WarehouseService.CurrentRepository.Entities on b.StoreId equals c.StoreId
+                           where b.Type == 0 && b.CreateDT >= start && b.CreateDT < end && a.ActualPrice == 0
+                           group new { a, c } by new { c.StoreId,c.Title } into g
+                           select new
+                           {
+                               g.Key.Title,
+                               PurchaseNumber=g.Sum(o=>o.a.PurchaseNumber),
+                               GiftTotal= g.Sum(o=>o.a.SysPrice*o.a.PurchaseNumber)
+                           };
+            var list = query.OrderByDescending(o => o.GiftTotal).ToList();
+            var total = list.Sum(o => o.GiftTotal);
+            return list.Select(o=>new{
+                o.Title,
+                o.PurchaseNumber,
+                o.GiftTotal,
+                OccupyRate = (o.GiftTotal / total).ToString("p")
+            });
+        }
+        /// <summary>
+        /// 缺货统计
+        /// </summary>
+        /// <returns></returns>
+        public static object StockOutReport()
+        {
+            var query = from a in InventoryService.CurrentRepository.Entities
+                        join b in ProductService.CurrentRepository.Entities on a.Barcode equals b.Barcode
+                        where a.StockNumber < (b.InventoryWarning ?? 0)
+                        orderby a.StockNumber ascending
+                        select new { 
+                            b.Barcode,
+                            b.Title,
+                            a.StockNumber
+                        };
+            var list = query.Take(10).ToList();
+            return list;
+        }
+        /// <summary>
+        /// 过剩统计
+        /// </summary>
+        /// <returns></returns>
+        public static object StockMoreReport()
+        {
+            var query = from a in InventoryService.CurrentRepository.Entities
+                        join b in ProductService.CurrentRepository.Entities on a.Barcode equals b.Barcode
+                        where a.StockNumber > (b.InventoryWarning ?? 0)
+                        orderby a.StockNumber descending
+                        select new
+                        {
+                            b.Barcode,
+                            b.Title,
+                            a.StockNumber
+                        };
+            var list = query.Take(10).ToList();
+            return list;
+        }
+        /// <summary>
+        /// 会员统计
+        /// </summary>
+        /// <param name="date"></param>
+        /// <param name="lx">1-日,2-月,3-全部</param>
+        /// <returns></returns>
+        public static object MemberReport(string date,short lx)
+        {
+            var start = new DateTime(2015, 1, 1);
+            var end = DateTime.Now;
+            if (lx != 3)
+            {
+                if (string.IsNullOrWhiteSpace(date))
+                    throw new MessageException("当前日期为空!");
+                if (lx == 1)
+                {
+                    start = DateTime.Parse(date).Date;
+                    end = start.AddDays(1);
+                }
+                if (lx == 2)
+                {
+                    start = DateTime.Parse(date).Date;
+                    end = start.AddMonths(1);
+                }
+            }
+            var query = from x in MembersService.CurrentRepository.Entities
+                        join y in WarehouseService.CurrentRepository.Entities on x.StoreId equals y.StoreId
+                        where x.CreateDT >= start && x.CreateDT < end && x.Status==1
+                        group new { x, y } by new { x.StoreId, y.Title } into g
+                        select new { 
+                            g.Key.Title,
+                            Count= g.Count()
+                        };
+            var list= query.ToList();
+            var total = list.Sum(o => o.Count);
+            return list.OrderByDescending(o=>o.Count).Select(o => new { 
+                o.Title,
+                o.Count,
+                OccupyRate = (o.Count / (decimal)total).ToString("p")
+            });
+        }
+    }
+}

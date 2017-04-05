@@ -1,0 +1,100 @@
+﻿<Window x:Class="Pharos.POS.Retailing.ChildPages.Help"
+        xmlns:rules="clr-namespace:Pharos.POS.Retailing.Models.DataRules"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" WindowState="Normal" WindowStyle="None"
+        AllowsTransparency="True"  WindowStartupLocation="CenterScreen" Icon="..\Images\help.png"   Style="{DynamicResource SkinWindowStyle}"
+        Background="Transparent" BorderBrush="Transparent"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" 
+        Name="mainWindow"
+        Title="帮助" Height="550" Width="600">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\HelpStyle.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="..\Styles\BaseStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid Name="contentPanel">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="20"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="50"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Grid.ColumnSpan="4" BorderBrush="#bbb" BorderThickness="0,0,0,1" Height="40"></Border>
+
+                <TextBlock Style="{StaticResource txtTitle}" Grid.Column="0" VerticalAlignment="Center" FontSize="20" HorizontalAlignment="Center">功能</TextBlock>
+                <TextBlock Style="{StaticResource txtKeys}" Grid.Column="1"  VerticalAlignment="Center" FontSize="20"  HorizontalAlignment="Center">快捷键</TextBlock>
+            </Grid>
+            <Grid Grid.Column="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="45"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="5"></ColumnDefinition>
+
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Grid.ColumnSpan="4" BorderBrush="#bbb" BorderThickness="0,0,0,1" Height="40"></Border>
+
+                <TextBlock  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" Style="{StaticResource txtTitle}" Grid.Column="1" VerticalAlignment="Center" FontSize="20"  HorizontalAlignment="Center">功能</TextBlock>
+                <TextBlock  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" Style="{StaticResource txtKeys}" Grid.Column="2"  VerticalAlignment="Center" FontSize="20"  HorizontalAlignment="Center">快捷键</TextBlock>
+            </Grid>
+        </Grid>
+
+
+        <ItemsControl Grid.Row="1" Name="panel" BorderBrush="#bbb" BorderThickness="0,1,0,0"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei">
+            <ItemsControl.Template>
+                <ControlTemplate>
+                    <ScrollViewer x:Name="ScrollViewer" Padding="{TemplateBinding Padding}">
+                        <ItemsPresenter />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </ItemsControl.Template>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="290" BorderBrush="#bbb" BorderThickness="0,0,0,1" Height="40">
+                                <Grid DataContext="{Binding One}" MouseDown="Grid_MouseDown"  Cursor="Hand" Background="#fff">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"></ColumnDefinition>
+                                        <ColumnDefinition Width="*"></ColumnDefinition>
+                                        <ColumnDefinition Width="50"></ColumnDefinition>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" Style="{StaticResource txtTitle}" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{Binding Describe, Mode=TwoWay}"></TextBlock>
+                                    <TextBlock FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" Style="{StaticResource txtKeys}" Grid.Column="1"  VerticalAlignment="Center" HorizontalAlignment="Center"  Text="{Binding Keys, Mode=TwoWay}"></TextBlock>
+                                </Grid>
+                            </Border>
+                            <Border Grid.Column="1" Width="290" BorderBrush="#bbb" BorderThickness="0,0,0,1" Height="40">
+                                <Grid DataContext="{Binding Two}"  MouseDown="Grid_MouseDown" Cursor="Hand" Background="#fff">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50"></ColumnDefinition>
+                                        <ColumnDefinition Width="*"></ColumnDefinition>
+                                        <ColumnDefinition Width="*"></ColumnDefinition>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" Style="{StaticResource txtTitle}"  Grid.Column="1" VerticalAlignment="Center"  HorizontalAlignment="Center" Text="{Binding Describe, Mode=TwoWay}"></TextBlock>
+                                    <TextBlock FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" Style="{StaticResource txtKeys}" Grid.Column="2"  VerticalAlignment="Center"  HorizontalAlignment="Center"  Text="{Binding Keys, Mode=TwoWay}"></TextBlock>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Grid>
+</Window>
+

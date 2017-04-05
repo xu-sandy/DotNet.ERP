@@ -1,0 +1,94 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增设备服务", editText: "编辑设备服务", delText: "删除设备服务", hideDel: false));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>设备状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select name="state" class="easyui-combobox" style="width:150px"><option value="" selected>全部</option><option value="0" >未激活</option><option value="1" >已激活</option><option value="2" >已停用</option></select>
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'单位编号或名称',width:150" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(1)">设为激活</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(2)">设为停用</a>
+}
+<script type="text/javascript">
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Status', title: '设备状态', editor: { type: 'text', required: true }, width: 70, formatter: function (value, row, index) { return value == 0 ? "未激活" : value == 1 ? "已激活" : "停用"; } },
+        { field: 'Source', title: '设备来源',hidden:true, editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) { return value == 1 ? "本司" : "商户"; } },
+        { field: 'CID', title: '商户号', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Title', title: '商户名称', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Category', title: '设备分类', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Spec', title: '设备型号', editor: { type: 'text', required: true }, width: 80 },
+        { field: 'Brand', title: '设备品牌', editor: { type: 'text', required: true }, width: 90 },
+        { field: 'DeviceNo', title: '设备编号', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'StoreName', title: '所在门店', editor: { type: 'text', required: true }, width: 90 },
+        { field: 'EffectiveDT', title: '生效日期', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'ValidityNum', title: '有效期(月)', editor: { type: 'text', required: true }, width: 70 },
+        { field: 'ExpirationDT', title: '截止日期', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'ContractNo', title: '合同号', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'Assigner', title: '指派人', editor: { type: 'text', required: true }, width: 100 },
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache(),true);
+    };
+    pharos.manager.editItem = function (id,row) {
+        this.Id = id;
+        if (row.Status == 0 || row.Status == 1)
+            openDialog800(this.editText, this.editurlNocache());
+        else
+            openDialog(this.detailText, this.editurlNocache(),800,450,true);
+    }
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.each(rows, function (i, r) {
+            if (state == 1 && r.Status == 1) {
+                $.messager.alert("提示", "该记录已激活!"); rows = null; return false;
+            }
+            else if (state == 2 && r.Status == 2) {
+                $.messager.alert("提示", "请选择未停用的记录!"); rows = null; return false;
+            }
+        })
+        if (!rows) return;
+        $.messager.confirm("提示", state == 2 ? "停用后将不能再使用，是否继续？" : "是否确定改状态？", function (r) {
+            if (!r) return;
+            var ids= $.map(rows, function (r) { return r.Id;}).join();
+            $.post("@Url.Action("SetState")", {ids:ids,state:state}, function (json) {
+                if (json.successed) {
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "操作失败!" + json.message);
+                }
+            },"json");
+        });
+    }
+    function removeBefore(row) {
+        if (row.Status == 1) {
+            $.messager.alert("提示", "已激活状态不能删除!");
+            return false;
+        }
+        return true;
+    }
+</script>

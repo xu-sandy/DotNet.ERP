@@ -1,0 +1,141 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using System;
+
+namespace Pharos.POS.Retailing.Models
+{
+    public class Barcode
+    {
+        public Barcode(string barcode, decimal salePrice, decimal num = 1, bool verify = true)
+        {
+            try
+            {
+                Current = barcode;
+                if (Current.Length == 10)
+                {
+                    IsCustom = false;
+                    ProductOrBarcode = barcode;
+                    WeightOrNum = num;
+                    Price = salePrice;
+                    if (ProductInfoLocalService.IsExist(o => (("," + o.Barcodes + ",").Contains("," + ProductOrBarcode + ",") || o.Barcode == ProductOrBarcode) && o.ValuationType == 2))
+                    {
+                        IsError = true;
+                        ErrorMsg = "未称重商品！";
+                        return;
+                    }
+                }
+                else if (Current.Length == 12)
+                {
+                    IsCustom = false;
+                    ProductOrBarcode = barcode;
+                    WeightOrNum = num;
+                    Price = salePrice;
+                }
+                else if (Current.Length == 13)
+                {
+                    IsCustom = false;
+                    ProductOrBarcode = barcode;
+                    WeightOrNum = num;
+                    Price = salePrice;
+                }
+                else if (Current.Length == 18)
+                {
+                    IsCustom = true;
+                    StoreId = barcode.Substring(0, 2);
+                    ProductOrBarcode = barcode.Substring(2, 6);
+                    WeightOrNum = Convert.ToInt32(barcode.Substring(8, 5)) / 1000.0m;
+                    TotalPrice = Convert.ToInt32(barcode.Substring(13, 5)) / 100.0m;
+                    Price = TotalPrice / WeightOrNum;
+                }
+                else
+                {
+                    IsError = true;
+                    ErrorMsg = "输入条码无效！";
+                    return;
+                }
+                if (verify)
+                {
+                    var isSingle = ProductInfoLocalService.IsExist(o => (!IsCustom && (("," + o.Barcodes + ",").Contains("," + ProductOrBarcode + ",") || o.Barcode == ProductOrBarcode)) || (IsCustom && o.ProductCode == ProductOrBarcode));
+
+
+                    var info = ProductInfoLocalService.Find(o => (!IsCustom && (o.Barcode == ProductOrBarcode || ("," + o.Barcodes + ",").Contains("," + ProductOrBarcode + ","))) || (IsCustom && o.ProductCode == ProductOrBarcode));
+                    if (info != null && info.State == 0)
+                    {
+                        IsError = true;
+                        ErrorMsg = "商品已下架，请重新输入条码！";
+                        return;
+                    }
+                    if (isSingle)
+                    {
+                        BarcodeFromDB = info.Barcode;
+                    }
+
+                    var isMultiple = BundlingLocalService.IsExist(o => o.NewBarcode == barcode);
+                    if (!isSingle && !isMultiple)
+                    {
+                        IsError = true;
+                        ErrorMsg = "未找到商品，请重新输入条码！";
+                        return;
+                    }
+                    if (isMultiple)
+                    {
+                        BarcodeFromDB = barcode;
+                    }
+                    IsInProductInfo = isSingle;
+                }
+            }
+            catch (Exception)
+            {
+                IsError = true;
+                ErrorMsg = "输入条码无效！";
+                return;
+            }
+        }
+        /// <summary>
+        /// 是否为单品
+        /// </summary>
+        public bool IsInProductInfo { get; set; }
+        /// <summary>
+        /// 条码识别错误信息
+        /// </summary>
+        public string ErrorMsg { get; set; }
+        /// <summary>
+        /// 当前传入条码
+        /// </summary>
+        public string Current { get; set; }
+        /// <summary>
+        /// 条码是否出错（可以在ErrorMsg中查看错误信息）
+        /// </summary>
+        public bool IsError { get; set; }
+        /// <summary>
+        /// 是否为18位自定义条码
+        /// </summary>
+        public bool IsCustom { get; set; }
+        /// <summary>
+        /// 货品号、条码,从条码解析
+        /// </summary>
+        public string ProductOrBarcode { get; set; }
+
+
+        /// <summary>
+        /// 条码从数据库中取得条码
+        /// </summary>
+        public string BarcodeFromDB { get; set; }
+        /// <summary>
+        /// 条码商店Id
+        /// </summary>
+        public string StoreId { get; set; }
+        /// <summary>
+        /// 销售总价
+        /// </summary>
+        public decimal TotalPrice { get; set; }
+
+        /// <summary>
+        /// 销售价
+        /// </summary>
+        public decimal Price { get; set; }
+        /// <summary>
+        /// 重量或者数量
+        /// </summary>
+        public decimal WeightOrNum { get; set; }
+    }
+}

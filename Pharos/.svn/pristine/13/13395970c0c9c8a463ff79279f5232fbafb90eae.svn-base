@@ -1,0 +1,165 @@
+﻿using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using Pharos.Logic.EntityExtend;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+
+namespace Pharos.Logic.BLL
+{
+    /// <summary>
+    /// 权限逻辑层
+    /// 管理全局权限code信息
+    /// </summary>
+    public class SysLimitsBLL : BaseService<SysLimits>
+    {
+        private SysLimitisDAL _dal = new SysLimitisDAL();
+        /// <summary>
+        /// 查找全部数据
+        /// </summary>
+        /// <returns></returns>
+        public List<SysLimits> GetLimitList()
+        {
+            return GetLimitListBySearch(-1);
+        }
+        /// <summary>
+        /// 查询数据
+        /// </summary>
+        /// <param name="notid"></param>
+        /// <returns></returns>
+        public List<SysLimits> GetLimitListBySearch(int notId)
+        {
+            return FindList(o => o.Id != notId);
+        }
+        /// <summary>
+        /// 根据ID查找权限实体信息
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public SysLimitsExt GetLimit(int id, int pid)
+        {
+            var data = Find(o => o.Id == id);
+            SysLimitsExt model = null;
+            if (data == null)
+            {
+                model = new SysLimitsExt();
+            }else{
+                model = new SysLimitsExt(data);
+            }
+            if (pid != 0)
+            {
+                var plimit = FindById(pid);
+                if (plimit != null) {
+                    model.PId = plimit.Id;
+                    model.PKey = plimit.Key;
+                }
+            }
+            return model;
+        }
+        /// <summary>
+        /// 添加或者修改
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveLimit(SysLimits model)
+        {
+            var result = OpResult.Fail("数据保存失败!");
+            try
+            {
+                var savedate = Find(t => t.Id == model.Id);
+                if (savedate != null)
+                {
+                    if (IsExitsCode(savedate.Code, savedate.Id))
+                    {
+                        result = OpResult.Fail("权限代码已存在!");
+                    }
+                    else
+                    {
+                        if (savedate.PId != model.PId)
+                        {
+                            model.SetDepth(FindById(model.PId));
+                        }
+                        savedate.Replace(model);
+                        result = Update(savedate);
+                    }
+                }
+                else
+                {
+                    if (IsExitsCode(model.Code,0))
+                    {
+                        result = OpResult.Fail("权限代码已存在!");
+                    }
+                    else {
+                        savedate = model;
+                        savedate.SetDepth(FindById(savedate.PId));
+                        result = Add(savedate);
+                    }
+                }
+                if (result.Successed) {
+                    var source = GetLimitList();
+                    source.Where(t=>t.PId==savedate.Id).Each(d=>{
+                        SetChildsDepth(d,source);
+                    });
+                    Update(source);
+                }
+            }
+            catch (Exception ex)
+            {
+                result = OpResult.Fail("数据保存失败!" + ex.Message);
+            }
+            return result;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public OpResult ChangeStatus(int id)
+        {
+            var result = OpResult.Fail("状态变更失败!");
+            try
+            {
+                var model = FindById(id);
+                model.Status = (short)(model.Status == 0 ? 1 : 0);
+                result = Update(model);
+            }
+            catch (Exception e)
+            {
+                result = OpResult.Fail("状态变更失败!" + e.Message);
+            }
+            return result;
+        }
+        #region private
+        /// <summary>
+        /// 设置权限子集深度
+        /// </summary>
+        /// <param name="limit"></param>
+        /// <param name="source"></param>
+        private void SetChildsDepth(SysLimits limit, List<SysLimits> source)
+        {
+            var plimit = source.Find(t => t.Id == limit.PId);
+            limit.Depth = (short)(plimit.Depth + 1);
+            var childs = source.Where(t => t.PId == limit.Id);
+            if (childs != null && childs.Count() > 0)
+            {
+                childs.Each(t =>
+                {
+                    SetChildsDepth(t, source);
+                });
+            }
+        }
+        /// <summary>
+        /// code要求唯一，判断code是否存在
+        /// </summary>
+        /// <param name="code"></param>
+        /// <returns></returns>
+        private bool IsExitsCode(int code, int notId)
+        {
+            return IsExist(o => o.Code == code && o.Id != notId);
+        }
+        #endregion
+    }
+}

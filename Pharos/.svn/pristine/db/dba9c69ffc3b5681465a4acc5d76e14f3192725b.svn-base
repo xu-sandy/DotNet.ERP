@@ -1,0 +1,139 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.SyncService.Helpers;
+using System.Data.Entity.Validation;
+
+namespace Pharos.SyncService.LocalDataServices
+{
+    /// <summary>
+    /// 单品折扣
+    /// </summary>
+    public class CommodityDiscountPackageLocalService : ISyncDataService
+    {
+        public Microsoft.Synchronization.SyncDirectionOrder SyncDirectionOrder
+        {
+            get { return Microsoft.Synchronization.SyncDirectionOrder.Download; }
+        }
+
+        public IEnumerable<ISyncDataObject> GetSyncObjects(int companyId, string storeId)
+        {
+            try
+            {
+                using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+                {//PromotionType 1:单品折扣、 2:捆绑促销、 3:组合促销、4:买赠促销、 5:满元促销
+                    var promotions = db.CommodityPromotions.Where(o => o.PromotionType == 1).ToList();
+                    List<SyncDataPackage> result = new List<SyncDataPackage>();
+
+                    foreach (var item in promotions)
+                    {
+                        var package = GetVersion(item, companyId, storeId, db);
+                        result.Add(package);
+                    }
+                    return result;
+                }
+            }
+            catch
+            {
+                return new List<ISyncDataObject>();
+            }
+        }
+        private SyncDataPackage GetVersion(Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.CommodityPromotion item, int companyId, string storeId, LocalCeDbContext db)
+        {
+            var package = new SyncDataPackage() { SyncItemId = item.SyncItemId, EntityType = "CommodityDiscountPackage" };
+            package.Items.Add(new SyncDataPackageItem() { SyncItemId = item.SyncItemId, EntityType = typeof(CommodityPromotion).ToString(), SyncItemVersion = item.SyncItemVersion });
+
+            var commodity = db.CommodityPromotions.Where(o => item.Id == o.Id).ToList().Select(o => new SyncDataPackageItem()
+            {
+                SyncItemVersion = o.SyncItemVersion,
+                SyncItemId = o.SyncItemId,
+                EntityType = typeof(CommodityPromotion).ToString()
+            }).FirstOrDefault();
+            package.Items.Add(commodity);
+
+            var commodityDiscount = db.CommodityDiscounts.Where(o => o.CommodityId == item.Id).ToList().Select(o => new SyncDataPackageItem()
+            {
+                SyncItemVersion = o.SyncItemVersion,
+                SyncItemId = o.SyncItemId,
+                EntityType = typeof(CommodityDiscount).ToString()
+            }).ToList();
+            package.Items.AddRange(commodityDiscount);
+            return package;
+        }
+        public ISyncDataObject GetItem(Guid guid, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var promotions = db.CommodityPromotions.FirstOrDefault(o => o.SyncItemId == guid);
+                var package = new Package() { SyncItemId = guid, EntityType = "CommodityDiscountPackage" };
+                var orderItem = new List<CommodityPromotion>();
+                orderItem.Add(new CommodityPromotion().InitEntity(promotions));
+                package.Init(orderItem);
+                package.Init(db.CommodityDiscounts.Where(o => o.CommodityId == promotions.Id).Select(o => new CommodityDiscount().InitEntity(o, true)).ToList());
+                return package;
+            }
+        }
+
+        public byte[] CreateItem(ISyncDataObject data, Guid guid, int companyId, string storeId)
+        {
+            var temp = data as Package;
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                try
+                {
+                    var commodityPromotion = temp.GetEntities<CommodityPromotion>();
+                    var commodityDiscount = temp.GetEntities<CommodityDiscount>();
+                    db.CommodityPromotions.AddRange(commodityPromotion.Select(o => new Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.CommodityPromotion().InitEntity(o)));
+                    db.CommodityDiscounts.AddRange(commodityDiscount.Select(o => new Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.CommodityDiscount().InitEntity(o)));
+                    db.SaveChanges();
+                    var commodity = db.CommodityPromotions.FirstOrDefault(o => o.SyncItemId == guid);
+                    var version = GetVersion(commodity, companyId, storeId, db);
+                    return version.SyncItemVersion;
+                }
+                catch (DbEntityValidationException dbEx)
+                {
+                    throw dbEx;
+                }
+            }
+        }
+
+        public byte[] UpdateItem(Guid guid, ISyncDataObject mergedData, int companyId, string storeId)
+        {
+            var temp = mergedData as Package;
+
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var promotions = db.CommodityPromotions.FirstOrDefault(o => o.SyncItemId == guid);
+                db.CommodityPromotions.Remove(promotions);
+                db.CommodityDiscounts.RemoveRange(db.CommodityDiscounts.Where(o => o.CommodityId == promotions.Id).ToList());
+                var _promotions = temp.GetEntities<CommodityPromotion>();
+                var commodityDiscounts = temp.GetEntities<CommodityDiscount>();
+                db.CommodityPromotions.AddRange(_promotions.Select(o => new Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.CommodityPromotion().InitEntity(o, false)));
+                db.CommodityDiscounts.AddRange(commodityDiscounts.Select(o => new Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.CommodityDiscount().InitEntity(o, false)));
+                db.SaveChanges();
+                promotions = db.CommodityPromotions.FirstOrDefault(o => o.SyncItemId == guid);
+                var version = GetVersion(promotions, companyId, storeId, db);
+                return version.SyncItemVersion;
+            }
+        }
+
+        public void DeleteItem(Guid syncItemId, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var promotions = db.CommodityPromotions.FirstOrDefault(o => o.SyncItemId == syncItemId);
+                db.CommodityPromotions.Remove(promotions);
+                db.CommodityDiscounts.RemoveRange(db.CommodityDiscounts.Where(o => o.CommodityId == promotions.Id).ToList());
+                db.SaveChanges();
+            }
+        }
+
+        public ISyncDataObject Merge(ISyncDataObject syncDataObject1, ISyncDataObject syncDataObject2, int companyId, string storeId)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

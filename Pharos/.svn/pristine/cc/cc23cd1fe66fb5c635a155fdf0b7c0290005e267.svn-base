@@ -1,0 +1,553 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows.Input;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.PosModels;
+using System.Windows;
+using System.Threading;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class PosViewModel : BaseViewModel, IDisposable
+    {
+        private bool isRuning = true;
+        public PosViewModel(string appInfo, string windowIcon)
+        {
+            MachineSn = Global.MachineSettings.MachineInformations.MachineSn;
+            StoreName = Global.MachineSettings.MachineInformations.StoreName;
+            WinTitle = string.Format("{0} | {1}", Global.MachineSettings.MachineInformations.Company, Global.MachineSettings.MachineInformations.StoreName);
+            this.OnPropertyChanged(o => o.MachineSn);
+            Current = this;
+            AppName = appInfo;
+            WinIcon = windowIcon;
+            UserCode = Global.CurrentSaleMen.UserCode;
+            OperatorName = Global.CurrentSaleMen.FullName;
+            Task.Factory.StartNew(() =>
+            {
+                while (isRuning)
+                {
+                    Date = DateTime.Now;
+                    Thread.Sleep(1000);
+                }
+            });
+        }
+        string _ActivityTitle;
+
+        public string ActivityTitle
+        {
+            get
+            {
+                return _ActivityTitle;
+            }
+            set
+            {
+                _ActivityTitle = value;
+                this.OnPropertyChanged(o => o.ActivityTitle);
+            }
+        }
+
+
+        string winIcon;
+        public string WinIcon
+        {
+            get
+            {
+                return winIcon;
+            }
+            set
+            {
+                winIcon = value;
+                this.OnPropertyChanged(o => o.WinIcon);
+            }
+        }
+
+        string appName;
+        public string AppName
+        {
+            get
+            {
+                return appName;
+            }
+            set
+            {
+                appName = value;
+                this.OnPropertyChanged(o => o.AppName);
+            }
+        }
+
+        public static PosViewModel Current { get; private set; }
+
+        string winTitle;
+        public string WinTitle
+        {
+            get
+            {
+                return winTitle;
+            }
+            set
+            {
+                winTitle = value;
+                this.OnPropertyChanged(o => o.WinTitle);
+            }
+        }
+
+        public string storeName;
+        public string StoreName
+        {
+            get
+            {
+                return storeName;
+            }
+            set
+            {
+                storeName = value;
+                this.OnPropertyChanged(o => o.StoreName);
+            }
+        }
+        public string machineSn;
+        public string MachineSn
+        {
+            get { return machineSn; }
+            set
+            {
+                machineSn = value;
+                this.OnPropertyChanged(o => o.MachineSn);
+            }
+        }
+
+        #region 会员信息属性
+        /// <summary>
+        /// 会员手机号
+        /// </summary>
+        private string phone;
+
+        public string Phone
+        {
+            get { return phone; }
+            set { phone = value; this.OnPropertyChanged(o => o.Phone); }
+        }
+        /// <summary>
+        /// 会员卡号
+        /// </summary>
+        private string cardNo;
+
+        public string CardNo
+        {
+            get { return cardNo; }
+            set { cardNo = value; this.OnPropertyChanged(o => o.CardNo); }
+        }
+        /// <summary>
+        /// 会员姓名
+        /// </summary>
+        private string fullName;
+
+        public string FullName
+        {
+            get { return fullName; }
+            set { fullName = value; this.OnPropertyChanged(o => o.FullName); }
+        }
+        /// <summary>
+        /// 会员可用积分
+        /// </summary>
+        private int usableIntegral;
+
+        public int UsableIntegral
+        {
+            get { return usableIntegral; }
+            set { usableIntegral = value; this.OnPropertyChanged(o => o.UsableIntegral); }
+        }
+
+        private DateTime date;
+
+        public DateTime Date
+        {
+            get { return date; }
+            set
+            {
+                date = value;
+                this.OnPropertyChanged(o => o.Date);
+            }
+        }
+
+        public string userCode;
+        public string UserCode
+        {
+            get { return userCode; }
+            set
+            {
+                userCode = value;
+                this.OnPropertyChanged(o => o.UserCode);
+            }
+        }
+
+        private string operatorName;
+        public string OperatorName
+        {
+            get { return operatorName; }
+            set
+            {
+                operatorName = value;
+                this.OnPropertyChanged(o => o.OperatorName);
+            }
+        }
+
+
+
+
+
+        #endregion
+
+        /// <summary>
+        /// 销售状态
+        /// </summary>
+        private PosStatus posStatus = PosStatus.Normal;
+
+        public PosStatus PosStatus
+        {
+            get { return posStatus; }
+            set
+            {
+                posStatus = value;
+                this.OnPropertyChanged(o => o.PosStatus);
+            }
+        }
+        /// <summary>
+        /// 小票状态
+        /// </summary>
+        private PrintStatus printStatus;
+
+        public PrintStatus PrintStatus
+        {
+            get { return printStatus; }
+            set
+            {
+                printStatus = value;
+                this.OnPropertyChanged(o => o.PrintStatus);
+            }
+        }
+        /// <summary>
+        /// 订单列表
+        /// </summary>
+        private ObservableCollection<Product> orderList;
+
+        public ObservableCollection<Product> OrderList
+        {
+            get { return orderList; }
+            set
+            {
+                orderList = value;
+                foreach (var item in orderList)
+                {
+                    item.CurrentWindow = CurrentWindow;
+                }
+                this.OnPropertyChanged(o => o.OrderList);
+            }
+        }
+
+        /// <summary>
+        /// 优惠合计
+        /// </summary>
+        private decimal preferential;
+
+        public decimal Preferential
+        {
+            get { return preferential; }
+            set
+            {
+                preferential = value;
+                this.OnPropertyChanged(o => o.Preferential);
+            }
+        }
+        /// <summary>
+        /// 应收
+        /// </summary>
+        private decimal receivable;
+
+        public decimal Receivable
+        {
+            get { return receivable; }
+            set
+            {
+                receivable = value;
+                this.OnPropertyChanged(o => o.Receivable);
+            }
+        }
+
+        /// <summary>
+        /// 件数
+        /// </summary>
+        private decimal num;
+
+        public decimal Num
+        {
+            get { return num; }
+            set
+            {
+                num = value;
+                this.OnPropertyChanged(o => o.Num);
+            }
+        }
+
+
+        /// <summary>
+        /// 商品条码
+        /// </summary>
+        private string barcode;
+
+        public string Barcode
+        {
+            get { return barcode; }
+            set
+            {
+                barcode = value;
+                if (barcode.Length > 5)
+                {
+                    //api/sale
+                    var _machineInfo = Global.MachineSettings.MachineInformations;
+                    SaleParams _params = new SaleParams() { StoreId = _machineInfo.StoreId, MachineSn = _machineInfo.MachineSn, Barcode = Barcode, Status = PosStatus == PosStatus.Gift ? SaleStatus.POSGift : SaleStatus.Normal, CompanyToken = _machineInfo.CompanyToken };
+                    Task.Factory.StartNew(() =>
+                    {
+                        var result = ApiManager.Post<SaleParams, ApiRetrunResult<ApiSaleReturn>>(@"api/Sale", _params);
+                        if (result.Code == "200")
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                OrderList = result.Result.BuyList;
+                                Preferential = result.Result.Statistics.Preferential;
+                                Receivable = result.Result.Statistics.Receivable;
+                                Num = result.Result.Statistics.Num;
+                            }));
+                            if (OrderList.Count > 0)
+                            {
+                                SetScrollIntoView(OrderList.IndexOf(OrderList.FirstOrDefault(o => o.Barcode == barcode)));
+                            }
+                        }
+                        else
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }));
+                        }
+
+                    });
+                }
+                else
+                {
+                    try
+                    {
+                        var num = Convert.ToInt32(barcode);
+                        var product = OrderList.LastOrDefault();
+
+                        Task.Factory.StartNew(() =>
+                        {
+                            var _machineInfo = Global.MachineSettings.MachineInformations;
+                            SaleParams _params = new SaleParams()
+                            {
+                                StoreId = _machineInfo.StoreId,
+                                MachineSn = _machineInfo.MachineSn,
+                                Barcode = product.Barcode,
+                                Status = product.Status,
+                                Number = num,
+                                SalePrice = product.ActualPrice,
+                                CompanyToken = _machineInfo.CompanyToken
+                            };
+                            var result = ApiManager.Post<SaleParams, ApiRetrunResult<ApiSaleReturn>>(@"api/Sale", _params);
+
+                            if (result.Code == "200")
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    OrderList = result.Result.BuyList;
+                                    Preferential = result.Result.Statistics.Preferential;
+                                    Receivable = result.Result.Statistics.Receivable;
+                                    Num = result.Result.Statistics.Num;
+                                }));
+                            }
+                            else
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    Toast.ShowMessage(result.Message, CurrentWindow);
+                                }));
+                            }
+                        });
+                    }
+                    catch { }
+                }
+                barcode = string.Empty;
+                this.OnPropertyChanged(o => o.Barcode);
+            }
+        }
+        public void SetScrollIntoView(int index)
+        {
+            Application.Current.Dispatcher.Invoke(new Action(() =>
+            {
+                if (CurrentWindow != null)
+                {
+                    var dg = CurrentWindow as IPosDataGrid;
+                    if (dg != null)
+                    {
+                        dg.CurrentGrid.SelectedIndex = index;
+                        if (dg.CurrentGrid.SelectedItem != null)
+                        {
+                            dg.CurrentGrid.ScrollIntoView(dg.CurrentGrid.SelectedItem);
+                        }
+                    }
+                }
+            }));
+
+        }
+        /// <summary>
+        /// 结算
+        /// </summary>
+        public ICommand PayCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (OrderList != null || OrderList.Count > 0)
+                    {
+                        ZhiFuFangShi page = new ZhiFuFangShi(new PayWayViewModel(Receivable, PosModels.PayAction.Sale));
+                        page.Owner = CurrentWindow;
+                        page.ShowDialog();
+                    }
+                    else
+                    {
+                        Toast.ShowMessage("无销售数据，不能支付！", CurrentWindow);
+                    }
+                });
+            }
+        }
+
+
+        public ICommand CloseCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    ClearOrder.Execute(null);
+                    CurrentWindow.Close();
+                });
+
+            }
+        }
+
+        /// <summary>
+        /// 清空当前商品数据
+        /// </summary>
+        public ICommand ClearOrder
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    var _machineInfo = Global.MachineSettings.MachineInformations;
+                    BaseApiParams _params = new BaseApiParams() { StoreId = _machineInfo.StoreId, MachineSn = _machineInfo.MachineSn, CompanyToken = _machineInfo.CompanyToken };
+                    Task.Factory.StartNew(() =>
+                    {
+                        var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<ApiSaleReturn>>(@"api/ClearOrder", _params);
+                        if (result.Code == "200")
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                OrderList = result.Result.BuyList;
+                                Preferential = result.Result.Statistics.Preferential;
+                                Receivable = result.Result.Statistics.Receivable;
+                                Num = result.Result.Statistics.Num;
+                                Phone = "";
+                                CardNo = "";
+                                FullName = "";
+                                UsableIntegral = 0;
+                            }));
+                        }
+                        else
+                        {
+                            Toast.ShowMessage(result.Message, CurrentWindow);
+                        }
+                    });
+                });
+            }
+        }
+        /// <summary>
+        /// 整单折扣
+        /// </summary>
+        public ICommand AllDiscount
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (OrderList != null || OrderList.Count > 0)
+                    {
+                        ZhengDanZheKou page = new ZhengDanZheKou(Receivable);
+                        page.Owner = CurrentWindow;
+                        page.ShowDialog();
+                    }
+                    else
+                    {
+                        Toast.ShowMessage("无销售数据，不能进行整单折扣！", CurrentWindow);
+                    }
+
+                });
+            }
+        }
+
+        public ICommand HandBill
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (OrderList.Count > 0)
+                    {
+                        var _machineInfo = Global.MachineSettings.MachineInformations;
+                        BaseApiParams _params = new BaseApiParams() { StoreId = _machineInfo.StoreId, MachineSn = _machineInfo.MachineSn, CompanyToken = _machineInfo.CompanyToken };
+                        Task.Factory.StartNew(() =>
+                        {
+                            var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<ApiSaleReturn>>(@"api/HandBill", _params);
+                            if (result.Code == "200")
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    OrderList = result.Result.BuyList;
+                                    Preferential = result.Result.Statistics.Preferential;
+                                    Receivable = result.Result.Statistics.Receivable;
+                                    Num = result.Result.Statistics.Num;
+                                }));
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }
+                        });
+                    }
+                    else
+                    {
+                        Toast.ShowMessage("无需挂单数据！", CurrentWindow);
+                    }
+                });
+            }
+        }
+        public void Dispose()
+        {
+            isRuning = false;
+        }
+        ~PosViewModel()
+        {
+            Dispose();
+        }
+
+
+    }
+}

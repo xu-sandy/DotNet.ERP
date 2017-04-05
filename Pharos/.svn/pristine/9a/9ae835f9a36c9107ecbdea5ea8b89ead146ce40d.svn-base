@@ -1,0 +1,95 @@
+﻿using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    /// <summary>
+    /// 查询历史订单
+    /// </summary>
+    public class FindBills : BaseViewModel
+    {
+        public FindBills()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                searchTime = DateTime.Now;
+                SearchCommand.Execute(Range.Local);
+            });
+        }
+
+        private DateTime searchTime = DateTime.Now;
+
+        public DateTime SearchTime
+        {
+            get { return searchTime; }
+            set { searchTime = value; }
+        }
+        /// <summary>
+        /// 流水号
+        /// </summary>
+        private string paySn;
+
+        public string PaySn
+        {
+            get { return paySn; }
+            set { paySn = value; }
+        }
+
+
+        private IEnumerable<OrderInfoModel> orderItems;
+
+        public IEnumerable<OrderInfoModel> OrderItems
+        {
+            get { return orderItems; }
+            set
+            {
+                orderItems = value;
+                foreach (var item in orderItems)
+                {
+                    item.Parent = this;
+                }
+                this.OnPropertyChanged(o => o.OrderItems);
+            }
+        }
+        public Action Callback;
+        public GeneralCommand<Range> SearchCommand
+        {
+            get
+            {
+                return new GeneralCommand<Range>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        FindBillsParams _params = new FindBillsParams() { Date = SearchTime, Range = o1, StoreId = _machinesInfo.StoreId, MachineSn = _machinesInfo.MachineSn, CompanyToken = _machinesInfo.CompanyToken, PaySn = PaySn };
+                        var result = ApiManager.Post<FindBillsParams, ApiRetrunResult<IEnumerable<OrderInfoModel>>>(@"api/FindBills", _params);
+                        if (result.Code == "200")
+                        {
+                            Application.Current.Dispatcher.Invoke(new Action(() =>
+                             {
+                                 OrderItems = result.Result.OrderByDescending(o => o.Date);
+                             }));
+                        }
+                        else
+                        {
+                            Application.Current.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }));
+                        }
+                        if (Callback != null)
+                        {
+                            Callback();
+                        }
+                    });
+                });
+            }
+        }
+    }
+}

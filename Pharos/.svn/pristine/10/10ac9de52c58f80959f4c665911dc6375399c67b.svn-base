@@ -1,0 +1,77 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Sys.BLL;
+using Pharos.Sys.Entity;
+using Pharos.Utility.Helpers;
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class AuthorizationController : BaseController
+    {
+        //
+        // GET: /Authorization/
+        public ActionResult Index()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindPageList()
+        {
+            int count = 0;
+            var list= OMSCompanyAuthrizeBLL.FindPageList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+        public ActionResult Save(int? id)
+        {
+            OMS_CompanyAuthorize obj = null;
+            if (id.HasValue)
+            {
+                obj=OMSCompanyAuthrizeBLL.GetById(id.Value);
+            }
+            return View(obj??new OMS_CompanyAuthorize());
+        }
+        [HttpPost]
+        public ActionResult Save(OMS_CompanyAuthorize obj)
+        {
+            obj.MachineSN = Request["MachineSN"];
+            var op = OMSCompanyAuthrizeBLL.Save(obj);
+            return Content(op.ToJson());
+        }
+        [HttpPost]
+        public ActionResult Delete(object[] ids)
+        {
+            var op = OMSCompanyAuthrizeBLL.Delete(ids);
+            return Content(op.ToJson());
+        }
+        [HttpPost]
+        public ActionResult SetState(string ids,short state)
+        {
+            var op = OMSCompanyAuthrizeBLL.SetState(ids,state);
+            return Content(op.ToJson());
+        }
+        public ActionResult GenerateSerial(string codes)
+        {
+            var dicts = new Dictionary<string, string>();
+            var bll = new Pharos.Sys.SysAuthorize();
+            codes.Split(',').Each(o => {
+                dicts[o] = bll.GenerateSN(OMSCompanyAuthrizeBLL.GetByCode(int.Parse(o)));
+            });
+            Session["GenerateSerials"] = dicts;
+            return View(dicts);
+        }
+        [HttpPost]
+        public ActionResult GenerateSerial()
+        {
+            var dicts = Session["GenerateSerials"] as Dictionary<string, string>;
+            return Content(Pharos.Utility.OpResult.Success().ToJson());
+        }
+        public string GetCompany(string companyId)
+        {
+            //int.TryParse(companyId);
+            object source = null;
+            return source==null?"":source.ToJson();
+        }
+    }
+}

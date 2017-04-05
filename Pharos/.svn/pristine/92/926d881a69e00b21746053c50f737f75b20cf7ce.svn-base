@@ -1,0 +1,107 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.SettingsPagesModels;
+using System;
+using System.IO;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// Login.xaml 的交互逻辑
+    /// </summary>
+    public partial class Login : Window
+    {
+        public Login()
+        {
+            this.DataContext = PosMachine.Current.CurrentOperator;
+            PosMachine.Current.Status = PosStatus.NotLogin;
+            try
+            {
+                var images = Directory.GetFiles(@"Images\Login", "POS-login-*.png");
+                var index = new Random().Next(images.Count() - 1);
+                BackgroundImage = images[index];
+            }
+            catch
+            {
+                BackgroundImage = @"Images\Login\POS-login-1.png";
+            }
+            InitializeComponent();
+            this.InitPublicSettings();
+        }
+
+        private void CloseImage_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            new ExitSystemCommand().GetCommand().Execute(this);
+        }
+
+
+        public void CannelHandler()
+        {
+            new ExitSystemCommand().GetCommand().Execute(this);
+        }
+
+        public GeneralCommand LoginAction
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    var cpuid = MachineInfoModel.GetMACID();
+                    if (!BaseLocalService<DeviceRegInfo>.IsExist(o => o.StoreId == PosMachineInfo.Infos.StoreId && o.MachineSN == PosMachineInfo.Infos.MachineId && o.DeviceSN == cpuid))
+                    {
+                        Toast.DoShow("设备尚未注册或者未授权，不允许登陆！", this);
+                        return;
+                    }
+                    btnLogin.Content = "正在登录，请稍等......";
+                    PosMachine.Current.CurrentOperator.Login(this);
+                    if (PosMachine.Current.Status != PosStatus.NotLogin)
+                    {
+                        btnLogin.Content = "验证成功，正在启动......";
+
+                        MainWindow posPage = new MainWindow();
+                        Application.Current.MainWindow = posPage;
+                        posPage.ShowInScreen();
+                        this.Close();
+                    }else
+                    {
+                        btnLogin.Content = "登录";
+                    }
+
+                });
+            }
+        }
+        public string BackgroundImage { get; set; }
+
+        private void Logo_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2)
+            {
+                Application.Current.Shutdown();
+            }
+        }
+
+        private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            PosMachine.Current.CurrentOperator.Password = (sender as PasswordBox).Password;
+        }
+
+        private void DataSync_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            DataSync page = new DataSync(false);
+            page.ShowDialogInScreen();
+        }
+
+        private void Config_MouseDow(object sender, MouseButtonEventArgs e)
+        {
+            var page = new SettingPages.SetMachineInfo(false);
+            page.ShowDialogInScreen();
+        }
+
+    }
+}

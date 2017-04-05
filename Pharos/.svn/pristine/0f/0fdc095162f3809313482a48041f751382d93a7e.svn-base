@@ -1,0 +1,95 @@
+﻿using Pharos.POS.Retailing.Controls;
+using Pharos.POS.Retailing.Models.Payment;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// WeixinScan.xaml 的交互逻辑
+    /// </summary>
+    public partial class WeixinScan : Window
+    {
+        bool enableClose;
+        public WeixinScan(WeixinPay pay)
+        {
+            Pay = pay;
+            Pay.PayEnvent += Pay_PayEnvent;
+            InitializeComponent();
+            info.DataContext = pay;
+            this.InitPublicSettings();
+            try
+            {
+                var url = Pay.Request();
+                scanImg.Source = new BitmapImage(new Uri(url));
+
+                //WebBrowserOverlay wbo = new WebBrowserOverlay(webBrowserPlacementTarget);
+                //WebBrowser wb = wbo.WebBrowser;
+                //wb.LoadCompleted += (o1, o2) =>
+                //{
+                //    var document = ((mshtml.HTMLDocument)wb.Document);
+                //    document.documentElement.style.overflow = "hidden";
+                //    document.body.setAttribute("scroll", "no");
+                //};
+                //wb.Navigate(new Uri(url));
+ 
+            }
+            catch { }
+
+
+
+            this.Closing += ZhiFuBaoScan_Closing;
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+
+            if (e.LeftButton == MouseButtonState.Pressed &&
+                // For some reason Slider doesn't seem to mark MouseMove events as handled.
+                VisualTreeHelper.HitTest(this, e.GetPosition(this)) == null)
+            {
+                DragMove();
+            }
+        }
+        void Pay_PayEnvent()
+        {
+            enableClose = true;
+            this.DialogResult = true;
+            this.Close();
+        }
+        WeixinPay Pay { get; set; }
+        void ZhiFuBaoScan_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!enableClose)
+            {
+                this.DialogResult = false;
+            }
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            enableClose = true;
+            Pay.SetComplete();
+        }
+
+        private void btnCannel_Click(object sender, RoutedEventArgs e)
+        {
+            enableClose = true;
+            this.DialogResult = false;
+            this.Close();
+        }
+
+    }
+}

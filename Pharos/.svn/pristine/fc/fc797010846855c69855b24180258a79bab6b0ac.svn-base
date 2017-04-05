@@ -1,0 +1,230 @@
+﻿// --------------------------------------------------
+// Copyright (C) 2015 版权所有
+// 创 建 人：蔡少发
+// 创建时间：2015-05-26
+// 描述信息：公共规则统一调用入口
+// --------------------------------------------------
+
+using System;
+using System.Linq;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Entity;
+using System.Data.SqlClient;
+using Pharos.Sys.BLL;
+namespace Pharos.Logic
+{
+    /// <summary>
+    /// 公共规则统一调用入口
+    /// todo：以下规则具体实现待系统功能开发中期再统一实现，属性名已定。
+    /// </summary>
+    public static class CommonRules
+    {
+        /// <summary>
+        /// 生成新的GUID
+        /// </summary>
+        public static string GUID
+        {
+            get { return Guid.NewGuid().ToString().Replace("-", ""); }
+        }
+
+        /// <summary>
+        /// 生成新的合同编号
+        /// </summary>
+        public static string ContractSN
+        {
+            get
+            {
+                return new DateTime().ToString("yyyyMMddhhmmsss");
+            }
+        }
+
+        /// <summary>
+        /// 生成新的订货单号
+        /// </summary>
+        public static string OrderSN
+        {
+            get
+            {
+                lock (objlock)
+                {
+                    var maxCode = BLL.BaseService<Entity.IndentOrder>.CurrentRepository.QueryEntity.Max(o => o.IndentOrderId);
+                    int code = 0;
+                    if (!maxCode.IsNullOrEmpty())
+                        code = int.Parse(maxCode.Substring(10));
+                    code++;
+                    return DateTime.Now.ToString("yyyyMMddHH") + code.ToString("0000");
+                }
+            }
+        }
+        /// <summary>
+        /// 生成新的入库单号
+        /// </summary>
+        public static string InboundSN
+        {
+            get
+            {
+                return "P"+DateTime.Now.ToString("yyyyMMddHHmmssfff");
+            }
+        }
+        /// <summary>
+        /// 生成新的出库单号
+        /// </summary>
+        public static string OutboundSN
+        {
+            get
+            {
+                return "I"+DateTime.Now.ToString("yyyyMMddHHmmssfff");
+            }
+        }
+        /// <summary>
+        /// 生成新的批发单号
+        /// </summary>
+        public static string WholesalerSN
+        {
+            get
+            {
+                return "S" + DateTime.Now.ToString("yyyyMMddHHmmssfff");
+            }
+        }
+        /// <summary>
+        /// 生成新的报损单号
+        /// </summary>
+        public static string BreakageSN
+        {
+            get
+            {
+                return "J"+DateTime.Now.ToString("yyyyMMddHHmmssfff");
+            }
+        }
+
+        /// <summary>
+        /// 生成新的交易流水号（可应用于POS小票）
+        /// </summary>
+        public static string PaySN
+        {
+            get
+            {
+                return "S"+DateTime.Now.ToString("yyyyMMddHHmmssfff");
+            }
+        }
+        /// <summary>
+        /// 生成新的商品条码
+        /// </summary>
+        public static string Barcode
+        {
+            get
+            {
+                lock (objlock)
+                {
+                    var maxCode = BLL.BaseService<Entity.Bundling>.CurrentRepository.QueryEntity.Where(o => o.CompanyId == BLL.CommonService.CompanyId).Max(o => o.NewBarcode);
+                    int code = 0;
+                    if (!maxCode.IsNullOrEmpty())
+                        code = int.Parse(maxCode.Substring(8));
+                    code++;
+                    return DateTime.Now.ToString("yyyyMMdd")+code.ToString("00000");
+                }
+            }
+        }
+        static object objlock = new object();
+        /// <summary>
+        /// 生成新的货号
+        /// </summary>
+        public static string ProductCode
+        {
+            get
+            {
+                lock (objlock)
+                {
+                    var maxCode = BLL.ProductService.CurrentRepository.QueryEntity.Where(o=>o.CompanyId==BLL.CommonService.CompanyId).Max(o => o.ProductCode);
+                    int code = 0;
+                    if (!maxCode.IsNullOrEmpty())
+                        code = int.Parse(maxCode);
+                    code++;
+                    return code.ToString().PadLeft(6, '0');
+                }
+            }
+        }
+
+        /// <summary>
+        /// 生成新的会员号
+        /// </summary>
+        public static string MemberNum(string storeId)
+        {
+            var no = "1" + Pharos.Logic.BLL.CommonService.CompanyId.ToString().PadLeft(7, '0') + "00";
+            var maxCode = BLL.BaseService<Entity.Members>.CurrentRepository.QueryEntity.Where(o => o.MemberNo.StartsWith(no)).Max(o => o.MemberNo);
+            int code = 0;
+            if (!maxCode.IsNullOrEmpty())
+                code = int.Parse(maxCode.Substring(10));
+            code++;
+            return no + code.ToString().PadLeft(6,'0');
+        }
+        /// <summary>
+        /// 促销时段
+        /// </summary>
+        public static List<string> TimeLines
+        {
+            get
+            {
+                var times= System.Configuration.ConfigurationManager.AppSettings["TimeLine"];
+                if (times.IsNullOrEmpty()) return new List<string>() { "09:00", "11:00", "14:00", "16:00", "", "" };
+                return times.Split(',').ToList();
+            }
+        }
+        /// <summary>
+        /// 发送邮件
+        /// </summary>
+        /// <param name="title">标题</param>
+        /// <param name="body">内容</param>
+        /// <param name="emails">接收邮箱</param>
+        /// <returns></returns>
+        public static OpResult SendEmail(string title, string body, string[] emails)
+        {
+            var op = new OpResult();
+            try
+            {
+                var setting = new SysWebSettingBLL().GetWebSetting();
+                if(setting==null)
+                {
+                    op.Message = "请先配置邮件发送参数!";
+                    return op;
+                }
+                var smtp = setting.SMTPServer;
+                var sender = setting.SMTPAccount;
+                var password = setting.SMTPPwd;
+                var port = setting.SMTPPort;
+                if (smtp.IsNullOrEmpty() || sender.IsNullOrEmpty() || password.IsNullOrEmpty())
+                {
+                    op.Message = "发送邮箱配置不能为空";
+                    return op;
+                }
+                if(emails.Length<=0)
+                {
+                    op.Message = "接收邮箱不能为空";
+                    return op;
+                }
+                var mailHelper = new MailHelper()
+                {
+                    Smtp = smtp,
+                    Sender = sender,
+                    Password = password,
+                    Port = port,
+                    ShowName=setting.SMTPShowName
+                };
+                mailHelper.SendMessage(body, title, emails);
+                op.Successed = true;
+            }
+            catch(Exception ex)
+            {
+                if (ex.Message.Contains("AUTH"))
+                    op.Message = "请检查发送邮箱用户名和密码是否正确?";
+                else
+                    op.Message = ex.Message;
+                new Sys.LogEngine().WriteError(ex);
+            }
+            return op;
+        }
+    }
+}

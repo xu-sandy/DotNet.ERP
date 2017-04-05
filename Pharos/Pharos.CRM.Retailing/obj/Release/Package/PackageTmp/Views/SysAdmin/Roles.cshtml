@@ -1,0 +1,137 @@
+﻿@using Newtonsoft.Json;
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+
+    var lmtAdd = CurrentUser.HasPermiss(SysConstLimits.角色管理_创建角色);
+    var lmtMenu = CurrentUser.HasPermiss(SysConstLimits.角色管理_菜单设置);
+    var lmtLimit = CurrentUser.HasPermiss(SysConstLimits.角色管理_权限设置);
+    var lmtDel = CurrentUser.HasPermiss(SysConstLimits.角色管理_物理删除角色);
+    var lmtStatus = CurrentUser.HasPermiss(SysConstLimits.角色管理_状态设定);
+
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增角色", editText: "修改角色", hideAdd: !lmtAdd, hideDel: true, hideSearch: true));
+}
+
+
+<script type="text/javascript">
+    var lmtMenu = '@(lmtMenu ? "1" : "0")';
+    var lmtLimit = '@(lmtLimit ? "1" : "0")';
+    var lmtAdd = '@(lmtAdd ? "1" : "0")';
+    var lmtDel = '@(lmtDel ? "1" : "0")';
+    var lmtStatus = '@(lmtStatus ? "1" : "0")';
+    var hideSave = (lmtAdd == "1" ? false : true);
+
+    pharos.manager.geturl = "@Url.Action("GetRoles")";
+    pharos.manager.editurl = "@Url.Action("RoleSave")";
+    pharos.manager.pagination = false;
+    pharos.manager.singleSelect = true;
+    pharos.manager.columns = [[
+        { field: 'Title', title: '角色名称', width: 120 },
+        { field: 'UsersNum', title: '用户数', width: 60 },
+        { field: 'HasMenus', title: '菜单配置', width: 100 },
+        { field: 'HasLimits', title: '权限配置', width: 100 },
+        { field: 'Memo', title: '描述说明', width: 250 },
+        {
+            field: 'Status', title: '状态', width: 60, formatter: function (value, row) {
+                if (!value)
+                    return "<span>关闭</span>";
+                return "<span>启用</span>";
+            }
+        },
+        {
+            field: 'Operat', title: '操作', width: 260, formatter: function (value, row) {
+                var operat = "";
+                if (lmtMenu == "1") {
+                    operat += "<a href='javascript:return false;' onclick='SettingMenus(\"" + row.Id + "\",\"" + row.RoleId + "\")'>[菜单设置]</a>&nbsp;&nbsp;&nbsp;";
+                }
+                if (lmtLimit == "1") {
+                    operat += "<a href='javascript:return false;' onclick='SettingLimits(\"" + row.Id + "\",\"" + row.RoleId + "\")'>[权限设置]</a>&nbsp;&nbsp;&nbsp;";
+                }
+
+                if (lmtStatus == "1") {
+                    if (row.Status)
+                        operat += "<a href='javascript:return false;' onclick='closeRole(\"" + row.Id + "\")'>[关闭]</a>&nbsp;&nbsp;&nbsp;";
+                    else
+                        operat += "<a href='javascript:return false;' onclick='closeRole(\"" + row.Id + "\")'>[启用]</a>&nbsp;&nbsp;&nbsp;";
+                }
+
+                if (lmtDel == "1") {
+                    operat += "<a href='javascript:return false;' onclick='RemoveRole(\"" + row.Id + "\",\"" + row.Title + "\",\"" + row.UsersNum + "\")'>[移除]</a>";
+                }
+
+                return operat;
+            }
+        },
+    ]];
+    pharos.manager.addItem = function () {
+        //openDialog800(this.addText, this.editurlNocache());
+        openWin({ 'title': this.addText, 'width': 800, 'height': 260, hideSave: hideSave, 'url': this.editurl });
+    }
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        openWin({ 'title': this.editText, 'width': 800, 'height': 260, hideSave: hideSave, 'url': this.editurlNocache() });
+        //  openDialog600(this.editText, this.editurlNocache());
+    }
+    function closeRole(id) {
+        //event.stopPropagation();
+        $.messager.confirm('提示', "是否确定切换角色状态?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { id: id },
+                url: "@Url.Action("CloseRole")",
+                success: function (data) {
+                    pharos.manager.gridReload();
+                }, error: function (data) {
+                    $.messager.alert("提示", "切换角色状态失败！", "info");
+
+                }
+            });
+        });
+    }
+    function RemoveRole(id, title, usersNum) {
+        //event.stopPropagation();
+        if (title == "超级管理员") {
+            $.messager.alert("提示", "超级管理员角色为系统角色，不可移除", "info");
+            return false;
+        }
+        if (usersNum > 0) {
+            $.messager.alert("提示", "该角色下存在用户，不可移除", "info");
+            return false;
+        }
+        $.messager.confirm('提示', "是否确定移除角色?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { id: id },
+                url: "@Url.Action("RemoveRole")",
+                success: function (data) {
+                    pharos.manager.gridReload();
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除角色失败！", "info");
+                }
+            });
+
+        });
+    }
+    function editBefore(rowData, field, index, value) {
+        if (field == "Operat") {
+            return false;
+        }
+        return true;
+    }
+    //菜单设置
+    function SettingMenus(id, roleid) {
+        openWin({ 'title': "菜单设置", 'width': 800, 'height': 600, 'url': '@Url.Action("RoleSettingMenus")?roleid=' + roleid });
+
+    }
+    //权限设置
+    function SettingLimits(id, roleid) {
+        openWin({ 'title': "权限设置", 'width': 800, 'height': 600, 'url': '@Url.Action("RoleSettingLimits")?roleid=' + roleid + "&id=" + id });
+    }
+
+</script>

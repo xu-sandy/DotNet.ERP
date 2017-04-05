@@ -1,0 +1,33 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// ZhiFuBaoFuKuan.xaml 的交互逻辑
+    /// </summary>
+    public partial class ZhiFuBaoFuKuan : DialogWindow02, IBarcodeControl
+    {
+        public ZhiFuBaoFuKuan(decimal amount, PayAction action,int reason =0)
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+            Task.Factory.StartNew(() =>
+            {
+                var model = new ZhiFuBaoPay2ViewModel(amount, action, reason);
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    this.ApplyBindings(this, model);
+                }));
+            });
+            CurrentIInputElement = txtBarcode;
+        }
+
+        public System.Windows.IInputElement CurrentIInputElement { get; set; }
+    }
+}

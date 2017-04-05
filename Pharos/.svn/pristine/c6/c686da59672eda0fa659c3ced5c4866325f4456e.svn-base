@@ -1,0 +1,50 @@
+﻿using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Pos;
+using Pharos.Logic.ApiData.Pos.DataAdapter;
+
+namespace Pharos.Logic.ApiData.Pos.Sale
+{
+    /// <summary>
+    /// 仓库管理器
+    /// </summary>
+    public class WarehouseManager
+    {
+        public PageResult<InventoryResult> CheckedInventory(string storeId, string machineSn, int token, IEnumerable<int> categorySns, string keyword, int pageSize, int pageIndex)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            var result = dataAdapter.CheckedInventory(categorySns, keyword, pageSize, pageIndex);
+            return result;
+        }
+
+        public PageResult<InventoryResult> CheckedPrice(string storeId, string machineSn, int token, IEnumerable<int> categorySns, decimal from, decimal to, int pageSize, int pageIndex)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            var result = dataAdapter.CheckedPrice(categorySns, from, to, pageSize, pageIndex);
+            return result;
+        }
+        /// <summary>
+        /// 获取公告
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <param name="machineSn"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        public IEnumerable<Announcement> Announcements(string storeId, string machineSn, int token)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            var result = dataAdapter.Announcements();
+            return result;
+        }
+
+        public DayReportResult DayMonthReport(string storeId, string machineSn, int token, DateTime from, DateTime to, Range range)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            var result = dataAdapter.DayMonthReport(from, to, range);
+            return result;
+        }
+    }
+}

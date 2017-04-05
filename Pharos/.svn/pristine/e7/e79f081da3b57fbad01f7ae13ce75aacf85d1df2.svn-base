@@ -1,0 +1,40 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.SyncService
+{
+    public class LocalSyncContext : ISyncContext
+    {
+        public LocalSyncContext()
+        {
+            //Register(SALE, sALEDATASERVICE);
+            //Register(SALE, sALEDATASERVICE);
+            //Register(SALE, sALEDATASERVICE);
+            //Register(SALE, sALEDATASERVICE);
+            //Register(SALE, sALEDATASERVICE);
+        }
+        Dictionary<string, ISyncDataService> dataServiceDict = new Dictionary<string, ISyncDataService>();
+
+        private void Register(Type syncDataObjectType, ISyncDataService dataService)
+        {
+            dataServiceDict.Add(syncDataObjectType.ToString(), dataService);
+        }
+        public IDictionary<string, ISyncDataService> ServiceMappings
+        {
+            get { return dataServiceDict; }
+        }
+
+        public bool Contains(string key)
+        {
+            return dataServiceDict.ContainsKey(key);
+        }
+
+        public ISyncDataService GetDataService(string key)
+        {
+            return dataServiceDict[key];
+        }
+    }
+}

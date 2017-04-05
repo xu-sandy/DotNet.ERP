@@ -1,0 +1,178 @@
+﻿using Newtonsoft.Json;
+using Pharos.MessageAgent.Data.V1;
+using Pharos.SuperSocketProtocol;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Text;
+
+namespace Pharos.MessageAgent.Agent
+{
+    public class MessageAgent : IMessageAgent
+    {
+        public static readonly IList<MessageSubscribeRecord> MessageSubscribeRecords = new List<MessageSubscribeRecord>();
+        public MessageServer Server { get; set; }
+
+        readonly byte[] pulishRouteCode = new byte[] { 0x01, 0x00, 0x00, 0x01 };
+        readonly string pulishWebRouteCode = "Multiflora/MessageTransferAgent";
+        public MessageAgent(MessageServer server)
+        {
+            Server = server;
+        }
+        public void Subscribe(SubscribeInformaction info, string sessionId)
+        {
+            lock (MessageSubscribeRecords)
+            {
+                var record = MessageSubscribeRecords.FirstOrDefault(o => o.SubscribeInformaction.SubscribeId == info.SubscribeId && o.SubscribeInformaction.Topic == info.Topic);
+                if (record != null)
+                {
+                    record.CurrentSessionId = sessionId;
+                }
+                else
+                {
+                    if (!MessageSubscribeRecords.Any(o => o.SubscribeInformaction.Topic == info.Topic))
+                        Server.MessageQueue.Subscribe(info, this);
+                    MessageSubscribeRecords.Add(new MessageSubscribeRecord() { CurrentSessionId = sessionId, SubscribeInformaction = info });
+                }
+            }
+            SubscribedTryFailed(info, sessionId);
+        }
+
+        public void Pubish(PubishInformaction info)
+        {
+            Server.MessageQueue.Pubish(info);
+        }
+
+
+
+        public void ReceiveMessage(PubishInformaction info)
+        {
+            IEnumerable<MessageSubscribeRecord> topicSubscribers;
+            lock (MessageSubscribeRecords)
+            {
+                topicSubscribers = MessageSubscribeRecords.Where(o => o.SubscribeInformaction.Topic == info.Topic).ToList();
+            }
+            foreach (var item in topicSubscribers)
+            {
+                if (item.SubscribeInformaction.IsWebSiteSubscriber)
+                {
+                    WebPubish(item.SubscribeInformaction, info);
+                }
+                else
+                {
+                    SocketPubish(item.SubscribeInformaction, info, item.CurrentSessionId);
+                }
+            }
+        }
+        public void WebPubish(SubscribeInformaction subInfo, PubishInformaction pubInfo)
+        {
+            if (!subInfo.IsWebSiteSubscriber) throw new Exception("Web推送不支持非Web应用!");
+            try
+            {
+                var url = new Uri(new UriBuilder(subInfo.WebSiteURI).Uri, pulishWebRouteCode);
+                var content = PostJson(url, pubInfo);
+            }
+            catch (Exception)
+            {
+                RecordFailed(subInfo, pubInfo);
+            }
+        }
+        public void SocketPubish(SubscribeInformaction subInfo, PubishInformaction pubInfo, string sessionId)
+        {
+            if (subInfo.IsWebSiteSubscriber) throw new Exception("Socket推送不支持Web应用!");
+            var session = Server.GetSessionByID(sessionId);
+            if (session != null && session.Status == SessionStatus.Started && session.Connected)
+            {
+                try
+                {
+                    session.SendObjectToJsonStream(pulishRouteCode, pubInfo);
+                }
+                catch (Exception ex)
+                {
+                    RecordFailed(subInfo, pubInfo);
+                }
+            }
+            else
+            {
+                RecordFailed(subInfo, pubInfo);
+            }
+        }
+        private void SubscribedTryFailed(SubscribeInformaction info, string session)
+        {
+            var msgs = Server.MessageStore.ReadFailed(info);
+            Server.MessageStore.RefreshStore(info);
+            if (info.IsWebSiteSubscriber)
+            {
+                foreach (var msg in msgs)
+                {
+                    WebPubish(info, msg);
+                }
+            }
+            else
+            {
+                foreach (var msg in msgs)
+                {
+                    SocketPubish(info, msg, session);
+                }
+            }
+        }
+        private void RecordFailed(SubscribeInformaction subInfo, PubishInformaction pubInfo)
+        {
+            Server.MessageStore.RecordFailed(subInfo, pubInfo);
+        }
+        public static string PostJson(Uri url, object data)
+        {
+            var json = JsonConvert.SerializeObject(data);
+            return PostString(url, json);
+        }
+        public static string PostString(Uri url, string JSONData)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(JSONData);
+            return PostBytes(url, bytes);
+        }
+        public static string PostBytes(Uri url, byte[] datas)
+        {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "POST";
+            request.ContentLength = datas.Length;
+            request.ContentType = "text/json";
+            Stream reqstream = request.GetRequestStream();
+            reqstream.Write(datas, 0, datas.Length);
+
+            //声明一个HttpWebRequest请求  
+            request.Timeout = 90000;
+            //设置连接超时时间  
+            request.Headers.Set("Pragma", "no-cache");
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            Stream streamReceive = response.GetResponseStream();
+            Encoding encoding = Encoding.UTF8;
+
+            StreamReader streamReader = new StreamReader(streamReceive, encoding);
+            string strResult = streamReader.ReadToEnd();
+            streamReceive.Dispose();
+            streamReader.Dispose();
+
+            return strResult;
+        }
+
+        public void UnSubscribe(SubscribeInformaction info)
+        {
+            lock (MessageSubscribeRecords)
+            {
+                var record = MessageSubscribeRecords.FirstOrDefault(o => o.SubscribeInformaction.SubscribeId == info.SubscribeId && o.SubscribeInformaction.Topic == info.Topic);
+                if (record != null)
+                {
+                    MessageSubscribeRecords.Remove(record);
+                }
+                if (MessageSubscribeRecords.Count(o => o.SubscribeInformaction.Topic == info.Topic) == 0)
+                {
+                    Server.MessageQueue.UnSubscribe(info, this);
+                }
+            }
+        }
+    }
+
+
+}

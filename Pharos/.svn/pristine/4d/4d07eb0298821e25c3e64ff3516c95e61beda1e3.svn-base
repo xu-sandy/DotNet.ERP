@@ -1,0 +1,31 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Utility;
+
+namespace Pharos.Logic.BLL
+{
+    public class IntegralRuleBLL
+    {
+        IntegralRuleService _service = new IntegralRuleService();
+        public OpResult CreateIntegralRule(IntegralRule rule)
+        {
+            rule.CreateDT = DateTime.Now;
+            rule.CreateUID = Sys.CurrentUser.UID;
+            rule.CompanyId = CommonService.CompanyId;
+            return _service.CreateIntegralRule(rule);
+        }
+
+        public object FindIntegralRuleList(short ruleTypeId, string value, out int count)
+        {
+            return _service.FindIntegralRuleList(ruleTypeId, value, out count);
+        }
+
+        public OpResult UpdateIntegralRule(string ids, short state)
+        {
+            return _service.UpdateIntegralRule(ids, state);
+        }
+    }
+}

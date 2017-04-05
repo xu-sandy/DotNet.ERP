@@ -1,0 +1,174 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "申请支付通道", hideAdd: !CurrentUser.HasPermiss(124), hideDel: true, searchHeight: 87));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+
+            <td class="label-toolbar">
+                <label>指派人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("AssignerUID", ViewBag.user as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>创建日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_begin" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_end" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label>排序方式：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("OrBy", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "0" }, new SelectListItem() { Text = "按申请时间", Value = "1" }, new SelectListItem() { Text = "按审核时间", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+
+        </tr>
+
+        <tr class="s_tr">
+
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("State", new List<SelectListItem>() { new SelectListItem() { Text = "全部", Value = "-1" }, new SelectListItem() { Text = "未审核", Value = "0" }, new SelectListItem() { Text = "可用", Value = "1" }, new SelectListItem() { Text = "暂停", Value = "2" }, new SelectListItem() { Text = "注销", Value = "3" }, new SelectListItem() { Text = "无效", Value = "4" }}, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按商户号", Value = "1" }, new SelectListItem() { Text = "按客户名称", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+            </td>
+        </tr>
+</table>
+}
+@section toolbar
+{
+    @if (CurrentUser.HasPermiss(125))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(1)">设为可用通道</a>
+    }
+    @if (CurrentUser.HasPermiss(126))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(2)">暂停通道</a>
+    }
+}
+<script type="text/javascript">
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.State == 4 || row.State == 3) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+    pharos.manager.frozenColumns = [[
+
+    ]];
+
+    pharos.manager.columns = [[
+        { field: 'TPaySecrectId', checkbox: true },
+        { field: 'Assign', title: '指派人', editor: { type: 'text', required: true }, width: 100 },
+        {
+            field: 'State', title: '通道状态', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) {
+                if (value == "0")
+                {
+                    return "未审核";
+                }
+                else if (value == "1")
+                {
+                    return "可用";
+                }
+                else if (value == "2") {
+                    return "暂停";
+                }
+                else if (value == "3") {
+                    return "注销";
+                }
+                else if (value == "4") {
+                    return "无效";
+                }
+            }
+        },
+        { field: 'CID', title: '系统商户号', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'TradersFullTitle', title: '客户名称', editor: { type: 'text', required: true }, width: 170 },
+        { field: 'SecretKey', title: '支付安全Key', editor: { type: 'text', required: true }, width: 250 },
+        { field: 'MchId3', title: '第三方支付商户号', editor: { type: 'text', required: true }, width: 160 },
+        { field: 'SecretKey3', title: '第三方支付Key', editor: { type: 'text', required: true }, width: 250 },
+        { field: 'ChannelCode', title: '支付通道', editor: { type: 'text', required: true }, width: 100 },
+        {
+        field: 'ChannelPayMode', title: '支付方式', editor: { type: 'text', required: true }, width: 120, formatter: function (value, row, index) {
+            if (value == "1") {
+                return "扫码支付";
+            }
+            else if (value == "2") {
+                return "网站支付";
+            }
+            else if (value == "3") {
+                return "刷卡支付";
+            }
+        }
+        },
+        { field: 'PayNotifyUrl', title: '支付结果通知URL', editor: { type: 'text', required: true }, width: 200 },
+        { field: 'RfdNotifyUrl', title: '退款结果通知URL', editor: { type: 'text', required: true }, width: 200 },
+        { field: 'CreateDT', title: '创建时间', editor: { type: 'text', required: true }, width: 140 },
+        { field: 'CreateFullName', title: '申请人', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'AuditDT', title: '审核时间', editor: { type: 'text', required: true }, width: 140 },
+        { field: 'AuditFullName', title: '审核人', editor: { type: 'text', required: true }, width: 120 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 1000, 'height': 560, hideSave: false, 'url': this.editurlNocache() });
+    }
+
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        openWin({ 'title': this.editText, 'width': 1000, 'height': 560, hideSave: false, 'url': this.editurlNocache() });
+    }
+
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'TPaySecrectId', columns: ['TPaySecrectId', 'Assign', 'State', 'CID', 'TradersFullTitle', 'SecretKey', 'MchId3', 'SecretKey3', 'ChannelCode', 'CreateDT', 'CreateFullName', 'AuditDT', 'AuditFullName'] });
+    }
+
+    //将所选项设为
+    function upStatus(s) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("UpState")", { ids: ids, state: s, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "设置成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "设置失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+
+    $(function () {
+
+    });
+</script>

@@ -1,0 +1,112 @@
+﻿@model Pharos.Sys.Entity.OMS_CompanyAuthorize
+@{
+    ViewBag.Title = "Register";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style>
+    th {
+        text-align: right;
+    }
+    .textbox{height:120px!important;}
+</style>
+<div class="WebSettingBox" style="margin:20px auto;width:500px;">
+    @if (Model == null)
+    {
+        <div class="default-form">
+            @using (Html.BeginForm())
+            {
+                @Html.Hidden("hidadd", "1")
+                <div style="color:red;font-size:16px;height:26px;line-height:26px;">@Request["msg"]</div>
+                <div>请输入序列号：<input type="text" name="serialNo" id="serialNo" class="easyui-textbox" data-options="required:true,multiline:true" style="width:400px;height:120px;"></div>
+                <div style="margin:10px 0 0 50px;">
+                    @*<a class="easyui-linkbutton cus4 linkbtn btn" href="@Url.Action("RegisterUpdate")" >返回修改</a>*@
+                    <a class="easyui-linkbutton cus4 linkbtn btn" href="#" onclick="$('form').submit()">注册激活</a>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="2" style="text-align:left">注册信息</th>
+                </tr>
+            </thead>
+            <tr>
+                <th>企业ID：</th>
+                <td>@Html.DisplayTextFor(o => o.Code)</td>
+            </tr>
+            <tr>
+                <th>类别：</th>
+                <td>@(Model.Category == 1 ? "在线" : "独立")</td>
+            </tr>
+            <tr>
+                <th>单位简称：</th>
+                <td>@Html.DisplayTextFor(o => o.Title)</td>
+            </tr>
+            <tr>
+                <th>单位全称：</th>
+                <td>@Html.DisplayTextFor(o => o.FullTitle)</td>
+            </tr>
+            <tr>
+                <th>用户数：</th>
+                <td>@Html.DisplayTextFor(o => o.UserNum)</td>
+            </tr>
+            <tr>
+                <th>门店数：</th>
+                <td>@Html.DisplayTextFor(o => o.StoreNum)</td>
+            </tr>
+            <tr>
+                <th>分店专属后台：</th>
+                <td>@(Model.StoreProper == "Y" ? "是" : "否")</td>
+            </tr>
+            <tr>
+                <th>APP手机端：</th>
+                <td>@(Model.AppProper == "Y" ? "是" : "否")</td>
+            </tr>
+            <tr>
+                <th>POS次屏显示：</th>
+                <td>@(Model.PosMinorDisp == "Y" ? "是" : "否")</td>
+            </tr>
+            <tr>
+                <th>供应商专属后台：</th>
+                <td>@(Model.SupplierProper == "Y" ? "是" : "否")</td>
+            </tr>
+            <tr>
+                <th>批发商专属后台：</th>
+                <td>@(Model.WholesalerProper == "Y" ? "是" : "否")</td>
+            </tr>
+            <tr>
+                <th>生效日期：</th>
+                <td>@Html.DisplayTextFor(o => o.EffectiveDT, "{0:yyyy-MM-dd}")</td>
+            </tr>
+            <tr>
+                <th>截止日期：</th>
+                <td>@Html.DisplayTextFor(o => o.ExpirationDT, "{0:yyyy-MM-dd}")</td>
+            </tr>
+            <tr>
+                <th>审核状态：</th>
+                <td>@(Model.State == 0 ? Html.Raw("未审") : Model.State == 1 ? Html.Raw("已审") : Html.Raw("<span style='color:red;font-weight:bold'>注销</span>"))</td>
+            </tr>
+            <tr>
+                <th>可用状态：</th>
+                <td>@(Model.Useable == "Y" ? Html.Raw("是") : Html.Raw("<span style='color:red;font-weight:bold'>否</span>"))</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><a href="javascript:" class="easyui-linkbutton" onclick="registerAgain()">重新注册</a></td>
+            </tr>
+        </table>
+        <script type="text/javascript">
+            function registerAgain() {
+                $.messager.confirm("提示", "是否确定重新注册产品?", function (r) {
+                    if (!r) return;
+                    $.post("@Url.Action("RegisterAgain")", { t: Math.random() }, function () {
+                        window.location.href = "@Url.Action("Register", new { again=1})";
+                    });
+                })
+            }
+        </script>
+    }
+</div>

@@ -1,0 +1,62 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.SyncService.Stores
+{
+    public class RemoteStore : IPosServerDbStore<SyncTest>
+    {
+        PosSyncDbContext context = null;
+        public void Init(PosSyncDbContext db)
+        {
+            context = db;
+        }
+
+        public IEnumerable<Guid> Ids()
+        {
+            return context.Tests.Select(o => o.SyncServerDbId).ToList();
+        }
+
+        public IEnumerable<IPosServerDbEntity> Entities()
+        {
+            return context.Tests.Select(o => o).ToList();
+        }
+
+        public IPosServerDbEntity Get(Guid id)
+        {
+            return context.Tests.FirstOrDefault(o => o.SyncServerDbId == id);
+        }
+
+        public void CreateItem(IPosServerDbEntity data, Guid guid)
+        {
+            var s = new SyncTest();
+            s.Init(data);
+            context.Tests.Add(s);
+            context.SaveChanges();
+        }
+
+        public byte[] UpdateItem(Guid guid, IPosServerDbEntity data)
+        {
+            var s = context.Tests.FirstOrDefault(o => o.SyncServerDbId == guid);
+            s.Init(data);
+            context.Tests.Add(s);
+            context.SaveChanges();
+            return s.SyncServerDbRowVersion;
+        }
+
+        public void DeleteItem(Guid guid)
+        {
+            var s = context.Tests.FirstOrDefault(o => o.SyncServerDbId == guid);
+            context.Tests.Remove(s);
+            context.SaveChanges();
+            
+        }
+
+        public IPosServerDbEntity Merge(IPosServerDbEntity currentDbEntity, IPosServerDbEntity changeDbEntity)
+        {
+            return currentDbEntity;
+        }
+    }
+}

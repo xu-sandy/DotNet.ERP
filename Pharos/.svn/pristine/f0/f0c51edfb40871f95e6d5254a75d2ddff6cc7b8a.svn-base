@@ -1,0 +1,166 @@
+﻿using SuperSocket.ClientEngine.Protocol;
+using SuperSocket.ProtoBase;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Pos.DataSynchronism.Extensions;
+
+namespace Pharos.Logic.ApiData.Pos.DataSynchronism.Protocol
+{
+    public abstract class BaseDataSyncReceiveFilter<TResponseInfo> : IReceiveFilter<TResponseInfo> where TResponseInfo : IPackageInfo
+    {
+
+        protected TResponseInfo NullResponseInfo = default(TResponseInfo);
+        private readonly SearchMarkState<byte> m_BeginSearchState;
+        private readonly SearchMarkState<byte> m_EndSearchState;
+        private bool m_FoundBegin;
+
+        private ArraySegmentList m_BufferSegments;
+
+        protected abstract TResponseInfo ProcessMatchedRequest(byte[] readBuffer, long offset, long length);
+
+
+        public BaseDataSyncReceiveFilter(byte[] beginMark, byte[] endMark)
+        {
+            this.m_BeginSearchState = new SearchMarkState<byte>(beginMark);
+            this.m_EndSearchState = new SearchMarkState<byte>(endMark);
+            this.m_BufferSegments = new ArraySegmentList();
+
+        }
+        protected void AddArraySegment(byte[] buffer, int offset, int length, bool toBeCopied)
+        {
+            this.m_BufferSegments.AddSegment(buffer, offset, length, toBeCopied);
+        }
+
+        protected void ClearBufferSegments()
+        {
+            this.m_BufferSegments.ClearSegements();
+        }
+        protected ArraySegmentList BufferSegments
+        {
+            get
+            {
+                return this.m_BufferSegments;
+            }
+        }
+        public virtual TResponseInfo Filter(BufferList data, out int rest)
+        {
+            int searchEndMarkOffset;
+            int searchEndMarkLength;
+            int prevMatched = 0;
+
+
+            rest = 0;
+            ArraySegment<byte> last = data.Last;
+            byte[] array = last.Array;
+            int offset = last.Offset;
+            int count = last.Count;
+            if (!this.m_FoundBegin)
+            {
+                prevMatched = m_BeginSearchState.Matched;
+
+                int pos = array.SearchMark(offset, count, m_BeginSearchState);
+                if (pos < 0)
+                {
+                    if ((this.m_BeginSearchState.Matched <= 0) || (data.Total != this.m_BeginSearchState.Matched))
+                    {
+                        this.State = FilterState.Error;
+                    }
+                    return NullResponseInfo;
+                }
+                if (pos != offset)
+                {
+                    this.State = FilterState.Error;
+                    return NullResponseInfo;
+                }
+                this.m_FoundBegin = true;
+                searchEndMarkOffset = pos + m_BeginSearchState.Mark.Length - prevMatched;
+
+                // num = offset + parsedLength;
+                if ((offset + count) <= searchEndMarkOffset)
+                {
+                    return NullResponseInfo;
+                }
+                searchEndMarkLength = (offset + count) - searchEndMarkOffset;
+            }
+            else
+            {
+                searchEndMarkOffset = offset;
+                searchEndMarkLength = count;
+            }
+
+
+
+            while (true)
+            {
+                var prevEndMarkMatched = m_EndSearchState.Matched;
+
+                var endPos = array.SearchMark<byte>(searchEndMarkOffset, searchEndMarkLength, this.m_EndSearchState);
+                //还没找到结束标识
+                if (endPos < 0)
+                {
+                    rest = 0;
+                    if (prevMatched > 0)//缓存上一个开始标识数据块
+                        AddArraySegment(m_BeginSearchState.Mark, 0, prevMatched, false);
+                    AddArraySegment(array, offset, count, false);
+                    return NullResponseInfo;
+                }
+
+
+                if (endPos >= 0)
+                {
+                    //找到结束标识
+                    int parsedLen = endPos - offset + m_EndSearchState.Mark.Length - prevEndMarkMatched;
+                    rest = count - parsedLen;
+
+                    byte[] commandData = new byte[BufferSegments.Count + prevMatched + parsedLen];
+
+                    if (BufferSegments.Count > 0)
+                        BufferSegments.CopyTo(commandData, 0, 0, BufferSegments.Count);
+
+                    if (prevMatched > 0)
+                        Array.Copy(m_BeginSearchState.Mark, 0, commandData, BufferSegments.Count, prevMatched);
+
+                    Array.Copy(array, offset, commandData, BufferSegments.Count + prevMatched, parsedLen);
+
+                    var responseInfo = ProcessMatchedRequest(commandData, 0, commandData.Length);
+
+                    if (!ReferenceEquals(responseInfo, NullResponseInfo))
+                    {
+                        this.Reset();
+                        return responseInfo;
+                    }
+                    if (rest > 0)
+                    {
+                        searchEndMarkOffset = endPos + m_EndSearchState.Mark.Length;
+                        searchEndMarkLength = rest;
+                        continue;
+                    }
+                }
+                return NullResponseInfo;
+            }
+        }
+
+        public void Reset()
+        {
+            this.m_BeginSearchState.Matched = 0;
+            this.m_EndSearchState.Matched = 0;
+            this.m_FoundBegin = false;
+
+
+            if ((this.m_BufferSegments != null) && (this.m_BufferSegments.Count > 0))
+            {
+                this.m_BufferSegments.ClearSegements();
+            }
+        }
+
+
+
+        public IReceiveFilter<TResponseInfo> NextReceiveFilter { get; protected set; }
+
+        public FilterState State { get; protected set; }
+
+
+    }
+}

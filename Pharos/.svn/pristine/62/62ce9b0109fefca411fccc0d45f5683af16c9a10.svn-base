@@ -1,0 +1,148 @@
+﻿@model Pharos.Sys.Entity.SysRoles
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm("SaveRoleSettingLimits", "SysAdmin", FormMethod.Post))
+    {
+        <input hidden="hidden" name="roleid" value="@Model.RoleId" />
+        <input hidden="hidden" name="limitIds" id="limitIds" />
+        <input hidden="hidden" name="oldLimitIds" id="oldLimitIds" value="@Model.LimitsIds" />
+    }
+</div>
+@if (Model.RoleId < 1)
+{
+    <label>初始化权限数据错误</label>
+}
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'center',split:false,border:false">
+        <table id="treegrid"></table>
+    </div>
+</div>
+@*<script src="~/Scripts/managerlist.js"></script>*@
+
+<script type="text/javascript">
+    var $treegrid = $('#treegrid');
+    var fmthtml1 = "<input class='ck_item' type='checkbox' onclick='javascript:CheckParent(\"{0}\", \"{1}\")' data-options='{1}' data-status='{3}' id='ck_{1}' />{2}&nbsp;&nbsp;&nbsp;";
+    var fmthtml2 = "<input class='ck_item' type='checkbox' onclick='javascript:CheckItem(\"{0}\", \"{1}\")' data-options='{1}' data-status='{3}' id='ck_{1}' />{2}&nbsp;&nbsp;&nbsp;";
+
+    $treegrid.treegrid({
+        toolbar: '#toolbar',
+        border: false,
+        fit: true,
+        fitColumns: true,
+        url: "@Url.Action("GetRoleSettingLimits")",
+        rownumbers: true,
+        idField: 'Id',
+        singleSelect: true,
+        treeField: 'LimitId',
+        columns: [[
+            {
+                title: '选择功能模块', field: 'LimitId', width: 160, formatter: function (value, row) {
+
+                    return String.format(fmthtml1, [row.Id, value, row.Title,row.Status]);
+                }
+            },
+            {
+                title: '选择功能权限', field: 'ItemsStr', width: 540, formatter: function (value, row) {
+                    var opeart = '';
+                    if (value != "" && value != null) {
+                        var arrVals = value.split(';');
+                        for (var i = 0; i < arrVals.length; i++) {
+                            var itemVal = arrVals[i].split(',');
+                            opeart += String.format(fmthtml2, [row.Id, itemVal[0], itemVal[2], itemVal[1]]);
+                        }
+                    }
+                    return opeart;
+                }
+            },
+
+        ]],
+        onLoadSuccess: function () {
+            var limitIds = $("#oldLimitIds").val();
+            if (limitIds!="" && limitIds!="-1") {
+                var limitItems = limitIds.split(",");
+                for (var i = 0; i < limitItems.length; i++) {
+                    _setChecked(limitItems[i], true);
+                }
+            } else {
+                $(".ck_item").each(function (index,node) {
+                    if ($(node).data("status") == "1") {
+                        _setChecked($(node).data("options"), true);
+                    }
+                });
+            }
+        }
+    });
+    function SaveBefore() {
+        var limitIds = _getCheckeds();
+        $("#limitIds").val(limitIds);
+    }
+    function _getCheckeds() {
+        var s = '';
+        $('.ck_item').each(function (index, node) {
+            if ($(node).is(":checked")) {
+                s += $(node).data("options") + ",";
+            }
+        });
+        if (s.length > 0) {
+            s = s.substring(0, s.length - 1);
+        }
+        return s;
+    }
+
+    //操作父级
+    function CheckParent(id, limitid) {
+        var selRow = _getSelectRow(id);
+        var childs = _getChildren(id);
+        var isck = $("#ck_" + selRow.LimitId).is(":checked");
+        _setChecked(selRow.LimitId, isck);
+        _setChecksByItemsId(selRow.ItemsStr, isck);
+
+        if (childs.length > 0) {
+            for (var i = 0; i < childs.length; i++) {
+                var limitId = childs[i].LimitId;
+                _setChecked(limitId, isck);
+                _setChecksByItemsId(childs[i].ItemsStr, isck);
+            }
+        }
+    }
+    //操作子项
+    function CheckItem(id, limitid) {
+        var row = _getSelectRow(id);
+    }
+
+    //根据父级设置子项
+    function _setChecksByItemsId(itemsStr, isck) {
+        var arrVals = itemsStr.split(';');
+        for (var j = 0; j < arrVals.length; j++) {
+            var itemVal = arrVals[j].split(',');
+            _setChecked(itemVal[0], isck);
+        }
+    }
+    //设置权限项
+    function _setChecked(limitid, isck) {
+        if (isck) {
+            $("#ck_" + limitid).prop("checked", true);
+        }
+        else {
+            $("#ck_" + limitid).prop("checked", false);
+        }
+    }
+    //获得当前行
+    function _getSelectRow(id) {
+        $treegrid.treegrid('select', id);
+        return $treegrid.treegrid('getSelected');
+    }
+    //获得当前行所有子集
+    function _getChildren(id) {
+        return $treegrid.treegrid('getChildren', id);
+    }
+</script>
+<style type="text/css">
+    .datagrid-cell, .datagrid-cell-group, .datagrid-header-rownumber, .datagrid-cell-rownumber {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+</style>

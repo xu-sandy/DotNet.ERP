@@ -1,0 +1,196 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: true, hideDel: true));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+
+    .label-toolbar2 {
+        margin: 0 6px 0 25px;
+    }
+</style>
+
+@section search{
+<table class="table-toolbar">
+    <tr>
+        <td class="label-toolbar label-toolbar2">
+            <label>业务员：</label>
+        </td>
+        <td class="input-toolbar">
+             @Form.Combobox("AssignerUID", ViewBag.user as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+        </td>
+        <td class="label-toolbar label-toolbar2">
+            <label>客户类型：</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("BusinessModeId", ViewBag.ModeId as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true,editable: false,width:120" })
+        </td>
+        <td class="label-toolbar label-toolbar2">
+            <label>跟踪状态：</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("TrackStautsId", ViewBag.TrackStautsId as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "novalidate:true, editable: false,width:120" })
+        </td>
+        <td class="label-toolbar label-toolbar2">
+            <label>经营范围：</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("BusinessScopeId", ViewBag.BusinessScopeId as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "novalidate:true, editable: false,width:120" })
+        </td>
+
+    </tr>
+
+    <tr class="s_tr">
+        <td class="label-toolbar label-toolbar2">
+            <label>区&nbsp;&nbsp;&nbsp;域：</label>
+        </td>
+        <td class="input-toolbar">
+            <input id="Province" name="CurrentProvinceId" class="easyui-combobox" />
+        </td>
+        <td class="label-toolbar" style="margin:0 2px 0 2px;">
+            <label style="width:10px;margin-right:3px;position:relative;top:-4px;"></label>
+        </td>
+        <td class="input-toolbar">
+            <input id="City" name="CurrentCityId" class="easyui-combobox" />
+        </td>
+        <td class="input-toolbar" style="padding-right:10px;">
+            @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按客户名称", Value = "0" }, new SelectListItem() { Text = "按联系人", Value = "1" }, new SelectListItem() { Text = "按电话或手机", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+        </td>
+        <td class="input-toolbar">
+            <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+        </td>
+
+
+    </tr>
+
+</table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="openDialogNew('excel文件导入', '@Url.Action("Import")' , 1000, 560, true, true, btns);">选择导入</a>
+    <a href="#" id="btnExcel" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="loadData()">载入未完成数据</a>
+    <a href="#" id="btnExcel" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-suspend'" onclick="clearOptionImport()">移除所选项</a>
+    <a href="#" id="btnExcel" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="sureImport()">确定导入</a>
+    <a href="#" id="" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-delete'" onclick="clearAllImport()">清空预览</a>
+}
+<script type="text/javascript">
+    var btns = [{
+        text: '导 入',
+        iconCls: 'icon-ok',
+        id: "lbsave",
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.messager-button .l-btn-small').click();
+            window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+        }
+    }, {
+        text: '预 览',
+        iconCls: 'icon-ok',
+        handler: function () {
+            pharos.easyui.dialog.topClose("formDiv");
+            pharos.manager.gridReload(); 
+        }
+    }];
+
+    pharos.manager.geturl = '@Url.Action("ImportList")';
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = true;
+    pharos.manager.pageSize = 200;
+    pharos.manager.pageList = [200, 400, 600];
+
+    pharos.manager.frozenColumns = [[
+    { field: 'Id', checkbox: true },
+    { field: 'AssignerUID', title: '业务员', editor: { type: 'text', required: true }, width: 60 },
+    { field: 'Title', title: '客户简称', editor: { type: 'text', required: true }, width: 100 },
+    { field: 'FullTitle', title: '客户全称', editor: { type: 'text', required: true }, width: 120 }
+    ]];
+
+    pharos.manager.columns = [[
+        { field: 'BusinessModeId', title: '客户类型', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Source', title: '客户来源', editor: { type: 'text', required: true }, width: 80 },
+        { field: 'TrackStautsId', title: '更进状态', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'LinkMan', title: '联系人', editor: { type: 'text', required: true }, width: 80 },
+        { field: 'MobilePhone', title: '电话/手机', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'BusinessScopeId', title: '经营类别', editor: { type: 'text', required: true }, width: 200 },
+        { field: 'Pay', title: '支付方式', editor: { type: 'text', required: true }, width: 200 },
+        { field: 'Area', title: '所在区域', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Address', title: '街道地址', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'ExistsystemName', title: '现有系统名称/品牌', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'ExistDeviceName', title: '现有设备名称/品牌', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'ExistStoreNum', title: '现有门店数量', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'EachStorePosNum', title: '每门店收银电脑台数', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'EachStorePersonNum', title: '每门店人均数', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'PlanExpandStoreNum', title: '近2年计划扩张门店数量', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Rival', title: '竞争对手', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Marketing', title: '竞争对手营销模式', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo', title: '备注说明', editor: { type: 'text', required: true }, width: 300 }
+    ]];
+
+    var num = 0,load=0;
+    function sureImport() {
+        var rows = pharos.manager.$dg.datagrid("getRows");
+        if (rows.length <= 0) {
+            $.messager.alert("提示", "请先选择文件预览!"); return;
+        }
+        if (num > 0) return;
+        $.messager.confirm("提示", "请先确认数据无误，正式导入后将不能撤消，是否继续？", function (r) {
+            if (!r) return;
+            $("#loading").show().find("div").html("正在导入，请稍待。。。");
+            $.post("@Url.Action("SureImport")", { t: Math.random() }, function (json) {
+                num = 0;
+                load = 0;
+                $("#loading").hide();
+                if (json.successed) {
+                    $.messager.alert("提示", "导入成功!");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "导入失败!" + json.message);
+                }
+            });
+            num++;
+        })
+    }
+    pharos.manager.loadSuccess = function (data) {
+        //pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'ApiOrderSN', columns: ['ApiOrderSN', 'SaleDate', 'Type', 'ApiTitle', 'PreferentialPrice', 'Change', 'WipeZero', 'TotalAmount', 'Receive'] });
+        if (data.rows.length <= 0 && load > 0) $.messager.alert("提示", "未发现数据，请选择导入!");
+        load++;
+    }
+    function clearAllImport() {
+        $.messager.confirm("提示", "是否确定清空预览？", function (r) {
+            if (!r) return;
+            $.post("@Url.Action("DeleteAllImport")", { t: Math.random() }, function (d) {
+                if (d.successed) {
+                    $.messager.alert("提示", "清空预览成功！", "info");
+                    load = 0;
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "清空预览失败！" + d.message, "error");
+                }
+
+            }, "json")
+        });
+    }
+    function loadData() {
+        pharos.manager.gridReload();
+    }
+
+    //移除所选项
+    function clearOptionImport() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("DeleteImport")", { Ids: ids, t: Math.random()}, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "删除成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "删除失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+</script>

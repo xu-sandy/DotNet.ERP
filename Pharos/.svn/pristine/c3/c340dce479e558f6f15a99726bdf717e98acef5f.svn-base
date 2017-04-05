@@ -1,0 +1,46 @@
+﻿@model Pharos.OMS.Retailing.Controllers.UserLogin
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_LayoutEmpty.cshtml";
+}
+<div id="login">
+    <div class="head"></div>
+    <div class="content">
+        @using (Html.BeginForm())
+        {
+            <input type="hidden" id="hidden1" name="hidden1" value="false" />
+            <input type="text" name="userName" id="userName" placeholder="请输入帐户名称" onkeyup="if (window.event.keyCode == 13) $('#userPwd').focus()" value="@Model.UserName" />
+            <input type="password" name="userPwd" id="userPwd" placeholder="请输入帐户密码" onkeyup="if (window.event.keyCode == 13) $('form').submit()" value="@Model.UserPwd" />
+            <div id="remember">
+                @Html.CheckBox("rememberMe", new { value = "true" }) 记住我的帐户名称
+            </div>
+            <a id="submit" onclick="$('form').submit()"></a>
+        }
+    </div>
+    <p class="tl-c">为确保操作体验，建议您在Chrome、火狐、IE8或以上版本使用。</p>
+    <div class="msg" style="font-size:18px;">@ViewBag.msg</div>
+</div>
+@section scripts{
+    <script type="text/javascript">
+    $(function () {
+        $("form").submit(function () {
+            $("#userName").val($.trim($("#userName").val()));
+            $("#userPwd").val($.trim($("#userPwd").val()));
+            //var reg = new RegExp("^[a-zA-Z]{1}[0-9a-zA-Z_]{1,9}$");
+            //if (reg.test($("#userName").val()) == false) {
+            //    $("#msg").html("<p>Username must start with a letter,it can only contain letters, numbers, underscores,and its length should be more than 2 and less than 10. </p>"); //用户名应以字母开头，只能含有字母数字下划线，长度大于2位小于10位
+            //    return false;
+            //}
+            if ($("#userName").val() == "") {
+                $(".msg").html("<p>请输入帐户名称.</p>");
+                return false;
+            }
+            if ($("#userPwd").val() == "") {
+                $(".msg").html("<p>请输入帐户密码.</p>");
+                return false;
+            }
+            return true;
+        });
+    });
+    </script>
+}

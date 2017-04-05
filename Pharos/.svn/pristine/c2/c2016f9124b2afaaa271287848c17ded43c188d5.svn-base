@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <configSections>
+    <section name="MessageServer" type="Pharos.MessageAgent.MessageServerConfiguration,Pharos.MessageAgent" />
+    <sectionGroup name="common">
+      <section name="logging" type="Common.Logging.ConfigurationSectionHandler, Common.Logging" />
+    </sectionGroup>
+  </configSections>
+
+  <MessageServer Port="3033" MessageQueue="Redis" MessageQueueConnectionString="127.0.0.1:6379,password=pharos@2016"></MessageServer>
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <assemblyIdentity name="System.Runtime" publicKeyToken="b03f5f7f11d50a3a" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-2.6.10.0" newVersion="2.6.10.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Threading.Tasks" publicKeyToken="b03f5f7f11d50a3a" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-2.6.10.0" newVersion="2.6.10.0" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+
+  <common>
+    <logging>
+      <factoryAdapter type="Common.Logging.Log4Net.Log4NetLoggerFactoryAdapter, Common.Logging.Log4Net1211">
+        <arg key="configType" value="FILE-WATCH" />
+        <arg key="configFile" value="~/Config/log4net.config" />
+      </factoryAdapter>
+    </logging>
+  </common>
+  
+  <startup>
+    <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.0" />
+  </startup>
+</configuration>

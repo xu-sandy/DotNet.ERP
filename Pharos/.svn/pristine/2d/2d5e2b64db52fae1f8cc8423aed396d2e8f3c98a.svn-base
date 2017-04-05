@@ -1,0 +1,27 @@
+﻿using Pharos.POS.Retailing.Printers.Domain.Models.PrinterJobs;
+using Pharos.POS.Retailing.Printers.Services.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Printers.Domain.Models
+{
+    public static class PrintJobFactory
+    {
+        public static AbstractPrintJob CreatePrintJob(Printer printer, IPrinterService printerService)
+        {
+            if (printer.IsTextPrinter)
+                return new TextPrinterJob(printer);
+            if (printer.IsHtmlPrinter)
+                return new HtmlPrinterJob(printer);
+            if (printer.IsPortPrinter)
+                return new PortPrinterJob(printer);
+            if (printer.IsWindowsPrinter)
+                return new WindowsPrinterJob(printer);
+            if (printer.IsRawPrinter)
+                return new RawPrinterJob(printer);
+            return new SlipPrinterJob(printer);
+        }
+    }
+}

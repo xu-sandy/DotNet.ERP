@@ -1,0 +1,393 @@
+﻿@model STHouseMove
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <div class="formbox" style="border:0">
+                <table class="table-form" width="100%" height="30px">
+                    <tr>
+                        <td class="name" id="StoreId">调出分店：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.OutStoreId, ViewBag.outshops as List<SelectListItem>, new { @class = "easyui-combobox easyui-textbox", data_options = "required:true,editable:false" })</td>
+                        <td class="name">调入分店：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.InStoreId, ViewBag.inshops as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "required:true,editable:false,readonly:true" })</td>
+                    </tr>
+                </table>
+
+                <div id="loadshop"></div>
+            </div>
+         </div>
+        
+        
+    <input type="button" id="btnapp" onclick="append()" value="add" style="display:none" />
+    <table class="easyui-datagrid" id="grid2"
+           data-options="showFooter:true,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,title:'调入商品清单',onLoadSuccess:gridLoadSuccess,onBeforeEdit:beforeEdit,onLoadError:function(){alert('error')},onClickCell:clickCell">
+        <thead>
+            <tr>
+                <th data-options="field:'ProductCode',editor:{type:'textbox',options:{disabled:true}}" width="100">货号</th>
+                <th data-options="field:'Barcode',editor:{type:'combobox',options:{required:true,mode:'remote',valueField:'barcode',textField:'title',loader:comboload,onChange:comboSelect}}" width="150">条形码</th>
+                <th data-options="field:'Title',editor:{type:'textbox',options:{disabled:true}}" width="250">品名</th>
+                <th data-options="field:'SubUnit',editor:{type:'textbox',options:{disabled:true}}" width="80">计量单位</th>                
+                <th data-options="field:'SysPrice',editor:{type:'textbox',options:{disabled:true}}" width="80">系统售价</th>
+                <th data-options="field:'MoveNumber',editor:{type:'numberbox',options:{required:true,min:0.1,precision:2}}" width="80">数量</th>                
+                <th data-options="field:'Memo',editor:{type:'textbox'}" width="80">备注</th>
+                <th data-options="field:'Editor',formatter:operation" width="80">操作</th>
+            </tr>
+        </thead>
+    </table>         
+        
+    }
+        
+</div>
+
+<script type="text/javascript">
+
+    $(function () {
+        //$dg2 = $("#grid2");
+        //if ($("#Id").val() > 0) {         
+        //    setTimeout(function () { $dg2.datagrid('reload'); }, 100);           
+        //} else {
+        //    appClick();
+        //}
+
+        appClick();
+    });
+
+
+
+
+    $dg2 = $("#grid2");
+    //合计
+    function appendTotalRow() {
+        var rows = $dg2.datagrid('getRows');
+        $.each(rows, function (index, row) {
+            if (row != undefined) {
+                if (row.Id == 'countrow') {
+                    var rowIndex = $dg2.datagrid('getRowIndex', row);
+                    $dg2.datagrid('deleteRow', rowIndex);
+                }
+            }
+
+        });
+        var totalRow = {
+            Id: 'countrow',
+            SysPrice: '<span>合计</span>',
+            MoveNumber: '<span id="totalNum">0</span>',
+            Editor: 'countrow'
+        }
+        $dg2.datagrid('appendRow', totalRow);
+    }
+
+    //datagrid加载
+    function gridLoadSuccess() {
+        if ($("#Id").val() > 0) {
+            $dg2.datagrid("hideColumn", "Editor");
+            appendTotalRow();
+            changeValue();
+        } else {
+            setTimeout(function () { appClick(); }, 100);
+        }
+    }
+
+
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        ////此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 1) return false;
+        $.ajax({
+            url: "@Url.Action("GetProductInput", "Product")",
+            type: "post",
+        data: {
+            //传值，还是JSON数据搜索
+            searchName: q,
+            supplierID: $("#SupplierID").combobox("getValue"),
+            zp: '1',
+            storeId: $("#StoreId").combobox("getValue")
+        },
+        //重要，如果写jsonp会报转换错误，此处不写都可以
+        dataType: "json",
+        success: function (data) {
+            //关键步骤，遍历一个MAP对象
+            comboRows = data.rows;
+            var items = $.map(data.rows, function (item) {
+                return { barcode: item.Barcode, title: item.Title };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+    var comboRows = [];
+    function comboSelect(newValue, oldValue) {
+        var obj = getRow(newValue);
+        if (!obj) return;
+        //editIndex = editIndex - 1;
+        editIndex = $dg2.datagrid('getRows').length - 2;
+        var ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'ProductCode' });
+        $(ed.target).textbox('setValue', obj.ProductCode);
+        ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'Title' });
+        $(ed.target).textbox('setValue', obj.Title);
+        ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'SubUnit' });
+        $(ed.target).textbox('setValue', obj.SubUnit);
+        ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'SysPrice' });
+        $(ed.target).textbox('setValue', obj.SysPrice);
+        ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'MoveNumber' });
+        $(ed.target).unbind("keyup").bind("keyup", function (e) {
+            e.preventDefault();
+            if (e.keyCode == 13) append();
+        });//.focus().select();
+    }
+    function getRow(Barcode) {
+        var obj = null;
+        comboRows = [];
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == Barcode) {
+                obj = row; return;
+            }
+        });
+        if (obj == null) {
+            if (Barcode != undefined)
+                initComboRows(Barcode);
+            $.each(comboRows, function (i, row) {
+                if (row.Barcode == Barcode) {
+                    obj = row; return;
+                }
+            });
+        }
+        return obj;
+    }
+    function initComboRows(barcode) {
+        $.ajax({
+            url: "@Url.Action("GetProductInput", "Product")",
+            type: "post",
+        async: false,
+        data: {
+            searchName: barcode,
+            supplierID: $("#SupplierID").combobox("getValue"),
+            zp: '1',
+            storeId: $("#StoreId").combobox("getValue")
+        },
+        dataType: "json",
+        success: function (data) {
+            comboRows = data.rows;
+        }
+    });
+    }
+    var editIndex = undefined, clickIndex = undefined, opadd = false;
+    var $dg2;
+    var isOpenDialog = false;
+    function endEditing() {
+        if (editIndex == undefined) { return true }
+        editIndex = $dg2.datagrid('getRows').length - 2;
+        if ($dg2.datagrid('validateRow', editIndex)) {
+            var ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'Barcode' });
+            if (ed == null) return true;
+            var vl = $(ed.target).combobox('getValue');
+            if (comboRowsExisitBarcode(vl) == false) {
+                $.messager.alert("提示", "该条码不存在!"); return false;
+            }
+            var ed2 = $dg2.datagrid('getEditor', { index: editIndex, field: 'ProductCode' });
+            if (!$(ed2.target).textbox('getValue')) {
+                $.messager.alert("提示", "该条码不存在!"); return false;
+            }
+            var data = $dg2.datagrid("getData");
+            if (isExists(data.rows, vl) && 1!=1) {
+
+                //同一入库单允许同一条码重复录入累加，但需提醒
+                var numTextbox = $dg2.datagrid('getEditor', { index: editIndex, field: 'MoveNumber' });
+                var num = $(numTextbox.target).textbox('getValue');
+                isOpenDialog = true;
+                $.messager.confirm("提示", "该条码已存在是否累加?", function (r) {
+                    isOpenDialog = false;
+                    if (!r) {
+                        $(ed.target).combobox('showPanel').next('span').find('input').focus();
+                        return false;
+                    } else {
+                        $.each(data.rows, function (idx, row) {
+                            if (row.Barcode == vl) {
+                                if (isNaN(num)) {
+                                    $.messager.alert("提示", "输入的数量有误累加失败");
+                                    return false;
+                                }
+                                var curNumber = Number(row.MoveNumber) + Number(num);
+                                curNumber = curNumber.toFixed(2);
+                                var sameNumTextbox = $dg2.datagrid('updateRow', { index: idx, row: { MoveNumber: curNumber } });
+
+                                //清空当前编辑行
+                                var curEditIndex = $dg2.datagrid('getRows').length - 2;
+                                var ed3 = $dg2.datagrid('getEditor', { index: curEditIndex, field: 'Barcode'});
+                                $(ed3.target).combobox('setValue', '');
+                                ed3 = $dg2.datagrid('getEditor', { index: curEditIndex, field: 'ProductCode'});
+                                $(ed3.target).textbox('setValue', '');
+                                ed3 = $dg2.datagrid('getEditor', { index: curEditIndex, field: 'Title' });
+                                $(ed3.target).textbox('setValue', '');
+                                ed3 = $dg2.datagrid('getEditor', { index: curEditIndex, field: 'SubUnit' });
+                                $(ed3.target).textbox('setValue', '');
+                                ed3 = $dg2.datagrid('getEditor', { index: curEditIndex, field: 'SysPrice' });
+                                $(ed3.target).textbox('setValue', '');
+                                ed3 = $dg2.datagrid('getEditor', { index: curEditIndex, field: 'MoveNumber' });
+                                $(ed3.target).textbox('setValue', 1.00);
+
+                                changeValue();
+                                return false;
+                            }
+                        });
+
+                    }
+                })
+
+            } else {
+                $dg2.datagrid('endEdit', editIndex);
+                editIndex = undefined;
+                return true;
+            }
+        } else {
+            return false;
+        }
+    }
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dg2.datagrid('validateRow', clickIndex)) {
+            $dg2.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            changeValue();
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function beforeEdit(rowIndex, rowData) {
+
+    }
+    function append() {
+
+        if (endClickEditing() && endEditing()) {
+            opadd = true;
+            $dg2.datagrid('appendRow', { MoveNumber: 1, Id: guidGenerator() });
+            editIndex = $dg2.datagrid('getRows').length - 1;
+            $dg2.datagrid('selectRow', editIndex)
+                .datagrid('beginEdit', editIndex);
+
+        }
+        appendTotalRow();
+        changeValue();
+
+        //绑定回车事件
+        setTimeout(function () {
+            var bindEditIndex = $dg2.datagrid('getRows').length - 2;
+            var ed = $dg2.datagrid('getEditor', { index: bindEditIndex, field: 'Barcode' });
+            var ed2 = $dg2.datagrid('getEditor', { index: bindEditIndex, field: 'MoveNumber' });
+
+            var ed5 = $dg2.datagrid('getEditor', { index: bindEditIndex, field: 'Memo' });
+            $(ed.target).textbox('textbox').focus();
+            $($(ed.target).combo('textbox')).unbind("keyup").bind("keyup", function (e) {
+                if (e.keyCode == 13) {
+                    $(ed2.target).textbox('textbox').focus();
+                }
+            });
+            $($(ed2.target).combo('textbox')).unbind("keyup").bind("keyup", function (e) {
+                if (e.keyCode == 13) {
+                    $(ed3.target).textbox('textbox').focus();
+                }
+            });
+            $($(ed3.target).combo('textbox')).unbind("keyup").bind("keyup", function (e) {
+                if (e.keyCode == 13) {
+                    $(ed4.target).textbox('textbox').focus();
+                }
+            });
+            $($(ed4.target).combo('textbox')).unbind("keyup").bind("keyup", function (e) {
+                if (e.keyCode == 13) {
+                    $(ed5.target).textbox('textbox').focus();
+                }
+            });
+            $($(ed5.target).combo('textbox')).unbind("keyup").bind("keyup", function (e) {
+                if (e.keyCode == 13) {
+                    if (isOpenDialog == false) {
+                        append();
+                    }
+                }
+            });
+
+        }, 50)
+
+    }
+
+    function removeItem(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dg2.datagrid("selectRecord", id);
+            var row = $dg2.datagrid("getSelected")
+            var index = $dg2.datagrid("getRowIndex", row);
+            $dg2.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+    function operation(value, row, index) {
+        if (value == 'countrow') return '';
+        if (opadd) {
+            opadd = false;
+            return "<a href='javascript:void(0)' onclick='append()'>[添加]</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItem('" + row.Id + "')\">[删除]</a>";
+        }
+    }
+    function clickCell(index, field) {
+        if (index == $dg2.datagrid('getRows').length - 1)
+            return false;
+        if ($("#Id").val() > 0 )
+            return false;
+        if (endClickEditing() && (field == "MoveNumber" || field == "Memo" )) {
+            $dg2.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+        }
+    }
+
+    function appClick() {
+        setTimeout(function () {
+            $("#btnapp").click()
+        }, 500);
+    }
+    function acceptChanges() {
+        $dg2.datagrid("acceptChanges");
+    }
+    function changeValue() {
+        var rows = $dg2.datagrid("getRows");
+        var submitRows = [];
+        for (var i = 0; i < rows.length; i++) {
+            if (rows[i].Id != "countrow") {
+                rows[i].Id = i + 1;
+                submitRows.add(rows[i]);
+            }
+        }
+        $("#Rows").val(JSON.stringify(submitRows));
+        editIndex = rows.length - 1;
+        var total = 0;
+        var totalNum = 0;
+        $.each(rows, function (i, r) {
+            if (!isNaN(r.BuyPrice) && !isNaN(r.MoveNumber)) {
+                totalNum += Number(r.MoveNumber);
+            }
+        });
+
+        $("#totalNum").html(totalNum == totalNum.toFixed(1) ? totalNum : totalNum.toFixed(2));
+
+    }
+
+    function beforeEdit(rowIndex, rowData) {
+    }
+
+</script>
+

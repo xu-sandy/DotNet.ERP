@@ -1,0 +1,55 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Utility;
+
+namespace Pharos.Logic.BLL
+{
+    public class MakingMembershipCardBLL
+    {
+        private readonly MakingMembershipCardService _service = new MakingMembershipCardService();
+
+        public OpResult CreateMakingMembershipCard(MakingMembershipCard _shipCard)
+        {
+            var top1Card = _service.GetFirstMakingMemberShipCard();
+            var batchNum = 0;
+            var batchNumStr = string.Empty;
+            if (top1Card != null)
+            {
+                int.TryParse(top1Card.BatchSN.Substring(top1Card.BatchSN.Length - 2, 2), out batchNum);
+            }
+            batchNum++;
+            if (batchNum.ToString().Length < 2)
+            {
+                batchNumStr = "0" + batchNum.ToString();
+            }
+            else
+            {
+                batchNumStr = batchNum.ToString();
+            }
+            _shipCard.BatchSN = DateTime.Now.ToString("yyMMdd") + batchNumStr;
+            _shipCard.CompanyId = CommonService.CompanyId;
+            _shipCard.CreateDT = DateTime.Now;
+            _shipCard.CreateUID = Sys.CurrentUser.UID;
+            _shipCard.SecurityCode = new Random().Next(100000, 999999).ToString();
+            return _service.CreateMakingMembershipCard(_shipCard);
+        }
+
+        public object GetMakingMembershipCardByWhere(string cardType, string batchSN, short? state, string createUID, DateTime? beginDate, DateTime? endDate, out int count)
+        {
+            return _service.GetMakingMembershipCardByWhere(cardType, batchSN, state, createUID, beginDate, endDate, out count);
+        }
+
+        public OpResult UpdateState(short state, string ids)
+        {
+            return _service.UpdateState(state, ids);
+        }
+
+        public MakingMembershipCard GetShipCardById(int id)
+        {
+            return _service.GetShipCardById(id);
+        }
+    }
+}

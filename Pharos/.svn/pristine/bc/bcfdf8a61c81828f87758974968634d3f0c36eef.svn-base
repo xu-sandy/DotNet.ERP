@@ -1,0 +1,29 @@
+﻿@model object
+@{
+    ViewBag.Title = "Detail";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true, hideSearch: true));
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("DetailList")?@Html.Raw(Request.QueryString)";
+    pharos.manager.pagination = true;
+    pharos.manager.pageSize = 50;
+    pharos.manager.showFooter = true;
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+        { field: 'FullName', title: '收银员', width: 80 },
+        { field: 'CreateDT', title: '销售时间', width: 140 },
+        { field: 'PaySN', title: '流水号', width: 140 },
+        { field: 'Barcode', title: '条码', width: 110 },
+        { field: 'Title', title: '品名', width: 150 },
+        { field: 'SubUnit', title: '单位', width: 50 },
+        { field: 'PurchaseNumber', title: '销售数量', width: 60 },
+        { field: 'BuyPrice', title: '进价', width: 60 },
+        { field: 'SysPrice', title: '系统售价', width: 60 },
+        { field: 'ActualPrice', title: '实际售价', width: 60 },
+        { field: 'SubTotal', title: '小计', width: 70 }
+    ]];
+    pharos.manager.loadSuccess = function () {
+        //pharos.manager.$dg.datagrid('reloadFooter', footer);
+    }
+</script>

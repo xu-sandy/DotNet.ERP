@@ -1,0 +1,97 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增设备", editText: "编辑设备", delText: "移除设备", hideDel: false));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>分类：</label>
+            </td>
+            <td class="input-toolbar">
+
+                @Html.DropDownList("CategoryId", ViewBag.Category as List<SelectListItem>, new { @class = "easyui-combobox", @style = "width:150px", data_options = "editable: false" })
+
+            </td>
+
+            <td class="label-toolbar">
+                <label>品牌：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="Brand" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'品牌',width:150" />
+            </td>
+
+            <td class="label-toolbar">
+                <label>维护人：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="FullName" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'维护人',width:150" />
+            </td>
+
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="Title" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'设备名称',width:150" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setEnable(1)">设为可用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setEnable(0)">设为停用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-import'" onclick="openDialog600('Excel文件导入', '@Url.Action("Import")'); window.top.$('#lbsave .l-btn-text').width(100).html('开始导入');">导入</a>
+}
+<script type="text/javascript">
+
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Title', title: '名称', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'dTitle', title: '分类', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Brand', title: '品牌', editor: { type: 'text', required: true }, width: 70 },
+        { field: 'Spec', title: '型号', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'number', title: '数量', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Status', title: '状态', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "1" ? "可用" : "禁用"; } },
+        { field: 'FullName', title: '维护人', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'CreateDT', title: '更新时间', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) { return new Date(value).format("yyyy-MM-dd"); } }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 500, 'height': 350, hideSave: false, 'url': this.editurl });
+    };
+
+    pharos.manager.editItem = function (Id) {
+
+        this.Id = Id;
+        openDialog(this.editText, this.editurlNocache(), 500, 340);
+    }
+
+    //设为可用，设为停用
+    function setEnable(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+    function removeBefore(row) {
+        if (row.number > 0) {
+            $.messager.alert("提示", "无法删除，设备服务使用了该设备");
+            return false;
+        }
+        return true;
+    }
+
+</script>

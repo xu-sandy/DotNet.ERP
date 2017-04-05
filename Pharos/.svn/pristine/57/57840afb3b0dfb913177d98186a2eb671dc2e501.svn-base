@@ -1,0 +1,151 @@
+﻿// --------------------------------------------------
+// Copyright (C) 2015 版权所有
+// 创 建 人：蔡少发
+// 创建时间：2016-03-05
+// 描述信息：系统授权许可
+// --------------------------------------------------
+
+using System;
+using System.IO;
+using System.Web;
+using System.Text;
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
+using Pharos.Utility;
+using Pharos.Sys.Entity;
+using Pharos.Utility.Caching;
+using Pharos.Sys.BLL;
+using AX.CSF.Encrypt;
+
+namespace Pharos.Sys
+{
+    /// <summary>
+    /// 系统授权许可
+    /// </summary>
+    public class SysAuthorize
+    {
+        /// <summary>
+        /// 注册请求
+        /// </summary>
+        /// <param name="company">单位简称</param>
+        /// <param name="fullCompany">单位全称</param>
+        /// <returns>true:请求成功，false:请求失败</returns>
+        public bool Register(string company, string fullCompany)
+        {
+            //todo:
+            //1. 获取该服务器机器码
+            string MachineSN = Machine.GetMAC;
+
+            //2. 将机器码、单位名称 提交给OMS生成客户授权
+
+            return false;
+        }
+
+        /// <summary>
+        /// 生成序列号
+        /// </summary>
+        /// <param name="company">OMS_CompanyAuthorize 单位授权实体类</param>
+        /// <returns></returns>
+        public string GenerateSN(OMS_CompanyAuthorize company)
+        {
+            if (company.Code > 0)
+            {
+                JObject json = new JObject();
+                json["Code"] = company.Code;
+                json["State"] = company.State;
+                json["Category"] = company.Category;
+
+                json["UserNum"] = company.UserNum;
+                json["StoreProper"] = company.StoreProper;
+                json["AppProper"] = company.AppProper;
+                json["PosMinorDisp"] = company.PosMinorDisp;
+
+                json["SupplierProper"] = company.SupplierProper;
+                json["WholesalerProper"] = company.WholesalerProper;
+                json["EffectiveDT"] = company.EffectiveDT;
+                json["ExpirationDT"] = company.ExpirationDT;
+
+                json["Useable"] = company.Useable;
+                json["MachineSN"] = company.MachineSN;
+
+                return DES.Encrypt(json.ToString());
+            }
+            else
+            {
+                return DES.Encrypt("-1");
+            }
+        }
+
+        /// <summary>
+        /// 验证激活
+        /// </summary>
+        /// <param name="sn">序列号</param>
+        /// <returns>true:成功，false:失败</returns>
+        public bool VerifyActivate(string sn)
+        {
+            OMS_CompanyAuthorize auth = this.AnalysisSN(sn);
+            if (auth != null && auth.ExpirationDT != null && auth.ExpirationDT < DateTime.Now
+                && auth.Useable.ToUpper() == "Y" && auth.State == 1)
+            {
+                //todo: 匹配OMS是否一致
+
+                if (auth.Category == 2)
+                {
+                    Config config = new Config();
+                    config.SetAppSettings(_SerialKey, sn);
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private string _SerialKey = "SerialNo";
+        private OMS_CompanyAuthorize AnalysisSN(string sn)
+        {
+            if (!string.IsNullOrEmpty(sn))
+            {
+                JObject json = (JObject)DES.Decrypt(sn);
+                OMS_CompanyAuthorize company = new OMS_CompanyAuthorize();
+
+                company.Code = Convert.ToInt32(json["Code"]);
+                company.State = Convert.ToInt16(json["State"]);
+                company.Category = Convert.ToInt16(json["Category"]);
+
+                company.UserNum = Convert.ToInt16(json["UserNum"]);
+                company.StoreProper = Convert.ToString(json["StoreProper"]);
+                company.AppProper = Convert.ToString(json["AppProper"]);
+                company.PosMinorDisp = Convert.ToString(json["PosMinorDisp"]);
+
+                company.SupplierProper = Convert.ToString(json["SupplierProper"]);
+                company.WholesalerProper = Convert.ToString(json["WholesalerProper"]);
+                company.EffectiveDT = Convert.ToDateTime(json["EffectiveDT"]);
+
+                company.Useable = Convert.ToString(json["Useable"]);
+                company.MachineSN = Convert.ToString(json["MachineSN"]);
+
+                return company;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 解析序列号
+        /// </summary>
+        public OMS_CompanyAuthorize GetSerialNO
+        {
+            get
+            {
+                string key = Config.GetAppSettings(_SerialKey);
+                OMS_CompanyAuthorize company = this.AnalysisSN(key);
+                if (company.Category == 1)
+                {
+                    //todo: 在线模式，则 根据 company.Code 从OMS读取
+                    
+                }
+                return company;
+            }
+        }
+    }
+}

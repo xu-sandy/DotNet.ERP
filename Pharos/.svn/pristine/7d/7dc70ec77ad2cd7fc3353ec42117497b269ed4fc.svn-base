@@ -1,0 +1,659 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.ChildPagesModels;
+using Pharos.POS.Retailing.Models.Payment;
+using Pharos.POS.Retailing.Models.Printer;
+using Pharos.POS.Retailing.Models.SalesPromotionRules;
+using Pharos.POS.Retailing.Models.SalesPromotionRules.Discount;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models
+{
+    /// <summary>
+    /// 业务模型的起点,包含设备信息，销售入口
+    /// </summary>
+
+    public class PosMachine : BaseObservable
+    {
+        public PosMachine()
+        {
+            try
+            {
+                IsRunningPrinter = Convert.ToBoolean(ConfigurationManager.AppSettings["IsRunningPrinter"]);
+            }
+            catch
+            {
+                IsRunningPrinter = true;
+            }
+            // PrinterStatus = "开启";
+            Status = PosStatus.NotLogin;
+            ScannerStatus = Models.ScannerStatus.Normal;
+            BasePay.PayCompleteEvent += BasePay_PayCompleteEvent;
+        }
+
+        void BasePay_PayCompleteEvent(BasePay payWay)
+        {
+            try
+            {
+                //销售明细信息
+                List<SaleDetail> orderDetail = new List<SaleDetail>();
+                List<SaleDetailsTotal> orderDetailsTotal = new List<SaleDetailsTotal>();
+                SaleOrders order = null;
+                if (payWay.ThePayDetails.IsReturnProduct)
+                {
+                    //保存销售信息
+                    order = new SaleOrders()
+                    {
+                        MachineSN = Infos.MachineId,
+                        PaySN = payWay.ThePayDetails.PaySN,
+                        CreateDT = DateTime.Now,
+                        CreateUID = UserModel.Current.Uid,
+                        ApiCode = payWay.ApiCode.ToString(),
+                        PreferentialPrice = payWay.ThePayDetails.Preferential,
+                        StoreId = Infos.StoreId,
+                        TotalAmount = payWay.ThePayDetails.MoneyNeedPay,
+                        IsUpload = true,
+                        Memo = payWay.ThePayDetails.Remark,
+                        Type = 1,
+                        Salesman = payWay.ThePayDetails.SaleManUid
+
+                    };
+                    SaleOrdersLocalService.Save(order);
+                    var list = ChangingModel.Current.OldProducts.Where(o => o.IsChange);
+                    foreach (var item in list)
+                    {
+                        var product = ProductInfoLocalService.Find(o => o.Barcode == item.Barcode);
+                        orderDetail.Add(new SaleDetail()
+                        {
+                            SysPrice = item.SysPrice,
+                            Barcode = !string.IsNullOrEmpty(item.Barcode) ? item.Barcode : item.ProductCode,
+                            ActualPrice = item.SalePrice,
+                            PaySN = payWay.ThePayDetails.PaySN,
+                            PurchaseNumber = item.ChangeNumber,
+                            BuyPrice = product != null ? product.BuyPrice : 0,
+                            SalesClassifyId = SysDataDictionaryLocalService.GetSalesClassifyId("正常"),
+                            CreateDT = DateTime.Now,
+                            IsUpload = true
+                        });
+                        orderDetailsTotal.Add(new SaleDetailsTotal()
+                        {
+                            Barcode = !string.IsNullOrEmpty(item.Barcode) ? item.Barcode : item.ProductCode,
+                            PaySN = payWay.ThePayDetails.PaySN,
+                            CreateDT = DateTime.Now,
+                            IsUpload = true,
+                            Total = item.ChangeNumber * item.SalePrice
+                        });
+                    }
+                }
+                else
+                {
+                    var guid = string.Empty;
+
+                    //保存会员积分明细
+                    if (MembershipCard.HasRequestMember)
+                    {
+                        guid = Guid.NewGuid().ToString("N");
+                        Members member = null;
+
+                        if (string.IsNullOrEmpty(MembershipCard.Weixin))
+                        {
+                            member = MembersLocalService.Find(o => o.MobilePhone == MembershipCard.Id);
+                        }
+                        else
+                        {
+                            member = MembersLocalService.Find(o => o.Weixin == MembershipCard.Weixin);
+                        }
+                        if (member == null)
+                        {
+                            MembersLocalService.Add(new Members()
+                            {
+                                StoreId = Infos.StoreId,
+                                CreateDT = DateTime.Now,
+                                CreateUID = UserModel.Current.Uid,
+                                IsUpload = true,
+                                MemberId = guid,
+                                MobilePhone = MembershipCard.Id,
+                                Weixin = MembershipCard.Weixin
+                            });
+                        }
+                        else
+                        {
+                            guid = member.MemberId;
+                        }
+
+                        MemberIntegralLocalService.Save(new MemberIntegral()
+                        {
+                            CreateDT = DateTime.Now,
+                            Integral = 0,
+                            ActualPrice = BillList.Total,
+                            MemberId = guid,
+                            PaySN = payWay.ThePayDetails.PaySN,
+                            IsUpload = true
+                        });
+                    }
+                    order = new SaleOrders()
+                    {
+                        MachineSN = Infos.MachineId,
+                        PaySN = payWay.ThePayDetails.PaySN,
+                        CreateDT = DateTime.Now,
+                        MemberId = guid,
+                        CreateUID = UserModel.Current.Uid,
+                        ApiCode = payWay.ApiCode.ToString(),
+                        PreferentialPrice = payWay.ThePayDetails.Preferential,
+
+                        StoreId = Infos.StoreId,
+                        TotalAmount = payWay.ThePayDetails.MoneyNeedPay,
+                        IsUpload = true,
+                        Memo = payWay.ThePayDetails.Remark,
+                        Type = 0,
+                        Salesman = payWay.ThePayDetails.SaleManUid
+                    };
+                    //保存销售信息
+                    SaleOrdersLocalService.Save(order);
+                    var promotionIds = new List<string>();
+
+                    foreach (var item in BillList)
+                    {
+                        ProductInfo product = null;
+                        var bundling = BundlingLocalService.Find(o => o.NewBarcode == item.Code);
+                        product = ProductInfoLocalService.Find(o => o.Barcode == item.Code);
+
+                        var dictTitle = item.Status == ProductStatus.Gift || item.Status == ProductStatus.POSGift || item.Status == ProductStatus.POSWeighGift ? "赠送" : (item.Status == ProductStatus.Normal ? "正常" : "促销");
+                        orderDetail.Add(new SaleDetail()
+                        {
+                            SysPrice = bundling != null ? item.BundlingSystemPrice : item.Price,
+                            Barcode = (item.Status == ProductStatus.WeighProduct || item.Status == ProductStatus.POSWeighGift) ? item.ProductCode : (bundling != null ? bundling.NewBarcode : product.Barcode),
+                            ActualPrice = item.AveragePrice ?? item.Sale,
+                            PaySN = payWay.ThePayDetails.PaySN,
+                            PurchaseNumber = item.Num,
+                            BuyPrice = product != null ? product.BuyPrice : 0,
+                            SalesClassifyId = SysDataDictionaryLocalService.GetSalesClassifyId(dictTitle),
+                            CreateDT = DateTime.Now,
+                            IsUpload = true
+                        });
+                        orderDetailsTotal.Add(new SaleDetailsTotal()
+                        {
+                            Barcode = (item.Status == ProductStatus.WeighProduct || item.Status == ProductStatus.POSWeighGift) ? item.ProductCode : (bundling != null ? bundling.NewBarcode : product.Barcode),
+                            PaySN = payWay.ThePayDetails.PaySN,
+                            CreateDT = DateTime.Now,
+                            IsUpload = true,
+                            Total = item.Total
+                        });
+                        //处理保存销售促销记录
+                        if (item.Status == ProductStatus.Gift && FreeGiftPurchaseLocalService.IsExist(o => o.GiftId == item.GiftPromotionIdOrGiftId))
+                        {
+                            var records = SalesRecordLocalService.FindList(o => o.StoreId == PosMachineInfo.Infos.StoreId && o.CommodityId == item.GiftPromotionIdOrGiftId);
+                            var record = records.OrderByDescending(o => o.CreateDT).FirstOrDefault();
+                            if (record == null)
+                            {
+                                SaleContext.LoadDiscout();
+                                records = SalesRecordLocalService.FindList(o => o.StoreId == PosMachineInfo.Infos.StoreId && o.CommodityId == item.GiftPromotionIdOrGiftId);
+                                record = records.OrderByDescending(o => o.CreateDT).FirstOrDefault();
+                            }
+                            if (record != null)
+                                record.Number--;
+                            SalesRecordLocalService.Update(record);
+                        }
+                        else if (item.Status == ProductStatus.Normal)
+                        {
+                            promotionIds.AddRange(item.PromotionIds);
+                        }
+                    }
+                    promotionIds = promotionIds.Distinct().ToList();
+                    promotionIds.ForEach(p =>
+                    {
+                        var records = SalesRecordLocalService.FindList(o => o.StoreId == PosMachineInfo.Infos.StoreId && o.CommodityId == p);
+                        if (records.Count > 0)
+                        {
+                            var record = records.OrderByDescending(o => o.CreateDT).FirstOrDefault();
+                            if (record == null)
+                            {
+                                SaleContext.LoadDiscout();
+                                records = SalesRecordLocalService.FindList(o => o.StoreId == PosMachineInfo.Infos.StoreId && o.CommodityId == p);
+                                record = records.OrderByDescending(o => o.CreateDT).FirstOrDefault();
+                            }
+                            if (record != null)
+                            {
+                                record.Number--;
+                                SalesRecordLocalService.Update(record);
+                            }
+                        }
+                    });
+
+                }
+                SaleDetailLocalService.Save(orderDetail);
+                SaleDetailsTotalLocalService.Save(orderDetailsTotal);
+                BillDiscountLocalService.Add(new Logic.LocalEntity.WipeZero() { Number = payWay.ThePayDetails.BillDiscount, PaySN = payWay.ThePayDetails.PaySN, CreateDT = DateTime.Now, IsUpload = true });
+                //打印
+                try
+                {
+                    if (IsRunningPrinter)
+                    {
+                        var printWidthStr = ConfigurationManager.AppSettings["PrintWidth"];
+                        int printWidth = 40;
+                        if (!string.IsNullOrEmpty(printWidthStr))
+                        {
+                            try
+                            {
+                                printWidth = Convert.ToInt32(printWidth);
+                            }
+                            catch
+                            {
+                                printWidth = 40;
+                            }
+                        }
+
+                        PrintModelHelper printer = new PrintModelHelper();
+                        TicketModel ticketModel = new TicketModel();
+                        ticketModel.TicketWidth = printWidth;//发票宽度，按字符数计算，根据打印机型号有所区别(通常在30-70之间),建议系统提供配置入口
+                        ticketModel.StoreName = Infos.StoreName;
+                        ticketModel.DeviceNumber = Infos.MachineId;
+                        ticketModel.SN = payWay.ThePayDetails.PaySN;
+                        ticketModel.Cashier = UserModel.Current.UserCode;
+                        List<ProductModel> productList = new List<ProductModel>();
+                        foreach (var item in orderDetail)
+                        {
+                            var productinfos = ProductInfoLocalService.Find(o => o.Barcode == item.Barcode || o.ProductCode == item.Barcode);
+                            ProductModel productModel = new ProductModel();
+                            productModel.Code = item.Barcode;
+                            productModel.Name = productinfos != null ? productinfos.Title : "未知商品";
+                            productModel.Num = item.PurchaseNumber;
+                            productModel.Price = item.ActualPrice;
+                            productModel.SubTotal = (item.ActualPrice * item.PurchaseNumber);
+                            productList.Add(productModel);
+                        }
+
+                        ticketModel.ProductList = productList;
+                        ticketModel.CountNum = BillList.GoodsCount;
+                        ticketModel.TotalPrice = payWay.ThePayDetails.MoneyNeedPay;
+                        ticketModel.Receivable = payWay.ThePayDetails.Receipt;
+                        ticketModel.Change = payWay.ThePayDetails.Change;
+                        ticketModel.Weigh = "0 KG";
+                        ticketModel.PayType = payWay.Title;
+                        List<string> footItemList = new List<string>();
+                        footItemList.Add("称重商品数量请参照条码标签");
+                        footItemList.Add("欢迎光临——服务电话：" + Infos.StorePhone);
+                        footItemList.Add("请保留电脑小票，作为退换货凭证");
+                        ticketModel.FootItemList = footItemList;
+                        string titleStr = string.Empty; string printStr = printer.GetPrintStr(ticketModel, out titleStr);
+                        PrintHelper.Print(printStr, titleStr);
+                    }
+                }
+                catch { }
+
+
+
+                //处理换货记录
+                if (payWay.ThePayDetails.IsReturnProduct)
+                {
+                    string returnId = Guid.NewGuid().ToString("N");
+                    var oldorder = SaleOrdersLocalService.Find(O => O.PaySN == ChangingModel.Current.OrderId);
+                    oldorder.ReturnId = returnId;
+                    oldorder.State = 1;
+                    oldorder.IsUpload = true;
+                    SaleOrdersLocalService.Update(oldorder);
+                    SalesReturns salesReturn = new SalesReturns()
+                    {
+                        CreateDT = DateTime.Now,
+                        CreateUID = UserModel.Current.Uid,
+                        ReasonId = ChangingModel.Current.Reason,
+                        ReturnId = returnId,
+                        ReturnPrice = ChangingModel.Current.Premium,
+                        ReturnType = 1,
+                        State = 2,
+                        StoreId = PosMachine.Current.Infos.StoreId,
+                        NewPaySN = payWay.ThePayDetails.PaySN,
+                        MachineSN = PosMachine.Current.Infos.MachineId,
+
+                        IsUpload = true
+                    };
+                    SalesReturnsLocalService.Add(salesReturn);
+                    List<SalesReturnsDetailed> details = new List<SalesReturnsDetailed>();
+                    var list = ChangingModel.Current.OldProducts.Where(o => o.IsChange);
+                    foreach (var item in list)
+                    {
+                        details.Add(new SalesReturnsDetailed()
+                        {
+                            Barcode = item.Barcode,
+                            Number = item.Number,
+                            Price = item.SysPrice,
+                            ReceiptsNumber = ChangingModel.Current.OrderId,
+                            ReturnId = returnId,
+                            TradingPrice = item.SalePrice,
+                            CreateDT = DateTime.Now,
+                            IsUpload = true
+                        });
+                    }
+                    SalesReturnsDetailedLocalService.AddRange(details);
+                    Toast.DoShow("换货成功！");
+
+                }
+
+                ResetPos();
+            }
+            catch (Exception ex)
+            {
+                Toast.DoShow("保存销售单失败！");
+                File.AppendAllText("Log.txt", ex.Message + "|" + ex.StackTrace, Encoding.UTF8);
+            }
+        }
+        #region  Property
+
+        public PosMachineInfo Infos
+        {
+            get { return PosMachineInfo.Infos; }
+        }
+        public Visibility ShowMsg
+        {
+            get
+            {
+                return PosMachine.Current.Status == PosStatus.LoadingDatas ? Visibility.Visible : Visibility.Hidden;
+            }
+        }
+        public Visibility ShowShield
+        {
+            get
+            {
+                return (PosMachine.Current.Status == PosStatus.Market || PosMachine.Current.Status == PosStatus.Gift) ? Visibility.Hidden : Visibility.Visible;
+            }
+        }
+        public Visibility ShowLockImg
+        {
+            get
+            {
+                return PosMachine.Current.Status == PosStatus.UserLock ? Visibility.Visible : Visibility.Hidden;
+            }
+        }
+
+        private PosStatus status;
+        internal PosStatus Status
+        {
+            get { return status; }
+            set
+            {
+                status = value;
+                switch (value)
+                {
+                    case PosStatus.Market:
+                        ShowStatus = "正常";
+                        break;
+                    case PosStatus.LoadingDatas:
+                        ShowStatus = "加载数据";
+                        break;
+                    case PosStatus.NotLogin:
+                        ShowStatus = "未登录";
+                        break;
+                    case PosStatus.UserLock:
+                        ShowStatus = "锁屏";
+                        break;
+
+                    case PosStatus.Gift:
+                        ShowStatus = "赠品";
+                        break;
+
+                }
+                OnPropertyChanged("Status");
+                OnPropertyChanged("ShowShield");
+                OnPropertyChanged("ShowMsg");
+                OnPropertyChanged("ShowLockImg");
+                OnPropertyChanged("ShowStatus");
+            }
+        }
+        ScannerStatus scannerStatus;
+        public ScannerStatus ScannerStatus
+        {
+            get { return scannerStatus; }
+            set
+            {
+                scannerStatus = value;
+                switch (scannerStatus)
+                {
+                    case Models.ScannerStatus.Normal:
+                        OparetStatus = "正常";
+                        break;
+                    case Models.ScannerStatus.MemberScanner:
+                        OparetStatus = "会员信息";
+                        break;
+                    case Models.ScannerStatus.BillScanner:
+                        OparetStatus = "商品扫码";
+                        break;
+                }
+                OnPropertyChanged("OparetStatus");
+
+            }
+        }
+
+        public string ShowStatus { get; set; }
+
+        public string OparetStatus { get; set; }
+
+        public UserModel CurrentOperator
+        {
+            get { return UserModel.Current; }
+        }
+
+        //条码添加商品
+        private string barcode;
+        public string BarCode
+        {
+            get { return barcode; }
+            set
+            {
+                BillList.AddFromBarcode(value);
+                barcode = string.Empty;
+                OnPropertyChanged("BarCode");
+            }
+        }
+
+        private static PosMachine current;
+        public static PosMachine Current
+        {
+            get
+            {
+                if (current == null)
+                {
+                    current = new PosMachine();
+                }
+                return current;
+            }
+        }
+
+        BuyList billList = null;
+        public BuyList BillList
+        {
+            get
+            {
+                if (billList == null)
+                {
+                    billList = new BuyList();
+                }
+                return billList;
+            }
+        }
+
+        MembershipCard membershipCard = null;
+        public MembershipCard MembershipCard
+        {
+            get
+            {
+                if (membershipCard == null)
+                {
+                    membershipCard = new MembershipCard();
+                }
+                return membershipCard;
+            }
+        }
+
+
+
+        private HangBillCollection localBills;
+        public HangBillCollection LocalBills
+        {
+            get
+            {
+                if (localBills == null)
+                {
+                    localBills = new HangBillCollection();
+                    localBills.ReadFormLocal();
+                }
+                return localBills;
+            }
+        }
+
+        public GeneralCommand Cannel
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    if (Status == PosStatus.Market || Status == PosStatus.Gift)
+                    {
+                        var isOk = UMessageBox.Show("提示", "确定清空当前订单记录吗？", MessageBoxButton.OKCancel);
+                        if (isOk)
+                        {
+                            ResetPos();
+                        }
+                    }
+                });
+            }
+        }
+        private bool isRunningPrinter = true;
+        public bool IsRunningPrinter
+        {
+            get { return isRunningPrinter; }
+            set
+            {
+                isRunningPrinter = value;
+                if (value)
+                {
+                    PrinterStatus = "开启";
+                }
+                else
+                {
+                    PrinterStatus = "关闭";
+
+                }
+
+                OnPropertyChanged("PrinterStatus");
+
+                OnPropertyChanged("IsRunningPrinter");
+
+            }
+        }
+
+        public string PrinterStatus { get; set; }
+
+        public GeneralCommand GuaDan
+        {
+            get
+            {
+                return new GeneralCommand((_win) =>
+                {
+                    Toast.DoShow("功能暂未开放！");
+                    return;
+
+                    if (_win != null && _win is GuaDanCaoZou)
+                    {
+                        var win = _win as Window;
+                        win.Close();
+                    }
+                    if (Status == PosStatus.Market || status == PosStatus.Gift)
+                    {
+                        try
+                        {
+                            if (BillList.Count > 0)
+                            {
+                                var list = BillList.Where(o => o.Status == ProductStatus.Normal || o.Status == ProductStatus.WeighProduct || o.Status == ProductStatus.POSGift || o.Status == ProductStatus.POSWeighGift).ToList();
+                                LocalBills.AddBill(new HangBill()
+                                {
+                                    Date = DateTime.Now,
+                                    Items = list,
+                                    Num = list.Count,
+                                    Total = list.Sum(o => o.Total)
+                                });
+                                ResetPos();
+                                Toast.DoShow("挂单成功！");
+                            }
+                            else
+                            {
+                                Toast.DoShow("账单没有记录，不能挂单！");
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Toast.DoShow(string.Format("操作失败,{0}！", e.Message));
+                        }
+                    }
+                });
+            }
+        }
+
+        public GeneralCommand DuDan
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    Toast.DoShow("功能暂未开放！");
+                    return;
+                    if (o != null && o is GuaDanCaoZou)
+                    {
+                        var win = o as Window;
+                        win.Close();
+                    }
+                    if (Status == PosStatus.Market || Status == PosStatus.Gift)
+                    {
+                        GuaDanList page = new GuaDanList();
+                        page.ShowDialogInScreen();
+                    }
+
+                });
+            }
+        }
+
+        public string ShowInMainWindowKeyboardShortcuts
+        {
+            get
+            {
+                var rules = KeyboardShortcuts.Current.Rules.FindAll(o => o.IsShowInMainWindow == true);
+                var rulesStr = rules.Select(o => string.Format("{0}({1})", o.Command.Describe, o.Keys == "Escape" ? "Esc" : o.Keys));
+                return string.Join("，", rulesStr);
+            }
+        }
+        #endregion  Property
+
+        private void ResetPos()
+        {
+            BillList.Clear();
+            MembershipCard.ReSet();
+            BaseDiscount.PendingGift.Clear();
+            BaseDiscount.pendingGiftCountDict.Clear();
+            BaseDiscount.PendingCoupon.Clear();
+            foreach (var win in Application.Current.Windows)
+            {
+                if (win is MainWindow)
+                {
+                    var mainWindow = win as MainWindow;
+                    mainWindow.CurrentScannerNode = mainWindow.txtMemberCard;
+                    Keyboard.Focus(mainWindow.CurrentScannerNode);
+                    break;
+                }
+            }
+        }
+
+        public void SetPropertyChanged(string Name)
+        {
+            OnPropertyChanged(Name);
+        }
+    }
+}

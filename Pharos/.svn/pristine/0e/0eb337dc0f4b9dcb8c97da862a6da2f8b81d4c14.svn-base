@@ -1,0 +1,142 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Sys.Entity;
+
+namespace Pharos.Logic.BLL
+{
+    /// <summary>
+    /// rechargegifts DAL
+    /// </summary>
+    public class RechargeGiftsService : BaseService<RechargeGifts>
+    {
+        /// <summary>
+        /// find rechargegifts page list by where 
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="createUID"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public object FindRechargeGiftPageList(int state, string createUID, out int count)
+        {
+            var query = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId);
+            if (state != -1)
+            {
+                query = query.Where(o => o.State == state);
+            }
+            if (!string.IsNullOrEmpty(createUID))
+            {
+                query = query.Where(o => o.CreateUID == createUID);
+            }
+            count = query.Count();
+            if (count > 0)
+            {
+                var result = (from a in query
+                              join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                              on a.CreateUID equals b.UID
+                              select new
+                              {
+                                  Id = a.Id,
+                                  State = a.State,
+                                  Stage = a.Stage,
+                                  GiftProject = a.GiftProject,
+                                  ConditionValue = a.ConditionValue,
+                                  GiftsValue = a.GiftsValue,
+                                  LimitNumber = a.LimitNumber,
+                                  StageNumber = a.StageNumber,
+                                  StageAvg = a.StageAvg,
+                                  ReturnDT = a.ReturnDT,
+                                  ExpiryStart = a.ExpiryStart,
+                                  ExpiryEnd = a.ExpiryEnd,
+                                  GiftAging = a.GiftAging,
+                                  GiftAgingValue = a.GiftAgingValue,
+                                  StartTime1 = a.StartTime1,
+                                  EndTime1 = a.EndTime1,
+                                  StartTime2 = a.StartTime2,
+                                  EndTime2 = a.EndTime2,
+                                  StartTime3 = a.StartTime3,
+                                  EndTime3 = a.EndTime3,
+                                  CreateDT = a.CreateDT,
+                                  CreateUID = b.FullName
+                              }).ToList();
+                return result;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        /// <summary>
+        /// update db state
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="ids"></param>
+        /// <returns></returns>
+        public Utility.OpResult UpdateRechargeGiftState(int state, string ids)
+        {
+            var query = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ",")).ToList();
+            if (query.Count > 0)
+            {
+                query.ForEach(o => o.State = state);
+                CurrentRepository.Update(new RechargeGifts());
+                return new Utility.OpResult() { Successed = true, Message = "操作成功！" };
+            }
+            else
+            {
+                return new Utility.OpResult() { Successed = false, Message = "未找到对应数据！" };
+            }
+
+        }
+        /// <summary>
+        /// get all create user
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<SysStoreUserInfo> GetCreateUserToDropDown()
+        {
+            var result = (from a in CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId)
+                          join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                          on a.CreateUID equals b.UID
+                          select b).Distinct();
+            return result;
+        }
+        /// <summary>
+        /// update a rechargegift entity
+        /// </summary>
+        /// <param name="_rechargeGift"></param>
+        /// <returns></returns>
+        public Utility.OpResult UpdateRechargeGift(RechargeGifts _rechargeGift)
+        {
+            //query data
+            var data = CurrentRepository.Entities.Where(o => o.Id == _rechargeGift.Id).FirstOrDefault();
+            //if exits
+            if (data == null)
+            {
+                return new Utility.OpResult() { Successed = false, Message = "未找到原数据！" };
+            }
+            //update
+            data.ConditionValue = _rechargeGift.ConditionValue;
+            data.EndTime1 = _rechargeGift.EndTime1;
+            data.EndTime2 = _rechargeGift.EndTime2;
+            data.EndTime3 = _rechargeGift.EndTime3;
+            data.ExpiryEnd = _rechargeGift.ExpiryEnd;
+            data.ExpiryStart = _rechargeGift.ExpiryStart;
+            data.GiftAging = _rechargeGift.GiftAging;
+            data.GiftAgingValue = _rechargeGift.GiftAgingValue;
+            data.GiftProject = _rechargeGift.GiftProject;
+            data.GiftsValue = _rechargeGift.GiftsValue;
+            data.LimitNumber = _rechargeGift.LimitNumber;
+            data.ReturnDT = _rechargeGift.ReturnDT;
+            data.Stage = _rechargeGift.Stage;
+            data.StageAvg = _rechargeGift.StageAvg;
+            data.StageNumber = _rechargeGift.StageNumber;
+            data.StartTime1 = _rechargeGift.StartTime1;
+            data.StartTime2 = _rechargeGift.StartTime2;
+            data.StartTime3 = _rechargeGift.StartTime3;
+            CurrentRepository.Update(data);
+            //return
+            return new Utility.OpResult() { Successed = true, Message = "操作成功！" };
+        }
+    }
+}

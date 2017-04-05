@@ -1,0 +1,69 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("Id")
+        @Html.Hidden("State")
+        <div class="content">
+            <table class="table-toolbar" width="100%" height="160px">
+                <tr>
+                    <td class="name">调出分店：</td>
+                    <td class="input">@Html.DisplayText("OutStoreTitle")</td>
+                    <td class="name">调入分店：</td>
+                    <td class="input">@Html.DisplayText("InStoreTitle")</td>
+                </tr>
+                <tr>
+                    <td class="name">商品条码：</td>
+                    <td class="input">@Html.DisplayText("Barcode")</td>
+                    <td class="name">商品名称：</td>
+                    <td class="input">@Html.DisplayText("Title")</td>
+                </tr>
+                <tr>
+                    <td class="name">申请数量：</td>
+                    <td class="input">@Html.DisplayText("OrderQuantity","{0:f2}") @Html.DisplayText("SubUnit")</td>
+                    <td class="name">系统售价：</td>
+                    <td class="input">@Html.DisplayText("SysPrice", "{0:f2}")</td>
+                </tr>
+                <tr>
+                    <td class="name">备注说明：</td>
+                    <td class="input" colspan="3">
+                        @Html.DisplayText("Memo")
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">配送数量:</td>
+                    <td class="input">@Html.TextBox("DeliveryQuantity", ViewData["DeliveryQuantity"], new { @class = "easyui-numberspinner", data_options = "required:true,min:0.1,precision:2" })</td>
+                    <td class="name">@Html.CheckBox("StockOut",Convert.ToInt16(ViewData["StockOut"]) == 1, new { value="1"})<label for="StockOut">是否缺货</label></td>
+                    <td></td>
+                </tr>
+            </table>
+        </div>
+        <input type="hidden" id="tuihui" />
+    }
+</div>
+<script type="text/javascript">
+    $("#StockOut").click(function(){
+        if(this.checked){
+            $("#DeliveryQuantity").numberspinner("setValue","0");
+        }
+    });
+    function SaveBefore() {
+        if($("#State").val()!="3"){
+            //$("#StockOut").attr("checked")
+            if(document.getElementById("StockOut").checked){
+                $.messager.alert("提示","缺货状态不能配送!");
+                return false;
+            }
+            var receNum = $("#DeliveryQuantity").numberbox("getValue");
+            var max= @(ViewData.Eval("OrderQuantity"));
+            if (receNum > max) {
+                $.messager.alert("提示", "配送数量不能大于申请数量!"); return false;
+            }
+        }
+        return true;
+    }
+</script>

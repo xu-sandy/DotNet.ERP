@@ -1,0 +1,238 @@
+﻿@model Pharos.CRM.Retailing.Models.MemberDatasModel
+@{
+    ViewBag.Title = "CreateMember";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">
+    .content tr {
+        height: 30px;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <div id="tt1" class="easyui-tabs" data-options="onSelect:function(title,index){}" style="height:auto;">
+                <div title=" 基本信息">
+                    <table class="table-form" width="100%">
+                        <tr>
+                            <td class="name">来源：</td>
+                            <td class="input">@Html.DropDownListFor(o => o.StoreId, ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo',editable:false" })</td>
+                            <td class="name">编号：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.MemberNo, new { @class = "easyui-textbox", data_options = "readonly:true,prompt:'后台自动生成'" }) </td>
+                        </tr>
+                        <tr>
+                            <td class="name">姓名：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.RealName, new { @class = "easyui-validatebox", data_options = "required:true" })</td>
+                            <td class="name">性别：</td>
+                            <td class="input">@Html.RadioButtonListFor(o => o.Sex, new List<SelectListItem>() { new SelectListItem() { Value = "1", Text = "男", Selected = true }, new SelectListItem() { Text = "女", Value = "0" } })</td>
+                        </tr>
+
+                        <tr>
+                            <td class="name">身份证号：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.IDNumber, new { @class = "easyui-textbox", data_options = "" })</td>
+                            <td class="name">生日：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Birthday, new { @class = "easyui-validatebox Wdate", data_options = "" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">手机号：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.MobilePhone, new { @class = "easyui-validatebox", data_options = "required:true,validType:'mobile'" })</td>
+                            <td class="name">微信号：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Weixin, new { @class = "easyui-textbox", data_options = "" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">支付宝：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Zhifubao, new { @class = "easyui-textbox", data_options = "prompt:'邮箱/手机号'" })</td>
+                            <td class="name">Email：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Email, new { @class = "easyui-textbox", data_options = "validType:'email'" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">QQ：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.QQ, new { @class = "easyui-textbox", data_options = "prompt:'5-12位数字'" })</td>
+                            <td class="name">推荐人ID：</td>
+                            @*<td class="input">@Form.UserCombobox("ReferrerUID", ViewData.Eval("ReferrerUID"))</td>*@
+                            <td class="input">@Html.TextBoxFor(o => o.ReferrerUID, new { @class = "easyui-validatebox", data_options = "prompt:'员工工号'" })</td>
+                        </tr>
+                        <tr style="display:none">
+                            <td class="name">默认优惠方式：</td>
+                            <td class="input"><input type="text" class="easyui-textbox" /></td>
+                            <td class="name">默认积分方式：</td>
+                            <td class="input"><input type="text" class="easyui-textbox" /></td>
+                        </tr>
+                        <tr>
+                            <td class="name">会员等级：</td>
+                            <td class="input">@Html.DropDownListFor(o => o.MemberLevelId, ViewBag.levels as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo',editable:false" })</td>
+                            <td class="name">会员分组：</td>
+                            <td class="input">@Html.DropDownListFor(o => o.MemberGroupId, ViewBag.groups as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">居住城市：</td>
+                            <td class="input">@Form.CityCombobox("CurrentCityId", selectItem: ViewBag.city as SelectListItem, empty: "请选择", controlWidth: 160, panelWidth: 350, showThird: true)</td>
+                            <td class="name">街道地址：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Address, new { @class = "easyui-textbox", data_options = "" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">内部人员：</td>
+                            <td class="input">@Html.RadioButtonListFor(o => o.Insider, new List<SelectListItem>() { new SelectListItem() { Text = "是", Value = "True" }, new SelectListItem() { Text = "否", Value = "False", Selected = true } })</td>
+                            <td class="name">状态：</td>
+                            <td class="input">@Html.RadioButtonListFor(o => o.Status, new List<SelectListItem>() { new SelectListItem() { Text = "未审", Value = "0", Selected = true }, new SelectListItem() { Text = "正常", Value = "1" } })</td>
+                        </tr>
+                    </table>
+                </div>
+
+                @if (Model.MembershipCards != null && Model.MembershipCards.Count() > 0)
+                {
+                    <div title=" 卡片信息">
+
+                        @foreach (var item in Model.MembershipCards)
+                        {
+                            <table class="table-form" width="100%">
+                                <tr>
+                                    <td class="name">卡面卡号：</td>
+                                    <td class="input"><input type="text" class="easyui-textbox" value="@item.CardSN" data-options="readonly:true" /></td>
+                                    <td class="name">卡类型：</td>
+                                    <td class="input"><input type="text" class="easyui-textbox" value="@item.CardTypeId" data-options="readonly:true" /></td>
+                                </tr>
+                                <tr>
+                                    <td class="name">卡内余额：</td>
+                                    <td class="input"><input type="text" class="easyui-numberbox" value="@item.Balance" data-options="readonly:true,precision:2" /></td>
+                                    <td class="name">卡有效期：</td>
+                                    <td class="input"><input type="text" class="easyui-textbox" value="@(item.ExpiryStart==new DateTime()?"": item.ExpiryStart.ToString("yyyy-MM-dd"))" style=" width:80px" />~<input type="text" class="easyui-textbox" value="@item.ExpiryEnd" style="width:80px" /></td>
+                                </tr>
+                                <tr>
+                                    <td class="name">卡状态：</td>
+                                    <td class="input">
+                                        <label id="c_state" name="state" data-state="@item.State"></label>
+                                    </td>
+                                    <td class="name"></td>
+                                    <td class="input"></td>
+                                </tr>
+                            </table>
+                            <hr />
+                        }
+                    </div>
+
+                }
+                @if (Model.Coupons != null && Model.Coupons.Count() > 0)
+                {
+                    <div title=" 优惠券信息">
+                        @foreach (var item in Model.Coupons)
+                        {
+                            <table class="table-form" width="100%">
+                                <tr>
+                                    <td class="name">券号：</td>
+                                    <td class="input"><input type="text" class="easyui-textbox" value="@item.TicketNo" data-options="readonly:true" /></td>
+                                    <td class="name">生成时间：</td>
+                                    <td class="input"><input type="text" class="easyui-textbox" value="@item.CreateDT" data-options="readonly:true" /></td>
+                                </tr>
+                                <tr>
+                                    <td class="name">申领时间：</td>
+                                    <td class="input"><input type="text" class="easyui-textbox" value="@item.ReceiveDT" data-options="readonly:true" /></td>
+                                    <td class="name">使用时间：</td>
+                                    <td class="input"><input type="text" class="easyui-textbox" value="@item.UseDT" data-options="readonly:true" /></td>
+                                </tr>
+
+                            </table>
+                            <hr />
+                        }
+                    </div>
+
+                }
+                <div title=" 扩展信息"></div>
+            </div>
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+        if ('@Model.Id' == 0) {
+            $("#Sex_1").click();
+        } else {
+            if ('@Model.Status' == '1') {
+                $("input[name=RealName]").attr("readonly", "readonly");
+                $("input[name=MobilePhone]").attr("readonly", "readonly");
+                $("input[name=ReferrerUID]").attr("readonly", "readonly");
+            }
+        }
+        //qq号校验5-12位数字
+        $("input[name=QQ]").prev().blur(function () {
+            var qqVal = $("input[name=QQ]").val();
+            if (qqVal != "") {
+                var patt = new RegExp("[1-9]\\d{4,11}");
+                var result = patt.test(qqVal);
+                if (!result) {
+                    $.messager.alert("提示", "QQ号格式不正确！", "info", function () {
+                        $("input[name=QQ]").prev().focus();
+                    });
+                    return false;
+                }
+            }
+        })
+        //支付宝：仅限手机号、邮箱格式；
+        $("input[name=Zhifubao]").prev().blur(function () {
+            var alipayval = $("input[name=Zhifubao]").val();
+            if (alipayval != "") {
+                var result = (/^0?\d{9,11}$/.test(alipayval) || /^[A-Za-zd]+([-_.][A-Za-zd]+)*@@([A-Za-zd]+[-.])+[A-Za-zd]{2,5}$/.test(alipayval));
+                if (!result) {
+                    $.messager.alert("提示", "支付宝帐号格式不正确！", "info", function () {
+                        $("input[name=Zhifubao]").prev().focus();
+                    });
+                    return false;
+                }
+            }
+        })
+        //身份证号，为大陆身份证号18位时，自动提取生日；
+        $("input[name=IDNumber]").prev().blur(function () {
+            var alipayval = $("input[name=IDNumber]").val();
+            if (alipayval != "") {
+                var reg = /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/;
+                if (!reg.test(alipayval)) {
+                    $.messager.alert("提示", "身份证号格式不正确！", "info", function () {
+                        $("input[name=IDNumber]").prev().focus();
+                    });
+                    return false;
+                } else {//身份证为18位时提取生日
+                    if (alipayval.length == 18) {
+                        var bir = alipayval.substring(6, 10) + "-" + alipayval.substring(10, 12) + "-" + alipayval.substring(12, 14);
+                        var date = new Date(bir);
+                        if (date != 'Invalid Date') {
+                            $("#Birthday").val(bir);
+                            $("#Birthday").removeClass("validatebox-invalid");
+
+                        }
+                    }
+
+                }
+            }
+        });
+        var stateVal = $("#c_state").data("state");
+        var dom = "";
+        switch (stateVal) {
+            case 0:
+                dom = "未激活";
+                break;
+            case 1:
+                dom = "正常";
+                break;
+            case 2:
+                dom = "已挂失";
+                break;
+            case 3:
+                dom = "已作废";
+                break;
+            case 4:
+                dom = "已退卡";
+            case 5:
+                dom = "已过期";
+                break;
+        }
+        $("#c_state").html(dom);
+
+        //推荐人只能输入数字
+        $("input[name=ReferrerUID]").prev().keyup(function () {
+            this.value = this.value.replace(/\D/g, '');
+        })
+        $("#Zhifubao").numberbox('textbox').attr('maxlength', 50)
+    })
+</script>

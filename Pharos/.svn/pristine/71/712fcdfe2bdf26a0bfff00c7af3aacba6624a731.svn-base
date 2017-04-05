@@ -1,0 +1,137 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+
+namespace Pharos.Logic.WeighDevice
+{
+    /// <summary>
+    /// 顶尖电子秤
+    /// </summary>
+    public class AclasService
+    {
+        /// <summary>
+        /// 传输数据
+        /// </summary>
+        /// <param name="tplu"></param>
+        /// <param name="ip"></param>
+        /// <returns></returns>
+        public static int TransferData(List<TPlu> tplu, string ip)
+        {
+            int Result = -1;
+            char[] Str_Renamed = new char[256];
+            var Hotkey = new List<int>();
+
+            for (int i = 0; i < tplu.Count; i++)
+            {
+                TPlu PLU = tplu[i];
+                PLU.BarCode = 79;
+                Hotkey.Add(PLU.LFCode);
+                TPlu[] PLUs = new TPlu[4];
+                PLUs[0] = PLU;
+                Result = PBusConnectEx(".\\lfzk.dat", ".\\system.cfg", ip);
+                if (Result >= 0)
+                {
+                    Result = PBusPLUToStr(ref PLU, Str_Renamed);
+                }
+                if (Result >= 0)
+                {
+                    Result = PBusTransferPLUCluster(PLUs);
+                }
+                if (Result >= 0)
+                {
+                    if (i == tplu.Count - 1)
+                    {
+                        Result = PBusTransferHotkey(Hotkey.ToArray(), 0);
+                    }
+                }
+                if (Result >= 0)
+                {
+                    try
+                    {
+                        Result = PBusDisConnectEx(ip);
+                    }
+                    catch (Exception)
+                    {
+                        //Result = 2;
+                    }
+                }
+            }
+            return Result;
+        }
+
+        /// <summary>
+        /// 传送PLU函数
+        /// </summary>
+        /// <param name="PLUCluster"></param>
+        /// <returns></returns>
+        [DllImport("PBusDrv.dll", CharSet = CharSet.Ansi, SetLastError = true, ExactSpelling = true)]
+        static extern int PBusTransferPLUCluster(TPlu[] PLUCluster);
+        /// <summary>
+        /// 传送Hotkey函数
+        /// </summary>
+        /// <param name="HotkeyTable"></param>
+        /// <param name="TableIndex"></param>
+        /// <returns></returns>
+        [DllImport("PBusDrv.dll", CharSet = CharSet.Ansi, SetLastError = true, ExactSpelling = true)]
+        static extern int PBusTransferHotkey(int[] HotkeyTable, int TableIndex);
+        /// <summary>
+        /// 将PLU转换为字符串
+        /// </summary>
+        /// <param name="PLU"></param>
+        /// <param name="LPStr"></param>
+        /// <returns></returns>
+        [DllImport("PBusDrv.dll", CharSet = CharSet.Ansi, SetLastError = true, ExactSpelling = true)]
+        static extern int PBusPLUToStr(ref TPlu PLU, char[] LPStr);
+        /// <summary>
+        /// 连接函数
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="configName"></param>
+        /// <param name="ipAddr"></param>
+        /// <returns></returns>
+        [DllImport("PBusDrv.dll", CharSet = CharSet.Ansi, SetLastError = true, ExactSpelling = true)]
+        static extern int PBusConnectEx(string fileName, string configName, string ipAddr);
+
+
+        /// <summary>
+        /// 断开函数
+        /// </summary>
+        /// <param name="ipAddr"></param>
+        /// <returns></returns>
+        [DllImport("PBusDrv.dll", CharSet = CharSet.Ansi)]
+        static extern int PBusDisConnectEx(string ipAddr);
+
+        /// <summary>
+        /// 清除全部PLU
+        /// </summary>
+        /// <returns></returns>
+        [DllImport("PBusDrv.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
+        static extern int PBusClearPLUData();
+
+    }
+    public struct TPlu
+    {
+        public string Name;//品名 36个字符
+        public int LFCode;//生鲜码，1-999999，唯一识别每一种生鲜商品
+        public string Code;//货号，10位数字，用来组成条码
+        public int BarCode;//条码类型 0-99
+        public int UnitPrice;//单价，无小数点模式0-9999999
+        public int WeightUnit;//称重单位 0-12
+        public string Deptment;//部门，2位数字，用来组成条码
+        public double Tare;//皮重，15kg以内
+        public int ShlefTime;//保存期0-365
+        public int PackageType;//包装类型,0:普通/限重模式,1:定重包装,2:定价包装,3:条码打印机模式
+        public double PackageWeight;//包装重量/限重重量,逻辑换算后应在15Kg内
+        public int Tolerance;//包装误差,0-20
+        public byte Message1;//信息1,0-197
+        public byte Reserved;//保留
+        public short Reserved1;//保留
+        public byte Message2;//保留
+        public byte Reserved2;//保留
+        public byte MultiLabel;//多标签,0-255,8个Bit位分别对应A0-D1
+        public short Rebate;//折扣,0-99
+        public int Account;//入账,保留
+    }
+}

@@ -1,0 +1,136 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class PositionService
+    {
+        [Ninject.Inject]
+        IBaseRepository<SysPositions> PositionRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysDepartments> DepartRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysUser> UserRepository { get; set; }
+        [Ninject.Inject]
+        DepartMentService DeptService { get; set; }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var status = nvl["Status"];
+            var queryPosit= PositionRepository.GetQuery();
+            var queryUser = UserRepository.GetQuery();
+            var queryDept = DepartRepository.GetQuery();
+            var query = from x in queryPosit
+                        orderby x.UpdateDT
+                        select new { 
+                            x.Id,
+                            x.Code,
+                            x.Title,
+                            x.UpdateDT,
+                            x.UpdateUID,
+                            x.Status,
+                            x.DeptId,
+                            Updater = (x.UpdateUID == null || x.UpdateUID == string.Empty) ? string.Empty : queryUser.Where(o => o.UserId == x.UpdateUID).Select(o => o.FullName).FirstOrDefault(),
+                            UserCount = queryUser.Count(o => o.PositId == x.PositId),
+                            //DepartMent=x.DeptId>0?queryDept.Where(o=>o.DeptId==x.DeptId).Select(o=>o.Title).FirstOrDefault():string.Empty,
+                            //PDepartMent = x.DeptId > 0 ?queryDept.Where(i=>i.DeptId== queryDept.Where(o => o.DeptId == x.DeptId).Select(o => o.PDeptId).FirstOrDefault()).Select(o=>o.Title).FirstOrDefault()+"/" : string.Empty,
+                        };
+            if(!status.IsNullOrEmpty())
+            {
+                var st = Convert.ToBoolean(status);
+                query = query.Where(o => o.Status == st);
+            }
+            var list= query.ToList();
+            var depts= DeptService.GetFullTitle(true);
+            return list.Select(x => new
+            {
+                x.Id,
+                x.Code,
+                x.Title,
+                x.UpdateDT,
+                x.UpdateUID,
+                x.Status,
+                x.Updater,
+                x.UserCount,
+                DepartMent = GetDepartment(x.DeptId,depts)
+            });
+        }
+        string GetDepartment(string deptId,Dictionary<int,string> depts)
+        {
+            if (deptId.IsNullOrEmpty()) return "";
+            var ids= deptId.Split(',').Select(o=>int.Parse(o));
+            return string.Join("<br>", depts.Where(o => ids.Contains(o.Key)).Select(o=>o.Value));
+        }
+        public OpResult SaveOrUpdate(SysPositions obj,string insert,string delete)
+        {
+            if (!obj.Code.IsNullOrEmpty() && PositionRepository.IsExists(o => o.Code == obj.Code && o.Id != obj.Id))
+                return OpResult.Fail("该代码已存在!");
+            var insertList = new List<SysDepartments>();
+            var deleteList = new List<SysDepartments>();
+            if(!insert.IsNullOrEmpty())
+            {
+                 insertList.AddRange( insert.ToObject<List<SysDepartments>>().Where(o=>o.DeptId>0));
+            }
+            if (!delete.IsNullOrEmpty())
+            {
+                deleteList.AddRange(delete.ToObject<List<SysDepartments>>().Where(o => o.DeptId > 0));
+            }
+            if (obj.Id == 0)
+            {
+                obj.PositId = Guid.NewGuid().ToString("n");
+                obj.UpdateDT=obj.CreateDT = DateTime.Now;
+                obj.UpdateUID= obj.CreateUID = CurrentUser.UID;
+                obj.Status = true;
+                
+                PositionRepository.Add(obj, false);
+            }
+            else
+            {
+                var menu = PositionRepository.Get(obj.Id);
+                obj.ToCopyProperty(menu, new List<string>() { "CreateDT", "CreateUID", "Status", "PositId", "DeptId" });
+                menu.UpdateDT = DateTime.Now;
+                menu.UpdateUID = CurrentUser.UID;
+                obj = menu;
+            }
+            if (insertList.Any())
+            {
+                if (!obj.DeptId.IsNullOrEmpty())
+                    insertList.InsertRange(0,obj.DeptId.Split(',').Select(o => new SysDepartments() { DeptId = int.Parse(o) }));
+                obj.DeptId = string.Join(",", insertList.Select(o => o.DeptId));
+            }
+            if (deleteList.Any())
+            {
+                var source= obj.DeptId.Split(',').Select(o=>int.Parse(o)).ToList();
+                source.RemoveAll(o => deleteList.Select(i => i.DeptId).Contains(o));
+                obj.DeptId = string.Join(",", source);
+            }
+            PositionRepository.SaveChanges(obj);
+            return OpResult.Success();
+        }
+        public OpResult Deletes(int[] ids)
+        {
+            var list = PositionRepository.GetQuery(o => ids.Contains(o.Id)).ToList();
+            PositionRepository.RemoveRange(list);
+            return OpResult.Success();
+        }
+        public SysPositions Get(int id)
+        {
+            return PositionRepository.Get(id);
+        }
+        public List<SysPositions> GetPositByDept(int deptId)
+        {
+            return PositionRepository.GetQuery(o=>o.Status && ("," + o.DeptId + ",").Contains("," + deptId + ",")).ToList();
+        }
+        public void SetState(short mode, int id)
+        {
+            var obj = Get(id);
+            obj.Status = mode == 1;
+            PositionRepository.SaveChanges();
+        }
+    }
+}

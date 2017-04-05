@@ -1,0 +1,63 @@
+﻿using Pharos.Logic.MemberDomain.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+
+namespace Pharos.Logic.MemberDomain
+{
+    public abstract class BaseIntegralRuleProvider<TScene> : IIntegralRuleProvider
+        where TScene : IScene, new()
+    {
+        public virtual int ProviderId
+        {
+            get { return GetProviderId(); }
+        }
+        public abstract IEnumerable<IIntegralRule> GetRuleDatas(object info = null);
+        public abstract int GetProviderId();
+
+        public IEnumerable<IIntegralRule> GetRules(object info = null)
+        {
+            return GetRuleDatas(info);
+        }
+        public virtual IEnumerable<int> GetMeteringModes(IEnumerable<IIntegralRule> providerRules)
+        {
+            return providerRules.Select(o => o.MeteringMode).Distinct();
+        }
+
+        public virtual IEnumerable<IIntegralRule> VerifyRules(IEnumerable<IIntegralRule> providerRules, TScene scene)
+        {
+            return providerRules.Where(item =>
+            {
+                var rule = (IIntegralRule<TScene>)item;
+                return rule.VerifyExpression.Compile()(scene);
+            }).ToList();
+        }
+        public virtual IEnumerable<IIntegralRule> VerifyRules(IEnumerable<IIntegralRule> providerRules, IScene scene)
+        {
+            return VerifyRules(providerRules, (TScene)scene);
+        }
+        public virtual IDictionary<IIntegralRule, decimal> RunExpression(IEnumerable<IIntegralRule> efficientRules, TScene scene)
+        {
+            var result = new Dictionary<IIntegralRule, decimal>();
+            foreach (var item in efficientRules)
+            {
+                var rule = (IIntegralRule<TScene>)item;
+                var integral = rule.IntegralExpression.Compile()(scene);
+                result.Add(rule, integral);
+            }
+            return result;
+        }
+        public IDictionary<IIntegralRule, decimal> RunExpression(IEnumerable<IIntegralRule> efficientRules, IScene scene)
+        {
+            return RunExpression(efficientRules, (TScene)scene);
+        }
+
+        public abstract IEnumerable<IScene> GetTScenes(object channelMessage, IEnumerable<int> meteringModes);
+        public virtual IEnumerable<IScene> GetScenes(object channelMessage, IEnumerable<int> meteringModes)
+        {
+            return GetTScenes(channelMessage, meteringModes);
+        }
+    }
+}

@@ -1,0 +1,130 @@
+﻿using System.Web.Mvc;
+using System.ComponentModel.DataAnnotations;
+using System.Collections.Generic;
+using System.Linq;
+using Pharos.Utility;
+using Pharos.Logic;
+using Pharos.Logic.BLL;
+using Pharos.Utility.Helpers;
+
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class AccountController : Controller
+    {
+        public ActionResult Login()
+        {
+            //if (CurrentUser.IsLogin)
+            //{
+            //    //已登录，则直接进入主界面
+            //    return Redirect(Url.Action("Index", "Home"));
+            //}
+            var user = new UserLogin();
+            if (Cookies.IsExist("remuc"))
+            {
+                user.UserName= Cookies.Get("remuc", "_uname");
+                user.UserPwd= Cookies.Get("remuc", "_pwd");
+                user.RememberMe = true;
+            }
+            return View(user);
+            
+        }
+
+        [HttpPost]
+        public ActionResult Login(UserLogin user)
+        {
+            if (!ModelState.IsValid) return View(user);
+            var pwd=Pharos.Utility.Security.MD5_Encrypt(user.UserPwd);
+            var obj = UserInfoService.Find(o => o.LoginName == user.UserName && o.LoginPwd == pwd && o.Status == 1);
+            if (obj == null)
+            {
+                ViewBag.msg = "帐户或密码输入不正确!";
+                return View(user);
+            }
+            var op = Authorize.LoinValidator(CommonService.CompanyId);
+            if(!op.Successed)
+            {
+                ViewBag.msg = op.Message;
+                return View(user);
+            }
+            new Sys.CurrentUser().Login(obj,user.RememberMe);
+            return Redirect(Url.Action("Index", "Home"));
+        }
+
+        #region 个人信息
+        public ActionResult UserInfo()
+        {
+            var userBll= new Pharos.Sys.BLL.SysUserInfoBLL();
+            var model = userBll.GetModelByUID(Sys.CurrentUser.UID);
+            List<SelectListItem> storeRoles = null;
+            if(!Sys.CurrentUser.StoreId.IsNullOrEmpty())
+            {
+                var user= userBll.GetStoreUser(Sys.CurrentUser.StoreId).FirstOrDefault(o=>o.UID==Sys.CurrentUser.UID);
+                if(user!=null && !user.OperateAuth.IsNullOrEmpty())
+                {
+                    var auths = user.OperateAuth.Split('|');
+                    storeRoles = new List<SelectListItem>();
+                    foreach(var o in auths)
+                    {
+                        if(o.IsNullOrEmpty()) continue;
+                        if(o.StartsWith(Sys.CurrentUser.StoreId+","))
+                        {
+                            var role = o.Substring(o.LastIndexOf(',') + 1);
+                            storeRoles.Add(new SelectListItem() { 
+                                Value=role,Text=role=="1"?"店长":role=="2"?"营业员":role=="3"?"收银员":"数据维护",Selected=true
+                            });
+                        }
+                    }
+                }
+            }
+            ViewBag.BumenTitle = new Pharos.Sys.BLL.SysDepartmentBLL().GetModelByDepId(model.BumenId).Title;
+            ViewBag.PositionTitle = new Pharos.Sys.BLL.SysDataDictionaryBLL().GetExtModelByDicSN(model.PositionId).Title;
+            var roleBLL = new Pharos.Sys.BLL.SysRoleBLL();
+            var roleIdArray = model.RoleIds.Split(',');
+            var roleTitle = string.Empty;
+            var roleStr = string.Empty;
+            foreach (var item in roleIdArray)
+            {
+                roleTitle = roleBLL.GetModelByRoleId(int.Parse(item)).Title;
+                if(string.IsNullOrEmpty(roleStr)) roleStr=roleTitle;
+                else roleStr += "、" + roleTitle;
+            }
+            ViewBag.RoleStr = roleStr;
+            ViewBag.StoreRoles = storeRoles;
+            return View(model);
+        }
+        [HttpPost]
+        public ActionResult UserInfo(int Id, string LoginPwd)
+        {
+            var userBLL = new Pharos.Sys.BLL.SysUserInfoBLL();
+            var model = userBLL.GetModel(Id);
+            model.LoginPwd = LoginPwd;
+            var result = userBLL.SaveUser(model);
+            return Content(result.ToJson());
+        }
+        #endregion
+    }
+
+    public class UserLogin
+    {
+        /// <summary>
+        /// 用户名
+        /// </summary>
+        [Display(Name = "用户名", Description = "4-20个字符。")]
+        [Required(ErrorMessage = "×")]
+        [StringLength(20, MinimumLength = 1, ErrorMessage = "×")]
+        public string UserName { get; set; }
+
+        /// <summary>
+        /// 密码
+        /// </summary>
+        [Display(Name = "密码", Description = "6-20个字符。")]
+        [Required(ErrorMessage = "×")]
+        [StringLength(20, MinimumLength = 1, ErrorMessage = "×")]
+        [DataType(DataType.Password)]
+        public string UserPwd { get; set; }
+
+        public bool RememberMe { get; set; }
+
+        public string StoreId { get; set; }
+    }
+}

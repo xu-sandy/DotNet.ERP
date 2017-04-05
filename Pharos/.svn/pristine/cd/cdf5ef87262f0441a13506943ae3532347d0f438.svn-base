@@ -1,0 +1,52 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类别：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("parentType", ViewBag.parenttypes as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+            </td>
+        </tr>
+    </table>
+}
+
+<script type="text/javascript">
+    pharos.managertree.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'text', title: '分类名称', width: 150 },
+        //{ field: 'CategoryPSNTitle', title: '上级分类', width: 150,hidden:true },
+        { field: 'Count', title: '档案商品量', width: 150 },
+        //{ field: 'StateTitle', title: '状态', width: 150 }
+    ]];
+    pharos.managertree.geturl = "@Url.Action("FindProductTypeList")";
+
+    pharos.managertree.sortName = "OrderNum";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "text";
+    pharos.managertree.pagination = false;
+    //pharos.managertree.$dg.treegrid({checkbox:true});
+
+
+    $(function () {
+        $("#treegrid").treegrid({
+            url: "@Url.Action("FindProductTypeList")",
+            columns: [[
+                { field: 'id', title: '分类Id', width: 80 },
+                { field: 'text', title: '分类名称', width: 150 },
+                //{ field: 'CategoryPSNTitle', title: '上级分类', width: 150,hidden:true },
+                { field: 'Count', title: '档案商品量', width: 150 },
+            ]],
+            border: false,
+            fit: true,
+            rownumbers: true,
+            checkbox: true,
+            idField: "id",
+            treeField: "text"
+        })
+    })
+</script>

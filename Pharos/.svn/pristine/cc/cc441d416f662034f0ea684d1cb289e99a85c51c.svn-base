@@ -1,0 +1,59 @@
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.BLL;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
+using System.Web;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS;
+using QCT.Pay.Common;
+using System.Collections;
+
+namespace QCT.Api.Pay.Utils
+{
+    /// <summary>
+    /// 商户支付帮助类
+    /// </summary>
+    public class PayConfig
+    {
+        private static string _sxfPayNotifyUrl = string.Empty;
+        private static string _sxfRefundNotifyUrl = string.Empty;
+        #region sxf url
+        /// <summary>
+        /// 第三方随心付支付结果通知URL
+        /// </summary>
+        public static string SxfPayNotifyUrl
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_sxfPayNotifyUrl))
+                {
+                    _sxfPayNotifyUrl = Config.GetAppSettings("sxfurl_notify_pay");
+                }
+                return _sxfPayNotifyUrl;
+            }
+        }
+        /// <summary>
+        /// 第三方随心付退款结果通知URL
+        /// </summary>
+        public static string SxfRefundNotifyUrl
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_sxfRefundNotifyUrl))
+                {
+                    _sxfRefundNotifyUrl = Config.GetAppSettings("sxfurl_notify_refund");
+                }
+                return _sxfRefundNotifyUrl;
+            }
+        }
+        #endregion
+    }
+}

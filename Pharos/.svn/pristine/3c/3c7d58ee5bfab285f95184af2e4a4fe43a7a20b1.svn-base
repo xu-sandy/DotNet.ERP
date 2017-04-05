@@ -1,0 +1,75 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, editText: "订单详情"));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar" style="margin-right:5px;">
+                @Html.DropDownList("State", ViewBag.states as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+            </td>
+            <td class="label-toolbar">
+                <label>订购日期：</label>
+            </td>
+            <td>
+                <input name="StartDate" id="StartDate" class="Wdate datacontrol" style="width: 100px;margin-top:-5px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td>
+                <label style="margin-left: 5px; margin-right: 5px;position:relative;top:-3px; ">-</label>
+            </td>
+            <td>
+                <div class="input">
+                    <label>
+                        <input name="EndDate" id="EndDate" class="Wdate datacontrol" style="width: 100px; margin-top: -5px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+                    </label>
+                </div>
+            </td>
+        </tr>
+    </table>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("OrderDeliveryList", "Mspp")";   //?sup=1&";
+    pharos.manager.editurl = "@Url.Action("OrderDetail")";
+
+    pharos.manager.columns = [[
+        //{ field: 'Id', checkbox: false, width: 0 },
+        { field: 'IndentOrderId', title: '订货单号', width: 120, align: 'center' },
+        { field: 'StateTitle', title: '状态', width: 60, align: 'center' },
+        { field: 'StoreTitle', title: '订货单位', width: 120, align: 'center' },
+        { field: 'RecipientsTitle', title: '收货人', width: 80, align: 'center' },
+        { field: 'Phone', title: '联系电话', width: 100, align: 'center' },
+        { field: 'OrderGiftnum', title: '订货/赠品数量', width: 90, align: 'center' },
+        { field: 'OrderTotal', title: '订货总额', width: 70, align: 'center' },
+        { field: 'DeliveryNums', title: '配送数量', width: 70, align: 'center' },
+        { field: 'AcceptNums', title: '收货数量', width: 70, align: 'center' },
+        { field: 'CreateDT', title: '订购日期', width: 90, align: 'center' },
+        { field: 'PeiSongStartDate', title: '配送开始日期', width: 90, align: 'center' },
+        { field: 'PeiSongEndDate', title: '配送完成日期', width: 90, align: 'center' }
+    ]];
+    //pharos.manager.editItem = function (Id) {
+    //    this.Id = Id;
+    //    openDialogMax(this.editText, this.editurlNocache());
+    //    window.top.$("#lbsave .l-btn-text").html("配送");     
+    //}
+
+    pharos.manager.editItem = function (Id, row) {
+        var w = $(window.parent).width() - 80;
+        var h = $(window.parent).height() - 80;
+        this.Id = Id;
+        if (row.StateTitle == "已中止" || row.StateTitle == "已配送" || row.StateTitle == "已收货")
+        {
+            openDialog(this.editText, this.editurlNocache(), w, h, true);
+        }
+        else
+        { 
+            openDialog(this.editText, this.editurlNocache(), w, h);
+            window.top.$("#lbsave .l-btn-text").html("配送");
+        }
+    }
+       
+</script>
+

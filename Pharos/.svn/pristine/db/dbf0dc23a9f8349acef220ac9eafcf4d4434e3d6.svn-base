@@ -1,0 +1,135 @@
+﻿using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using System.Data.Entity;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Sys.Entity;
+using Pharos.Logic.DAL;
+namespace Pharos.Logic.BLL
+{
+    public class SupplierService : BaseService<Supplier>
+    {
+        static CommonDAL _dal = new CommonDAL();
+        /// <summary>
+        /// 用于datagrid列表
+        /// </summary>
+        /// <param name="nvl">传递条件</param>
+        /// <param name="recordCount">返回总行数</param>
+        /// <returns>list</returns>
+        public static object FindPageList(NameValueCollection nvl, out int recordCount)
+        {
+            var query = BaseService<VwSupplier>.CurrentRepository.Entities;
+            var sn = nvl["searchText"];
+            var state = nvl["state"].IsNullOrEmpty() ? -1 : short.Parse(nvl["state"]);
+            var express = DynamicallyLinqHelper.True<VwSupplier>().And(o => 
+                    (o.Title != null && o.Title.Contains(sn)) ||
+                    (o.FullTitle != null && o.FullTitle.Contains(sn)) ||
+                    (o.MobilePhone != null && o.MobilePhone.Contains(sn)) ||
+                    (o.Linkman!=null && o.Linkman.Contains(sn)) ,sn.IsNullOrEmpty())
+                    .And(o=>o.State==state,state==-1);
+            var p = query.Where(express);
+            var q = p.Where(o => o.BusinessType == 1);
+            recordCount = q.Count();
+            var pages = q.ToPageList(nvl);
+            var list = pages.Select(o => new
+            {
+                o.Id,
+                o.Title,
+                o.MasterAccount,
+                o.Linkman,
+                o.MobilePhone,
+                o.Tel,
+                o.ClassName,
+                o.ContractSN,
+                o.EndDate,
+                State = GetState(o.State),
+                o.OrderNum,
+                o.Designeer,
+                o.BusinessType
+            }).ToList();
+            return list;
+        }
+        public static OpResult SaveOrUpdate(Supplier obj)
+        {
+            var re = new OpResult();
+            if (!obj.MasterAccount.IsNullOrEmpty() && SupplierService.IsExist(o => o.Id != obj.Id && o.MasterAccount == obj.MasterAccount && o.BusinessType == 1))
+                re.Message = "账号已存在";
+            else if (!obj.Title.IsNullOrEmpty() && SupplierService.IsExist(o => o.Id != obj.Id && o.Title == obj.Title && o.BusinessType==1))
+                re.Message = "供应商简称已存在";
+            else if (!obj.FullTitle.IsNullOrEmpty() && SupplierService.IsExist(o => o.Id != obj.Id && o.FullTitle == obj.FullTitle && o.BusinessType == 1))
+                re.Message = "供应商全称已存在";
+            else if (obj.Id.IsNullOrEmpty())
+            {
+                obj.Id = Logic.CommonRules.GUID;
+                obj.BusinessType = 1;
+                re = SupplierService.Add(obj);
+            }
+            else
+            {
+                var supp = SupplierService.FindById(obj.Id);
+                var exc = new List<string>();
+                if (obj.MasterPwd.IsNullOrEmpty())
+                    exc.Add("MasterPwd");
+                obj.ToCopyProperty(supp, exc);
+                re = SupplierService.Update(supp);
+            }
+            return re;
+        }
+        /// <summary>
+        /// 供应商
+        /// </summary>
+        /// <returns></returns>
+        public static List<Supplier> GetList()
+        {        
+            return FindList(o=>o.BusinessType==1);
+        }
+        /// <summary>
+        /// 批发商
+        /// </summary>
+        /// <returns></returns>
+        public static List<Supplier> GetWholesalerList()
+        {
+            return FindList(o => o.BusinessType == 2);
+        }
+        public static System.Data.DataTable GetProductsBySupplierId(string supplierId, out int recordCount)
+        {
+            return _dal.GetProductsBySupplierId(supplierId,out recordCount);
+        }
+        static string GetTitle(List<SysDataDictionary> types,int id )
+        {
+            var obj= types.FirstOrDefault(o => o.DicSN == id);
+            if (obj == null) return "";
+            return obj.Title;
+        }
+
+        static string GetState(short? state)
+        {
+            if (state == null) return "";
+            return Enum.GetName(typeof(ContractState), state);
+        }
+        static Contract GetContract(ICollection<Contract> list,string state)
+        {
+            if (list == null) return null;
+            if (state.IsNullOrEmpty()) return list.OrderByDescending(i => i.CreateDT).FirstOrDefault();
+            var st = short.Parse(state);
+            return list.Where(o => o.State == st).OrderByDescending(i => i.CreateDT).FirstOrDefault();
+        }
+        static string GetUser(string uid,List<SysUserInfo> list)
+        {
+            if (uid.IsNullOrEmpty()) return "";
+            var obj = list.FirstOrDefault(o => o.UID == uid);
+            if (obj == null) return "";
+            return obj.FullName;
+        }
+
+        public static IEnumerable<Supplier> GetAllSupplier()
+        {
+           return  CurrentRepository.FindList(o => true).ToList();
+        }
+    }
+    
+}

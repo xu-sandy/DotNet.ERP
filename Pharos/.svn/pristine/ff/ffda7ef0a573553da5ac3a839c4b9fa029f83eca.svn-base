@@ -1,0 +1,82 @@
+﻿using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class PayItem : BaseViewModel
+    {
+        public string Title { get; set; }
+
+        public bool Enable { get; set; }
+
+        string _EnableIcon;
+        public string EnableIcon
+        {
+            get
+            {
+                return _EnableIcon;
+            }
+            set
+            {
+                _EnableIcon = value;
+                this.OnPropertyChanged(o => o.Icon);
+            }
+        }
+        string _DisableIcon;
+        public string DisableIcon
+        {
+            get
+            {
+                return _DisableIcon;
+            }
+            set
+            {
+                _DisableIcon = value;
+                this.OnPropertyChanged(o => o.Icon);
+            }
+        }
+
+        public string ApiCodes { get; set; }
+
+        public PayMode Mode { get; set; }
+
+
+        public ImageSource Icon
+        {
+            get
+            {
+                if (Enable)
+                {
+                    return new BitmapImage(new Uri(EnableIcon));
+                }
+                else
+                {
+                    return new BitmapImage(new Uri(DisableIcon));
+
+                }
+            }
+        }
+
+        public GeneralCommand<object> DoPayCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    switch (Mode)
+                    {
+                        case PayMode.CashPay:
+                            break;
+                        //Todo call  pay way page
+                    }
+                });
+            }
+        }
+    }
+}

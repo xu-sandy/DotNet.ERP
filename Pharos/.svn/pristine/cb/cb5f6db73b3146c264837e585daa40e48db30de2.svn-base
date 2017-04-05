@@ -1,0 +1,59 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.MessageTransferAgenClient.Test
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Action<TestEvent> action = (t) =>
+            {
+                Console.WriteLine("接收到推送消息主题：");
+                Console.WriteLine(t.ID);
+                Console.WriteLine(t.TimeStamp);
+                Console.WriteLine(t.Msg);
+            };
+            while (true)
+            {
+                Console.WriteLine("请输入命令（-r/-p/-q）：");
+
+                switch (Console.ReadLine())
+                {
+                    case "-r":
+                        Console.WriteLine("请输入订阅主题：");
+                        new Pharos.MessageTransferAgenClient.DomainEvent.EventAggregator().Subscribe<TestEvent>(Console.ReadLine(), action);
+                        break;
+                    case "-p":
+                        Console.WriteLine("请输入推送主题：");
+                        var topic = Console.ReadLine();
+                        Console.WriteLine("请输入推送内容：");
+                        new Pharos.MessageTransferAgenClient.DomainEvent.EventAggregator().Publish(topic, new TestEvent(){Msg = Console.ReadLine()});
+                        break;
+                    case "-q":
+                        return;
+                }
+            }
+            
+        }
+
+    }
+
+    public class TestEvent : Pharos.MessageTransferAgenClient.DomainEvent.IEvent
+    {
+        public TestEvent()
+        {
+            ID = Guid.NewGuid();
+            TimeStamp = DateTime.Now;
+        }
+
+        public System.Guid ID { get; set; }
+
+        public System.DateTime TimeStamp { get; set; }
+
+        public string Msg { get; set; }
+    }
+}

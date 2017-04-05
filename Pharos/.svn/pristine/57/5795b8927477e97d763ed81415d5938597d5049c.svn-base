@@ -1,0 +1,858 @@
+﻿@model Pharos.Logic.Entity.ReturnRules
+@{
+    ViewBag.Title = "CreateReturnRules";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style>
+    .trheight {
+        height: 35px;
+    }
+
+    .hideItems {
+        display: none;
+    }
+
+    .name {
+        width: 13%;
+    }
+
+    .input {
+        width: 86%;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div id="winType" class="easyui-dialog" data-options="title:'选择品类',cache:false,modal:true,width:800,height:450,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+        <div id="win" class="easyui-dialog" data-options="title:'选择商品',cache:false,modal:true,width:800,height:450,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+        <div class="content">
+            <table id="mainTable" class="table-form" width="98%" height="180px">
+                <tr class="trheight">
+                    <td class="name">有效期：</td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.ExpiryStart, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", id = "StartDate", data_options = "required:true", autocomplete = "off" }) -
+                        @Html.TextBoxFor(o => o.ExpiryEnd, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", id = "EndDate", data_options = "validType:'greaterEqualDate[\"#StartDate\"]',invalidMessage:'结束日期必须大于等于开始日期' ", autocomplete = "off", @title = "结束日期为空表示永久" })
+                    </td>
+                </tr>
+                <tr class="trheight">
+                    <td class="name">时效：</td>
+                    <td class="input">
+                        @Html.RadioButtonList(new List<SelectListItem>() {
+                       new SelectListItem() { Text = "全天", Value = "0",Selected=true },
+                       new SelectListItem() { Text = "每周", Value = "1" },
+                       new SelectListItem() { Text = "时段", Value = "2" } }, "AgingType")
+                    </td>
+                </tr>
+                <tr id="times" style="display:none">
+                    <td></td>
+                    <td>
+                        @Html.TimeBoxList(new List<string>() { "09:00", "11:00", "", "", "", "" }, "times")
+                    </td>
+                </tr>
+                <tr id="timeweeks" style="display:none">
+                    <td></td>
+                    <td>
+                        @Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "周一", Value = "1"},
+                       new SelectListItem() { Text = "周二", Value = "2" } ,new SelectListItem() { Text = "周三", Value = "3" } ,
+                       new SelectListItem() { Text = "周四", Value = "4" } ,new SelectListItem() { Text = "周五", Value = "5" } ,
+                       new SelectListItem() { Text = "周六", Value = "6" } ,new SelectListItem() { Text = "周日", Value = "0" } }, "timeWeek")
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">对应会员：</td>
+                    <td class="input">@Html.RadioButtonList(ViewBag.MemberLevels as List<SelectListItem>, "MemberLevelId")</td>
+                </tr>
+                <tr class="trheight">
+                    <td class="name">适配规则：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.Adapters, ViewBag.Adapters as List<SelectListItem>, new { @class = "easyui-combobox;required:true", style = "width:200px;" })</td>
+                </tr>
+                <tr class="trheight">
+                    <td class="name">计量方式：</td>
+                    <td class="input" id="modes"></td>
+                </tr>
+                <tr class="trheight">
+                    <td class="name">规则：</td>
+                    <td class="input">
+                        <input type="text" name="Number1" class="easyui-numberbox" style="width:80px" value="@Model.Number1" data-options=" precision:2" />
+                        @Html.DropDownListFor(o => o.LeftSign, ViewBag.LeftSign as List<SelectListItem>, new { @class = "easyui-combobox;required:true", style = "width:80px;" })
+                        实际消费
+                        @Html.DropDownListFor(o => o.RightSign, ViewBag.RightSign as List<SelectListItem>, new { @class = "easyui-combobox", style = "width:80px;" })
+                        <input type="text" id="number2" name="Number2" class="easyui-numberbox" style="width:80px" value="@Model.Number2" data-options=" precision:2" />
+                    </td>
+                </tr>
+
+                <tr id="payWays" class="hideItems trheight">
+                    <td class="name">支付方式：</td>
+                    <td class="input choose">@Html.CheckBoxList(ViewBag.ApiTypes as List<SelectListItem>, "apiTypes")</td>
+                </tr>
+                <tr id="categorys" class="hideItems trheight">
+                    <td class="name">选择品类：</td>
+                    <td>
+                        <a href="#" class="easyui-linkbutton" onclick="SelectType('grid3')" style="margin:5px 0px;">添加指定品类</a>
+                        <table id="grid3" style="width:720px;"></table>
+                    </td>
+                </tr>
+                <tr id="products" style="min-height:100px" class="hideItems trheight">
+                    <td class="name">选择商品：</td>
+                    <td>
+                        <a href="#" class="easyui-linkbutton" onclick="selectProduct('grid')" style="margin:5px 0px;">添加指定单品</a>
+                        <table id="grid" style="width:800px;"></table>
+                    </td>
+                </tr>
+                <tr class="trheight">
+                    <td class="name">运算方式：</td>
+                    <td class="input">
+                        @Html.DropDownListFor(o => o.OperationType, ViewBag.OperationType as List<SelectListItem>, new { @class = "easyui-combobox", style = "width:100px;" })
+                        赠送
+                        <input type="text" name="Expression" class="easyui-textbox" style="width:120px" data-options="required:true" value="@Model.Expression" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">限量：</td>
+                    <td class="input">
+                        <input type="text" name="LimitNum" class="easyui-textbox" style="width:100px" value="@Model.LimitNum">
+                    </td>
+                </tr>
+                <tr class="trheight">
+                    <td class="name">赠送类型：</td>
+                    <td class="input">@Html.RadioButtonList(ViewBag.GivenType as List<SelectListItem>, "GivenType")</td>
+                </tr>
+                <tr class="trheight">
+                    <td class="name">状态：</td>
+                    <td class="input">@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "未开始", Value = "0" }, new SelectListItem() { Text = "活动中", Value = "1" }, new SelectListItem() { Text = "已过期", Value = "2" } }, "State")</td>
+                </tr>
+            </table>
+        </div>
+        @Html.HiddenFor(o => o.Mode);
+        @Html.HiddenFor(o => o.LimitItems);
+        @Html.HiddenFor(o => o.StartTime1);
+        @Html.HiddenFor(o => o.EndTime1);
+        @Html.HiddenFor(o => o.StartTime2);
+        @Html.HiddenFor(o => o.EndTime2);
+        @Html.HiddenFor(o => o.StartTime3);
+        @Html.HiddenFor(o => o.EndTime3);
+    }
+</div>
+<script>
+    var $dg2;
+    var editProcIndex = undefined, comboRows = [], opaddPro = false, $dgType, opaddType = false, editTypeIndex = undefined;
+
+    var modes=@Html.Raw(ViewBag.Modes);
+    //radio dom
+    var htmlDom="<td style='padding:0px 3px;'><input type='radio' id='{{0}}' name='modes' value='{{1}}' style='vertical-align:middle'><label for='{{0}}' style='vertical-align:middle;padding-left:3px;'>{{2}}</label></td>";
+    $(function () {
+
+        pharos.dropdown['brands'] =@Html.Raw(ViewBag.brands) ;
+        pharos.dropdown['parenttypes'] =@Html.Raw(ViewBag.parenttypes) ;
+
+        //规则判断符号变更
+        $("#LeftSign").combobox({
+            onChange: function (n, o) {
+                //选择小于、小于等于 的禁止选择后面表达式
+                if (n >= 225) {
+                    $("#RightSign").combobox('disable');
+                    $("#number2").textbox('textbox').attr('readonly', true);
+                    $("#number2").textbox('setValue',"");
+                } else {
+                    $("#RightSign").combobox('enable');
+                    $("#number2").textbox('textbox').attr('readonly', false);
+                }
+            }
+        })
+        $("#LeftSign").combobox('setValue', 223);
+        //适配规则变更
+        $("#Adapters").combobox({
+            onChange:function(n,o){
+                showUnitRadio(n);
+                //对应节点的显示
+                $(".hideItems").hide();
+                switch (n) {
+                    //case "218"://付款方式
+                    //    $("#payWays").show();
+                    //    break;
+                    case "219"://指定品类
+                        $("#grid3").datagrid('resize');
+                        $("#categorys").show();
+                        break;
+                    case "218"://具体商品
+                        $("#grid").datagrid('resize');
+                        if(@Model.Id==0)
+                        {
+                            var rows= $("#grid").datagrid("getRows");
+                            if(rows.length==0)
+                                appendItemProc();
+                        }
+                        $("#products").show();
+                        break;
+                }
+            }
+        });
+        $("#Adapters").combobox('setValue', "-1");
+        //适配规则变更 radio
+        //$("input[name=Adapters]").each(function (index, item) {
+        //    $(this).click(function () {
+        //        var val = $(this).val();
+        //        $(".hideItems").hide();
+        //        switch (val) {
+        //            case "218"://付款方式
+        //                $("#payWays").show();
+        //                break;
+        //            case "219"://指定品类
+        //                $("#grid3").datagrid('resize');
+        //                $("#categorys").show();
+        //                break;
+        //            case "220"://具体商品
+        //                $("#grid").datagrid('resize');
+        //                $("#products").show();
+        //                break;
+        //        }
+        //    })
+        //})
+        //品类网格
+        $("#grid3").datagrid({
+            url: "@Url.Action("GetReturnRuleById")?id="+@Model.Id+"&adapert=219",
+            showFooter: false,
+            border: true,
+            rownumbers: true,
+            fit: false,
+            fitColumns: true,
+            pagination: false,
+            singleSelect: true,
+            onLoadSuccess: grid3LoadSuccess,
+            columns: [[
+                { field: 'Id', hidden: true, editor: { type: 'textbox' } },
+                { field: 'StrId', hidden: true, editor: { type: 'textbox' } },
+                { field: 'CategorySN', hidden: true, editor: { type: 'textbox' }, width: 120, title: '类别' },
+                { field: 'CategoryGrade', hidden: true, editor: { type: 'textbox' }, width: 120, title: '层级' },
+                { field: 'BrandSN', hidden: true, editor: { type: 'textbox' }, width: 120, title: '品牌ID' },
+                { field: 'BigCategoryTitle', editor: { type: 'combobox', options: { required: false, data: pharos.dropdown['parenttypes'], onSelect: bigTypeSelect1, editable: false } }, width: 80, title: '大类' },
+                { field: 'MidCategoryTitle', editor: { type: 'combobox', options: { required: false, onSelect: midTypeSelect1, editable: false } }, width: 80, title: '中类' },
+                { field: 'SubCategoryTitle', editor: { type: 'combobox', options: { required: false, onSelect: childTypeSelect1, editable: false } }, width: 80, title: '子类' },
+                { field: 'BrandTitle', hidden: true, editor: { type: 'combobox', options: { data: pharos.dropdown['brands'], onSelect: brandSelect1 } }, width: 80, title: '品牌' },
+                { field: 'StockNums', hidden: true, editor: { type: 'textbox', options: { disabled: true } }, width: 80, title: '库存' },
+                { field: 'Editor', formatter: operationType, width: 120, title: '操作' }
+            ]]
+        });
+
+        //具体商品网格
+        $("#grid").datagrid({
+            url: "",
+            showFooter: false,
+            border: true,
+            rownumbers: true,
+            fit: false,
+            fitColumns: true,
+            pagination: false,
+            singleSelect: true,
+            onLoadSuccess: appendItemProc,
+            columns: [[
+                { field: 'ProductCode', editor: { type: 'textbox', options: { disabled: true } }, width: 100, title: '货号' },
+                {
+                    field: 'Barcode', title: '条码', editor: {
+                        type: 'combobox', options: {
+                            prompt: '请输入条码...',
+                            //required: true,
+                            mode: 'remote',
+                            valueField: 'barcode',
+                            textField: 'title',
+                            loader: comboload,
+                            onChange: comboSelect2,
+                        }
+                    }, width: 120
+                },
+                { field: 'Title', editor: { type: 'textbox', options: { disabled: true } }, width: 150, title: '品名' },
+                { field: 'CategoryTitle', editor: { type: 'textbox', options: { disabled: true } }, width: 100, title: '品类' },
+                { field: 'SubUnit', editor: { type: 'textbox', options: { disabled: true } }, width: 40, title: '单位' },
+                { field: 'SysPrice', editor: { type: 'textbox', options: { disabled: true } }, width: 50, title: '系统售价' },
+                { field: 'StockNums', editor: { type: 'textbox', options: { disabled: true } }, width: 50, title: '库存' },
+                { field: 'Editor', formatter: operation, width: 100, title: '操作' },
+            ]]
+        });
+        //活动时效变更
+        $("input[name=AgingType]").each(function (index, value) {
+            $(this).click(function () {
+                $("#timeweeks,#times").hide();
+                var val = $(this).val();
+                if (val == 1) {
+                    $("#timeweeks").show();
+                }
+                else if (val == 2) {
+                    $("#times").show();
+                }
+            });
+        });
+
+
+
+        if(@Model.Id==0){
+            //置空有效期
+            $("#StartDate").val("");
+            $("#EndDate").val("");
+        }else{
+            //编辑赋值
+            $("#Adapters").combobox('setValue','@Model.Adapters');
+            $("#LeftSign").combobox('setValue','@Model.LeftSign');
+            $("#RightSign").combobox('setValue','@Model.RightSign');
+            $("#OperationType").combobox('setValue','@Model.OperationType');
+            showUnitRadio('@Model.Adapters');
+            //设置单选框选中
+            $("input[name=modes]").each(function(index,item){
+                var val= $(this).val();
+                if(val=='@Model.Mode'){
+                    $(this).click();
+                }
+            })
+            $("input[name=GivenType]").each(function(index,item){
+                var val= $(this).val();
+                if(val=='@Model.GivenType'){
+                    $(this).click();
+                }
+            })
+            $("input[name=State]").each(function(index,item){
+                var val= $(this).val();
+                if(val=='@Model.State'){
+                    $(this).click();
+                }
+            })
+            //时效范围显示
+            if('@Model.AgingType'=='1'){//周
+                $("#timeweeks").show()
+                var array=['@Model.StartTime1','@Model.EndTime1','@Model.StartTime2','@Model.EndTime2','@Model.StartTime3','@Model.EndTime3'];
+                $("input[name=timeWeek]").each(function(index,item){
+                    if(array.indexOf($(this).val())>-1){
+                        $(this).click();
+                    }
+                });
+            }else if('@Model.AgingType'=='2'){//时段
+                $("#times").show();
+                var array=['@Model.StartTime1','@Model.EndTime1','@Model.StartTime2','@Model.EndTime2','@Model.StartTime3','@Model.EndTime3'];
+                $("input[name=times]").each(function(index,item){
+                    //$(this).val(array[index]);
+                    // $("#Times_1").timespinner('getValue')
+                    //$(this).timespinner('setValue',array[index]);
+                    $("#times_"+(index+1)).timespinner('setValue',array[index]);
+                });
+            }
+
+            //加载商品
+            if('@Model.Adapters'=='218'){
+                var ruleTypeValue = '@Model.LimitItems';
+                if(ruleTypeValue.substring(0,1)==','){
+                    ruleTypeValue=ruleTypeValue.substring(1,ruleTypeValue.length);
+                }
+                if(ruleTypeValue.substring(1,ruleTypeValue.length-1)==','){
+                    ruleTypeValue=ruleTypeValue.substring(0,ruleTypeValue.length-1);
+                }
+                var arrValues = ruleTypeValue.split(',');
+                for (var i = 0; i < arrValues.length; i++) {
+                    if (arrValues[i] != "") {
+                        //var ed = $("#grid").datagrid('getEditor', { index: $dg2.datagrid("getRows").length - 1, field: 'Barcode' });
+                        //$(ed.target).textbox('setValue', arrValues[i]);
+                        //$(ed.target).textbox('textbox').keydown(function (e) { });
+                        ////comboload({ q: arrValues[i] });
+                        $.ajax({
+                            url: "@Url.Action("GetProductInput", "Product")",
+                            type: "post",
+                            data: {
+                                searchName: arrValues[i],
+                                zp: '1'
+                            },
+                            dataType: "json",
+                            success: function (data) {
+                                $("#grid").datagrid('insertRow',{ index:0, row:{
+                                    ProductCode: data.rows[0].ProductCode,
+                                    Barcode: data.rows[0].Barcode,
+                                    Title: data.rows[0].Title,
+                                    CategoryTitle: data.rows[0].CategoryTitle,
+                                    SubUnit: data.rows[0].SubUnit,
+                                    SysPrice: data.rows[0].SysPrice,
+                                    StockNums: data.rows[0].StockNums,
+                                }});
+                            }
+                        });
+
+                    }
+
+                }
+                //appendItemProc();
+            }
+        }
+        appendItemProc();
+        //限量为空
+        debugger
+        if('@Model.LimitNum'=='-1'|| '@Model.LimitNum'==0){
+            $("input[name=LimitNum]").parent().prev().val("");
+            $("input[name=LimitNum]").val("");
+        }
+
+    })
+    //显示计量方式
+    function showUnitRadio(n){
+        //对应单位的显示
+        var dom="";
+        $.each(modes,function(index,item){
+            if(item.Adapter==n){
+                $.each(item.Modes,function(index,itm){
+                    dom+=htmlDom.replace("{{0}}","mode_"+index).replace("{{0}}","mode_"+index).replace('{{1}}',index).replace('{{2}}',itm);
+                })
+            }
+        })
+        $("#modes").html(dom);
+    }
+
+    function grid3LoadSuccess() {
+        appendItemCategory();
+
+        @*if ('@Model.Adapters' != '219')
+            $("#categorys").hide();*@
+    }
+
+    //品类大类选择
+    function bigTypeSelect1(record) {
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+        if (ed) {
+            $(ed.target).combobox("clear").combobox('reload', "@Url.Action("ChildCategory", "ProductType")?emptyTitle=&psn=" + record.value);
+        }
+    }
+    function midTypeSelect1(record) {
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'SubCategoryTitle' });
+        if (ed) {
+            $(ed.target).combobox("clear").combobox('reload', "@Url.Action("ChildCategory", "ProductType")?emptyTitle=&psn=" + record.value);
+            ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'CategoryGrade' });
+            $(ed.target).textbox("setValue", 2);
+        }
+    }
+    function childTypeSelect1(record) {
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'CategoryGrade' });
+        if (ed) {
+            $(ed.target).textbox("setValue", 3);
+        }
+    }
+    //品牌选择
+    function brandSelect1(record) {
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'SubCategoryTitle' });
+        var subCate = $(ed.target).combobox('getValue');
+        ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'StockNums' });
+        if (ed) {
+            $.post("@Url.Action("BrandSelect", "Product")", { SubCategorySN: subCate, BrandSN: record.value, t: Math.random() }, function (data) {
+                if (data && data.length > 0)
+                    $(ed.target).textbox('setValue', data[0].StockNums);
+            }, "json");
+        }
+    }
+
+    //品类操作列
+    function operationType(value, row, index) {
+        if (opaddType) {
+            opaddType = false;
+            return "<a href='javascript:void(0)' onclick='appendItemCategory()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItemType('" + row.Id + "')\">删除</a>";
+        }
+    }
+
+    //品类网格增加一个空行
+    function appendItemCategory() {
+        $dgType = $dgType ? $dgType : $("#grid3");
+
+        endTypeEditing();
+        //enabledTypeGrid();
+        //$dgType.datagrid("selectRow", editTypeIndex).datagrid("endEdit", editTypeIndex);
+        opaddType = true;
+
+        $dgType.datagrid('appendRow', {
+            Id: "",
+            CategorySN: "",
+            CategoryGrade: "",
+            BrandSN: 0,
+            BigCategoryTitle: "",
+            MidCategoryTitle: "",
+            SubCategoryTitle: "",
+            BrandTitle: "",
+            StockNums: "",
+            Editor: ""
+        });
+        editTypeIndex = $dgType.datagrid("getRows").length - 1;
+
+        $dgType.datagrid("selectRow", editTypeIndex + 1).datagrid("beginEdit", editTypeIndex);
+    }
+
+    //具体商品网格移除一个行
+    function removeItemProc(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dg2.datagrid("selectRecord", id);
+            var row = $dg2.datagrid("getSelected")
+            var index = $dg2.datagrid("getRowIndex", row);
+            $dg2.datagrid('deleteRow', index);
+        });
+    }
+    //品类移除一行
+    function removeItemType(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dgType.datagrid("selectRecord", id);
+            var row = $dgType.datagrid("getSelected")
+            var index = $dgType.datagrid("getRowIndex", row);
+            //proBarcodes.remove(row.Barcode);
+            $dgType.datagrid('deleteRow', index);
+            editTypeIndex--;
+        });
+    }
+
+    function endTypeEditing() {
+        if (editTypeIndex == undefined) { return true }
+        if ($dgType.datagrid('validateRow', editTypeIndex)) {
+            var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'SubCategoryTitle' });
+            var edm = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+            var edp = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BigCategoryTitle' });
+            var edb = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BrandTitle' });
+            if (ed) {
+                var brandTitle = $(edb.target).combobox('getText');
+                var brandId = $(edb.target).combobox('getValue');
+                var subTitle = $(ed.target).combobox('getText');
+                var subId = $(ed.target).combobox('getValue');
+                var midTitle = $(edm.target).combobox('getText');
+                var midId = $(edm.target).combobox('getValue');
+                var bigTitle = $(edp.target).combobox('getText');
+                var bigId = $(edp.target).combobox('getValue');
+                var rows = $dgType.datagrid("getRows");
+                brandId = brandId ? brandId : "0";
+                midId = midId ? midId : "0";
+                var categorySN = subId ? subId : midId ? midId : bigId;
+                var titles = categorySN + '~' + brandId;
+                var alltitles = $.map(rows, function (item) {
+                    return item.CategorySN + '~' + item.BrandSN;
+                })
+                if (alltitles.indexOf(titles) != -1) {
+                    $.messager.alert("提示", "该类别信息已存在!", "warning");
+                    return false;
+                }
+                $(edp.target).combobox('setValue', bigTitle);//改变文本
+                $(ed.target).combobox('setValue', subTitle);//改变文本
+                $(edm.target).combobox('setValue', midTitle);//改变文本
+                $(edb.target).combobox('setValue', brandTitle);//改变文本
+                var edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'CategorySN' });
+                $(edid.target).textbox("setValue", categorySN);
+                edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BrandSN' });
+                $(edid.target).textbox("setValue", brandId);
+                edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'StrId' });
+                $(edid.target).textbox("setValue", titles);
+                edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'Id' });
+                $(edid.target).textbox("setValue", maxId(1));
+            }
+            $dgType.datagrid('endEdit', editTypeIndex);
+            editTypeIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+
+    function maxId(type) {
+        var $dg = type == 1 ? $dgType : type == 2 ? $dgTypeNo : $dgt;
+        var rows = $dg.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? row.Id : 0;
+        });
+        var maxId = Math.max.apply(null, ids);
+        if (maxId == -Infinity) maxId = 0;
+        return maxId + 1;
+    }
+
+    //打开选择品类窗口
+    function SelectType(dg) {
+        $dgt = $("#" + dg);
+        var url = "@Url.Action("SelectType", "Product")?t=" + Math.random();
+        var rows = $dgt.datagrid("getRows");
+        var cds = $.map(rows, function (row) {
+            return row.StrId;
+        }).join(",");
+        url += "&cds=" + cds;
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("#win").dialog({ content: cont, buttons: btntypes }).dialog("open");
+    }
+
+    var btntypes = [{
+        text: '添加所选系列',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            var data = $dgt.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            var names = $.map(data.rows, function (item) { return item.StrId; });
+            $.each(chks, function (idx, row) {
+                if (names.indexOf(row.Id) == -1) {
+                    $dgt.datagrid('insertRow',
+                    {
+                        index: lastIndex,
+                        row: {
+                            CategorySN: row.CategorySN, MidCategoryTitle: row.MidCategoryTitle, SubCategoryTitle: row.SubCategoryTitle, BigCategoryTitle: row.BigCategoryTitle, BrandTitle: row.BrandTitle, BrandSN: row.BrandSN,
+                            StockNums: row.StockNums, StrId: row.CategorySN + '~' + row.BrandSN, Id: maxId()
+                        }
+                    });
+                    lastIndex++;
+                    editTypeIndex++;
+                }
+            });
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+    var btnprods = [{
+        text: '添加所选产品',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            var data = $dgp.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            $.each(chks, function (idx, row) {
+                if (!isExists(data.rows, row.Barcode)) {
+                    $dgp.datagrid('insertRow',
+                    {
+                        index: lastIndex,
+                        row: {
+                            ProductCode: row.ProductCode, Barcode: row.Barcode, CategoryTitle: row.CategoryTitle, SubUnit: row.SubUnit, StockNums: row.StockNums,
+                            SysPrice: row.SysPrice, BrandTitle: row.BrandTitle, CategorySN: row.CategorySN, Title: row.Title
+                        }
+                    });
+                    //if ($dgp.attr("id") == "grid2")
+                    //    proBarcodes.add(row.Barcode);
+                    //else
+                    //    pronoBarcodes.add(row.Barcode);
+                    //lastIndex++;
+                }
+            });
+            //changeValue();
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+
+
+    var comboload = function (param, success, error) {
+        var q = param.q || "";
+        if (q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url: "@Url.Action("GetProductInput", "Product")",
+            type: "post",
+            data: {
+                //传值，还是JSON数据搜索
+                searchName: q,
+                storeId: $.map($("[name='StoreId']:checked"), function (r) { return $(r).val(); }).join(),
+                zp: '1'
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function (item) {
+                    return { barcode: item.Barcode, title: item.Title };
+                });
+                //执行loader的success方法
+                success(items);
+                var val = $combo.combobox("getValue");
+                if (val) {
+                    //comboSelect1(val);
+                    comboSelect2(val);
+                }
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    //具体商品 条码下拉框选择
+    function comboSelect2(newValue, oldValue) {
+        var obj = getRow(newValue);
+        if (!obj) return;
+        editProcNoIndex = $dg2.datagrid('getRows').length - 1;
+        var ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'ProductCode' });
+        $(ed.target).textbox('setValue', obj.ProductCode);
+        ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'Title' });
+        $(ed.target).textbox('setValue', obj.Title);
+        ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'SubUnit' });
+        $(ed.target).textbox('setValue', obj.SubUnit);
+        ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'SysPrice' });
+        $(ed.target).textbox('setValue', obj.SysPrice);
+        ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'CategoryTitle' });
+        $(ed.target).textbox('setValue', obj.CategoryTitle);
+        ed = $dg2.datagrid('getEditor', { index: editProcNoIndex, field: 'StockNums' });
+        $(ed.target).textbox('setValue', obj.StockNums);
+        $dg2.datagrid('endEdit', editProcNoIndex);
+        appendItemProc();
+    }
+    //获取行
+    function getRow(cd) {
+        var obj = null;
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == cd) {
+                obj = row; return;
+            }
+        });
+        return obj;
+    }
+    //具体商品网格增加一个空行
+    function appendItemProc() {
+        $dg2 = $dg2 ? $dg2 : $("#grid");
+        opaddPro = true;
+        $dg2.datagrid('appendRow', {
+            ProductCode: "",
+            Barcode: "",
+            Title: "",
+            CategoryTitle: "",
+            SubUnit: "",
+            SysPrice: "",
+            StockNums: ""
+        });
+        editIndex = $dg2.datagrid("getRows").length - 1;
+        $dg2.datagrid("selectRow", editIndex).datagrid("beginEdit", editIndex);
+    }
+    function selectProduct(dg) {
+        $dgp = $("#" + dg);
+        var url = "@Url.Action("SelectProduct", "Product")?t=" + Math.random();
+        var rows = $dgp.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Barcode;
+        }).join(",");
+        url += "&cds=" + ids;
+        url += "&store=" + $.map($("[name='StoreId']:checked"), function (r) { return $(r).val(); }).join()
+        //url+="&promtype=3";
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("#win").dialog({ content: cont, buttons: btnprods }).dialog("open");
+    }
+    //操作列显示
+    function operation(value, row, index) {
+        if (opaddPro) {
+            opaddPro = false;
+            return "<a href='javascript:void(0)' onclick='appendItemProc()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItemProc('" + row.Id + "')\">删除</a>";
+        }
+    }
+    function isExists(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.Barcode == cd) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+
+    //数据提交保存
+    function SaveBefore() {
+        //时效
+        var agType= $("input[name=AgingType]:checked").val();
+        if(agType>0){
+            var buttonArry=["StartTime1","EndTime1","StartTime2","EndTime2","StartTime3","EndTime3"];
+
+            switch(agType){
+                case "1"://周
+                    $("input[name=timeWeek]:checked").each(function(index,item){
+                        $("#"+buttonArry[index]).val($(this).val());
+                        if(index>=7){//选中全部
+                            $.messager.confirm("提示","选中了全部时间？",function(data){
+                                if(data){
+                                    $("#AgingType_1").click();
+                                }else{
+                                    return false;
+                                }
+                            })
+                        }
+                    })
+                    break;
+                case "2"://时段
+                    var preTimes="";
+                    var isPass=true;
+                    $("input[name=times]").each(function(index,item){
+                        var val=$(this).val();
+                        if((index%2)==0){
+                            preTimes=val;
+                        }else{
+                            if(val<preTimes){
+                                isPass=false;
+
+                                return false;
+                            }
+                        }
+                        $("#"+buttonArry[index]).val(val);
+                    });
+                    if(!isPass){
+                        $.messager.alert("提示","时段信息错误！","info");
+                        return false;
+                    }
+                    break;
+            }
+        }
+
+
+        //计量方式
+        var modeVal= $("input[name=modes]:checked").val();
+        if(modeVal==""){
+            $.messager.alert("提示","请选择计量方式！","info");
+            return false;
+        }else{
+            $("#Mode").val(modeVal);
+        }
+        //限定范围
+        var limitVal= $("#Adapters").combobox('getValue');
+        var vals="";
+        switch(limitVal){
+            default:
+            case "":
+                $.messager.alert("提示","请选择限定范围！","info");
+                return false;
+                break;
+            case "217":
+                break;
+                //case "218":
+                //    $("#payWays input[type='checkbox']:checked").each(function () {
+                //        vals += ("," + $(this).val());
+                //    });
+                //    break;
+            case "219":
+                var rows=$dgType.datagrid("getRows");
+                for (var i = 0; i < rows.length; i++) {
+                    vals+=(","+rows[i].CategorySN)
+                }
+                break;
+            case "218":
+                var rows = $dg2.datagrid("getRows");
+                for (var i = 0; i < rows.length; i++) {
+                    vals += ("," + rows[i].Barcode);
+                }
+                break;
+            case "221":
+                break;
+        }
+        if(limitVal=='218' || limitVal=='219'){
+            if(vals==null || vals==""){
+                $.messager.alert("提示","请选择限定项！","info");
+                return false;
+            }
+        }else{//不需要限定项的时候清空
+            vals="";
+        }
+        $("#LimitItems").val(vals);
+    }
+</script>

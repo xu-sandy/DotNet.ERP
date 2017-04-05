@@ -1,0 +1,1076 @@
+﻿@model Pharos.Logic.OMS.Models.PayStaticModel
+@{
+    ViewBag.Title = "Pay";
+    Layout = null;
+    //取得商户当前系统时间
+    var sdf = DateTime.Now.ToString("yyyyMMddHHmmss");
+    //商户订单号
+    String orderId = sdf + "0001";
+    //商户订单日期
+    DateTime orderDate = DateTime.Now;
+}
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0">
+    <title></title>
+</head>
+<body>
+    <form id="form1" name="form1" action="SubmitQROrder" method="post">
+        <input type="hidden" id="mch_id" name="mch_id" value="@Model.mch_id" />
+        <input type="hidden" id="store_id" name="store_id" value="@Model.store_id" />
+        <div class="weui-cells weui-cells_form">
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label class="weui-label">消费金额：</label></div>
+                <div class="weui-cell__bd">
+                    <input class="weui-input" id="total_amount" name="total_amount" style="text-align:right;" type="number" pattern="[0-9]" placeholder="请询问店员后输入" />
+                </div>
+            </div>
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label class="weui-label">选填备注：</label></div>
+                <div class="weui-cell__bd">
+                    <input class="weui-input" id="goods_desc" name="goods_desc" style="text-align:right;" type="text" placeholder="选填备注" />
+                </div>
+            </div>
+
+            <div class="weui-btn-area">
+                <a class="weui-btn weui-btn_primary" id="paybtn" href="javascript:submit()" >和店员已确认，立即买单</a>
+            </div>
+        </div>
+    </form>
+    <script type="text/javascript">
+        function submit() {
+            document.getElementById("form1").submit();
+        }
+    </script>
+    <style type="text/css">
+        .weui-label {
+            display: block;
+            width: 105px;
+            word-wrap: break-word;
+            word-break: break-all;
+        }
+
+        .weui-input {
+            width: 100%;
+            border: 0;
+            outline: 0;
+            -webkit-appearance: none;
+            background-color: transparent;
+            font-size: inherit;
+            color: inherit;
+            height: 1.41176471em;
+            line-height: 1.41176471;
+        }
+
+            .weui-input::-webkit-outer-spin-button,
+            .weui-input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+
+        .weui-textarea {
+            display: block;
+            border: 0;
+            resize: none;
+            width: 100%;
+            color: inherit;
+            font-size: 1em;
+            line-height: inherit;
+            outline: 0;
+        }
+
+        .weui-textarea-counter {
+            color: #b2b2b2;
+            text-align: right;
+        }
+
+        .weui-cell_warn .weui-textarea-counter {
+            color: #e64340;
+        }
+
+        .weui-toptips {
+            display: none;
+            position: fixed;
+            transform: translateZ(0);
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 5px;
+            font-size: 14px;
+            text-align: center;
+            color: #FFF;
+            z-index: 5000;
+            word-wrap: break-word;
+            word-break: break-all;
+        }
+
+        .weui-toptips_warn {
+            background-color: #e64340;
+        }
+
+        .weui-cells_form .weui-cell__ft {
+            font-size: 0;
+        }
+
+        .weui-cells_form .weui-icon-warn {
+            display: none;
+        }
+
+        .weui-cells_form input,
+        .weui-cells_form textarea,
+        .weui-cells_form label[for] {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+        }
+
+        .weui-cell_warn {
+            color: #e64340;
+        }
+
+            .weui-cell_warn .weui-icon-warn {
+                display: inline-block;
+            }
+
+        .weui-cells {
+            margin-top: 1.17647059em;
+            background-color: #ffffff;
+            line-height: 1.41176471;
+            font-size: 17px;
+            overflow: hidden;
+            position: relative;
+        }
+
+            .weui-cells:before {
+                content: " ";
+                position: absolute;
+                left: 0;
+                top: 0;
+                right: 0;
+                height: 1px;
+                border-top: 1px solid #d9d9d9;
+                color: #d9d9d9;
+                transform-origin: 0 0;
+                transform: scaleY(0.5);
+            }
+
+            .weui-cells:after {
+                content: " ";
+                position: absolute;
+                left: 0;
+                bottom: 0;
+                right: 0;
+                height: 1px;
+                border-bottom: 1px solid #d9d9d9;
+                color: #d9d9d9;
+                transform-origin: 0 100%;
+                transform: scaleY(0.5);
+            }
+
+        .weui-cells__title {
+            margin-top: .77em;
+            margin-bottom: .3em;
+            padding-left: 15px;
+            padding-right: 15px;
+            color: #999999;
+            font-size: 14px;
+        }
+
+            .weui-cells__title + .weui-cells {
+                margin-top: 0;
+            }
+
+        .weui-cells__tips {
+            margin-top: .3em;
+            color: #999999;
+            padding-left: 15px;
+            padding-right: 15px;
+            font-size: 14px;
+        }
+
+        .weui-cell {
+            padding: 10px 15px;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+            .weui-cell:before {
+                content: " ";
+                position: absolute;
+                left: 0;
+                top: 0;
+                right: 0;
+                height: 1px;
+                border-top: 1px solid #d9d9d9;
+                color: #d9d9d9;
+                transform-origin: 0 0;
+                transform: scaleY(0.5);
+                left: 15px;
+            }
+
+            .weui-cell:first-child:before {
+                display: none;
+            }
+
+        .weui-cell_primary {
+            align-items: flex-start;
+        }
+
+        .weui-cell__bd {
+            flex: 1;
+        }
+
+        .weui-cell__ft {
+            text-align: right;
+            color: #999999;
+        }
+
+        .weui-btn {
+            position: relative;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 14px;
+            padding-right: 14px;
+            box-sizing: border-box;
+            font-size: 18px;
+            text-align: center;
+            text-decoration: none;
+            color: #ffffff;
+            line-height: 2.55555556;
+            border-radius: 5px;
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+            overflow: hidden;
+        }
+
+            .weui-btn:after {
+                content: " ";
+                width: 200%;
+                height: 200%;
+                position: absolute;
+                top: 0;
+                left: 0;
+                border: 1px solid rgba(0, 0, 0, 0.2);
+                transform: scale(0.5);
+                transform-origin: 0 0;
+                box-sizing: border-box;
+                border-radius: 10px;
+            }
+
+        .weui-btn_inline {
+            display: inline-block;
+        }
+
+        .weui-btn_default {
+            color: #000000;
+            background-color: #f8f8f8;
+        }
+
+            .weui-btn_default:not(.weui-btn_disabled):visited {
+                color: #000000;
+            }
+
+            .weui-btn_default:not(.weui-btn_disabled):active {
+                color: rgba(0, 0, 0, 0.6);
+                background-color: #dedede;
+            }
+
+        .weui-btn_primary {
+            background-color: #1aad19;
+        }
+
+            .weui-btn_primary:not(.weui-btn_disabled):visited {
+                color: #ffffff;
+            }
+
+            .weui-btn_primary:not(.weui-btn_disabled):active {
+                color: rgba(255, 255, 255, 0.6);
+                background-color: #179b16;
+            }
+
+        .weui-btn_warn {
+            background-color: #e64340;
+        }
+
+            .weui-btn_warn:not(.weui-btn_disabled):visited {
+                color: #ffffff;
+            }
+
+            .weui-btn_warn:not(.weui-btn_disabled):active {
+                color: rgba(255, 255, 255, 0.6);
+                background-color: #ce3c39;
+            }
+
+        .weui-btn_disabled {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+            .weui-btn_disabled.weui-btn_default {
+                color: rgba(0, 0, 0, 0.3);
+                background-color: #f7f7f7;
+            }
+
+            .weui-btn_disabled.weui-btn_primary {
+                background-color: #9ed99d;
+            }
+
+            .weui-btn_disabled.weui-btn_warn {
+                background-color: #ec8b89;
+            }
+
+        .weui-btn_loading .weui-loading {
+            margin: -0.2em 0.34em 0 0;
+        }
+
+        .weui-btn_loading.weui-btn_primary,
+        .weui-btn_loading.weui-btn_warn {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+            .weui-btn_loading.weui-btn_primary .weui-loading,
+            .weui-btn_loading.weui-btn_warn .weui-loading {
+                background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 100 100'%3E%3Cpath fill='none' d='M0 0h100v100H0z'/%3E%3Crect xmlns='http://www.w3.org/2000/svg' width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.56)' rx='5' ry='5' transform='translate(0 -30)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.5)' rx='5' ry='5' transform='rotate(30 105.98 65)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.43)' rx='5' ry='5' transform='rotate(60 75.98 65)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.38)' rx='5' ry='5' transform='rotate(90 65 65)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.32)' rx='5' ry='5' transform='rotate(120 58.66 65)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.28)' rx='5' ry='5' transform='rotate(150 54.02 65)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.25)' rx='5' ry='5' transform='rotate(180 50 65)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.2)' rx='5' ry='5' transform='rotate(-150 45.98 65)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.17)' rx='5' ry='5' transform='rotate(-120 41.34 65)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.14)' rx='5' ry='5' transform='rotate(-90 35 65)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.1)' rx='5' ry='5' transform='rotate(-60 24.02 65)'/%3E%3Crect width='7' height='20' x='46.5' y='40' fill='rgba(255,255,255,.03)' rx='5' ry='5' transform='rotate(-30 -5.98 65)'/%3E%3C/svg%3E");
+            }
+
+        .weui-btn_loading.weui-btn_primary {
+            background-color: #179b16;
+        }
+
+        .weui-btn_loading.weui-btn_warn {
+            background-color: #ce3c39;
+        }
+
+        .weui-btn_plain-primary {
+            color: #1aad19;
+            border: 1px solid #1aad19;
+        }
+
+            .weui-btn_plain-primary:not(.weui-btn_plain-disabled):active {
+                color: rgba(26, 173, 25, 0.6);
+                border-color: rgba(26, 173, 25, 0.6);
+            }
+
+            .weui-btn_plain-primary:after {
+                border-width: 0;
+            }
+
+        .weui-btn_plain-default {
+            color: #353535;
+            border: 1px solid #353535;
+        }
+
+            .weui-btn_plain-default:not(.weui-btn_plain-disabled):active {
+                color: rgba(53, 53, 53, 0.6);
+                border-color: rgba(53, 53, 53, 0.6);
+            }
+
+            .weui-btn_plain-default:after {
+                border-width: 0;
+            }
+
+        .weui-btn_plain-disabled {
+            color: rgba(0, 0, 0, 0.2);
+            border-color: rgba(0, 0, 0, 0.2);
+        }
+
+        button.weui-btn,
+        input.weui-btn {
+            width: 100%;
+            border-width: 0;
+            outline: 0;
+            -webkit-appearance: none;
+        }
+
+            button.weui-btn:focus,
+            input.weui-btn:focus {
+                outline: 0;
+            }
+
+        button.weui-btn_inline,
+        input.weui-btn_inline,
+        button.weui-btn_mini,
+        input.weui-btn_mini {
+            width: auto;
+        }
+
+        button.weui-btn_plain-primary,
+        input.weui-btn_plain-primary,
+        button.weui-btn_plain-default,
+        input.weui-btn_plain-default {
+            border-width: 1px;
+            background-color: transparent;
+        }
+
+        .weui-btn_mini {
+            display: inline-block;
+            padding: 0 1.32em;
+            line-height: 2.3;
+            font-size: 13px;
+        }
+        /*gap between btn*/
+        .weui-btn + .weui-btn {
+            margin-top: 15px;
+        }
+
+        .weui-btn.weui-btn_inline + .weui-btn.weui-btn_inline {
+            margin-top: auto;
+            margin-left: 15px;
+        }
+
+        .weui-btn-area {
+            margin: 1.17647059em 15px 0.3em;
+        }
+
+        .weui-btn-area_inline {
+            display: flex;
+        }
+
+            .weui-btn-area_inline .weui-btn {
+                margin-top: auto;
+                margin-right: 15px;
+                width: 100%;
+                flex: 1;
+            }
+
+                .weui-btn-area_inline .weui-btn:last-child {
+                    margin-right: 0;
+                }
+
+    </style>
+    @*<form id="form1" name="form1" action="SubmitQRCodeOrder" method="post">
+            <input type="hidden" id="mch_id" name="mch_id" value="@Model.mch_id" />
+            <input type="hidden" id="store_id" name="store_id" value="@Model.store_id" />
+            <div class="page">
+                <div class="pay-confirm">
+
+                    <div class="pay-form">
+                        <dl class="row clearfix">
+                            <dt>消费总金额(元)</dt>
+                            <dd class="text-right">
+                                <input type="text" id="total_amount" name="total_amount" placeholder="请询问服务员后输入" />
+                            </dd>
+                        </dl>
+                        <dl class="row clearfix">
+                            <dt>选填备注</dt>
+                            <dd class="text-right">
+                                <input type="text" id="goods_desc" name="goods_desc" placeholder="选填备注" />
+                            </dd>
+                        </dl>
+                        <dl class="row clearfix">
+                            <dt>收款方</dt>
+                            <dd class="text-right">民生支付测试商户</dd>
+                        </dl>
+                    </div>
+                    <div>
+                    </div>
+                    <div class="btn-area">
+                        <input id="paybutton" type="submit" value="和店员已确认，立即买单" class="btn btn-01 btn-block">
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <style type="text/css">
+            /*
+            for all---------------------------*/
+            html, body, div, dl, dt, dd, ul, ol, li, h1, h2, h3, h4, h5, h6, rem, strong, sub, sup, pre, form, label, input, select, textarea, p, th, td {
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                background: #f5f5f5;
+                background-size: contain;
+                margin: 0;
+                overflow-x: hidden;
+                color: #333;
+                font: normal 1rem/1.5rem microsoft yahei, Arial, Verdana, Helvetica, sans-serif;
+                height: 100%;
+            }
+
+            a {
+                color: #333;
+                text-decoration: none;
+            }
+
+                a:hover {
+                    color: #f60;
+                    text-decoration: none;
+                }
+
+            .clear {
+                background: none;
+                border: 0;
+                clear: both;
+                display: block;
+                float: none;
+                font-size: 0;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                visibility: hidden;
+                width: 0;
+                height: 0;
+            }
+
+            .clearfix:after {
+                clear: both;
+                content: ' ';
+                display: block;
+                font-size: 0;
+                line-height: 0;
+                visibility: hidden;
+                width: 0;
+                height: 0;
+            }
+
+            .clearfix {
+                display: inline-block;
+            }
+
+            * html .clearfix {
+                height: 1%;
+            }
+
+            .clearfix {
+                display: block;
+            }
+
+            ul, li {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            img {
+                height: auto;
+                max-width: 100%;
+            }
+
+            .be-relative {
+                position: relative;
+                z-index: 1;
+            }
+
+            .pull-left {
+                float: left;
+                display: inline;
+            }
+
+            .pull-right {
+                float: right;
+                display: inline;
+            }
+
+
+            /*
+            for font---------------------------*/
+            .bold {
+                font-weight: bold;
+            }
+
+            .italic {
+                font-style: italic;
+            }
+
+            .line-through {
+                color: #999;
+                text-decoration: line-through;
+            }
+
+            .cred {
+                color: #f00 !important;
+            }
+
+            .cgreen {
+                color: #2e9206 !important;
+            }
+
+            .cblue {
+                color: #0070af !important;
+            }
+
+            .corange {
+                color: #f60 !important;
+            }
+
+            .cgray {
+                color: #999 !important;
+            }
+
+            .cwhite {
+                color: #fff !important;
+            }
+
+            .cblack {
+                color: #333 !important;
+            }
+
+            a.link-01 {
+                color: #0299ff;
+            }
+
+                a.link-01:hover {
+                    color: #f60;
+                }
+
+            a.link-02 {
+                color: #f90;
+            }
+
+                a.link-02:hover {
+                    color: #f40;
+                }
+
+            a.link-03 {
+                color: #55b50d;
+            }
+
+                a.link-03:hover {
+                    color: #f60;
+                }
+
+            a.underline:hover {
+                text-decoration: underline;
+            }
+
+            .text-center {
+                text-align: center;
+            }
+
+            .text-left {
+                text-align: left;
+            }
+
+            .text-right {
+                text-align: right;
+            }
+
+            /*
+            for padding margin------------------------------------------------*/
+            .pad-0 {
+                padding: 0 !important;
+            }
+
+            .pad-5 {
+                padding: 5px !important;
+            }
+
+            .pad-t-5 {
+                padding-top: 5px !important;
+            }
+
+            .pad-b-5 {
+                padding-bottom: 5px !important;
+            }
+
+            .pad-l-5 {
+                padding-left: 5px !important;
+            }
+
+            .pad-r-5 {
+                padding-right: 5px !important;
+            }
+
+            .pad-10 {
+                padding: 10px !important;
+            }
+
+            .pad-t-10 {
+                padding-top: 10px !important;
+            }
+
+            .pad-b-10 {
+                padding-bottom: 10px !important;
+            }
+
+            .pad-l-10 {
+                padding-left: 10px !important;
+            }
+
+            .pad-r-10 {
+                padding-right: 10px !important;
+            }
+
+            .pad-20 {
+                padding: 20px !important;
+            }
+
+            .pad-t-20 {
+                padding-top: 20px !important;
+            }
+
+            .pad-b-20 {
+                padding-bottom: 20px !important;
+            }
+
+            .pad-l-20 {
+                padding-left: 20px !important;
+            }
+
+            .pad-r-20 {
+                padding-right: 20px !important;
+            }
+
+            .mar-0 {
+                margin: 0 !important;
+            }
+
+            .mar-5 {
+                margin: 5px !important;
+            }
+
+            .mar-t-5 {
+                margin-top: 5px !important;
+            }
+
+            .mar-b-5 {
+                margin-bottom: 5px !important;
+            }
+
+            .mar-l-5 {
+                margin-left: 5px !important;
+            }
+
+            .mar-r-5 {
+                margin-right: 5px !important;
+            }
+
+            .mar-t-10 {
+                margin-top: 10px !important;
+            }
+
+            .mar-b-10 {
+                margin-bottom: 10px !important;
+            }
+
+            .mar-l-10 {
+                margin-left: 10px !important;
+            }
+
+            .mar-r-10 {
+                margin-right: 10px !important;
+            }
+
+            .mar-t-20 {
+                margin-top: 20px !important;
+            }
+
+            .mar-b-20 {
+                margin-bottom: 20px !important;
+            }
+
+            .mar-l-20 {
+                margin-left: 20px !important;
+            }
+
+            .mar-r-20 {
+                margin-right: 20px !important;
+            }
+
+
+            /*for btn-----------------------------------------------*/
+            .btn {
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                display: inline-block;
+                padding: 0.5rem 1.5rem;
+                margin-bottom: 0;
+                font-size: 1.2rem;
+                line-height: 1.5;
+                text-align: center;
+                white-space: nowrap;
+                vertical-align: middle;
+                cursor: pointer;
+                background-image: none;
+                border: 1px solid transparent;
+                border-radius: 5px;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                -o-user-select: none;
+                user-select: none;
+            }
+
+                .btn:focus {
+                    outline: thin dotted #333;
+                    outline: 5px auto -webkit-focus-ring-color;
+                    outline-offset: -2px;
+                }
+
+                .btn:hover, .btn:focus {
+                    color: #333;
+                    text-decoration: none;
+                }
+
+                .btn:active, .btn.active {
+                    background-image: none;
+                    outline: 0;
+                    -webkit-box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+                    box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+                }
+
+                .btn.disabled, .btn[disabled], fieldset[disabled] .btn {
+                    pointer-events: none;
+                    cursor: not-allowed;
+                    opacity: 0.65;
+                    filter: alpha(opacity=65);
+                    -webkit-box-shadow: none;
+                    box-shadow: none;
+                }
+
+            .btn-01 {
+                color: #fff;
+                background-color: #44c11a;
+                border-radius: 5px;
+            }
+
+                .btn-01:hover, .btn-01:focus, .btn-01:active, .btn-01.active, .open .dropdown-toggle.btn-01 {
+                    color: #fff;
+                    background-color: #37ac10;
+                }
+
+                .btn-01:active, .btn-01.active, .open .dropdown-toggle.btn-01 {
+                    background-image: none;
+                }
+
+                .btn-01.disabled, .btn-01[disabled], fieldset[disabled] .btn-01, .btn-01.disabled:hover, .btn-01[disabled]:hover, fieldset[disabled] .btn-01:hover, .btn-01.disabled:focus, .btn-01[disabled]:focus, fieldset[disabled] .btn-01:focus, .btn-01.disabled:active, .btn-01[disabled]:active, fieldset[disabled] .btn-01:active, .btn-01.disabled.active, .btn-01[disabled].active, fieldset[disabled] .btn-01.active {
+                    background-color: #37ac10;
+                }
+
+            .btn-lg {
+                padding: 0.6rem 2rem;
+                font-size: 2rem;
+                line-height: 1rem;
+                border-radius: 6px;
+            }
+
+            .btn-sm, .btn-xs {
+                padding: 0.3rem 1rem;
+                font-size: 0.8rem;
+                border-radius: 3px;
+            }
+
+            .btn-xs {
+                padding: 0.2rem 0.5rem;
+            }
+
+            .btn-block {
+                display: block !important;
+                text-align: center;
+                width: 100%;
+            }
+
+            /*for layout-----------------------------------------------*/
+            .page {
+                width: 100%;
+            }
+
+            .pay-form {
+                padding: 1rem 0;
+                clear: both;
+            }
+
+                .pay-form .row {
+                    padding: 0.5rem 1rem;
+                    margin-bottom: 1rem;
+                    line-height: 2rem;
+                    background-color: #fff;
+                    border-top: 1px solid #ccc;
+                    border-bottom: 1px solid #ccc;
+                }
+
+                    .pay-form .row dt {
+                        float: left;
+                        width: 30%;
+                        color: #999;
+                    }
+
+                    .pay-form .row dd {
+                        float: left;
+                        width: 70%;
+                        line-height: 2rem;
+                        position: relative;
+                        z-index: 1;
+                    }
+
+                    .pay-form .row input, .pay-form .row select {
+                        width: 100%;
+                        font-size: 1.2rem;
+                        height: 2rem;
+                        line-height: 2rem;
+                        background: transparent;
+                        border: 0px;
+                    }
+
+                    .pay-form .row .ui-input-text, .bind-form .row .ui-input-search {
+                        border: none;
+                        margin: 0;
+                    }
+
+                    .pay-form .row .ui-shadow-inset {
+                        -webkit-box-shadow: none;
+                        -moz-box-shadow: none;
+                        box-shadow: none;
+                    }
+
+                    .pay-form .row .sentvc {
+                        position: absolute;
+                        right: 0;
+                        top: 0;
+                        margin: 0;
+                    }
+
+                .pay-form .btn-area {
+                    padding: 1rem;
+                    text-align: center;
+                }
+
+            .pay-msg {
+                padding: 1rem;
+                line-height: 2rem;
+                font-size: 1rem;
+                color: #42b035;
+            }
+
+                .pay-msg i {
+                    display: inline-block;
+                    width: 2rem;
+                    height: 2rem;
+                    margin-right: 0.5rem;
+                    vertical-align: top;
+                }
+
+                    .pay-msg i.ic-01 {
+                        background: url(../images/ic_success.png) no-repeat;
+                        background-size: contain;
+                    }
+
+                    .pay-msg i.ic-02 {
+                        background: url(../images/ic_fail.png) no-repeat;
+                        background-size: contain;
+                    }
+
+            .pay-info {
+                background-color: #fff;
+                padding: 1rem;
+            }
+
+                .pay-info .pay-money {
+                    text-align: center;
+                    padding: 0.5rem 0 1.5rem;
+                    border-bottom: 1px solid #ddd;
+                }
+
+                    .pay-info .pay-money h2 {
+                        font-size: 1rem;
+                        font-weight: normal;
+                        margin-bottom: 0.5rem;
+                    }
+
+                    .pay-info .pay-money p {
+                        font-size: 2rem;
+                        font-family: arial;
+                    }
+
+                .pay-info .pay-other {
+                    color: #666;
+                    padding: 0.5rem 0;
+                }
+
+                    .pay-info .pay-other dl {
+                        clear: both;
+                        padding: 0.3rem 0;
+                    }
+
+                        .pay-info .pay-other dl dt {
+                            float: left;
+                        }
+
+                        .pay-info .pay-other dl dd {
+                            float: right;
+                        }
+
+            .pay-confirm {
+                padding: 1rem 0;
+            }
+
+                .pay-confirm .money {
+                    text-align: center;
+                    padding: 0.5rem 0 1.5rem;
+                }
+
+                    .pay-confirm .money h2 {
+                        font-size: 1rem;
+                        font-weight: normal;
+                        margin-bottom: 0.5rem;
+                    }
+
+                    .pay-confirm .money p {
+                        font-size: 2rem;
+                        font-family: arial;
+                    }
+
+                .pay-confirm .company {
+                    text-align: center;
+                    padding: 1rem;
+                    background-color: #fff;
+                }
+
+                .pay-confirm .btn-area {
+                    padding: 1rem 2rem;
+                    text-align: center;
+                }
+
+            .shop-name {
+                padding: 2rem 1rem 1rem;
+                text-align: center;
+            }
+
+                .shop-name h2 {
+                    font-size: 1.2rem;
+                    margin-bottom: 0.5rem;
+                }
+
+            .wx-pay {
+                position: fixed;
+                bottom: 1rem;
+                text-align: center;
+                width: 100%;
+                color: #999;
+            }
+
+                .wx-pay i {
+                    display: inline-block;
+                    width: 1rem;
+                    height: 1rem;
+                    margin-right: 0.3rem;
+                    vertical-align: center;
+                    background: url(../images/wx_pay.png) no-repeat;
+                    background-size: contain;
+                }
+
+            .wx-pay-02 {
+                text-align: center;
+                width: 100%;
+                color: #999;
+            }
+
+                .wx-pay-02 i {
+                    display: inline-block;
+                    width: 1rem;
+                    height: 1rem;
+                    margin-right: 0.3rem;
+                    vertical-align: center;
+                    background: url(../images/wx_pay.png) no-repeat;
+                    background-size: contain;
+                }
+        </style>*@
+
+</body>
+</html>
+
+
+
+

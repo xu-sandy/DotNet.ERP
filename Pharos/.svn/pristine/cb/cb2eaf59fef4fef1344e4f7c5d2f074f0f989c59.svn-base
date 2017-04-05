@@ -1,0 +1,183 @@
+﻿@{
+    ViewBag.Title = "ProductWeight";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新品建档", delText: "删除折扣", editText: "修改商品", hideAdd: true, hideDel: true,hideEdit:true));
+}
+<style type="text/css">
+    .cate { min-height: 35px; }
+    .category {padding-right: 20px;display: inline-block;}
+    .category img {cursor: pointer; padding-left: 5px;}
+</style>
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>品类：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.CategoryCombobox("parentType", showThird: true, showAll: false, panelWidth: 350, controlWidth: 180,i:2)
+            </td>
+            <td class="label-toolbar">
+                <label>品牌：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("brandsn", ViewBag.brands as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", style = "width:120px;" })
+            </td>
+            <td class="label-toolbar">
+                <label>供应商：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("supplierId", ViewBag.suppliers as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", style = "width:120px;" })
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="datacontrol easyui-combobox" name="state" style="width:70px;" data-options="editable: false">
+                    <option selected value="">全部</option>
+                    <option value="1">已上架</option>
+                    <option value="0">已下架</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="货号/品名/条码" data-options="prompt:'货号/品名/条码',width:120" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="$('#win').dialog('open')">导出选项</a>
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出所选</a>
+<span>所选条数: <b style="color:red;font-size:14px;" id="selcount">0</b></span> 
+<div id="win" style="padding:20px;" class="easyui-dialog" data-options="title:'导出选项',buttons:'#dlg-buttons',cache:false,modal:true,width:600,height:350,closed:true,collapsible:false,minimizable:false,maximizable:false">
+    <form id="frm" action="@Url.Action("ExportWeight")" method="get">
+        <table>
+            <tr class="export">
+                <td align="right">门 店：</td>
+                <td>@Html.DropDownList("store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,width:150,onChange:function(n,o){$('#selectCategoryText').html('')}" })</td>
+            </tr>
+            <tr class="cate">
+                <td align="right">热键插片：</td>
+                <td>@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Value = "112", Selected = true }, new SelectListItem() { Value = "224" } }, "MaxRecord")</td>
+            </tr>
+            <tr class="cate">
+                <td align="right">称重品类：</td>
+                <td>@Form.CategoryCombobox("Category", showThird: true, panelWidth: 350, controlWidth: 160)  <a href="#" class="easyui-linkbutton" onclick="addCategory()">添加品类</a></td>
+            </tr>
+        </table>
+        <input type="hidden" name="selectBarcodes" id="selectBarcodes" />
+        <div id="selectCategoryText" style="width: 100%;line-height:28px;"></div>
+    </form>
+</div>
+<div id="dlg-buttons">
+    <a href="javascript:void(0)" class="easyui-linkbutton" onclick="submitExport()">导出</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" onclick="$('#win').dialog('close')">关闭</a>
+</div>
+
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindPageList")?ValuationType=2&";
+    pharos.manager.pageList= [112, 224];
+    pharos.manager.pageSize = 112;
+    pharos.manager.$dg.datagrid({
+        onCheck: function (index, row) {
+            getSelectCount();
+        },
+        onUncheck: function (index, row) {
+            getSelectCount();
+        },
+        onCheckAll: function (rows) {
+            getSelectCount();
+        },
+        onUncheckAll: function (rows) {
+            getSelectCount();
+        }
+    });
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ProductCode', title: '货号', editor: { type: 'text', required: true }, width: 60 },
+        {
+            field: 'Barcode', title: '条码', editor: { type: 'text', required: true }, width: 110,
+            formatter: function (value, row, index) {
+                if (row.Barcodes)
+                    return "<font color='blue' title='一品多码:" + row.Barcodes + "'>" + value + "</font>";
+                return value;
+            }
+        },
+        { field: 'CategoryTitle', title: '品类', width: 120 },
+        { field: 'Title', title: '品名', width: 120 },
+        { field: 'Size', title: '规格', width: 100 },
+        { field: 'BrandTitle', title: '品牌', width: 80 },
+        { field: 'SupplierTitle', title: '供应商', width: 120 },
+        { field: 'SubUnit', title: '单位', width: 40 },
+        { field: 'ValuationTypeTitle', title: '计价方式', width: 60 },
+        { field: 'StockNums', title: '库存量', width: 50 },
+        { field: 'BuyPrice', title: '进价', width: 60 },
+        {
+            field: 'SysPrice', title: '系统售价', width: 60, formatter: function (value, row, index) {
+                if (row.BuyPrice >= value)
+                    return "<font color='red' title='小于进价'>" + value + "</font>";
+                return value;
+            }
+        },
+        { field: 'FavorTitle', title: '前台优惠', width: 60 },
+        { field: 'ReturnTitle', title: '退货状态', width: 60 },
+        { field: 'AcceptTitle', title: '订货状态', width: 60 },
+        { field: 'StateTitle', title: '产品状态', width: 60 },
+        {
+            field: 'Nature', title: ' 产品性质', width: 60, formatter: function (value, row, index) {
+                return value == 2 ? "拆分" : value == 1 ? "组合" : "单品";
+            }
+        }
+    ]];
+    function addCategory() {
+        var val = $("#Category_0").combobox("getValue");
+        var txt = $("#Category_0").combobox("getText");
+        if (!val) {
+            $.messager.alert("提示", "请选择品类!", "info"); return;
+        }
+        var vals = $.map($("[name='selectCategorySN']"), function (r) {
+            return $(r).val();
+        })
+        if (vals.indexOf(val) != -1) {
+            $.messager.alert("提示", "该品类已存在!", "warning"); return;
+        }
+        $.post("@Url.Action("GetNumByCatesn")", {catesn:val,storeId:$("#store").combobox("getValue"),t:Math.random()}, function (num) {
+            var text = "<span class='category'><input type='hidden' name='selectCategorySN' value='" + val + "'/><label style='display:inline-block;'>" + txt+"("+num+")</label><img src='" + root + "Content/image/close.png' width='12' height='12' onclick='delCategory(this)' /></span>";
+            $(text).appendTo($("#selectCategoryText"));
+        })
+    }
+    function delCategory(obj) {
+        $(obj).parent().remove();
+    }
+    function Export() {
+        var rows = pharos.manager.$dg.datagrid("getChecked");
+        if (!rows || rows.length <= 0) {
+            $.messager.alert("提示", "请先选择记录!"); return;
+        }
+        var bars = $.map(rows, function (r, i) { return r.Barcode; });
+        $("#selectBarcodes").val(bars.join());
+        $('#frm').submit();
+        setTimeout(function () {
+            pharos.manager.$dg.datagrid("clearChecked");
+            $("#selectBarcodes").val("");
+        }, 2000);
+    }
+    function submitExport() {
+        if ($("[name='selectCategorySN']").val() == "") {
+            alert("请先选择品类!"); return false;
+        }
+        $('#frm').submit();
+        setTimeout(function () {
+            $('#selectCategoryText').html('');
+        },2000);
+    }
+    function getSelectCount() {
+        var rows = pharos.manager.$dg.datagrid("getChecked");
+        $("#selcount").html(rows.length);
+    }
+</script>

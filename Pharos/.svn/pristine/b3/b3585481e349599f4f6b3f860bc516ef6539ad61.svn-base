@@ -1,0 +1,41 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL商家支付主密钥
+    /// </summary>
+    public class TradersPaySecretKeyService : BaseService<TradersPaySecretKey>
+    {
+        // 商家门店支付通道DAL
+        [Ninject.Inject]
+        ITradersPaySecretKeyRepository tRepository { get; set; }
+
+        /// <summary>
+        /// 获取CID
+        /// </summary>
+        /// <param name="nvl"></param>
+        /// <returns></returns>
+        public List<PayLicense> GetCIDWhere(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            //关键字
+            var keyword = (nvl["keyword"] ?? "").Trim();
+            if (keyword == "")
+            {
+                keyword = "-1";
+            }
+            string keyw = "'" + keyword + "%'";
+            return tRepository.getListCID(keyw);
+        }
+    }
+}

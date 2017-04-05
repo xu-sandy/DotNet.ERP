@@ -1,0 +1,140 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class UserService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<SysUserInfo> UserRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysMenus> MenuRepository { get; set; }
+        public Utility.OpResult SaveOrUpdate(SysUserInfo model)
+        {
+            model.LoginPwd = Pharos.Utility.Security.MD5_Encrypt(model.LoginPwd);
+            if (UserRepository.GetQuery(o => o.LoginName == model.LoginName && o.Id != model.Id).Any())
+                return Utility.OpResult.Fail("登陆名或微信号已存在!");
+            if(model.Id==0)
+            {
+                model.UserId = CommonService.GUID;
+                model.UserCode =Convert.ToString(GetMaxCode()+1);
+                UserRepository.Add(model);
+            }
+            else
+            {
+                var source= UserRepository.Get(model.Id);
+                var pwd = source.LoginPwd;
+                model.ToCopyProperty(source, new List<string>() { "LoginPwd","UserId" });
+                if (!model.LoginPwd.IsNullOrEmpty() && pwd != model.LoginPwd)
+                    source.LoginPwd = model.LoginPwd;
+                UserRepository.SaveChanges();
+            }
+            return Utility.OpResult.Success();
+        }
+        
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = UserRepository.GetQuery(null);
+            var keyword = (nvl["keyword"] ?? "").Trim();
+            query=query.Where(o=>(o.LoginName!=null && o.LoginName.Contains(keyword)) || (o.FullName!=null && o.FullName.Contains(keyword)));
+            recordCount = query.Count();
+            var list= query.ToPageList();
+            var menus = new List<SysMenus>();
+            var menuids= list.Where(o => !o.Limits.IsNullOrEmpty()).Select(o => o.Limits.Split(',')).SelectMany(o=>o.Select(i=>int.Parse(i))).ToList();
+            if (menuids.Any())
+                menus=MenuRepository.GetQuery(o => menuids.Contains(o.MenuId)).ToList();
+            return list.Select(o => new
+            {
+                o.Id,
+                o.FullName,
+                o.IsAdmin,
+                o.Limits,
+                o.LoginName,
+                o.LoginPwd,
+                o.Status,
+                o.UserId,
+                o.Weixin,
+                o.UserCode,
+                LimitTitles = GetMenuTitle(o.Limits,menus)
+            });
+        }
+        string GetMenuTitle(string limits,List<SysMenus> menus)
+        {
+            if (limits.IsNullOrEmpty()) return "";
+            var menuids = limits.Split(',').Select(o => int.Parse(o));
+            return string.Join(",", menus.Where(o => menuids.Contains(o.MenuId)).Select(o => o.Title));
+        }
+        public Utility.OpResult Deletes(int[] ids)
+        {
+            var list= UserRepository.GetQuery(o => ids.Contains(o.Id)).ToList();
+            if (list.Any(o => o.IsAdmin)) return Utility.OpResult.Fail("管理员不允许注销!");
+            if (list.Any(o => o.Status==3)) return Utility.OpResult.Fail("用户已注销!");
+            list.Each(o => o.Status = 3);
+            UserRepository.SaveChanges();
+            return Utility.OpResult.Success();
+        }
+        public Utility.OpResult SetState(string ids, short state)
+        {
+            var idlist= ids.Split(',').Select(o => int.Parse(o)).ToList();
+            var list = UserRepository.GetQuery(o => idlist.Contains(o.Id)).ToList();
+            list.Each(o => o.Status = state);
+            UserRepository.SaveChanges();
+            return Utility.OpResult.Success();
+        }
+        public SysUserInfo GetOne(object id)
+        {
+            return UserRepository.Get(id);
+        }
+        public SysUserInfo GetOneByUID(string uid)
+        {
+            return UserRepository.Find(o=>o.UserId==uid);
+        }
+        public SysUserInfo GetOneByWeixin(string weixin)
+        {
+            if (weixin.IsNullOrEmpty()) return null;
+            return UserRepository.Find(o => o.Weixin == weixin);
+        }
+        public bool CheckUserByCode(string usercode,string password,ref string message)
+        {
+            if (usercode.IsNullOrEmpty() || password.IsNullOrEmpty())
+            {
+                message = "帐号或密码不能为空！";
+                return false;
+            }
+            var pwd = Pharos.Utility.Security.MD5_Encrypt(password);
+            var user = UserRepository.Find(o => o.LoginName == usercode && o.LoginPwd == pwd);
+            if(user==null)
+            {
+                message = "帐号和密码输入不正确！";
+                return false;
+            }
+            return true;
+        }
+        public SysUserInfo Login(string loginName,string password)
+        {
+            var pwd = Pharos.Utility.Security.MD5_Encrypt(password);
+            return UserRepository.Find(o => o.LoginName == loginName && o.LoginPwd == pwd);
+        }
+
+
+        public List<SysUserInfo> GetList(bool isall=true)
+        {
+            var query= UserRepository.GetQuery();
+            if (!isall) query = query.Where(o => o.Status == 1);
+            return query.ToList();
+        }
+
+        public int GetMaxCode()
+        {
+            var max = UserRepository.GetQuery().Max(o => o.UserCode);
+            if (max.IsNullOrEmpty()) return 1000;
+            return int.Parse(max);
+        }
+    }
+}

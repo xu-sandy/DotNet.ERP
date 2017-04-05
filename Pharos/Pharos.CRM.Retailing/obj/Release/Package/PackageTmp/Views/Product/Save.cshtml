@@ -1,0 +1,91 @@
+﻿@model ProductRecord
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<script type="text/javascript">
+    function parentSelect(record) {
+        $.post("@Url.Action("ParentTypeSelect")", { Id: record.value, t: Math.random() }, function (data) {
+            $("#SubCategorySN").combobox("loadData", data);
+            //if(data.length>0)
+                //$("#SubCategorySN").combobox("select", data[0].value);
+        }, "json");
+    }
+    var comboload=function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if(q.length <= 1) return false;
+        $.ajax({
+            url:"@Url.Action("GetBrandInput", "Brand")",
+            type:"post",
+            data:{
+                //传值，还是JSON数据搜索
+                searchName:q
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType:"json",
+            success: function (data) {
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function(item){
+                    return { value: item.BrandSN, text: item.Title };
+                });
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+</script>
+
+<div class="default-form">
+    @using(Html.BeginForm())
+    {
+        @Html.HiddenFor(o=>o.Id)
+    <div class="content">
+        <table class="table-form" width="100%" height="220px">
+            <tr>
+                <td class="name">货 号：</td>
+                <td class="input">@Html.TextBoxFor(o => o.ProductCode, new { @class = "easyui-textbox",data_options="prompt:'系统自动生成',readonly:true"})</td>
+                <td class="name">条形码：</td>
+                <td class="input">@Html.TextBoxFor(o => o.Barcode, new { @class = "easyui-textbox", data_options = "required:true" })</td>
+            </tr>
+            <tr>
+                <td class="name">品 名：</td>
+                <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true" })</td>
+                <td class="name">箱 规：</td>
+                <td class="input">@Html.TextBoxFor(o => o.Size, new { @class = "easyui-textbox" })</td>
+            </tr>
+            <tr>
+
+                <td class="name">品 牌：</td>
+                <td class="input">@Html.DropDownListFor(o => o.BrandSN, ViewBag.brands as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "mode:'remote',loader:comboload,prompt:'请输入简拼或品牌..'" })</td>
+
+                <td class="name">供应商：</td>
+                <td class="input">@Html.DropDownListFor(o => o.SupplierId, ViewBag.suppliers as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+            </tr>
+            <tr>
+                <td class="name">品 类：</td>
+                <td class="input">@Html.DropDownListFor(o => o.BigCategorySN, ViewBag.parenttypes as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "data:pharos.dropdown['parenttypes'],onSelect:parentSelect,editable:false" })</td>
+                <td class="name">子 类：</td>
+                <td class="input">@Html.DropDownListFor(o => o.SubCategorySN, ViewBag.childtypes as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+            </tr>
+            <tr>
+                <td class="name">计量大单位：</td>
+                <td class="input">@Html.DropDownListFor(o => o.BigUnitId, ViewBag.bigunits as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+                <td class="name">计量小单位：</td>
+                <td class="input">@Html.DropDownListFor(o => o.SubUnitId, ViewBag.subunits as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+            </tr>
+            <tr>
+                <td class="name">进 价：</td>
+                <td class="input">@Html.TextBoxFor(o => o.BuyPrice, new { @class = "easyui-numberbox", data_options = "precision:2" })</td>
+                <td class="name">系统售价：</td>
+                <td class="input">@Html.TextBoxFor(o => o.SysPrice, new { @class = "easyui-numberbox", data_options = "precision:2" })</td>
+            </tr>
+        </table>
+    </div>
+    }
+</div>

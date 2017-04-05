@@ -1,0 +1,52 @@
+﻿using Pharos.POS.Retailing.Models.PosModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using Pharos.Wpf.Extensions;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.POS.Retailing.Extensions;
+using Pharos.Wpf.Controls;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// Goto.xaml 的交互逻辑
+    /// </summary>
+    public partial class Goto : DialogWindow02 
+    {
+        public Goto()
+        {
+            InitializeComponent();
+            this.Loaded += Goto_Loaded;
+            this.PreviewKeyDown += Goto_PreviewKeyDown;
+            this.ApplyBindings(this, new GotoViewModel());
+            this.InitDefualtSettings();
+        }
+
+        void Goto_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.Enter:
+                    txtGoto.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                    break;
+            }
+
+        }
+
+        void Goto_Loaded(object sender, RoutedEventArgs e)
+        {
+            Keyboard.Focus(txtGoto);
+        }
+
+    }
+}

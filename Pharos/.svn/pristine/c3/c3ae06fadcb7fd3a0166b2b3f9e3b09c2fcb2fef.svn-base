@@ -1,0 +1,132 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.BLL;
+using System.Data;
+using QCT.Pay.Common;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class PayLicenseController : BaseController
+    {
+        [Ninject.Inject]
+        //商户资料
+        TradersService tradersService { get; set; }
+
+        [Ninject.Inject]
+        //BLL商家支付许可档案
+        PayLicenseService payLicenseService { get; set; }
+
+        [Ninject.Inject]
+        AreaService areaService { get; set; }
+
+        [Ninject.Inject]
+        BusinessService businessService { get; set; }
+
+        [Ninject.Inject]
+        //BLL商家结算账户
+        BankAccountService bankAccountService { get; set; }
+
+        [Ninject.Inject]
+        //BLL审批日志
+        ApproveLogService approveLogService { get; set; }
+
+        public ActionResult Index()
+        {
+            //指派人
+            ViewBag.user = ListToSelect(tradersService.getUserList().Select(o => new SelectListItem() { Value = o.UserId, Text = o.FullName }), emptyTitle: "全部");
+            return View();
+        }
+
+        public ActionResult Save(int? id)
+        {
+            //省市名称
+            string ProCitName = "";
+            //一二级类目名称
+            string BusName = "";
+            //商户资料
+            Traders traders = new Traders();
+           //商家结算账户
+            BankAccount bankAccount = new BankAccount();
+            //审核日志
+            List<ApproveLog> logList = new List<ApproveLog>();
+            var obj = new PayLicense
+            {
+                
+            };
+            if (id.HasValue)
+            {
+                obj = payLicenseService.GetEntityById(id.Value);
+                ProCitName = areaService.GetOne(obj.ProvinceId).Title+ "/" + areaService.GetOne(obj.CityId).Title;
+                BusName = businessService.GetOneByWhere(o => o.ById == obj.BusinessId1).Title + "/" + businessService.GetOneByWhere(o => o.ById == obj.BusinessId2).Title;
+                traders = tradersService.GetEntityByWhere(o=>o.CID==obj.CID);
+                bankAccount = bankAccountService.GetEntityByWhere(o=>o.LicenseId==obj.LicenseId);
+                short moduleNum=Convert.ToInt16(ApproveLogNum.支付许可);
+                logList = approveLogService.GetListByWhere(o => o.ItemId == obj.LicenseId && o.ModuleNum == moduleNum).OrderByDescending(o=>o.Id).ToList();
+            }
+            //指派人
+            ViewBag.user = ListToSelect(tradersService.getUserList().Select(o => new SelectListItem() { Value = o.UserId, Text = o.FullName }), emptyTitle: "请选择");
+            //经营类目
+            ViewBag.BusinessScopeId = tradersService.getBusinessList();
+            //所属体系
+            ViewBag.SourceT = EnumToSelect(typeof(PaySourceType), emptyTitle: "请选择");
+            //省市名称
+            ViewBag.ProvinceCityName = ProCitName;
+            //一二级类目名称
+            ViewBag.Bus1Bus2Name = BusName;
+            //商户资料
+            ViewBag.Tra = traders;
+            //商家结算账户
+            ViewBag.bank = bankAccount;
+            //审核日志
+            ViewBag.logList = logList;
+            return View(obj.IsNullThrow());
+        }
+
+        /// <summary>
+        /// 获取CID
+        /// </summary>
+        /// <param name="keyword"></param>
+        /// <returns></returns>
+        public ActionResult GetCidWhere(string keyword)
+        {
+            var list = payLicenseService.GetCIDWhere(Request.Params);
+            return ToDataGrid(list, 0);
+        }
+
+        /// <summary>
+        /// 获取商户资料
+        /// </summary>
+        /// <param name="CID"></param>
+        /// <returns></returns>
+        public string GetEntityTraders(int CID=0)
+        {
+            Traders traders = tradersService.GetEntityByWhere(o => o.CID == CID);
+            if (traders == null)
+            {
+                traders = new Traders();
+            }
+            return traders.ToJson();
+        }
+
+        public ActionResult GetCityWhere(string keyword)
+        {
+            var list = payLicenseService.GetCityWhere(Request.Params);
+            return ToDataGrid(list, 0);
+        }
+
+        public ActionResult Verification(int id)
+        {
+            var op = payLicenseService.Verification(Request.Params,Request.Files,id);
+            return new OpActionResult(op);
+        }
+
+    }
+}

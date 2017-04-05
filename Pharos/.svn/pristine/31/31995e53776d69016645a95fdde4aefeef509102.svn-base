@@ -1,0 +1,233 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增结算账户", hideDel: true, hideAdd:true, searchHeight: 90));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+
+            <td class="label-toolbar">
+                <label>指派人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("AssignUid", ViewBag.user as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>创建日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_begin" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_end" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+
+        </tr>
+
+        <tr class="s_tr">
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("State", new List<SelectListItem>() { new SelectListItem() { Text = "全部", Value = "-1" }, new SelectListItem() { Text = "未审核", Value = "1" }, new SelectListItem() { Text = "可用", Value = "2" }, new SelectListItem() { Text = "被驳回", Value = "3" }, new SelectListItem() { Text = "暂停", Value = "4" }, new SelectListItem() { Text = "注销", Value = "5" }, new SelectListItem() { Text = "无效", Value = "6" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按商户号", Value = "1" }, new SelectListItem() { Text = "按客户名称", Value = "2" }, new SelectListItem() { Text = "按结算卡号", Value = "3" }, new SelectListItem() { Text = "按财务联系人", Value = "4" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+            </td>
+        </tr>
+</table>
+}
+@section toolbar
+{
+    @if (CurrentUser.HasPermiss(119))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="UpState(2)">设为可用账户</a>
+    }
+    @if (CurrentUser.HasPermiss(120))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="UpState(4)">暂停账户</a>
+    }
+    @if (CurrentUser.HasPermiss(121))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="UpState(5)">注销账户</a>
+    }
+    @if (CurrentUser.HasPermiss(122))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="UpState(3)">驳回账户申请</a>
+    }
+}
+<script type="text/javascript">
+
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        var id = getUrlParam('id');
+        if (id == null) {
+            id = 0;
+        }
+        $.ajax({
+            url: "@Url.Action("getAgentsIdWhere", "AgentsInfo")",
+            type: "post",
+        data: {
+            //传值，还是JSON数据搜索
+            keyword: q,
+            id:id
+        },
+        dataType: "json",
+        success: function (data) {
+            comboRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function (item) {
+                return { AgentsId: item.AgentsId, AgentsId: item.AgentsId };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.State == 5 || row.State == 6) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'FullName', title: '指派人', editor: { type: 'text', required: true }, width: 100 },
+        {
+            field: 'State', title: '账户状态', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) {
+                if (value == "1") {
+                    return "未审核";
+                }
+                else if (value == "2")
+                {
+                    return "可用";
+                }
+                else if (value == "3") {
+                    return "被驳回";
+                }
+                else if (value == "4") {
+                    return "暂停";
+                }
+                else if (value == "5") {
+                    return "注销";
+                }
+                else if (value == "6") {
+                    return "无效";
+                }
+            }
+        },
+        { field: 'CID', title: '商户号', editor: { type: 'text', required: true }, width: 100 }
+    ]];
+
+    pharos.manager.columns = [[
+        { field: 'TradersFullTitle', title: '客户名称', editor: { type: 'text', required: true }, width: 100 },
+        {
+            field: 'AccountType', title: '结算账户类型', editor: { type: 'text', required: true }, width: 120, formatter: function (value, row, index) {
+                if (value == "1") {
+                    return "对公";
+                }
+                else if (value == "2") {
+                    return "私人";
+                }
+            }
+        },
+        {
+            field: 'AccountNumber', title: '结算卡号', editor: { type: 'text', required: true }, width: 250, formatter: function (value, row, index) {
+                if (value != "" && value != null)
+                {
+                    return value.replace(/\s/g, '').replace(/(\d{4})(?=\d)/g, "$1 ");
+                }
+            }
+        },
+        { field: 'AccountName', title: '账户名称', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'BankName', title: '开户银行', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'LinkMan', title: '财务联系人', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Phone', title: '财务联系电话', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'AgentsId', title: '代理商编号', editor: { type: 'text', required: true }, width: 120 },
+        {
+            field: 'TradersStatus', title: '商户状态', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) {
+                if (value == "0") {
+                    return "未审核";
+                }
+                else if (value == "1") {
+                    return "已审核";
+                }
+                else if (value == "2") {
+                    return "无效";
+                }
+            }
+        },
+        {
+            field: 'SourceType', title: '所属体系', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) {
+                if (value == "1") {
+                    return "云平台";
+                }
+                else if (value == "2") {
+                    return "外部系统";
+                }
+            }
+        },
+        { field: 'CreateDT', title: '创建时间', editor: { type: 'text', required: true }, width: 140 },
+        { field: 'CreatePerson', title: '申请人', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'AuditDT', title: '审核时间', editor: { type: 'text', required: true }, width: 140 },
+        { field: 'AuditPerson', title: '审核人', editor: { type: 'text', required: true }, width: 120 }
+    ]];
+
+    pharos.manager.addItem = function () {
+
+    };
+
+    pharos.manager.editItem = function (id, row) {
+
+    }
+
+    //更新状态
+    function UpState(s) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("ExistState")", { ids: ids, state: s, t: Math.random() }, function (d) {
+            if (d.successed) {
+                openWin({ 'title': '设置账户状态', 'width': 640, 'height': 350, hideSave: false, 'url': '/BankCardInfo/UpState?ids=' + ids + '&state=' + s });
+            } else {
+                $.messager.alert("提示", d.message, "error");
+            }
+        }, "json");
+    }
+
+
+    $(function () {
+
+    });
+</script>
+
+

@@ -1,0 +1,95 @@
+﻿using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Configuration;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.DataSync
+{
+    public class DataSyncConfigManage
+    {
+        public DataSyncConfigManage()
+        {
+            try
+            {
+                Interval = Convert.ToInt32(ConfigurationManager.AppSettings["DataAsynInterval"]);
+                AutoDataSync = Convert.ToBoolean(ConfigurationManager.AppSettings["AutoDataSync"]);
+                //ServerUrl = ConfigurationManager.AppSettings["ServerUrl"];
+            }
+            catch
+            {
+                if (Interval == 0)
+                    Interval = 15;
+                AutoDataSync = true;
+            }
+        }
+        static DataSyncConfigManage current;
+        public static DataSyncConfigManage Current
+        {
+            get
+            {
+                if(current== null )
+                {
+                    current = new DataSyncConfigManage();
+                }
+                return current;
+            }
+        }
+        /// <summary>
+        /// 自动同步间隔 （单位：分钟）
+        /// </summary>
+        public int Interval { get; set; }
+
+        /// <summary>
+        /// 是否自动同步
+        /// </summary>
+        public bool AutoDataSync { get; set; }
+
+
+        public GeneralCommand Save
+        {
+            get
+            {
+
+                return new GeneralCommand((o) =>
+                {
+                    try
+                    {
+                        if (UserModel.Current.VerifyCurrentOperateAuth(UserAuth.DataManager))
+                        {
+                            Toast.DoShow("数据维护员才能设置快捷键！");
+                            return;
+                        }
+                        UpdateAppConfig("DataAsynInterval", Interval.ToString());
+                        UpdateAppConfig("AutoDataSync", AutoDataSync.ToString());
+                       // UpdateAppConfig("ServerUrl", ServerUrl);
+                    }
+                    catch
+                    {
+                        Toast.DoShow("保存自动更新配置失败，请重试！", o as Window);
+                    }
+                });
+            }
+        }
+        public static void UpdateAppConfig(string newKey, string newValue)
+        {
+            bool isModified = false;
+            foreach (string key in ConfigurationManager.AppSettings)
+            {
+                if (key == newKey)
+                {
+                    isModified = true;
+                }
+            }
+
+            Configuration config =
+                ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            if (isModified)
+            {
+                config.AppSettings.Settings.Remove(newKey);
+            }
+            config.AppSettings.Settings.Add(newKey, newValue);
+            config.Save();
+            ConfigurationManager.RefreshSection("appSettings");
+        }
+    }
+}

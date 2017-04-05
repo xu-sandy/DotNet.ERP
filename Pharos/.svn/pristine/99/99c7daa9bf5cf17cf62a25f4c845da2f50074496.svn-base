@@ -1,0 +1,132 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class SysRoleService
+    {
+        [Ninject.Inject]
+        IBaseRepository<SysRoles> RoleRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<SysMenuLimit> MenuLimitRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysDepartments> DepartRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysUser> UserRepository { get; set; }
+        [Ninject.Inject]
+        DepartMentService DeptService { get; set; }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var type = nvl["Type"];
+            var status = nvl["Status"];
+            var queryRole = RoleRepository.GetQuery();
+            var queryUser = UserRepository.GetQuery();
+            var query = from x in queryRole
+                        select new { 
+                            x.Id,
+                            x.RoleId,
+                            x.Title,
+                            x.UpdateDT,
+                            x.UpdateUID,
+                            x.CreateDT,
+                            x.Status,
+                            x.DeptId,
+                            UserCount = queryUser.Count(o => (","+o.RoleIds+",").Contains(","+ x.RoleId+",")),
+                            StatusTitle=x.Status?"可用":"停用",
+                            x.Type,
+                            TypeTitle = x.Type == 0 ? "默认" : "自定义",
+                            x.Memo
+                        };
+            if (!type.IsNullOrEmpty())
+            {
+                var st = type.Split(',').Select(o => short.Parse(o)).ToList();
+                query = query.Where(o =>st.Contains( o.Type));
+            }
+            if (!status.IsNullOrEmpty())
+            {
+                var st = status.Split(',').Select(o => bool.Parse(o)).ToList();
+                query = query.Where(o => st.Contains(o.Status));
+            }
+            var list= query.ToList();
+            var depts= DeptService.GetFullTitle(true);
+            return list.Select(x => new
+            {
+                x.Id,
+                x.RoleId,
+                x.Title,
+                x.UpdateDT,
+                x.UpdateUID,
+                x.Status,
+                x.StatusTitle,
+                x.CreateDT,
+                x.UserCount,
+                x.TypeTitle,
+                x.Type,
+                Memo=x.Memo.TrimMore(100),
+                DepartMent = GetDepartment(x.DeptId,depts)
+            });
+        }
+        string GetDepartment(string deptId,Dictionary<int,string> depts)
+        {
+            if (deptId.IsNullOrEmpty()) return "";
+            var ids= deptId.Split(',').Select(o=>int.Parse(o));
+            return string.Join("<br>", depts.Where(o => ids.Contains(o.Key)).Select(o=>o.Value));
+        }
+        public OpResult SaveOrUpdate(SysRoles obj,string menuids,string limitids)
+        {
+            if (obj.Id == 0)
+            {
+                obj.RoleId = RoleRepository.GetMaxInt(o => o.RoleId);
+                obj.UpdateDT=obj.CreateDT = DateTime.Now;
+                obj.UpdateUID= obj.CreateUID = CurrentUser.UID;
+                obj.Status = true;
+                RoleRepository.Add(obj, false);
+                
+            }
+            else
+            {
+                var menu = RoleRepository.Get(obj.Id);
+                obj.ToCopyProperty(menu, new List<string>() { "CreateDT", "CreateUID", "Status", "RoleId" });
+                menu.UpdateDT = DateTime.Now;
+                menu.UpdateUID = CurrentUser.UID;
+                obj = menu;
+                var roleId=menu.RoleId.ToString();
+                var removeRoles= MenuLimitRepository.GetQuery(o=>o.Type==2 && o.ObjId==roleId).ToList();
+                MenuLimitRepository.RemoveRange(removeRoles, false);
+            }
+            MenuLimitRepository.Add(new SysMenuLimit()
+            {
+                CreateDT = obj.CreateDT,
+                CreateUID = obj.CreateUID,
+                LimitIds = limitids,
+                MenuIds = menuids,
+                ObjId = obj.RoleId.ToString(),
+                Type = 2
+            }, false);
+            RoleRepository.SaveChanges(obj);
+            return OpResult.Success();
+        }
+        public OpResult Deletes(int[] ids)
+        {
+            var list = RoleRepository.GetQuery(o => ids.Contains(o.Id)).ToList();
+            RoleRepository.RemoveRange(list);
+            return OpResult.Success();
+        }
+        public SysRoles Get(int id)
+        {
+            return RoleRepository.Get(id);
+        }
+        public void SetState(short mode, int id)
+        {
+            var obj = Get(id);
+            obj.Status = mode == 1;
+            RoleRepository.SaveChanges();
+        }
+    }
+}

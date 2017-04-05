@@ -1,0 +1,58 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Http;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.ApiData.Mobile.Services;
+
+namespace Pharos.Api.Retailing.Controllers.Mobile
+{
+    /// <summary>
+    /// 报表
+    /// </summary>
+    [RoutePrefix("api/mobile")]
+    public class ReportController : ApiController
+    {
+        /// <summary>
+        /// 每日销售报表
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("SaleDayReport")]
+        public object SaleDayReport([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            string date = json.Property("date", true);
+            string type = json.Property("type", true);
+            return ReportService.SaleDayReport(storeId, date, type,1);
+        }
+        /// <summary>
+        /// 每月销售报表
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("SaleMonthReport")]
+        public object SaleMonthReport([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            string date = json.Property("date", true);
+            string type = json.Property("type", true);
+            return ReportService.SaleDayReport(storeId, date, type,2);
+        }
+        /// <summary>
+        /// 每月销售报表
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("SaleYearReport")]
+        public object SaleYearReport([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            string date = json.Property("year", true);
+            string type = json.Property("type", true);
+            if (!string.IsNullOrWhiteSpace(date)) date += "-01";
+            return ReportService.SaleDayReport(storeId, date, type, 3);
+        }
+    }
+}

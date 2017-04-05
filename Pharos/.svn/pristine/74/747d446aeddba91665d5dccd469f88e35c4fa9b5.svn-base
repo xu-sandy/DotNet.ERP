@@ -1,0 +1,58 @@
+﻿@model Members
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var st = ViewBag.stores as List<SelectListItem>;
+}
+<style type="text/css">
+    .table-form tr{height:32px;}
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o=>o.Id)
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">来 源：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.StoreId, st, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo'" })</td>
+                    <td class="name">内部人员：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.Insider, new List<SelectListItem>() { new SelectListItem() { Value = "是" }, new SelectListItem() { Value = "否", Selected = true } })</td>
+                </tr>
+                <tr>
+                    <td class="name">姓 名：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.RealName, new { @class = "easyui-textbox", data_options = "" })</td>
+                    <td class="name">卡 号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.MemberCardNum, new { @class = "easyui-textbox", data_options = "validType:\"remote['" + Url.Action("Validator") + "','MemberCardNum']\",invalidMessage:'卡号已存在!'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">手机号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.MobilePhone, new { @class = "easyui-textbox", data_options = "required:true,validType:'mobile'" + (Request["Id"] == null ? "" : ",readonly:true") })</td>
+                    <td class="name">生 日：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Birthday, new { @class = "Wdate"})</td>
+                </tr>
+                <tr>
+                    <td class="name">微信号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Weixin, new { @class = "easyui-textbox", data_options = "" })</td>
+                    <td class="name">QQ号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.QQ, new { @class = "easyui-textbox", data_options = "validType:'integer',invalidMessage:'格式不正确'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">邮 箱：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Email, new { @class = "easyui-textbox", data_options = "validType:'email'" })</td>
+                    <td class="name">性 别：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.Sex, new List<SelectListItem>() { new SelectListItem() { Value = "男", Selected = true }, new SelectListItem() { Value = "女" } })</td>
+                </tr>
+                <tr>
+                    <td class="name">城 市：</td>
+                    <td class="input">@Form.CityCombobox("CurrentCityId",selectItem:ViewBag.city as SelectListItem,empty:"请选择",controlWidth:160)</td>
+                    <td class="name">地 址：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Address, new { @class = "easyui-textbox", data_options = "" })</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+
+
+

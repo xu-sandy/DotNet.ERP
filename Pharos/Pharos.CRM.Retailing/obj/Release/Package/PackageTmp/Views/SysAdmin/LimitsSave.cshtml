@@ -1,0 +1,59 @@
+﻿@model Pharos.Sys.EntityExtend.SysLimitsExt
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-toolbar" style="width:100%;height:92px; vertical-align:top;">
+                @if (Model.PLimitId != 0)
+                {
+                    <tr>
+                        <!--如果是添加则文本显示，如果编辑则下拉树可修改-->
+                        <td class="name">
+                            <span>父级权限：</span>
+                        </td>
+                        <td class="input">
+                            @if (Model.Id > 0)
+{
+    <input class="easyui-combotree" id="PLimitId" name="PLimitId" value="@Model.PLimitId" data-options="url:'@Url.Action("GetLimitsTreeList", new { id=Model.Id})',method:'get',required:true" />
+}
+else
+{
+                                @Html.HiddenFor(o => o.PLimitId)
+                                @Html.ValueFor(o => o.PTitle)
+                            }
+                        </td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                }
+                <tr>
+                    <td class="name">
+                        <span>
+                            权限名称：
+                        </span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true" })
+                    </td>
+                    <td class="name">
+                        <span> 状态：</span>
+                    </td>
+                    <td class="input">
+                        @*@Html.RadioButtonFor(o => o.Status, 0) 关闭*@
+                        @Html.RadioButtonFor(o => o.Status, 1) 显示(默认选中)
+                        @Html.RadioButtonFor(o => o.Status, 2) 可选
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="4"></td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>

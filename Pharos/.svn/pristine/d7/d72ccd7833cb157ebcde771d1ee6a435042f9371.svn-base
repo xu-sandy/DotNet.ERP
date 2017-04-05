@@ -1,0 +1,87 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.买赠促销_新增买赠促销);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.买赠促销_查看买赠信息) && hideAdd;
+    var hideExpire = !CurrentUser.HasPermiss(SysConstLimits.买赠促销_设为已过期);
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.买赠促销_删除买赠信息);
+    var hideCheck = hideDel && hideExpire;
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增买赠促销", delText: "删除买赠促销", editText: "修改买赠促销", hideAdd: hideAdd, hideDel: hideDel));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.RadioButtonList(ViewBag.states as List<SelectListItem>, "State", new { style = "height:26px;" })
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input type="text" class="datacontrol easyui-textbox font-12" name="searchText" data-options="prompt:'货号/品名/条码'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+@if (!hideExpire)
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(2)">设为已过期</a>
+}
+}
+
+<script type="text/javascript">
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true @(hideCheck?",hidden:true":"") },
+        { field: 'BetWeen', title: '活动有效期', width: 160 },
+        { field: 'PromotionRange', title: '商品促销范围', width: 200 },
+        { field: 'MinPurchaseNum', title: '起购量', width: 60 },
+        { field: 'RestrictionBuyNum', title: '限购次数', width: 70 },
+        { field: 'ProductGive', title: '赠送商品', width: 200 },
+        { field: 'StateTitle', title: '活动状态', width: 80 },
+        { field: 'CreateDT', title: '创建时间', width: 140 }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialogMax(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (Id, Row) {
+        var w = $(window.parent).width() - 80;
+        var h = $(window.parent).height() - 80;
+        this.Id = Id;
+        if (@(showDetail ? " || 1==1" : "1!=1"))
+            openDialog(this.detailText, this.detailurl + "&Id=" + Id, w, h, true);
+        else
+            openDialog(this.editText, this.editurlNocache(), w, h);
+    }
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+        if (d.successed) {
+            $.messager.alert("提示", "操作成功！", "info");
+            pharos.manager.gridReload();
+        } else {
+            $.messager.alert("提示", "操作失败！" + d.message, "error");
+        }
+    }, "json");
+    }
+    function removeBefore(row) {
+        if (row.StateTitle != "未开始") {
+            $.messager.alert("提示", "活动未开始才能进行删除！", "info"); return false;
+        }
+        return true;
+    }
+    function dialogTools() {
+        //var msg = "说明：<br>1）录入货号或条码后自动填充相关商品信息；<br>2）限购次数为0，则表示无限制，直至商品售完或活动到期为止；<br>3）限购次数大于0，则表示每天限多少个购买订单。";
+        //return [{ iconCls: 'icon-help', handler: function () { window.top.$(this).tooltip({ content: msg }).tooltip('show') } }];
+    }
+</script>

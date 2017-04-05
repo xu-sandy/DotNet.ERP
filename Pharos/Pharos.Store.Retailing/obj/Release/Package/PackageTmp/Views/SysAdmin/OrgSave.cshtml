@@ -1,0 +1,97 @@
+﻿@model Pharos.Sys.EntityExtend.SysDepartmentsExt
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var prefixName = Model.PDepId == 0 ? "机构" : "部门";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @*@Html.HiddenFor(o => o.PDepId)*@
+        @Html.HiddenFor(o => o.Type)
+
+        <div class="content">
+            <table class="table-toolbar" style="width:100%; height:140px;">
+                @if (Model.Id>0)
+                {//修改
+                    if (Model.PDepId != 0)
+                    {//非顶级
+                        <tr>
+                            <td class="name">
+                                <span>隶属@(Model.PType == 1 ? "机构" : "部门")：</span>
+                            </td>
+                            <td class="input">
+                                <input class="easyui-combotree" id="PDepId" name="PDepId" value="@Model.PDepId" data-options="url:'@Url.Action("GetOrgTreeList", new { id=Model.Id})',method:'get',required:true,readonly:true" />
+                            </td>
+                            <td colspan="2"></td>
+                        </tr>
+                    }
+                    else { 
+                        @Html.HiddenFor(o => o.PDepId)
+                    }
+                }
+                else
+                { //新增
+                    if (Model.PDepId != 0)
+                    {//非顶级
+                        <tr>
+                            <td class="name">
+                                <span>隶属@(Model.Type == 1 ? "机构" : "部门")：</span>
+                            </td>
+                            <td class="input">
+                                @Html.HiddenFor(o => o.PDepId)
+                                @Html.ValueFor(o => o.PTitle)
+                            </td>
+                            <td colspan="2"></td>
+                        </tr>
+                    }
+                    else { 
+                        @Html.HiddenFor(o => o.PDepId)
+                    }
+                }
+
+                <tr>
+                    <td class="name">
+                        <span>@(prefixName)名称：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true" })
+                    </td>
+                    <td class="name">
+                        <span>@(prefixName)代码：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.SN, new { @class = "easyui-textbox" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>@(prefixName)领导：</span>
+                    </td>
+                    <td class="input width-85">
+                        <input id="ManagerUId" name="ManagerUId" class="easyui-combobox datacontrol" value="@Model.ManagerUId" data-options="valueField: 'Value', textField: 'Text', url:'@Url.Action("GetUsersEUIDropdown", "common", new { uid = Model.ManagerUId })', panelHeight: 'auto', editable: false,width:100,height:30" />
+                        @*@Html.DropDownListFor(o => o.ManagerUId, new List<SelectListItem>())*@
+                    </td>
+
+                    <td class="name">
+                        <span>@(prefixName)副领导：</span>
+                    </td>
+                    <td class="input width-85">
+                        <input id="DeputyUId" name="DeputyUId" class="easyui-combobox datacontrol" value="@Model.DeputyUName" data-options="valueField: 'Value', textField: 'Text', url:'@Url.Action("GetUsersEUIDropdown", "common", new { uid = Model.ManagerUId })', panelHeight: 'auto', editable: false,width:100,height:30" />
+                        @*@Html.DropDownListFor(o => o.DeputyUId, new List<SelectListItem>())*@
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span> 状态：</span>
+                    </td>
+                    <td class="input">
+                        @Html.RadioButtonFor(o => o.Status, true) 显示
+                        @Html.RadioButtonFor(o => o.Status, false) 关闭
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>

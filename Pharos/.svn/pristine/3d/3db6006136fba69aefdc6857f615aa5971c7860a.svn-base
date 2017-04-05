@@ -1,0 +1,214 @@
+﻿using AX.CSF.Encrypt;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class CompAuthorService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<CompanyAuthorize> CompanyAuthorRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysUserInfo> UserRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<Traders> TraderRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<Business> BusinessRepository { get; set; }
+        public OpResult SaveOrUpdate(CompanyAuthorize obj)
+        {
+            if (!TraderRepository.GetQuery(o => o.CID == obj.CID).Any())
+                return OpResult.Fail("商户不存在!");
+            obj.AppProper = obj.AppProper ?? "N";
+            obj.StoreProper = obj.StoreProper ?? "N";
+            obj.PosMinorDisp = obj.PosMinorDisp ?? "N";
+            obj.MemberShared = obj.MemberShared ?? "Y";
+            if (obj.Id == 0)
+            {
+                obj.CreateDT = DateTime.Now;
+                obj.CreateUID = CurrentUser.UID;
+                obj.ExpirationDT = DateTime.Parse(obj.EffectiveDT).AddMonths(obj.ValidityNum.GetValueOrDefault()).ToString("yyyy-MM-dd");
+                CompanyAuthorRepository.Add(obj);
+            }
+            else
+            {
+                var res = CompanyAuthorRepository.Get(obj.Id);
+                var pwd=res.SupperPassword;
+                obj.ToCopyProperty(res, new List<string>() { "CreateDT", "CreateUID", "CID","MachineSN","SerialNo" });
+                res.ExpirationDT = DateTime.Parse(obj.EffectiveDT).AddMonths(obj.ValidityNum.GetValueOrDefault()).ToString("yyyy-MM-dd");
+                if (obj.SupperPassword.IsNullOrEmpty())
+                    res.SupperPassword = pwd;
+                CompanyAuthorRepository.SaveChanges();
+            }
+            return OpResult.Success();
+        }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var text = nvl["searchText"];
+            var state = nvl["state"];
+            var queryUser = UserRepository.GetQuery();
+            var where = DynamicallyLinqHelper.Empty<CompanyAuthorize>();
+            if(!text.IsNullOrEmpty())
+            {
+                int cid=0;
+                text = text.Trim();
+                int.TryParse(text,out cid);
+                where = where.And(o => o.CID == cid || o.Title.Contains(text));
+            }
+            if(!state.IsNullOrEmpty())
+            {
+                var st=short.Parse(state);
+                where = where.And(o => o.Status == st);
+            }
+            var query = CompanyAuthorRepository.GetQuery(where);
+            var q = from x in query
+                    select new 
+                    {
+                        x.Id,
+                        x.CID,
+                        x.Source,
+                        x.Way,
+                        x.AppProper,
+                        x.StoreProper,
+                        x.Title,
+                        x.ContractNo,
+                        x.EffectiveDT,
+                        x.ExpirationDT,
+                        x.ValidityNum,
+                        x.UserNum,
+                        x.StoreNum,
+                        x.PosMinorDisp,
+                        x.MemberShared,
+                        x.OpenVersionId,
+                        x.Status,
+                        Assigner = queryUser.Where(o => o.UserId == x.AssignerUID).Select(o => o.FullName).FirstOrDefault()
+                    };
+            recordCount = q.Count();
+            return q.ToPageList();
+        }
+
+        public Pharos.Utility.OpResult Deletes(int[] ids)
+        {
+            var list= CompanyAuthorRepository.GetQuery(o=>ids.Contains(o.Id)).ToList();
+            return OpResult.Result(CompanyAuthorRepository.RemoveRange(list));
+        }
+
+        public CompanyAuthorize GetOne(object id)
+        {
+            return CompanyAuthorRepository.Get(id);
+        }
+        public CompanyAuthorize GetOneByCID(int cid)
+        {
+            return CompanyAuthorRepository.Find(o=>o.CID==cid);
+        }
+
+
+        public OpResult SetState(string ids, short state)
+        {
+            var idlist= ids.Split(',').Select(o => int.Parse(o));
+            var list= CompanyAuthorRepository.GetQuery(o => idlist.Contains(o.Id)).ToList();
+            list.ForEach(o => o.Status = state);
+            CompanyAuthorRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        /// <summary>
+        /// 批量生成系列号
+        /// </summary>
+        /// <param name="cids"></param>
+        /// <returns></returns>
+        public Dictionary<string, string> GenerateSerial(string cids)
+        {
+            var dicts = new Dictionary<string, string>();
+            cids.Split(',').Each(o =>
+            {
+                dicts[o] = GenerateSN(GetOneByCID(int.Parse(o)));
+            });
+            return dicts;
+        }
+
+        /// <summary>
+        /// 生成序列号
+        /// </summary>
+        /// <param name="company">CompanyAuthorize 单位授权实体类</param>
+        /// <returns></returns>
+        public string GenerateSN(CompanyAuthorize company)
+        {
+            if (company.CID > 0)
+            {
+                JObject json = new JObject();
+                json["CID"] = company.CID;
+                json["Title"] = company.Title;
+                json["Source"] = company.Source;
+                json["Way"] = company.Way;
+                json["BusinessMode"] = company.BusinessMode;
+
+                json["UserNum"] = company.UserNum;
+                json["StoreNum"] = company.StoreNum;
+                json["StoreProper"] = company.StoreProper;
+                json["AppProper"] = company.AppProper;
+                json["PosMinorDisp"] = company.PosMinorDisp;
+
+                json["OpenVersionId"] = company.OpenVersionId;
+                json["OpenScopeId"] = "";
+                if(!company.OpenScopeId.IsNullOrEmpty())
+                {
+                    var scopeids = company.OpenScopeId.Split(',');
+                    json["OpenScopeId"] = string.Join(",", BusinessRepository.GetQuery(o => scopeids.Contains(o.ById)).Select(o => o.Title));
+                }
+                json["EffectiveDT"] = company.EffectiveDT;
+                json["ExpirationDT"] = company.ExpirationDT;
+                json["ValidityNum"] = company.ValidityNum;
+
+                json["SupperAccount"] = company.SupperAccount;
+                json["SupperPassword"] = company.SupperPassword;
+                json["MachineSN"] = company.MachineSN;
+
+                return DES.Encrypt(json.ToString());
+            }
+            else
+            {
+                return DES.Encrypt("-1");
+            }
+        }
+        /// <summary>
+        /// 验证匹配字段
+        /// </summary>
+        /// <param name="auth"></param>
+        /// <param name="source"></param>
+        /// <returns></returns>
+        public bool ValidateCompany(CompanyAuthorize auth, CompanyAuthorize source)
+        {
+            if (auth == null || source == null) return false;
+            return (auth.Way == source.Way && auth.Title == source.Title && auth.UserNum == source.UserNum && auth.MachineSN == source.MachineSN
+                && auth.StoreNum == source.StoreNum && auth.StoreProper == source.StoreProper && auth.PosMinorDisp == source.PosMinorDisp
+                && auth.AppProper == source.AppProper && auth.OpenVersionId == source.OpenVersionId);
+        }
+        public bool RegisterAgain(CompanyAuthorize company)
+        {
+            if (company.CID.HasValue)
+            {
+                var source = GetOneByCID(company.CID.Value);
+                if(source!=null)
+                {
+                    source.Way = company.Way;
+                    source.Title = company.Title;
+                    source.UserNum = company.UserNum;
+                    source.StoreNum = company.StoreNum;
+                    source.StoreProper = company.StoreProper;
+                    source.PosMinorDisp = company.PosMinorDisp;
+                    source.AppProper = company.AppProper;
+                    source.OpenVersionId = company.OpenVersionId;
+                    source.MachineSN = company.MachineSN;
+                    source.SerialNo = company.SerialNo;
+                    return CompanyAuthorRepository.SaveChanges();
+                }
+            }
+            return false;
+        }
+    }
+}

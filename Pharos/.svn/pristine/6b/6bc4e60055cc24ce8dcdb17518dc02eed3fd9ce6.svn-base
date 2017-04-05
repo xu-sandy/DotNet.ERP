@@ -1,0 +1,260 @@
+﻿using Pharos.Logic.Mapping;
+using Pharos.Logic.Entity;
+using System;
+using System.Data.Entity;
+using System.Data.Entity.Infrastructure;
+using System.Data.Entity.ModelConfiguration.Conventions;
+using Pharos.Sys.Entity;
+
+
+namespace Pharos.Logic.DAL
+{
+    public partial class EFDbContext : DbContext
+    {
+        static EFDbContext()
+        {
+            //不重建数据库结构
+            Database.SetInitializer<EFDbContext>(null);
+        }
+        public EFDbContext()
+            : base(new Pharos.DBFramework.DBHelper().ConnectionString)        //System.Configuration.ConfigurationManager.AppSettings["ConnectionString"]
+        {
+            ///Leo: disable the Lazy Loading the WCF will not be able to serilize the entities.
+            //是否启用延迟加载:  
+            //  true:   延迟加载（Lazy Loading）：获取实体时不会加载其导航属性，一旦用到导航属性就会自动加载  
+            //  false:  直接加载（Eager loading）：通过 Include 之类的方法显示加载导航属性，获取实体时会即时加载通过 Include 指定的导航属性  
+            this.Configuration.LazyLoadingEnabled = false;
+            this.Configuration.ProxyCreationEnabled = false;
+            //UseLegacyPreserveChangesBehavior
+            //确定是否使用旧的行为， true 使用，false 不使用；
+            this.Configuration.AutoDetectChangesEnabled = true;  //自动监测变化，默认值为 true 
+        }
+
+        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+            ///移除EF映射默认给表名添加“s“或者“es”
+            modelBuilder.Conventions.Remove<PluralizingTableNameConvention>();
+            ///配置关系
+            modelBuilder.Configurations
+                //  .Add(new SysStoreUserInfoMap())
+                .Add(new Sys_UserMap())
+                .Add(new InventoryBalanceMap())
+                .Add(new InventoryMap())
+                .Add(new InventoryRecordMap())
+                .Add(new InventoryValidityMap())
+                .Add(new SaleOrderHistoryMap())
+                .Add(new DeviceRegInfoMap())
+                .Add(new SaleMarketingMap())
+                .Add(new VwSaleDetailMap())
+                .Add(new ProductMap())
+                .Add(new VwProductMap())
+                .Add(new VwOrderMap())
+                .Add(new SysDataDictionaryMap())
+                .Add(new SysLogMap())
+                .Add(new WarehouseMap())
+                .Add(new ProductChangePriceMap())
+                .Add(new MemberIntegralSetMap())
+                .Add(new ApiLibraryMap())
+                .Add(new BundlingMap())
+                .Add(new BundlingListMap())
+                .Add(new CommodityDiscountMap())
+                .Add(new CommodityPromotionMap())
+                .Add(new ConsumptionPaymentMap())
+                .Add(new FreeGiftPurchaseMap())
+                .Add(new FreeGiftPurchaseListMap())
+                .Add(new MemberIntegralMap())
+                .Add(new PosIncomePayoutMap())
+                .Add(new ProductBrandMap())
+                .Add(new ProductCategoryMap())
+                .Add(new PromotionBlendMap())
+                .Add(new PromotionBlendListMap())
+                .Add(new SaleDetailMap())
+                .Add(new SaleOrdersMap())
+                .Add(new MembersMap())
+                .Add(new NoticeMap())
+                .Add(new WipeZeroMap())
+#if (Local!= true)
+
+.Add(new SysRolesMap())
+                //.Add(new SysDataDictMap())//Pharos.Sys.Entity
+                .Add(new SysMenuMap())
+                .Add(new SysLimitMap())//权限
+                .Add(new OrderMap())
+                .Add(new SupplierMap())
+                .Add(new VwSupplierMap())
+                .Add(new SysDepartmentsMap())
+                .Add(new ContractMap())
+                .Add(new CommodityMap())
+                .Add(new ReceiptsMap())
+                .Add(new OrderDistributionMap())
+                .Add(new STHouseMoveMap())
+                .Add(new HouseMoveMap())
+                .Add(new HouseMoveListMap())
+                .Add(new OrderReturnsMap())
+                .Add(new OutboundGoodsMap())
+                .Add(new OutboundListMap())
+                .Add(new InboundGoodsMap())
+                .Add(new InboundListMap())
+                .Add(new PrivilegeSolutionMap())
+                .Add(new PrivilegeProductMap())
+                .Add(new PrivilegeRegionMap())
+                .Add(new PrivilegeCalcMap())
+                .Add(new PrivilegeRegionValMap())
+                .Add(new MailSenderMap())
+                .Add(new MailReceiveMap())
+                .Add(new CommodityReturnsMap())
+                .Add(new CommodityReturnsDetailMap())
+                .Add(new ProductTradePriceMap())
+                .Add(new SaleDetailsTotalMap())
+                .Add(new SalesReturnsMap())
+                .Add(new SalesReturnsDetailedMap())
+                .Add(new PosCheckingMap())
+                .Add(new BreakageGoodsMap())
+                .Add(new BreakageListMap())
+                .Add(new PushMap())
+                .Add(new SaleCommodityHistoryMap())
+                .Add(new PushWithMemberMap())
+                .Add(new FeedbackMap())
+#endif
+;
+
+            //解决 EF默认会自动保留2位小数的问题。
+            modelBuilder.Entity<SaleOrders>().Property(t => t.TotalAmount).HasPrecision(18, 12);
+            modelBuilder.Entity<SaleOrders>().Property(t => t.Receive).HasPrecision(18, 12);
+            modelBuilder.Entity<SaleOrders>().Property(t => t.PreferentialPrice).HasPrecision(18, 12);
+
+            modelBuilder.Entity<SaleDetail>().Property(t => t.PurchaseNumber).HasPrecision(18, 12);
+            modelBuilder.Entity<SaleDetail>().Property(t => t.BuyPrice).HasPrecision(18, 12);
+            modelBuilder.Entity<SaleDetail>().Property(t => t.SysPrice).HasPrecision(18, 12);
+
+            modelBuilder.Entity<SaleDetail>().Property(t => t.ActualPrice).HasPrecision(18, 12);
+            modelBuilder.Entity<SaleDetail>().Property(t => t.AveragePrice).HasPrecision(18, 12);
+            modelBuilder.Entity<SaleDetail>().Property(t => t.Total).HasPrecision(18, 12);
+
+            modelBuilder.Entity<WipeZero>().Property(t => t.Number).HasPrecision(18, 12);
+
+            modelBuilder.Entity<Inventory>().Property(t => t.StockNumber).HasPrecision(18, 12);
+            modelBuilder.Entity<InventoryRecord>().Property(t => t.Number).HasPrecision(18, 12);
+
+            modelBuilder.Entity<InventoryBalance>().Property(t => t.Number).HasPrecision(18, 12);
+            modelBuilder.Entity<InventoryBalance>().Property(t => t.SaleAveragePrice).HasPrecision(18, 12);
+            modelBuilder.Entity<InventoryBalance>().Property(t => t.SaleAmount).HasPrecision(18, 12);
+            modelBuilder.Entity<InventoryBalance>().Property(t => t.StockAmount).HasPrecision(18, 12);
+            modelBuilder.Entity<ProductGroup>().Property(t => t.Number).HasPrecision(18, 12);
+#if (Local!= true)
+
+            modelBuilder.Entity<StockTakingLog>().Property(t => t.Number).HasPrecision(18, 12);
+            modelBuilder.Entity<StockTaking>().Property(t => t.LockNumber).HasPrecision(18, 12);
+            modelBuilder.Entity<StockTaking>().Property(t => t.ActualNumber).HasPrecision(18, 12);
+            modelBuilder.Entity<InboundList>().Property(t => t.InboundNumber).HasPrecision(18, 12);
+            modelBuilder.Entity<IndentOrderList>().Property(t => t.AcceptNum).HasPrecision(18, 12);
+            modelBuilder.Entity<IndentOrderList>().Property(t => t.DeliveryNum).HasPrecision(18, 12);
+            modelBuilder.Entity<IndentOrderList>().Property(t => t.IndentNum).HasPrecision(18, 12);
+            modelBuilder.Entity<OrderDistribution>().Property(t => t.DeliveryNum).HasPrecision(18, 12);
+            modelBuilder.Entity<OrderDistribution>().Property(t => t.ReceivedNum).HasPrecision(18, 12);
+            modelBuilder.Entity<OrderDistributionGift>().Property(t => t.IndentNum).HasPrecision(18, 12);
+            modelBuilder.Entity<OrderDistributionGift>().Property(t => t.ReceivedNum).HasPrecision(18, 12);
+            modelBuilder.Entity<CommodityReturnsDetail>().Property(t => t.ReturnNum).HasPrecision(18, 12);
+            modelBuilder.Entity<SalesReturnsDetailed>().Property(t => t.Number).HasPrecision(18, 12);
+            modelBuilder.Entity<OutboundList>().Property(t => t.OutboundNumber).HasPrecision(18, 12);
+            modelBuilder.Entity<BreakageList>().Property(t => t.BreakageNumber).HasPrecision(18, 12);
+            modelBuilder.Entity<HouseMoveList>().Property(t => t.OrderQuantity).HasPrecision(18, 12);
+            modelBuilder.Entity<HouseMoveList>().Property(t => t.ActualQuantity).HasPrecision(18, 12);
+            modelBuilder.Entity<HouseMoveList>().Property(t => t.DeliveryQuantity).HasPrecision(18, 12);
+#endif
+            modelBuilder.Entity<CommodityDiscount>().Property(t => t.MinPurchaseNum).HasPrecision(18, 12);
+            modelBuilder.Entity<BundlingList>().Property(t => t.Number).HasPrecision(18, 12);
+            modelBuilder.Entity<FreeGiftPurchase>().Property(t => t.MinPurchaseNum).HasPrecision(18, 12);
+
+
+            base.OnModelCreating(modelBuilder);
+        }
+
+        //映射方式二
+        public DbSet<SysDataDictionary> DataDicts { get; set; }
+
+        public DbSet<MemberIntegralSet> MemberIntegralSets { get; set; }
+        public DbSet<MemberIntegralSetList> MemberIntegralSetLists { get; set; }
+        public DbSet<ProductBrand> Brands { get; set; }
+        public DbSet<ProductMultPrice> ProductMultPrices { get; set; }
+        public DbSet<ProductMultSupplier> ProductMultSuppliers { get; set; }
+
+
+        public DbSet<ApiLibrary> ApiLibrarys { get; set; }
+        public DbSet<Bundling> Bundlings { get; set; }
+        public DbSet<BundlingList> BundlingLists { get; set; }
+        public DbSet<CommodityDiscount> CommodityDiscounts { get; set; }
+        public DbSet<CommodityPromotion> CommodityPromotions { get; set; }
+        public DbSet<ConsumptionPayment> ConsumptionPayments { get; set; }
+        public DbSet<ProductGroup> ProductGroups { get; set; }
+
+        public DbSet<DeviceRegInfo> DeviceRegInfos { get; set; }
+        public DbSet<FreeGiftPurchaseList> FreeGiftPurchaseLists { get; set; }
+
+        public DbSet<FreeGiftPurchase> FreeGiftPurchases { get; set; }
+
+        public DbSet<MemberIntegral> MemberIntegrals { get; set; }
+
+        public DbSet<Members> Members { get; set; }
+
+        public DbSet<Notice> Notices { get; set; }
+
+        public DbSet<PosIncomePayout> PosIncomePayouts { get; set; }
+
+        public DbSet<ProductRecord> ProductRecords { get; set; }
+
+        public DbSet<PromotionBlendList> PromotionBlendLists { get; set; }
+
+        public DbSet<PromotionBlend> PromotionBlends { get; set; }
+
+        public DbSet<SaleDetail> SaleDetails { get; set; }
+
+        public DbSet<SaleOrders> SaleOrders { get; set; }
+
+        public DbSet<SalesRecord> SalesRecords { get; set; }
+
+        //public DbSet<SysDataDictionary> SysDataDictionarys { get; set; }
+
+        public DbSet<SysStoreUserInfo> SysStoreUserInfos { get; set; }
+
+        public DbSet<WipeZero> WipeZeros { get; set; }
+        public DbSet<ProductCategory> ProductCategorys { get; set; }
+#if (Local!= true)
+        public DbSet<Attachment> Attachments { get; set; }
+        public DbSet<SalesReturns> SalesReturns { get; set; }
+        //返利管理
+        public DbSet<PrivilegeCalc> PrivilegeCalcs { get; set; }
+        public DbSet<PrivilegeCalcDetail> PrivilegeCalcDetails { get; set; }
+        public DbSet<PrivilegeCalcResult> PrivilegeCalcResults { get; set; }
+        public DbSet<PrivilegeRegionVal> PrivilegeRegionVals { get; set; }
+        public DbSet<PrivilegeProductGift> PrivilegeProductGifts { get; set; }
+        public DbSet<TreasuryLocks> TreasuryLocks { get; set; }
+        public DbSet<StockTaking> StockTakings { get; set; }
+        public DbSet<IndentOrderList> IndentOrderList { get; set; }
+
+        public DbSet<Area> Areas { get; set; }
+        public DbSet<StockTakingLog> StockTakingLogs { get; set; }
+        public DbSet<ChangePriceLog> ChangePriceLogs { get; set; }
+        public DbSet<CommodityReturns> CommodityReturns { get; set; }
+        public DbSet<CommodityReturnsDetail> CommodityReturnsDetail { get; set; }
+        public DbSet<PayNotifyResult> PayNotifyResults { get; set; }
+        public DbSet<ProductTradePrice> ProductTradePrices { get; set; }
+        public DbSet<OutboundGoodsHistory> OutboundGoodsHistorys { get; set; }
+        public DbSet<Reader> Readers { get; set; }
+        public DbSet<WeighingSet> WeighingSets { get; set; }
+        public DbSet<WeighingBatch> WeighingBatchs { get; set; }
+        public DbSet<ImportSet> ImportSets { get; set; }
+        /// <summary>
+        /// 卡类型信息
+        /// </summary>
+        public DbSet<CardInfo> CardInfo { get; set; }
+        /// <summary>
+        /// 会员等级表
+        /// </summary>
+        public DbSet<MemberLevel> MemberLevel { get; set; }
+        public DbSet<IntegralRule> IntegralRule { get; set; }
+        public DbSet<MakingMembershipCard> MakingMembershipCard { get; set; }
+        public DbSet<MembershipCard> MembershipCard { get; set; }
+#endif
+    }
+}

@@ -1,0 +1,21 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace Pharos.SyncService
+{
+    public interface IPosServerDbStore<T>
+        where T : IPosServerDbEntity
+    {
+        SortedDictionary<Guid, T>.KeyCollection Ids { get; }
+
+        IPosServerDbEntity Get(Guid id);
+
+        void CreateItem(IPosServerDbEntity data, Guid guid);
+
+        byte[] UpdateItem(Guid guid, IPosServerDbEntity data);
+
+        void DeleteItem(Guid guid);
+
+        IPosServerDbEntity Merge(IPosServerDbEntity currentDbEntity, IPosServerDbEntity changeDbEntity);
+    }
+}

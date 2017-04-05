@@ -1,0 +1,90 @@
+﻿using Common.Logging;
+using Microsoft.Synchronization;
+using Microsoft.Synchronization.Files;
+using Pharos.SyncService.SyncProviders;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.SyncService
+{
+    public class SyncController : SyncOrchestrator
+    {
+
+        public void DoSynchronize(int companyId, string storeId, string endpointConfigurationName, LocalSyncContext localSyncContext)
+        {
+            var dataServiceGroups = SyncDataServiceGroupFactory.Factory(localSyncContext);
+
+            foreach (var item in dataServiceGroups)
+            {
+                try
+                {
+                    var temp = item;
+                    var localProvider = new PosDbSyncProvider(companyId, storeId, temp);
+                    localProvider.DestinationCallbacks.ProgressChanged+=DestinationCallbacks_ProgressChanged;
+                    if (item.SyncDirectionOrder == SyncDirectionOrder.Download)
+                    {
+                        localProvider.Configuration.ConflictResolutionPolicy = ConflictResolutionPolicy.SourceWins;
+                    }
+                    else
+                    {
+                        localProvider.Configuration.ConflictResolutionPolicy = ConflictResolutionPolicy.ApplicationDefined;
+                        localProvider.DestinationCallbacks.ItemConflicting += LocalItemConflicting;
+                    }
+                    var remoteProvider = new RemoteProviderProxy(companyId, storeId, endpointConfigurationName, temp.SyncDirectionOrder);
+
+                    this.LocalProvider = localProvider;
+                    this.RemoteProvider = remoteProvider;
+                    this.Direction = temp.SyncDirectionOrder;
+                    SyncOperationStatisticsShow(this.Synchronize(), temp.SyncDirectionOrder);
+                }
+                catch (Exception ex)
+                {
+                    ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                    logger.Error(ex.Message, ex);
+                    //DO log
+                }
+            }
+        }
+
+        private void DestinationCallbacks_ProgressChanged(object sender, SyncStagedProgressEventArgs e)
+        {
+            Console.WriteLine(e.ReportingProvider);
+            Console.WriteLine(e.Stage);
+            Console.WriteLine(e.CompletedWork);
+            Console.WriteLine(e.TotalWork);
+            Console.WriteLine(DateTime.Now);
+        }
+
+        private void LocalItemConflicting(object sender, ItemConflictingEventArgs e)
+        {
+            switch (e.DestinationChange.ChangeKind)
+            {
+                case ChangeKind.Deleted:
+                    e.SetResolutionAction(ConflictResolutionAction.SourceWins);
+                    break;
+                case ChangeKind.UnknownItem:
+                    e.SetResolutionAction(ConflictResolutionAction.SourceWins);
+                    break;
+                case ChangeKind.Update:
+                    e.SetResolutionAction(ConflictResolutionAction.Merge);
+                    break;
+            }
+        }
+        public void SyncOperationStatisticsShow(SyncOperationStatistics syncOperationStatistics, SyncDirectionOrder _SyncDirectionOrder)
+        {
+
+            Console.WriteLine("{1} Download Applied:\t {0}", syncOperationStatistics.DownloadChangesApplied, _SyncDirectionOrder);
+            Console.WriteLine("{1} Download Failed:\t {0}", syncOperationStatistics.DownloadChangesFailed, _SyncDirectionOrder);
+            Console.WriteLine("{1} Download Total:\t\t {0}", syncOperationStatistics.DownloadChangesTotal, _SyncDirectionOrder);
+            Console.WriteLine("{1} Upload Applied Total:\t\t {0}", syncOperationStatistics.UploadChangesApplied, _SyncDirectionOrder);
+            Console.WriteLine("{1} Upload Failed Total:\t\t {0}", syncOperationStatistics.UploadChangesFailed, _SyncDirectionOrder);
+            Console.WriteLine("{1} Upload Total:\t\t {0}", syncOperationStatistics.UploadChangesTotal, _SyncDirectionOrder);
+        }
+
+    }
+}

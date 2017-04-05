@@ -1,0 +1,45 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using Pharos.Wpf.Extensions;
+using System.Windows.Shapes;
+using Pharos.Wpf;
+
+namespace Pharos.POS.Retailing.Devices.CustomerScreens
+{
+    /// <summary>
+    /// LargeCustomerScreen.xaml 的交互逻辑
+    /// </summary>
+    public partial class LargeCustomerScreen : Window, ICustomerScreen
+    {
+        public LargeCustomerScreen()
+        {
+            InitializeComponent();
+            this.Focusable = false;
+            ShowInTaskbar = false;
+            var monitor = Monitor.AllMonitors.Where(o => !o.IsPrimary).FirstOrDefault();
+            if (monitor != null)
+            {
+                this.Top = monitor.WorkingArea.Top;
+                this.Left = monitor.WorkingArea.Left;
+                this.Width = monitor.WorkingArea.Width;
+                this.Height = monitor.WorkingArea.Height;
+                this.ResizeMode = System.Windows.ResizeMode.NoResize;
+            }
+        }
+
+        public void Show(Models.ViewModels.PosViewModel datas)
+        {
+            this.DataContext = datas;
+            this.Show();
+        }
+    }
+}

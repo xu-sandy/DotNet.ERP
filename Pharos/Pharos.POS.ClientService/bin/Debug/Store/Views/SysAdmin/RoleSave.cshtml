@@ -1,0 +1,120 @@
+﻿@model Pharos.Sys.Entity.SysRoles
+    @{
+        ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+        Layout = "~/Views/Shared/_FormLayout.cshtml";
+    }
+
+    <div class="default-form">
+        @using (Html.BeginForm())
+        {
+            @Html.HiddenFor(o => o.Id)
+            <div class="content">
+                <table class="table-toolbar" style="width:100%" >
+                    <tr>
+                        <td class="name">
+                            <span>角色姓名：</span>
+                        </td>
+                        <td class="input" width="150">
+                            @Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true" })
+                        </td>
+                        <td class="name">
+                            <span>角色状态：</span>
+                        </td>
+                        <td class="input">
+                            @Html.RadioButtonFor(o => o.Status, true, new { data_options = "required:true,novalidate:true" }) 可用
+                            @Html.RadioButtonFor(o => o.Status, false, new { data_options = "required:true,novalidate:true" })关闭
+                        </td>
+                        <td class="name"></td>
+                        <td class="input"></td>
+                    </tr>
+                    <tr>
+                        
+                    </tr>
+
+                </table>
+                <table class="table-toolbar" style="width:100%" height="60">
+                    <tr>
+                        <td class="name" style="vertical-align:middle;width:23%;font-size:12px;">
+                            <span>描述说明：</span>
+                        </td>
+                        <td class="input">
+                            @Html.TextAreaFor(o => o.Memo, new { style = "width: 80%;border-radius:5px;border:1px solid #d4d4d4;padding:5px;font-size:12px;" })
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        }
+    </div>
+
+@*<script type="text/javascript">
+        var jqElement = $('#treegrid');
+        jqElement.treegrid({
+            toolbar: '#toolbar',
+            border: false,
+            fit: true,
+            fitColumns: true,
+            url: "@Url.Action("GetLimitsForRole")",
+            rownumbers: true,
+            idField: 'id',
+            singleSelect: true,
+            treeField: 'Code',
+            columns: [[
+                {
+                    title: '选择功能模块', field: 'Id', width: 250, formatter: function (value, row) {
+                        return '<input type="checkbox" click="CheckParent(' + value + ')" />' + row.Key;
+                    }
+                },
+                {
+                    title: '选择功能权限', field: 'ChildLimitsStr', width: 450, formatter: function (value, row) {
+                        var opeart = '';
+                        if (value != "" && value != null) {
+                            var arrVals = value.split(';');
+                            for (var item in arrVals) {
+                                var itemVal = item.split(',');
+                                opeart += '<input type="checkbox" click="CheckFunction(' + itemVal[0] + ')" />' + itemVal[1] + "&nbsp;&nbsp;&nbsp;";
+                            }
+                        }
+                        
+                        return opeart;
+                    }
+                },
+
+            ]],
+
+        });
+
+</script>*@
+
+    @*<script type="text/javascript">
+        var jqElement = $('#treegrid');
+        jqElement.treegrid({
+            toolbar: '#toolbar',
+            border: false,
+            fit: true,
+            fitColumns: true,
+            url: "@Url.Action("GetLimitsForRole")",
+            rownumbers: true,
+            idField: 'id',
+            singleSelect: true,
+            treeField: 'name',
+            columns: [[
+                {
+                    title: '选择功能模块', field: 'Id', width: 250, formatter: function (value, row) {
+                        return '<input type="checkbox" click="CheckParent(' + value + ')" />' + row.Name;
+                    }
+                },
+                {
+                    title: '选择功能权限', field: 'FunctionPermissions', width: 450, formatter: function (value, row) {
+                        var opeart = '';
+                        for (var item in value) {
+                            opeart += '<input type="checkbox" click="CheckFunction(' + value[item].Id + ')" />' + value[item].Name + "&nbsp;&nbsp;&nbsp;";
+                        }
+                        return opeart;
+                    }
+                },
+
+            ]],
+
+        });
+
+    </script>*@

@@ -1,0 +1,146 @@
+﻿using Pharos.DBFramework;
+using Pharos.Sys.DAL;
+using Pharos.Sys.Entity;
+using Pharos.Sys.EntityExtend;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.Sys.BLL
+{
+    public partial class SysDataDictionaryBLL
+    {
+        SysDataDictionaryDAL _dal = new SysDataDictionaryDAL();
+        LogEngine logEngine = new LogEngine();
+
+        public List<SysDataDictionaryExt> GetList(int pageIndex, int pageSize, string key)
+        {
+            return _dal.GetList(pageIndex, pageSize, key);
+        }
+
+        /// <summary>
+        /// 根据该父级类别下的子字典项
+        /// </summary>
+        /// <param name="psn">父级编号</param>
+        public IList<SysDataDictionary> GetDicListByPSN(int psn)
+        {
+            DataTable dt = _dal.GetDicListByPSN(psn);
+
+            return DBHelper.ToEntity.ToList<SysDataDictionary>(dt);
+        }
+        public IList<SysDataDictionary> GetItemList(int psn)
+        {
+            return _dal.GetItemList(psn);
+        }
+        /// <summary>
+        /// 根据Id获得数据字典
+        /// </summary>
+        /// <param name="sn"></param>
+        /// <returns></returns>
+        public SysDataDictionaryExt GetExtModel(int id, int psn)
+        {
+            var obj = _dal.GetExtModel(id);
+            if (obj == null)
+            {
+                obj = new SysDataDictionaryExt();
+                var pobj = _dal.GetByColumn(psn, "DicSN");
+                obj.DicPSN = psn;
+                obj.PTitle = pobj.Title;
+            }
+            else
+            {
+
+            }
+            return obj;
+        }
+        /// <summary>
+        /// 根据Id获得数据字典
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public SysDataDictionaryExt GetExtModelByDicSN(int dicSN)
+        {
+            var obj = _dal.GetExtModelByDicSN(dicSN);
+            return obj;
+        }
+        /// <summary>
+        /// 更改数据字典状态
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public OpResult ChangeStatus(int sn)
+        {
+            var result = OpResult.Fail("状态变更失败");
+            try
+            {
+                var model = _dal.GetByColumn(sn, "DicSN");
+                var model1 = model;
+                model1.Status = !model.Status;
+                _dal.UpdateStatus(model1);
+
+                var logMsg = LogEngine.CompareModelToLog<SysDataDictionary>(Pharos.Sys.LogModule.数据字典, model, model1);
+                logEngine.WriteInsert(logMsg, Pharos.Sys.LogModule.数据字典);
+
+                result = OpResult.Success("数据保存成功");
+                if(result.Successed)
+                    Pharos.Infrastructure.Data.Redis.RedisManager.Publish("SyncDatabase", new Pharos.ObjectModels.DTOs.DatabaseChanged() { CompanyId = Sys.SysCommonRules.CompanyId, StoreId = "-1", Target = "SysDataDictionary" });
+            }
+            catch (Exception e)
+            {
+                result = OpResult.Fail("状态变更失败" + e.Message);
+            }
+            return result;
+        }
+        /// <summary>
+        /// 保存数据字典
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public object SaveModel(SysDataDictionary model)
+        {
+            var result = OpResult.Fail("数据保存失败!");
+            try
+            {
+                model.CompanyId = Sys.SysCommonRules.CompanyId;
+                if (_dal.ExistsTitle(model.DicSN, model.DicPSN, model.Title))
+                {
+                    result = OpResult.Fail("数据字典名称不能重复！");
+                }
+                else
+                {
+                    if (_dal.ExistsById(model.Id))
+                    {
+                        var re = _dal.Update(model);
+                        if (re) { result = OpResult.Success("数据保存成功"); }
+                    }
+                    else
+                    {
+                        var maxObjId = _dal.MaxVal("DicSN");
+                        model.DicSN = maxObjId + 1;
+                        model.SortOrder= GetItemList(model.DicPSN).Max(o =>(int?)o.SortOrder).GetValueOrDefault()+1;
+                        var re = _dal.Insert(model);
+                        if (re > 0)
+                        {
+                            model.Id = re;
+                            var logMsg = LogEngine.CompareModelToLog<SysDataDictionary>(Pharos.Sys.LogModule.数据字典, model);
+                            logEngine.WriteInsert(logMsg, Pharos.Sys.LogModule.数据字典);
+                            result = OpResult.Success("数据保存成功");
+                        }
+                    }
+                    var stores =string.Join(",",new DBHelper().DataTableText("select storeid from Warehouse where state=1", null).AsEnumerable().Select(o => o["storeid"].ToString()));
+                    Pharos.Infrastructure.Data.Redis.RedisManager.Publish("SyncDatabase", new Pharos.ObjectModels.DTOs.DatabaseChanged() { CompanyId = Sys.SysCommonRules.CompanyId, StoreId = stores, Target = "SysDataDictionary" });
+                }
+
+            }
+            catch (Exception ex)
+            {
+                result = OpResult.Fail("数据保存失败!" + ex.Message);
+            }
+            return result;
+        }
+    }
+}

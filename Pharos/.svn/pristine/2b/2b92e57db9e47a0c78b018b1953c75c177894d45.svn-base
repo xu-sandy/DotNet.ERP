@@ -1,0 +1,199 @@
+﻿@using Pharos.Logic.OMS.Entity
+@{
+    ViewBag.Title = "Summary";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd:true,hideDel: true, searchHeight: 87));
+
+    var d1 = ViewBag.d1 as List<SysDataDictionary>;
+    var d2 = ViewBag.d2 as List<SysDataDictionary>;
+    var d3 = ViewBag.d3 as List<SysDataDictionary>;
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>业务员：</label>
+            </td>
+            <td class="input-toolbar">
+                @if (ViewBag.all == 1)
+                {
+                    @Html.DropDownList("AssignerUID", ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+                }
+                else
+                {
+                    @Form.Combobox("AssignerUID", ViewBag.user as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+                }
+            </td>
+            <td class="label-toolbar">
+                <label>客户类型：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("BusinessModeId", ViewBag.ModeId as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true,editable: false,width:120" })
+            </td>
+            <td class="label-toolbar">
+                <label>跟踪状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("TrackStautsId", ViewBag.TrackStautsId as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="label-toolbar">
+                <label>登记日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_begin" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_end" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+
+        </tr>
+
+        <tr class="s_tr">
+            <td class="label-toolbar">
+                <label>区&nbsp;&nbsp;&nbsp;域：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="Province" name="CurrentProvinceId" class="easyui-combobox" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="City" name="CurrentCityId" class="easyui-combobox" />
+            </td>
+
+            <td class="label-toolbar">
+                <label>经营范围：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("BusinessScopeId", ViewBag.BusinessScopeId as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+
+        </tr>
+
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="">导出</a>
+}
+<script type="text/javascript">
+
+    pharos.manager.geturl = '@Url.Action("getSummaryList")';
+    pharos.manager.showFooter = true;
+    pharos.manager.pageSize = 50;
+    pharos.manager.pageList = [50, 100, 200];
+    pharos.manager.frozenColumns = [[
+
+    ]];
+
+    pharos.manager.columns = [[
+        { field: 'CreateDT', title: '日期', editor: { type: 'text', required: true }, rowspan: 2, width: 100, formatter: function (value, row, index) { 
+            if(value!=""&&value!=null)
+            {
+                return new Date(value).format("yyyy-MM-dd"); 
+            }
+            else
+            {
+                return "";
+            }
+          } 
+        },
+        { field: 'FullName', title: '业务员', editor: { type: 'text', required: true }, rowspan: 2, width: 100 },
+        { field: 'aTitle', title: '区域', editor: { type: 'text', required: true }, rowspan: 2, width: 100 },
+        { field: '', title: '客户类型', editor: { type: 'text', required: true },colspan: @d1.Count(),rowspan:@(d1.Count()== 0 ? 2 : 0) },
+        { field: '', title: '跟进状态', editor: { type: 'text', required: true },colspan: @d2.Count(),rowspan:@(d2.Count()== 0 ? 2 : 0) },
+        { field: '', title: '支付方式', editor: { type: 'text', required: true },colspan: @d3.Count(),rowspan:@(d3.Count()== 0 ? 2 : 0) }
+    ],
+    [
+        @foreach(var v1 in d1)
+        {
+            var fid="kh"+v1.DicSN;
+            @: { field: '@fid', title: '@v1.Title', editor: { type: 'text', required: true }, width: 100 },
+        }
+
+        @foreach(var v2 in d2)
+        {
+            var fid = "gj" + v2.DicSN;
+            @: { field: '@fid', title: '@v2.Title', editor: { type: 'text', required: true }, width: 100 },
+        }
+
+        @foreach(var v3 in d3)
+        {
+            var fid = "zf" + v3.DicSN;
+            @: { field: '@fid', title: '@v3.Title', editor: { type: 'text', required: true }, width: 100 },
+        }
+    ]
+    ];
+
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        //openDialog(this.editText, this.editurlNocache(), 1000, 560);
+        //openDialog1000(this.addText, this.editurlNocache());
+        openWin({ 'title': this.editText, 'width': 1000, 'height': 560, hideSave: ish, 'url': this.editurlNocache() });
+    }
+
+    $(function () {
+
+        loadPCD(0, 0);
+
+    });
+
+    //加载省份
+    function loadProvince() {
+        $('#Province').combobox({
+            url: '/Member/getProvince?defaultTitle=全部',
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: false,
+            novalidate: true,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                loadCity(newValue);
+            }
+        });
+
+    }
+
+    //加载城市
+    function loadCity(provinceKey) {
+        $('#City').combobox({
+            url: '/Member/getCity?ProvinceID=' + provinceKey + '&defaultTitle=全部',
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: false,
+            novalidate: true,
+            validType: 'requiredForCombo'
+        });
+
+    }
+
+
+    //加载省市区
+    //pid:默认选中省ID
+    //cid:默认选中城市ID
+    function loadPCD(pid, cid) {
+        loadProvince();
+        loadCity(0);
+
+        $('#Province').combobox('setValue', pid);
+        $('#City').combobox('setValue', cid);
+    }
+
+</script>
+
+

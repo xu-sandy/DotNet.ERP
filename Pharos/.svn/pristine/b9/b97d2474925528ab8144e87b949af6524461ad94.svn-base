@@ -1,0 +1,57 @@
+﻿using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    public class MemberInfo : BaseViewModel, IDisposable
+    {
+        bool isRuning = true;
+        public MemberInfo()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                while (isRuning)
+                {
+                    Date = DateTime.Now;
+                    Thread.Sleep(1000);
+                }
+            });
+        }
+        private DateTime date;
+
+        public DateTime Date
+        {
+            get { return date; }
+            set
+            {
+                date = value;
+                this.OnPropertyChanged(o => o.Date);
+            }
+        }
+
+        private string operatorName;
+        public string OperatorName 
+        {
+            get { return operatorName; }
+            set
+            {
+                operatorName = value;
+                this.OnPropertyChanged(o => o.OperatorName);
+            }
+        }
+
+        public void Dispose()
+        {
+            isRuning = false;
+        }
+        ~MemberInfo()
+        {
+            Dispose();
+        }
+    }
+}

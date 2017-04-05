@@ -1,0 +1,153 @@
+﻿using Pharos.Logic.MemberDomain.Exceptions;
+using Pharos.Logic.MemberDomain.Interfaces;
+using Pharos.Logic.MemberDomain.QuanChengTaoProviders.IntegralRules;
+using Pharos.Logic.MemberDomain.QuanChengTaoProviders.Scenes;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+
+namespace Pharos.Logic.MemberDomain.QuanChengTaoProviders
+{
+    public class BarcodeIntegralProvider : IIntegralRuleProvider
+    {
+        public int ProviderId
+        {
+            get { return (int)IntegralProviderType.BarcodeIntegralProvider; }
+        }
+
+        public IEnumerable<IIntegralRule> GetRules(object info = null)
+        {
+            return Pharos.Logic.BLL.ReturnRulesService.GetProviderRules((int)info, ProviderId).Select(o => new CommonIntegralRule()
+            {
+                MeteringMode = o.Mode,
+                IntegralExpression = GetIntegralExpression(o),
+                VerifyExpression = GetVerifyExpression(o)
+            }).ToList();
+        }
+        /// <summary>
+        /// 获取验证是否满足积分规则条件的表达式
+        /// </summary>
+        /// <param name="entity">数据源</param>
+        /// <returns>积分规则条件表达式</returns>
+        private Expression<Func<IScene, bool>> GetVerifyExpression(Pharos.Logic.Entity.ReturnRules entity)//注：此处Pharos.Logic.Entity.ReturnRules引用在下次底层数据访问重构时候，新建Dao进行解耦
+        {
+            var p = Expression.Parameter(typeof(BarcodeScene), "p");
+            MemberExpression propertyName = null;
+            Expression body = null;
+            switch (entity.Mode)// 计量模式（eg:金额，次数。。）
+            {
+                case (int)MeteringMode.AmountCounter:
+
+                    break;
+                case (int)MeteringMode.CountCounter:
+                    break;
+
+                default:
+                    throw new IntegralRuleProviderLoadException("未知计量模式!");
+            }
+            Expression expression1 = GetLogicalOperationExpression(entity.LeftSign, entity.Number1, propertyName);
+            if (entity.RightSign.HasValue && entity.Number2.HasValue)
+            {
+                var expression2 = GetLogicalOperationExpression(entity.RightSign.Value, entity.Number2.Value, propertyName);
+                body = Expression.And(expression1, expression2);
+            }
+            else
+            {
+                body = expression1;
+            }
+            return Expression.Lambda<Func<IScene, bool>>(body, p);
+        }
+        /// <summary>
+        /// 获取逻辑运算符表达式
+        /// </summary>
+        /// <param name="logicalOperatorType">逻辑运算符</param>
+        /// <param name="number">逻辑运算范围数值</param>
+        /// <param name="property">比对属性</param>
+        /// <param name="isPropertyRight">比对属性是否在表达式右边</param>
+        /// <returns></returns>
+        private Expression GetLogicalOperationExpression(int logicalOperatorType, decimal number, MemberExpression property)
+        {
+            Expression leftExpression = property;
+            Expression rightExpression = Expression.Constant(number);
+            Expression result = null;
+            switch (logicalOperatorType)
+            {
+                case (int)LogicalOperatorType.GreaterThan:
+                    result = Expression.GreaterThan(leftExpression, rightExpression);
+                    break;
+                case (int)LogicalOperatorType.GreatThanOrEqualTo:
+                    result = Expression.GreaterThanOrEqual(leftExpression, rightExpression);
+                    break;
+                case (int)LogicalOperatorType.LessThan:
+                    result = Expression.LessThan(leftExpression, rightExpression);
+                    break;
+                case (int)LogicalOperatorType.LessThanOrEqualTo:
+                    result = Expression.LessThanOrEqual(leftExpression, rightExpression);
+                    break;
+                case (int)LogicalOperatorType.EqualTo:
+                    result = Expression.Equal(leftExpression, rightExpression);
+                    break;
+                default:
+                    throw new IntegralRuleProviderLoadException("未知规则逻辑运算符!");
+            }
+            return result;
+        }
+        /// <summary>
+        /// 获取积分表达式
+        /// </summary>
+        /// <param name="entity">数据源</param>
+        /// <returns>积分表达式</returns>
+        private Expression<Func<IScene, decimal>> GetIntegralExpression(Pharos.Logic.Entity.ReturnRules entity)//注：此处Pharos.Logic.Entity.ReturnRules引用在下次底层数据访问重构时候，新建Dao进行解耦
+        {
+            var p = Expression.Parameter(typeof(BarcodeScene), "p");
+            MemberExpression propertyName = null;
+            Expression body = null;
+            var cases = new List<SwitchCase>();
+            switch (entity.Mode)// 计量模式（eg:金额，次数。。）
+            {
+                case (int)MeteringMode.AmountCounter:
+                    propertyName = Expression.Property(p, "Amount");
+
+                    break;
+                case (int)MeteringMode.CountCounter:
+                    propertyName = Expression.Property(p, "Count");
+                    break;
+            }
+            switch (entity.OperationType) //返赠运算方式(0：按固定值；1：按固定比例；2：动态配置)
+            {
+                case 0:
+                    body = Expression.Constant(Convert.ToDecimal(entity.Expression));
+                    break;
+                case 1:
+                    var rateConstant = Expression.Constant(Convert.ToDecimal(entity.Expression));
+                    body = Expression.Multiply(rateConstant, propertyName);
+                    break;
+                case 2://TODO Call Dynamic Expression
+                    break;
+            }
+            return Expression.Lambda<Func<IScene, decimal>>(body, p);
+        }
+
+        public IEnumerable<int> GetMeteringModes(IEnumerable<IIntegralRule> providerRules)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<IIntegralRule> VerifyRules(IEnumerable<IIntegralRule> providerRules, IScene scene)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IDictionary<IIntegralRule, decimal> RunExpression(IEnumerable<IIntegralRule> efficientRules, IScene scene)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IScene GetScene(object channelMessage, IEnumerable<int> meteringModes)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

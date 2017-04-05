@@ -1,0 +1,173 @@
+﻿using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Pharos.Utility.Helpers;
+using Pharos.Sys.Entity;
+using Pharos.Sys.DAL;
+using Pharos.Sys.EntityExtend;
+using Pharos.DBFramework;
+
+
+namespace Pharos.Sys.BLL
+{
+    public class SysDepartmentBLL
+    {
+        private SysDepartmentDAL _dal = new SysDepartmentDAL();
+
+        public SysDepartmentBLL()
+        {
+        }
+        #region 公共基础方法
+        /// <summary>
+        /// 删除组织机构
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public bool Delete(int id)
+        {
+            return _dal.Delete(id);
+        }
+
+        #endregion 公共基础方法
+        /// <summary>
+        /// 保存组织机构
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveDep(SysDepartments model)
+        {
+            var result = OpResult.Fail("数据保存失败");
+            try
+            {
+                model.CompanyId = SysCommonRules.CompanyId;
+                if (_dal.ExistsById(model.Id))
+                {
+                    if (_dal.ExistsColumn(model.Id, "Id", model.SN, "SN", SysCommonRules.CompanyId))
+                    {
+                        result = OpResult.Fail("代码已存在，不可重复");
+                    }
+                    else
+                    {
+                        var re = _dal.Update(model);
+                        if (re) { result = OpResult.Success("数据保存成功"); }
+                    }
+                }
+                else
+                {
+                    if (_dal.ExistsColumn(0, "Id", model.SN, "SN", SysCommonRules.CompanyId))
+                    {
+                        result = OpResult.Fail("代码已存在，不可重复");
+                    }
+                    else
+                    {
+                        var maxDepId = _dal.MaxVal("DepId",SysCommonRules.CompanyId);
+                        model.DepId = maxDepId + 1;
+                        var re = _dal.Insert(model);
+                        if (re > 0) { result = OpResult.Success("数据保存成功"); }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result = OpResult.Fail("数据保存失败!" + ex.Message);
+            }
+            return result;
+        }
+        /// <summary>
+        /// 获取组织机构列表数据
+        /// </summary>
+        /// <returns></returns>
+        public List<SysDepartmentsExt> GetExtList()
+        {
+            return _dal.GetExtList();
+        }
+        /// <summary>
+        /// 根据ID获取组织机构
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public SysDepartmentsExt GetModel(int id, int pdepid)
+        {
+            SysDepartmentsExt model = _dal.GetExtModel(id);
+            if (model == null)
+            {
+                model = GetNewModel(pdepid);
+            }
+            return model;
+        }
+        public SysDepartments GetModelByDepId(int depId)
+        {
+            SysDepartments model = null;
+            var datas = _dal.GetListByDepId(depId);
+            if (datas != null && datas.Count > 0)
+                model = datas[0];
+            return model;
+        }
+        /// <summary>
+        /// 更改组织机构列表
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public OpResult ChangeStatus(int id)
+        {
+            var result = OpResult.Fail("状态变更失败");
+            try
+            {
+                var model = _dal.GetById(id);
+                model.Status = !model.Status;
+                _dal.UpdateStatus(model);
+                result = OpResult.Success("数据保存成功");
+            }
+            catch (Exception e)
+            {
+                result = OpResult.Fail("状态变更失败" + e.Message);
+            }
+            return result;
+        }
+        /// <summary>
+        /// 根据类型获得机构/部门列表
+        /// </summary>
+        /// <returns></returns>
+        public List<SysDepartments> GetListByType(int type)
+        {
+            return _dal.GetListByType(type,SysCommonRules.CompanyId);
+        }
+        /// <summary>
+        /// 通过pDepId获取部门列表
+        /// </summary>
+        /// <param name="pDepId"></param>
+        /// <returns></returns>
+        public List<SysDepartments> GetListByPDepId(int? pDepId)
+        {
+            return pDepId.HasValue?_dal.GetListByPDepId(pDepId.Value, SysCommonRules.CompanyId):new List<SysDepartments>();
+        }
+
+        #region private
+        /// <summary>
+        /// 获取新Mode
+        /// </summary>
+        /// <param name="pobjid"></param>
+        /// <returns></returns>
+        private SysDepartmentsExt GetNewModel(int pobjid)
+        {
+            var pmodel = _dal.GetByColumn(pobjid, "DepId");
+            var model = new SysDepartmentsExt();
+            if (pmodel != null)
+            {
+                model.PDepId = pmodel.PDepId;
+                model.Type = (short)(pmodel.Type + 1);
+                model.PTitle = pmodel.Title;
+            }
+            else
+            {
+
+                model.PDepId = 0;
+                model.Type = 1;
+            }
+            return model;
+        }
+        #endregion private
+
+    }
+}

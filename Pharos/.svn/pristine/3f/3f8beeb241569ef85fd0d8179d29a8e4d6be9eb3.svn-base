@@ -1,0 +1,86 @@
+﻿using System;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace QCT.Pay.Common
+{
+    public class PayConvertHelper
+    {
+        #region Convert
+        /// <summary>
+        /// 枚举字符串转换枚举值
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        public static short Convert2EnumValue<T>(string str)
+        {
+            try
+            {
+                var val = (short)Enum.Parse(typeof(T), str);
+                return val;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+        /// <summary>
+        /// 枚举值转换为枚举字符串
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="val"></param>
+        /// <returns></returns>
+        public static string Convert2EnumString<T>(short val)
+        {
+            try
+            {
+                var str = Enum.GetName(typeof(T), val);
+                return str;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+        /// <summary>
+        /// 日期+时间格式转换
+        /// </summary>
+        /// <param name="date"></param>
+        /// <param name="time"></param>
+        /// <returns></returns>
+        public static string Convert2DateFormat(string date, string time, string formatStr)
+        {
+            string tdate = string.Empty;
+            if (!string.IsNullOrEmpty(date) && !string.IsNullOrEmpty(time))
+            {
+                try
+                {
+                    DateTime dt = DateTime.ParseExact(date + time, "yyyyMMddHHmmss", System.Globalization.CultureInfo.CurrentCulture);
+                    tdate = dt.ToString(formatStr);
+                }
+                catch { }
+            }
+            return tdate;
+        }
+        /// <summary>
+        /// 元转分
+        /// </summary>
+        /// <param name="amt"></param>
+        /// <returns></returns>
+        public static int FromYuan2Cent(decimal amt)
+        {
+            return Convert.ToInt32(amt * PayConst.YUAN_2_CENT_RATE);
+        }
+        /// <summary>
+        /// 分转元
+        /// </summary>
+        /// <param name="amt"></param>
+        /// <returns></returns>
+        public static decimal FromCent2Yuan(int amt)
+        {
+            return Convert.ToDecimal(amt * PayConst.CENT_2_YUAN_RATE);
+        }
+        #endregion
+    }
+}

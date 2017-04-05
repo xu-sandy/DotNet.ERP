@@ -1,0 +1,79 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">
+    #win .datagrid-row-selected{ background-color:white!important;}
+    .datagrid .panel-header{text-align:center;}
+</style>
+<div class="default-form">
+    <div class="content">
+        <div class="formbox">
+            <table class="table-form" width="100%" height="80px">
+                @if(Request["type"]=="入库")
+                { 
+                <tr>
+                    <td class="name">采购单号：</td>
+                    <td class="input">@Html.DisplayText("IndentOrderId")</td>
+                    <td class="name">订货门店：</td>
+                    <td class="input">@Html.DisplayText("StoreTitle")</td>
+                    <td class="name">采购人：</td>
+                    <td class="input">@Html.DisplayText("BuyerName")</td>
+                    <td class="name">到货日期：</td>
+                    <td class="input">@Html.DisplayText("ReceivedDT")</td>
+                </tr>
+                <tr>
+                    <td class="name">供货单位：</td>
+                    <td class="input">@Html.DisplayText("SupperTitle")</td>
+                    <td class="name">配送批次：</td>
+                    <td class="input">@Html.DisplayText("DistributionBatch")</td>
+                    <td class="name">入库员：</td>
+                    <td class="input">@Html.DisplayText("CreateName")</td>
+                    <td class="name">入库日期：</td>
+                    <td class="input">@Html.DisplayText("CreateDT","{0:yyyy-MM-dd}")</td>
+                </tr>
+                }
+                else
+                { 
+                <tr>
+                    <td class="name">订货单号：</td>
+                    <td class="input">@Html.DisplayText("IndentOrderId")</td>
+                    <td class="name">订货门店：</td>
+                    <td class="input">@Html.DisplayText("StoreTitle")</td>
+                    <td class="name">下 单 人：</td>
+                    <td class="input">@Html.DisplayText("CreateName")</td>
+                    <td class="name">应交货日期：</td>
+                    <td class="input">@Html.DisplayText("ReceivedDT", "{0:yyyy-MM-dd}")</td>
+                </tr>
+                <tr>
+                    <td class="name">供货单位：</td>
+                    <td class="input">@Html.DisplayText("SupperTitle")</td>
+                    <td class="name">收 货 人：</td>
+                    <td class="input">@Html.DisplayText("RecipientName")</td>
+                    <td class="name">收货地址：</td>
+                    <td class="input">@Html.DisplayText("ShippingAddress")</td>
+                    <td class="name">联系电话：</td>
+                    <td class="input">@Html.DisplayText("Phone")</td>
+                </tr>
+                }
+            </table>
+        </div><br />
+        <table class="easyui-datagrid" id="grid2"
+               data-options="url:'@Url.Action("LoadReportDetailList")',queryParams:{orderId:'@Request["orderId"]'},showFooter:true,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,title:'订 货 单',onLoadError:loadError">
+            <thead>
+                <tr>
+                    <th data-options="field:'ProductCode',editor:{type:'textbox',options:{disabled:true}}" width="100">货号</th>
+                    <th data-options="field:'Barcode'" width="150">条形码</th>
+                    <th data-options="field:'Title',editor:{type:'textbox',options:{disabled:true}}" width="150">品名</th>
+                    <th data-options="field:'SubUnit',editor:{type:'textbox',options:{disabled:true}}" width="80">单位</th>
+                    <th data-options="field:'Price',editor:{type:'textbox',options:{disabled:true}}" width="70">进价</th>
+                    <th data-options="field:'SysPrice',editor:{type:'textbox',options:{disabled:true}}" width="80">系统售价</th>
+                    <th data-options="field:'IndentNum',editor:{type:'numberbox',options:{required:true,min:1}}" width="60">数量</th>
+                    <th data-options="field:'Subtotal',formatter:function(value, row, index){return '￥'+value.toFixed(2);}" width="100">小计</th>
+                    <th data-options="field:'Nature',formatter:function(value){return value==undefined?'': value==1?'赠品':'正常'}" width="80">标志</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    
+</div>

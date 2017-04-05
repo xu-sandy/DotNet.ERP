@@ -1,0 +1,70 @@
+﻿@model PrivilegeCalc
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.PrivilegeModeSN)
+        @Html.HiddenFor(o => o.PrivilegeSolutionTitle)
+        <div class="formbox">
+            <table width="100%" height="80px" style="margin-top:10px;">
+                <tr>
+                    <td class="name">方案名称：</td>
+                    <td class="width-153">
+                    @Form.Combobox("PrivilegeSolutionId", ViewBag.Solutions as List<SelectListItem>, dataOptions: "required:true,validType:'requiredForCombo'", multiple: true, controlWidth: 160)
+                    </td>
+                    <td class="name">返利模式：</td>
+                    <td>@Html.TextBoxFor(o => o.PrivilegeModeSNTitle, new { @class = "inputlabel",style="width:240px" })</td>
+                </tr>
+                <tr>
+                    <td class="name">返利期间：</td>
+                    <td colspan="3">
+                        @Html.TextBoxFor(o => o.StartDate, "{0:yyyy-MM-dd}", new { @class = "easyui-datebox",data_options="required:true" }) - @Html.TextBoxFor(o => o.EndDate, "{0:yyyy-MM-dd}", new { @class = "easyui-datebox",data_options="required:true" })
+                        <a href="#" class="easyui-linkbutton button-green" onclick="calc(this)" style="margin-left:10px;">计算返利</a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div id="result"></div>
+    }
+</div>
+<script type="text/javascript">
+    function comboSelect(record) {
+        $("#PrivilegeSolutionTitle").val($("#PrivilegeSolutionId_0").combobox("getText"));
+        $.post("@Url.Action("GetMode")", { solId: record.value }, function (json) {
+            $("#PrivilegeModeSN").val(json.ModeSN);
+            $("#PrivilegeModeSNTitle").val(json.ModeTitle);
+        }, "json")
+    }
+    function calc(obj) {
+        if (!$("form").form('validate')) return;
+        var start = $("#StartDate").datebox("getValue");
+        var end = $("#EndDate").datebox("getValue");
+        var solId = $("#PrivilegeSolutionId_0").combobox("getValue");
+        $.messager.progress({ title: "请稍候", msg: "正在处理数据...", interval: 300 });
+        $(obj).linkbutton("disable");
+        $.post("@Url.Action("GetCalc")", { solId: solId, start: start, end: end }, function (data) {
+            $("#result").html(data);
+            $.messager.progress('close');
+            $(obj).linkbutton("enable");
+        });
+    }
+    function SaveBefore() {
+        var values = $.map($("#PrivilegeSolutionId_0").combobox("getData"), function (r, i) { return r.text; });
+        var texts = $("#PrivilegeSolutionId_0").combobox("getText").split(',');
+        var ok = true;
+        $.each(texts, function (i, r) {
+            if (values.indexOf(r) == -1) {
+                $.messager.alert("提示", "方案[" + r + "]不存在！");
+                ok = false;
+                return false;
+            }
+
+        });
+        return ok;
+    }
+</script>

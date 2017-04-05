@@ -1,0 +1,340 @@
+﻿@model CommodityPromotion
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">    .times .textbox{width:78px!important;}</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <input type="hidden" name="Id" value="@Model.Id" id="Id" />
+        @Html.HiddenFor(o => o.Inserted)
+        @Html.HiddenFor(o => o.Deleted)
+        @Html.HiddenFor(o => o.Updated)
+        @Html.HiddenFor(o => o.State)
+        <div class="content">
+            <div class="formbox">
+                <table class="table-form" height="117px">
+                    <tr>
+                        <td class="name">活动有效期：</td>
+                        <td class="input">
+                            <table>
+                                <tr>
+                                    <td>@Html.TextBoxFor(o => o.StartDate,"{0:yyyy-MM-dd}", new { @class = "easyui-datebox", data_options = "required:true,novalidate:true" })</td>
+                                    <td style="padding-left:5px;padding-right:5px;line-height:28px;">-</td>
+                                    <td>@Html.TextBoxFor(o => o.EndDate, "{0:yyyy-MM-dd}", new { @class = "easyui-datebox", data_options = "required:true,novalidate:true" })</td>
+                                    <td style="padding-left:10px;">适用客户：</td>
+                                    <td>@Html.RadioButtonListFor(o => o.CustomerObj, ViewBag.customers as List<SelectListItem>)</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="name">活动时效：</td>
+                        <td class="input times">
+                            <table>
+                                <tr>
+                                    <td>@Html.RadioButtonListFor(o => o.Timeliness, new List<SelectListItem>() { new SelectListItem() { Text = "不限", Value = "0", Selected = true }, new SelectListItem() { Text = "指定每天时效", Value = "1" } })</td>
+                                    <td id="tdtimes">@Html.TimeBoxList((List<string>)ViewBag.times, "Times")</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="name">适用门店：</td>
+
+                        <td class="input choose">@Html.CheckBoxListFor(o => o.StoreId, ViewBag.shops as List<SelectListItem>, new { data_options = "required:true,novalidate:true,missingMessage:'必勾选一项'", @class = "easyui-validatebox", id = "store" },10)</td>
+
+                    </tr>
+                </table>
+            </div>
+            <a href="#" class="easyui-linkbutton" onclick="selectProduct()" style="margin:10px 0px;">添加折扣商品</a>
+            <div id="win" class="easyui-dialog" data-options="title:'选择商品',buttons:btns,cache:false,modal:true,width:800,height:450,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+            <table class="easyui-datagrid" id="grid2"
+                   data-options="url:'@Url.Action("LoadDetailList")',queryParams:{zhekouId:'@Model.Id'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect:true,onClickCell:clickCell,onAfterEdit:afterEdit,onLoadError:loadError,idField:'Id'">
+                <thead>
+                    <tr>
+                        <th data-options="field:'ProductCode'" width="120">货号</th>
+                        <th data-options="field:'Barcode'" width="150">条码</th>
+                        <th data-options="field:'Title'" width="150">品名</th>
+                        <th data-options="field:'SubCategoryTitle'" width="80">品类</th>
+                        <th data-options="field:'BrandTitle'" width="80">品牌</th>
+                        <th data-options="field:'SubUnit'" width="60">单位</th>
+                        <th data-options="field:'SysPrice'" width="80">系统售价</th>
+                        <th data-options="field:'StockNums'" width="60">库存</th>
+                        <th data-options="field:'Way2',editor:{type:'combobox',options:{data:pharos.dropdown['ways'],onChange:wayChange,valueField:'Value',textField:'Text'}}" width="100">折扣方式</th>
+                        <th data-options="field:'MinPurchaseNum',editor:{type:'numberbox',options:{min:0,required:true,precision:3}}" width="100">购买量</th>
+                        <th data-options="field:'DiscountRate',editor:{type:'numberbox',options:{min:1,max:10,precision:1,required:false}}" width="100">折扣</th>
+                        <th data-options="field:'DiscountPrice',editor:{type:'numberbox',options:{min:0,precision:2,required:false}}" width="100">售价</th>
+                        <th data-options="field:'Way',hidden:true" width="100">折扣方式</th>
+                        <th data-options="field:'Editor',formatter:operation" width="120">操作</th>
+                    </tr>
+                </thead>
+            </table>
+            <blockquote style="margin-top:30px;">
+                <header>说明：</header>
+                <p>1）折扣方式为固定量时,售价为打包价,如:3件100元；</p>
+                <p>2）散称商品仅有起购量折扣方式,如需固定量方式请在档案采用组合新商品方式；</p>
+            </blockquote>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    var $dg2;
+    $(function () {
+        $dg2 = $("#grid2");
+        $("[name='Timeliness']").click(function () {
+            if ($(this).val() == "0") {
+                $("[textboxname='Times']").timespinner('disable');
+            } else {
+                $("[textboxname='Times']").timespinner('enable');
+            }
+        })
+        $("[name='StoreId']").click(function () {
+            if ($(this).val() == "-1") {
+                var chk = this.checked;
+                $("[name='StoreId']:not(:first)").each(function (i, r) {
+                    //console.log($(this).attr("id"));
+                    r.checked = chk;
+                })
+            } else {
+                $("[name='StoreId']:first")[0].checked = $("[name='StoreId']:not(:first):checked").size() == $("[name='StoreId']:not(:first)").size();
+            }
+            storeRequired();
+        });
+        if ($("[name='StoreId']:first").attr("checked"))
+            $("[name='StoreId']:not(:first)").attr("checked", true);
+        if ($("[name='Timeliness']:checked").val() == "0")
+            $("[textboxname='Times']").timespinner('disable');
+        storeRequired();
+        $(window).mousedown(function (e) {
+            //if(e.button==0)
+            //endClickEditing();
+        })
+        
+    });
+    pharos.dropdown['ways'] = @Html.Raw(ViewBag.ways);
+    function selectProduct() {
+        var url = "@Url.Action("SelectProduct", "Product")?t="+Math.random();
+        var rows = $dg2.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Barcode;
+        }).join(",");
+        url += "&cds=" + ids;//+"&promtype=1";
+        url +="&store="+$.map($("[name='StoreId']:checked"),function(r){return $(r).val();}).join()
+        var start = $("#StartDate").datebox("getValue");
+        var end = $("#EndDate").datebox("getValue");
+        var customer = $("[name='CustomerObj']:checked").val();
+        //if (start)
+        //    url += "&startDate=" + start;
+        //if (end)
+        //    url += "&endDate=" + end;
+        //if (customer)
+        //    url += "&customer=" + customer;
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("#win").dialog({ content: cont, buttons: btns }).dialog("open");
+    }
+    var btns = [{
+        text: '添加所选产品',
+        iconCls: 'icon-ok',
+        width:140,
+        handler: function () {
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            var data = $dg2.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            var way= getWay("1") || {Value:1,Text:"固定量"};
+            $.each(chks, function (idx, row) {
+                if (!isExists(data.rows, row.ProductCode)) {
+                    way=getWay(row.ValuationType);
+                    $dg2.datagrid('appendRow',
+                    {
+                        ProductCode: row.ProductCode, Barcode: row.Barcode, Title: row.Title, SubUnit: row.SubUnit, StockNums: row.StockNums,MinPurchaseNum:1,Way:way.Value,Way2:way.Text,
+                        ValuationType:row.ValuationType,SysPrice: row.SysPrice, BrandTitle: row.BrandTitle, SubCategoryTitle: row.SubCategoryTitle,CategorySN:row.SubCategorySN,ValuationType:row.ValuationType, Id: guidGenerator()
+                    });
+                }
+                lastIndex++;
+            });
+            changeValue();
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+    var clickIndex = undefined;
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dg2.datagrid('validateRow', clickIndex)) {
+            $dg2.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            changeValue();
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function clickCell(index, field) {
+        if (endClickEditing() && (field == "DiscountRate" || field == "DiscountPrice" || field == "MinPurchaseNum" || field == "Way2")) {
+            var row= $dg2.datagrid('selectRow', index).datagrid("getSelected");
+            if (row.Way=="1" || row.Way=="3") {
+                if (field == "DiscountRate") return;//固定量以价格
+            } else if (row.Way == "2") {
+                if (field == "DiscountPrice") return;//起购量以折扣
+                if(field == "Way2" && row.ValuationType==2) return;//起购量和散称时不修改
+            }
+            $dg2.datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+        }
+    }
+    function afterEdit(rowIndex, rowData, changes) {
+        if (changes.DiscountPrice) {
+            //var val = parseFloat(changes.DiscountPrice) / rowData.SysPrice * 10;
+            //$dg2.datagrid('updateRow', { index: rowIndex, row: { DiscountRate: val.toFixed(1) } });
+        }
+        else if (changes.DiscountRate) {
+            //var val = parseFloat(changes.DiscountRate) / 10 * rowData.SysPrice;
+            //$dg2.datagrid('updateRow', { index: rowIndex, row: { DiscountPrice: 0 } });
+        } else if (changes.Way2) {
+            var way= getWay(changes.Way2);
+            $dg2.datagrid('updateRow', { index: rowIndex, row: { Way: way.Value, Way2:way.Text } });
+        }
+    }
+    function wayChange(newValue, oldValue) {
+        var row= $dg2.datagrid("getSelected");
+        if (newValue == "1" || newValue == "3") {
+            row.DiscountRate = "";
+        } else {
+            row.DiscountPrice = "";
+        }
+    }
+    function isExists(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.ProductCode == cd) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+    function changeValue() {
+        var inserted = $dg2.datagrid('getChanges', "inserted");
+        var deleted = $dg2.datagrid('getChanges', "deleted");
+        var updated = $dg2.datagrid('getChanges', "updated");
+        //var allc = $dg2.datagrid('getChanges')
+        //alert("新增:"+JSON.stringify(inserted) +"删除:"+ JSON.stringify(deleted)+"修改:"+JSON.stringify(updated));
+        //alert(JSON.stringify(allc));
+        $("#Inserted").val(JSON.stringify(inserted));
+        $("#Deleted").val(JSON.stringify(deleted));
+        $("#Updated").val(JSON.stringify(updated));
+    }
+    function operation(value, row, index) {
+        return "<a href='javascript:void(0)' onclick='copyItem(" + row.Id + ")'>复制</a>&nbsp;&nbsp;<a href='javascript:void(0)' onclick=\"removeItem(" + row.Id + ")\">删除</a>";
+    }
+    
+    function copyItem(id) {
+        $dg2.datagrid('selectRecord', id);
+        var row = $dg2.datagrid('getSelected');
+        $dg2.datagrid('appendRow',
+        {
+            ProductCode: row.ProductCode, Barcode: row.Barcode, Title: row.Title, SubUnit: row.SubUnit, StockNums: row.StockNums, MinPurchaseNum: row.MinPurchaseNum,Way:row.Way,Way2:row.Way2,
+            SysPrice: row.SysPrice, BrandTitle: row.BrandTitle, SubCategoryTitle: row.SubCategoryTitle, CategorySN: row.CategorySN, Id: guidGenerator()
+        });
+    }
+    function removeItem(id) {
+        $.messager.confirm("提示", "是否确定删除该项信息?", function (r) {
+            if (!r) return r;
+            $dg2.datagrid("selectRecord", id);
+            var row = $dg2.datagrid("getSelected")
+            var index = $dg2.datagrid("getRowIndex", row);
+            $dg2.datagrid('deleteRow', index);
+            changeValue();
+        })
+    }
+    function SaveBefore() {
+        var start = $("#StartDate").datebox("getValue");
+        var end = $("#EndDate").datebox("getValue");
+        var state = $("#State").val();
+        if (start && end) {
+            start = start.replace(/-/g, "/")+" 23:59:00";
+            end = end.replace(/-/g, "/") + " 23:59:00";;
+            if (new Date(end) < new Date(start)) {
+                $.messager.alert("提示", "活动有效期范围错误!", "info"); return false;
+            }
+            if ((state == "0" || state=="2") && new Date() > new Date(start)) {
+                $.messager.alert("提示", "活动有效期开始日期不能是过去日期!", "info"); return false;
+            }
+        }
+        storeRequired();
+        endClickEditing();
+        var rows = $dg2.datagrid('getRows');
+        if (rows.length <= 0) {
+            $.messager.alert("提示", "折扣商品不能为空!", "info"); return false;
+        }
+        var result = true;
+        var barcodes = $.map(rows, function (r) { if(r.Way!="2") return r.Barcode; }).join() + ",";
+        $.each(rows, function (i, r) {
+            if (isNull(r.MinPurchaseNum)) {
+                $.messager.alert("提示", "购买量不能为空!", "warning");
+                result = false;
+                return false;
+            }
+            if (r.Way!="2") {
+                if (isNull(r.DiscountPrice)) {
+                    $.messager.alert("提示", "固定量时售价不能为空!", "warning");
+                    result = false;
+                    return false;
+                }
+                if (barcodes.replace(r.Barcode + ",", "").indexOf(r.Barcode) != -1) {
+                    $.messager.alert("提示", "固定量存在商品重复设定!", "error");
+                    result = false;
+                    return false;
+                }
+            }
+            else if (r.Way == "2") {
+                if (isNull(r.DiscountRate)) {
+                    $.messager.alert("提示", "起购量时折扣不能为空!", "warning");
+                    result = false;
+                    return false;
+                }
+            }
+        });
+        if (!result) {
+             return false;
+        }
+        if (state == "2") {
+            if (!confirm("是否新增折扣?"))
+                return false;
+        }
+        return true;
+    }
+    function storeRequired() {
+        if ($("[name='StoreId']:checked").size() <= 0)
+            $("#store").validatebox("enableValidation");
+        else
+            $("#store").validatebox("disableValidation");
+    }
+    function guidGenerator() {
+        //debugger;
+        var rows = $dg2.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? row.Id : 0;
+        });
+        var maxId = Math.max.apply(null, ids);
+        if (maxId == -Infinity) maxId = 0;
+        return maxId + 1;
+    }
+    function getWay(value){
+        var way=null;
+        $.each(pharos.dropdown['ways'],function(i,r){
+            if(r.Value==value){
+                way=r;
+            }
+        });
+        return way;
+    }
+</script>

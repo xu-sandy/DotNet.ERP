@@ -1,0 +1,44 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Payment
+{
+    public class StoredValueCardPay : BasePay
+    {
+        public StoredValueCardPay()
+            : base(16, PayMode.StoredValueCard)
+        {
+        }
+        /// <summary>
+        /// 储值卡结算
+        /// </summary>
+        /// <param name="amount">支付金额</param>
+        /// <param name="cardNo">卡号</param>
+        /// <param name="companyId">公司ID</param>
+        public object Settlement(decimal amount, string cardNo, int companyId, string storeId, string machineSN, string deviceSn)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSN, companyId, deviceSn);
+            var card = dataAdapter.GetStoredValueCardInfo(cardNo);
+            if (card.Balance < amount)
+            {
+                throw new PosException(string.Format("卡内余额不足，当前余额{0:N2}元", card.Balance));
+            }
+            var balance = card.Balance - amount;
+            dataAdapter.SaveToStoredValueCard(cardNo, amount, balance);
+            var member = "未知持卡人";
+            if (card.MemberId != null)
+            {
+                var info = dataAdapter.GetMemberInfo(string.Empty, string.Empty, card.MemberId);
+                if (info != null && !string.IsNullOrEmpty(info.RealName))
+                {
+                    member = info.RealName;
+                }
+            }
+            return new { Balance = balance, User = member, PayAmount = amount };
+        }
+    }
+}

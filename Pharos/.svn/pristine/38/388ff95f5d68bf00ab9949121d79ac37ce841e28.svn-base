@@ -1,0 +1,379 @@
+﻿using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Data.Entity;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class ProductVerService:BaseService<Entity.ProductVer>
+    {
+        [Ninject.Inject]
+        IBaseRepository<Entity.ProductVer> ProductVerRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.ProductMenu> ProductMenuRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.ProductLimit> ProductLimitRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysUser> UserRepository { get; set; }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = ProductVerRepository.GetQuery();
+            var queryUser = UserRepository.GetQuery();
+            var code = nvl["code"].ToType<int?>();
+            var state = nvl["state"].ToType<short?>();
+            var q = from x in query
+                    select new
+                    {
+                        x.Id,
+                        x.ProductCode,
+                        x.ProductId,
+                        x.Name,
+                        x.SysName,
+                        x.Alias,
+                        x.Forced,
+                        x.VerCode,
+                        x.CreateDT,
+                        x.CreateUID,
+                        x.Status,
+                        StateTitle = x.Status == 0 ? "未发布" :x.Status == 1 ? "已发布":"已失效",
+                        MenusetTitle = x.ProductMenus.Any() ? "已配置" : "未配置",
+                        LimitsetTitle = x.ProductLimits.Any() ? "已配置" : "未配置",
+                        ForceTitle= x.Forced?"是":"否",
+                        x.Memo,
+                        x.UpdateDT,
+                        x.PublishDT,
+                        Updater = queryUser.Where(o => o.UserId == x.UpdateUID).Select(o => o.FullName).FirstOrDefault(),
+                        Publisher = queryUser.Where(o => o.UserId == x.PublishUID).Select(o => o.FullName).FirstOrDefault()
+                    };
+            if (code.HasValue)
+                q = q.Where(o => o.ProductCode == code);
+            if(state.HasValue)
+                q = q.Where(o => o.Status == state);
+            recordCount = q.Count();
+            return q.ToPageList();
+        }
+        public OpResult SaveOrUpdate(Entity.ProductVer obj)
+        {
+            if(obj.Id==0)
+            {
+                obj.ProductCode = ProductVerRepository.GetQuery().Max(o => o.ProductCode).GetValueOrDefault() + 1;
+                obj.VerCode = 1;
+                obj.CreateDT = DateTime.Now;
+                obj.UpdateDT = obj.CreateDT;
+                obj.ProductId = CommonService.GUID;
+                obj.UpdateUID = CurrentUser.UID;
+                obj.CreateUID = obj.UpdateUID;
+                ProductVerRepository.Add(obj, false);
+            }
+            else
+            {
+                var product = ProductVerRepository.Get(obj.Id);
+                product.Name = obj.Name;
+                product.SysName = obj.SysName;
+                product.Alias = obj.Alias;
+                product.Memo = obj.Memo;
+            }
+            ProductVerRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        public OpResult SaveMenu(Entity.ProductMenu obj)
+        {
+            if(obj.Id==0)
+            {
+                obj.MenuId = ProductMenuRepository.GetQuery().Max(o => (int?)o.MenuId).GetValueOrDefault() + 1;
+                obj.CreateDT = DateTime.Now;
+                obj.CreateUID = CurrentUser.UID;
+                obj.SortOrder =(short)(ProductMenuRepository.GetQuery().Max(o => (short?)o.SortOrder).GetValueOrDefault()+1);
+                ProductMenuRepository.Add(obj, false);
+            }
+            else
+            {
+                var menu = ProductMenuRepository.Get(obj.Id);
+                obj.ToCopyProperty(menu, new List<string>() { "CreateDT", "CreateUID", "MenuId" });
+            }
+            ProductMenuRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        public void RemoveMenu(int menuId)
+        {
+            var obj = GetMenu(menuId);
+            ProductMenuRepository.Remove(obj);
+        }
+        public OpResult Deletes(int[] ids)
+        {
+            var list= ProductVerRepository.GetQuery(o => ids.Contains(o.Id)).Include(o=>o.ProductMenus).Include(o=>o.ProductLimits).Include(o=>o.ProductUpdateLogs).ToList();
+            ProductVerRepository.RemoveRange(list);
+            return OpResult.Success();
+        }
+        public Entity.ProductVer Get(int id)
+        {
+            return ProductVerRepository.GetQuery(o => o.Id==id).Include(o=>o.ProductMenus).Include(o=>o.ProductLimits).FirstOrDefault();
+        }
+        public Entity.ProductMenu GetMenu(int menuid)
+        {
+            return ProductMenuRepository.GetQuery(o=>o.MenuId==menuid).FirstOrDefault();
+        }
+        public OpResult Publish(int id, short state)
+        {
+            var obj = Get(id);
+            if(obj!=null)
+            {
+                if (!obj.ProductMenus.Any())
+                    return OpResult.Fail("请先配置菜单！");
+                if (!obj.ProductLimits.Any())
+                    return OpResult.Fail("请先配置权限！");
+                obj.PublishDT = DateTime.Now;
+                obj.PublishUID = CurrentUser.UID;
+                obj.Forced = state > 0;
+                obj.Status = 1;
+                //obj.VerCode += 0.1m;
+                var list= ProductVerRepository.GetQuery(o => o.ProductCode == obj.ProductCode && o.ProductId != obj.ProductId).ToList();
+                list.Each(o => o.Status == 2);
+                ProductVerRepository.SaveChanges();
+                return OpResult.Success();
+            }
+            return OpResult.Fail();
+        }
+        public Dictionary<int?,string> GetList()
+        {
+            var list = ProductVerRepository.GetQuery().Select(o => new { o.ProductCode, o.Name }).Distinct().ToDictionary(o=>o.ProductCode,o=>o.Name);
+            return list;
+        }
+
+        public List<Entity.ProductMenu> MenuList(string productid)
+        {
+            var queryLimit = ProductLimitRepository.GetQuery(o => o.ProductId == productid);
+            var queryMenu = ProductMenuRepository.GetQuery(o => o.ProductId == productid);
+            var q = from x in queryMenu
+                    orderby x.SortOrder
+                    select new { 
+                        x,
+                        Haslimit= queryLimit.Any(o=>o.MenuId==x.MenuId)
+                    };
+            var ms = q.ToList();
+            var menus = new List<Entity.ProductMenu>();
+            foreach(var m in ms)
+            {
+                var pm= new Entity.ProductMenu();
+                m.x.ToCopyProperty(pm);
+                pm.HasLimit = m.Haslimit;
+                menus.Add(pm);
+            }
+            var list = new List<Entity.ProductMenu>();
+            foreach (var menu in menus.Where(o => o.PMenuId <= 0))
+            {
+                SetChilds(menu, menus);
+                menu.Index = list.Count;
+                list.Add(menu);
+            }
+            return list;
+        }
+
+        public void MoveMenuItem(short mode, int menuId)
+        {
+            var obj = ProductMenuRepository.Find(o => o.MenuId == menuId);
+            var list = ProductMenuRepository.GetQuery(o => o.PMenuId == obj.PMenuId).OrderBy(o => o.SortOrder).ToList();
+            switch (mode)
+            {
+                case 2://下移
+                    var obj1 = list.LastOrDefault();
+                    if (obj.Id != obj1.Id)
+                    {
+                        Entity.ProductMenu next = null;
+                        for (var i = 0; i < list.Count; i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                next = list[i + 1]; break;
+                            }
+                        }
+                        if (next != null)
+                        {
+                            var sort = obj.SortOrder;
+                            obj.SortOrder = next.SortOrder;
+                            next.SortOrder = sort;
+                            ProductMenuRepository.SaveChanges();
+                        }
+                    }
+                    break;
+                default://上移
+                     var obj2 = list.FirstOrDefault();
+                    if (obj.Id != obj2.Id)
+                    {
+                        Entity.ProductMenu prev = null;
+                        for (var i=0;i<list.Count;i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                prev = list[i - 1]; break;
+                            }
+                        }
+                        if (prev != null)
+                        {
+                            var sort = obj.SortOrder;
+                            obj.SortOrder = prev.SortOrder;
+                            prev.SortOrder = sort;
+                            ProductMenuRepository.SaveChanges();
+                        }
+                    }
+                    break;
+            }
+        }
+
+        void SetChilds(Entity.ProductMenu menu,List<Entity.ProductMenu> alls)
+        {
+            menu.Childrens = alls.Where(o => o.PMenuId == menu.MenuId).ToList();
+            int i = 0;
+            foreach (var child in menu.Childrens)
+            {
+                child.Index = i++;
+                child.ParentId = menu.Id;
+                SetChilds(child, alls);
+            }
+        }
+
+        public Entity.ProductLimit GetLimit(int limitid)
+        {
+            return ProductLimitRepository.GetQuery(o => o.LimitId == limitid).FirstOrDefault();
+        }
+
+        public List<Entity.ProductLimit> LimitList(string productid)
+        {
+            var queryLimit = ProductLimitRepository.GetQuery(o => o.ProductId == productid);
+            var queryMenu = ProductMenuRepository.GetQuery(o => o.ProductId == productid);
+            var query = from x in queryMenu
+                        join y in queryLimit on x.MenuId equals y.MenuId into tmp
+                        from o in tmp.DefaultIfEmpty()
+                        orderby x.SortOrder,o.SortOrder
+                        where x.Status
+                        select new { 
+                            x.MenuId,
+                            x.PMenuId,
+                            MenuTitle= x.Title,
+                            o.LimitId,
+                            o.Title,
+                            o.Status,
+                            MenuIdFK= o.MenuId
+                        };
+            var menus = query.ToList().Select(o=>new Entity.ProductLimit(){
+                MenuId=o.MenuId,
+                MenuIdFK=o.MenuIdFK,
+                ParentId=o.PMenuId,
+                MenuTitle=o.MenuTitle,
+                LimitId=o.LimitId,
+                Title=o.Title,
+                Status=o.Status
+            }).ToList();
+            var list = new List<Entity.ProductLimit>();
+            foreach (var menuid in menus.Where(o => o.MenuIdFK.HasValue).Select(o=>o.MenuIdFK).Distinct())
+            {
+                int i = 0;
+                var count = menus.Where(o => o.MenuIdFK == menuid).Count();
+                menus.Where(o => o.MenuIdFK == menuid).Each(o =>
+                {
+                    o.ChildCount = count;
+                    o.Index = i++;
+                });
+                
+            }
+            foreach (var menu in menus.Where(o => o.ParentId <= 0))
+            {
+                SetChilds(menu, menus);
+                list.Add(menu);
+            }
+            return list;
+        }
+
+        public void MoveLimitItem(short mode, int limitId)
+        {
+            var obj = ProductLimitRepository.Find(o => o.LimitId == limitId);
+            var list = ProductLimitRepository.GetQuery(o => o.MenuId == obj.MenuId).OrderBy(o => o.SortOrder).ToList();
+            switch (mode)
+            {
+                case 2://下移
+                    var obj1 = list.LastOrDefault();
+                    if (obj.Id != obj1.Id)
+                    {
+                        Entity.ProductLimit next = null;
+                        for (var i = 0; i < list.Count; i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                next = list[i + 1]; break;
+                            }
+                        }
+                        if (next != null)
+                        {
+                            var sort = obj.SortOrder;
+                            obj.SortOrder = next.SortOrder;
+                            next.SortOrder = sort;
+                            ProductLimitRepository.SaveChanges();
+                        }
+                    }
+                    break;
+                default://上移
+                    var obj2 = list.FirstOrDefault();
+                    if (obj.Id != obj2.Id)
+                    {
+                        Entity.ProductLimit prev = null;
+                        for (var i = 0; i < list.Count; i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                prev = list[i - 1]; break;
+                            }
+                        }
+                        if (prev != null)
+                        {
+                            var sort = obj.SortOrder;
+                            obj.SortOrder = prev.SortOrder;
+                            prev.SortOrder = sort;
+                            ProductLimitRepository.SaveChanges();
+                        }
+                    }
+                    break;
+            }
+        }
+        public OpResult SaveLimit(Entity.ProductLimit obj)
+        {
+            if (obj.Id == 0)
+            {
+                obj.LimitId = ProductLimitRepository.GetQuery().Max(o => (int?)o.LimitId).GetValueOrDefault() + 1;
+                obj.CreateDT = DateTime.Now;
+                obj.CreateUID = CurrentUser.UID;
+                obj.SortOrder = (short)(ProductLimitRepository.GetQuery().Max(o => (short?)o.SortOrder).GetValueOrDefault() + 1);
+                ProductLimitRepository.Add(obj, false);
+            }
+            else
+            {
+                var menu = ProductMenuRepository.Get(obj.Id);
+                obj.ToCopyProperty(menu, new List<string>() { "CreateDT", "CreateUID", "MenuId" });
+            }
+            ProductLimitRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        public void RemoveLimit(int limitId)
+        {
+            var obj = GetLimit(limitId);
+            ProductLimitRepository.Remove(obj);
+        }
+        public void SetLimitState(short mode, int limitId)
+        {
+            var obj = GetLimit(limitId);
+            obj.Status=mode==1;
+            ProductLimitRepository.SaveChanges();
+        }
+        void SetChilds(Entity.ProductLimit menu, List<Entity.ProductLimit> alls)
+        {
+            menu.Childrens = alls.Where(o => o.ParentId == menu.MenuId).ToList();
+            foreach (var child in menu.Childrens)
+            {
+                SetChilds(child, alls);
+            }
+        }
+    }
+}

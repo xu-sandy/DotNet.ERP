@@ -1,0 +1,61 @@
+﻿using Pharos.POS.Retailing.ObjectModels;
+using Pharos.POS.Retailing.ViewModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Extensions
+{
+    public static class TreeModelExtensions
+    {
+        public static TreeModel SetChild(this TreeModel _this, int categoryPSN)
+        {
+            //var childrens = ProductCategoryLocalService.GetSubCategorySelectItem(categoryPSN);
+            var machineInfo=Global.MachineSettings.MachineInformations;//全局信息
+            BaseApiParams _queryInfo = new BaseApiParams() { StoreId = machineInfo.StoreId, MachineSn = machineInfo.MachineSn };
+            var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<ApiProCategoryReturn>>(@"api/GetProductCategory", _queryInfo);
+            if (result.Code == "200")
+            {
+                foreach (var item in result.Result)
+                {
+                    var tree = new TreeModel(item.Title, item.CategorySN);
+                    tree = tree.SetChild(item.CategorySN);
+                    _this.CreateTreeWithChildren(tree, false);
+                }
+            }
+            else 
+            {
+                Toast.ShowMessage(result.Message, _this.CurrentWindow);
+            }
+            return _this;
+        }
+
+        private static List<int> GetSN(this TreeModel _this, List<int> list)
+        {
+            if (_this != null && Convert.ToInt32(_this.Id) == -1)
+            {
+                list.Add(-1);
+                return list;
+            }
+            if (_this != null && _this.Id is int)
+            {
+                list.Add(Convert.ToInt32(_this.Id));
+            }
+            if (_this != null && _this.Children != null && _this.Children.Count > 0)
+            {
+                foreach (var item in _this.Children)
+                {
+                    GetSN(item, list);
+                }
+
+            }
+            return list;
+        }
+        public static List<int> GetSN(this TreeModel _this)
+        {
+
+            return GetSN(_this, new List<int>());
+        }
+    }
+}

@@ -1,0 +1,113 @@
+﻿using Microsoft.Synchronization;
+using System;
+
+namespace Pharos.SyncService
+{
+    public class PosServerDbSyncServiceClient : System.ServiceModel.ClientBase<IPosServerDbSyncService>, IPosServerDbSyncService
+    {
+        public PosServerDbSyncServiceClient(
+            System.ServiceModel.Channels.Binding binding,
+            System.ServiceModel.EndpointAddress remoteAddress) :
+            base(binding, remoteAddress)
+        {
+        }
+
+        public PosServerDbSyncServiceClient(string endpointConfigurationName)
+            : base(endpointConfigurationName)
+        {
+        }
+
+        public SyncIdFormatGroup GetIdFormats(int _SyncDirectionOrder)
+        {
+            return base.Channel.GetIdFormats(_SyncDirectionOrder);
+        }
+
+        public void CreateProviderForSyncSession(int companyId, string storeId, int _SyncDirectionOrder)
+        {
+            try
+            {
+                base.Channel.CreateProviderForSyncSession(companyId, storeId, _SyncDirectionOrder);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public void BeginSession(int _SyncDirectionOrder)
+        {
+            base.Channel.BeginSession(_SyncDirectionOrder);
+        }
+
+        public void EndSession(int _SyncDirectionOrder)
+        {
+            base.Channel.EndSession(_SyncDirectionOrder);
+        }
+
+        public ChangeBatch GetChangeBatch(
+            uint batchSize,
+            SyncKnowledge destinationKnowledge, int _SyncDirectionOrder,
+            out CachedChangeDataRetriever changeDataRetriever)
+        {
+            return base.Channel.GetChangeBatch(
+                batchSize,
+                destinationKnowledge, _SyncDirectionOrder,
+                out changeDataRetriever);
+        }
+
+        public FullEnumerationChangeBatch GetFullEnumerationChangeBatch(
+            uint batchSize,
+            SyncId lowerEnumerationBound,
+            SyncKnowledge knowledgeForDataRetrieval, int _SyncDirectionOrder,
+            out CachedChangeDataRetriever changeDataRetriever)
+        {
+            return base.Channel.GetFullEnumerationChangeBatch(
+                batchSize,
+                lowerEnumerationBound,
+                knowledgeForDataRetrieval, _SyncDirectionOrder,
+                out changeDataRetriever);
+        }
+
+        public void GetSyncBatchParameters(int _SyncDirectionOrder,
+            out uint batchSize,
+            out SyncKnowledge knowledge)
+        {
+            base.Channel.GetSyncBatchParameters(_SyncDirectionOrder,
+                out batchSize,
+                out knowledge);
+        }
+
+        public byte[] ProcessChangeBatch(int _SyncDirectionOrder,
+            ConflictResolutionPolicy resolutionPolicy,
+            ChangeBatch sourceChanges,
+            CachedChangeDataRetriever changeDataRetriever,
+            byte[] changeApplierInfo)
+        {
+            return base.Channel.ProcessChangeBatch(_SyncDirectionOrder,
+                resolutionPolicy,
+                sourceChanges,
+                changeDataRetriever,
+                changeApplierInfo);
+        }
+
+        public byte[] ProcessFullEnumerationChangeBatch(int _SyncDirectionOrder,
+            ConflictResolutionPolicy resolutionPolicy,
+            FullEnumerationChangeBatch sourceChanges,
+            CachedChangeDataRetriever changeDataRetriever,
+            byte[] changeApplierInfo)
+        {
+            return base.Channel.ProcessFullEnumerationChangeBatch(_SyncDirectionOrder,
+                resolutionPolicy,
+                sourceChanges,
+                changeDataRetriever,
+                changeApplierInfo);
+        }
+
+        #region For demo purpose, not required for RCA pattern
+        public void CleanupTombstones(TimeSpan timespan, int _SyncDirectionOrder)
+        {
+            base.Channel.CleanupTombstones(timespan, _SyncDirectionOrder);
+        }
+        #endregion
+    }
+}

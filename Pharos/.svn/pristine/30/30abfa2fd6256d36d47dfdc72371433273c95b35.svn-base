@@ -1,0 +1,30 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// WeiXinZhiFu.xaml 的交互逻辑
+    /// </summary>
+    public partial class WeiXinZhiFu : DialogWindow02
+    {
+        public WeiXinZhiFu(string url, string paySn, decimal amount, PayAction mode)
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+            Task.Factory.StartNew(() =>
+            {
+                var model = new WeixinPayViewModel(url, paySn, amount, mode);
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    this.ApplyBindings(this, model);
+                }));
+            });
+        }
+    }
+}

@@ -1,0 +1,137 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.BLL
+{
+    public class SaleDetailService : BaseService<SaleDetail>
+    {
+        /// <summary>
+        /// 票据信息(自动完成)
+        /// </summary>
+        /// <param name="paySn">票据编号</param>
+        /// <param name="barcode">商品条码</param>
+        /// <returns>list</returns>
+        public static object GetSaleDetailInput(string paySn, string barcode)
+        {
+            var express = DynamicallyLinqHelper.Empty<SaleDetail>().And(o => o.Barcode == barcode, barcode.IsNullOrEmpty()).And(o => o.PaySN.StartsWith(paySn), paySn.IsNullOrEmpty());
+            var querySale = SaleOrdersService.CurrentRepository.QueryEntity;
+
+            var queryDetail = CurrentRepository.QueryEntity.Where(express);
+            var query = from x in querySale
+                        from y in queryDetail
+                        where x.PaySN == y.PaySN
+                        select new
+                        {
+                            y.PaySN,
+                            y.PurchaseNumber,
+                            y.SysPrice,
+                            x.CreateDT,
+                            x.ApiCode
+                        };
+            var apiList = DataCache.Get<List<ApiLibrary>>("apilib");
+            if (apiList == null)
+            {
+                apiList = ApiLibraryService.FindList(null);
+                DataCache.Set("apilib", apiList);
+            }
+            var list = query.Take(20).ToList();
+            return list.Select(o => new
+            {
+                ApiText = ApiText(o.ApiCode, apiList),
+                o.CreateDT,
+                o.PaySN,
+                o.PurchaseNumber,
+                o.SysPrice,
+            });
+        }
+        static string ApiText(string apiCode, List<ApiLibrary> list)
+        {
+            if (apiCode.IsNullOrEmpty()) return "";
+            var codeIds = apiCode.Split(',').Select(o => int.Parse(o));
+            var ls = list.Where(o => codeIds.Contains(o.ApiCode)).Select(o => o.Title);
+            return string.Join(",", ls);
+        }
+
+        /// <summary>
+        /// 通过流水号获取销售单明细记录
+        /// </summary>
+        /// <returns>销售单明细记录，带商品名称</returns>
+        public static object GetSaleDetails(string paySN)
+        {
+            var saleDetails = from o in BaseService<SaleOrders>.CurrentRepository.Entities
+                              join d in BaseService<SaleDetail>.CurrentRepository.Entities on o.PaySN equals d.PaySN
+                              where o.PaySN == paySN
+                              select d;
+            var detailTitle1 = BaseService<ProductRecord>.CurrentRepository.Entities.Where(a => a.ValuationType != 2).Select(a => new { Barcode = a.Barcode, a.Title });//非称重产品（单品、组合产品）
+            var detailTitle2 = BaseService<ProductRecord>.CurrentRepository.Entities.Where(a => a.ValuationType == 2).Select(a => new { Barcode = a.ProductCode, a.Title });//称重产品
+            var detailTitle3 = BaseService<Bundling>.CurrentRepository.Entities.Select(a => new { Barcode = a.NewBarcode, a.Title });
+            var detailTitle = detailTitle1.Union(detailTitle2).Union(detailTitle3);
+
+            var result = from d in saleDetails
+                         join t in detailTitle on d.Barcode equals t.Barcode into temp
+                         from tt in temp.DefaultIfEmpty()
+                         select new
+                         {
+                             d.Id,
+                             d.ActualPrice,
+                             d.Barcode,
+                             d.BuyPrice,
+                             d.Memo,
+                             d.PaySN,
+                             d.PurchaseNumber,
+                             d.SalesClassifyId,
+                             d.SysPrice,
+                             Title = tt.Title == null ? "" : tt.Title
+                         };
+            return result;
+        }
+
+        /// <summary>
+        /// 销售订单详情，带每条明细是否发生退换标识
+        /// </summary>
+        /// <param name="paySN"></param>
+        /// <param name="footer"></param>
+        /// <returns></returns>
+        public static object GetSaleDetailsWithReturnFlag(string paySN, ref object footer)
+        {
+            var detailTitle1 = BaseService<ProductRecord>.CurrentRepository.Entities.Where(a => a.ValuationType != 2).Select(a => new { Barcode = a.Barcode, a.Title });//非称重产品（单品、组合产品）
+            var detailTitle2 = BaseService<ProductRecord>.CurrentRepository.Entities.Where(a => a.ValuationType == 2).Select(a => new { Barcode = a.ProductCode, a.Title });//称重产品
+            var detailTitle3 = BaseService<Bundling>.CurrentRepository.Entities.Select(a => new { Barcode = a.NewBarcode, a.Title });
+            var detailTitle = detailTitle1.Union(detailTitle2).Union(detailTitle3);
+
+            var query = from o in BaseService<SaleOrders>.CurrentRepository.Entities
+                        join d in BaseService<SaleDetail>.CurrentRepository.Entities on new { o.CompanyId, o.PaySN } equals new { d.CompanyId, d.PaySN }
+                        join e in BaseService<VwProduct>.CurrentRepository.Entities on new { d.CompanyId,d.Barcode  } equals new { e.CompanyId, e.Barcode } into tmp
+                        from a in tmp.DefaultIfEmpty()
+                        where o.CompanyId==CommonService.CompanyId && o.PaySN == paySN
+                        select new
+                        {
+                            d.Id,
+                            d.ActualPrice,
+                            d.ProductCode,
+                            d.Barcode,
+                            d.BuyPrice,
+                            d.PaySN,
+                            d.PurchaseNumber,
+                            d.SalesClassifyId,
+                            d.SysPrice,
+                            SubTotal = d.PurchaseNumber * d.AveragePrice,
+                            Title = d.Title,
+                            HasTui = o.State == 1 || o.Type == 2,
+                            HasHuan = o.Type == 1,
+                            SubUnit=a.SubUnit??"捆"
+                        };
+            var list = query.ToList();
+            footer = new List<object>() { 
+                new {SubTotal=list.Sum(o=>o.SubTotal).ToString("N2"),ActualPrice="列表合计:"}
+            };
+            return list;
+        }
+    }
+}

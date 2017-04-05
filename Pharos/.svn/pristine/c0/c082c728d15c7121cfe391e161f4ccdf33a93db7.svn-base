@@ -1,0 +1,191 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Data.Entity;
+using System.Data.Entity.Validation;
+using Pharos.Logic.OMS.IDAL;
+
+namespace Pharos.Logic.OMS.DAL
+{
+    public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : class
+    {
+        internal readonly EFDbContext _context;
+        private DbSet<TEntity> _entities;
+        public BaseRepository()
+        {
+            this._context = ContextFactory.GetCurrentContext<EFDbContext>();
+        }
+
+        public TEntity Add(TEntity entity, bool isSave = true)
+        {
+            try
+            {
+                this.Entities.Add(entity);
+                if (isSave)
+                {
+                    SaveChanges();
+                }
+                return entity;
+            }
+            catch (DbEntityValidationException dbEx)
+            {
+                throw ReturnException(dbEx);
+            }
+        }
+        public List<TEntity> AddRange(List<TEntity> entities, bool isSave = true)
+        {
+            try
+            {
+                this.Entities.AddRange(entities);
+
+                if (isSave)
+                {
+                    SaveChanges();
+                }
+                return entities;
+            }
+            catch (DbEntityValidationException dbEx)
+            {
+                throw ReturnException(dbEx);
+            }
+        }
+        public bool Remove(TEntity entity, bool isSave = true)
+        {
+            try
+            {
+                if (entity == null)
+                    throw new ArgumentNullException("entity");
+
+                this.Entities.Remove(entity);
+                if (isSave)
+                    return SaveChanges();
+                else
+                    return true;
+            }
+            catch (DbEntityValidationException dbEx)
+            {
+                throw ReturnException(dbEx);
+            }
+        }
+        public bool RemoveRange(List<TEntity> entities, bool isSave = true)
+        {
+            try
+            {
+                this.Entities.RemoveRange(entities);
+                if (isSave)
+                    return SaveChanges();
+                else
+                    return true;
+            }
+            catch (DbEntityValidationException dbEx)
+            {
+                throw ReturnException(dbEx);
+            }
+        }
+        public bool SaveChanges()
+        {
+            try
+            {
+                return this._context.SaveChanges() > 0;
+            }
+            catch (DbEntityValidationException dbEx)
+            {
+                throw ReturnException(dbEx);
+            }
+        }
+        public TEntity FindById(object id, params string[] includeParams)
+        {
+            var ents = this.Entities;
+            foreach (var inc in includeParams)
+                ents.Include(inc);
+            TEntity entity = ents.Find(id);
+            return entity;
+        }
+        public TEntity Find(Expression<Func<TEntity, bool>> whereLambda, params string[] includeParams)
+        {
+            var ents = this.Entities;
+            foreach (var inc in includeParams)
+                ents.Include(inc);
+            TEntity entity = ents.FirstOrDefault<TEntity>(whereLambda);
+            return entity;
+        }
+        public TEntity Get(object id)
+        {
+            return Entities.Find(id);
+        }
+        public IQueryable<TEntity> GetQuery(Expression<Func<TEntity, bool>> whereLambda=null)
+        {
+            var _list = this.Entities.Where(t => 1 == 1);
+            if (whereLambda != null)
+            {
+                _list = this.Entities.Where(whereLambda);
+            }
+            return _list;
+        }
+
+        #region Private
+
+        private Exception ReturnException(DbEntityValidationException dbEx)
+        {
+            var msg = string.Empty;
+
+            foreach (var validationErrors in dbEx.EntityValidationErrors)
+                foreach (var validationError in validationErrors.ValidationErrors)
+                    msg += string.Format("Property: {0} Error: {1}", validationError.PropertyName, validationError.ErrorMessage) + Environment.NewLine;
+
+            var fail = new Exception(msg, dbEx);
+            return fail;
+        }
+        #endregion
+
+        #region Properties
+
+        protected DbSet<TEntity> Entities
+        {
+            get
+            {
+                if (_entities == null)
+                    _entities = _context.Set<TEntity>();
+                return _entities;
+            }
+        }
+        #endregion
+
+        public TEntity Update(TEntity entity)
+        {
+            var set = this._context.Set<TEntity>();
+            set.Attach(entity);
+            this._context.Entry<TEntity>(entity).State = EntityState.Modified;
+            SaveChanges();
+            return entity;
+        }
+
+        public TEntity Insert(TEntity entity) 
+        {
+            this._context.Set<TEntity>().Add(entity);
+            SaveChanges();
+            return entity;
+        }
+
+
+
+        public int GetMaxInt(Expression<Func<TEntity, int?>> whereLambda,int min=1,int max=int.MaxValue)
+        {
+            var maxValue = this.Entities.Max(whereLambda);
+            if (!maxValue.HasValue)
+                maxValue = min;
+            else
+                maxValue = maxValue.Value + 1;
+            if (maxValue > max)
+                throw new ArgumentException("最大值超过"+max);
+            return maxValue.GetValueOrDefault();
+        }
+
+
+        public bool IsExists(Expression<Func<TEntity, bool>> whereLambda)
+        {
+            return Entities.AsNoTracking().Any(whereLambda);
+        }
+    }
+}

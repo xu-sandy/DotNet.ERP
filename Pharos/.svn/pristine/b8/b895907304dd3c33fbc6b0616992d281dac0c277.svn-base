@@ -1,0 +1,152 @@
+﻿@model Pharos.CRM.Retailing.Models.DataDictionaryModel
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'center',split:false,border:false">
+        <table id="treegrid"></table>
+    </div>
+</div>
+<style>
+    .tree-icon {
+        width: 14px;
+    }
+</style>
+<script type="text/javascript">
+    var jqElement = $('#treegrid');
+    pharos.easyui.treegrid=jqElement;
+    jqElement.treegrid({
+        toolbar: '#toolbar',
+        border: false,
+        fit: true,
+        fitColumns: true,
+        url: "@Url.Action("GetDictItems")?psn="+@ViewData["psn"],
+        rownumbers: true,
+        idField: 'DicSN',
+        singleSelect: true,
+        treeField: 'Title',
+        columns:  [[
+        { field: 'Title', title: '项值', width: 150 },
+        { field: 'Status', title: '状态', width: 150, formatter: function (value, row) {
+            var content = "<span>";
+            switch(value)
+            {
+                case false:
+                    content += "关闭";
+                    break;
+                case true:
+                    content += "可用";
+                    break;
+            }
+            content += "</span>";
+            return content;
+        } },
+        { field: 'DicSN', title: '操作', width: 150 ,formatter: function (value, row) {
+
+            var operat = "<a  href='javascript:moveItem(1,\"" + value + "\")'>【上移】</a>&nbsp;&nbsp;&nbsp;<a  href='javascript:moveItem(2,\"" + value + "\")'>【下移】</a>&nbsp;&nbsp;&nbsp;";
+            operat += '<a href=\'javascript:SwitchStatus('+value+')\'>【';
+            //operat += row.Status ? '显示' : '关闭';
+            operat += changeStatus(row.Status);
+            operat += '】</a>';
+
+
+            return operat;
+        } }
+        ]],
+        onClickCell: function (field, row) {
+            if (field == "Title") {
+                customOpenWin({ 'title': '修改字典', 'width': 450, 'height': 320, 'url': "@Url.Action("AddDict")?id=" + row.Id + "&psn=" + row.DicSN});
+            }
+        }
+    });
+    function changeStatus(status)
+    {
+        return status > 0 ? "关闭" : "显示";
+    }
+    function closeDialog() {
+        jqElement.treegrid('reload');
+    }
+
+    function addDict(psn) {
+        var url = "@Url.Action("AddDict")?id=-1&psn=" + psn;
+        customOpenWin({ 'title': '添加字典', 'width': 450, 'height': 320, 'url': url });
+    }
+    function SwitchStatus(sn) {
+        if (!sn) { return; }
+        $.messager.confirm('提示', "是否确定切换分类状态?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { sn: sn },
+                url: "@Url.Action("SwitchStatus")",
+                success: function (data) {
+                    jqElement.treegrid('reload');
+
+                }, error: function (data) {
+                    $.messager.alert("提示", "切换分类状态失败！", "info");
+
+
+                }
+            });
+        });
+
+    }
+
+    function customOpenWin(parms) {
+        if (parms != null) {
+            if (!parms.width) { parms.width = 600; }
+            if (!parms.height) { parms.height = 350; }
+            var btns = [{
+                text: '保存',
+                iconCls: 'icon-ok',
+                id: "lbsave",
+                handler: function () {
+                    window.top.$('#EditformDiv iframe')[0].contentWindow.$('.default-form form').submit();
+                }
+            }, {
+                text: '关闭',
+                iconCls: 'icon-cancel',
+                handler: function () { pharos.easyui.dialog.topClose("EditformDiv"); }
+            }];
+
+            if(parms.url.indexOf("?") > 0){
+                parms.url += "&userwinid=EditformDiv";
+            }else{
+                parms.url += "?userwinid=EditformDiv";
+
+            }
+
+            if (parms.hideSave == true) { btns.shift(); }
+            if (parms.buttons) btns = parms.buttons;
+            var cont = "<iframe src='" + parms.url + "' width='100%' height='99%' frameborder='0'/>";
+            $("body").openTopDialog({
+                id: "EditformDiv",
+                title: parms.title,
+                width: parms.width,
+                height: parms.height,
+                content: cont,
+                //href: url,
+                modal: true,
+                cache: false,
+                buttons: btns,
+                tools: [],
+                onClose: closeDialog
+            });
+        }
+    }
+    function moveItem(mode, sn) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, sn: sn },
+            url: "@Url.Action("MoveDataItem")",
+            success: function (data) {
+                jqElement.treegrid('reload');
+            }, error: function (data) {
+                $.messager.alert("提示", "移动失败！", "info");
+            }
+    })
+    }
+</script>

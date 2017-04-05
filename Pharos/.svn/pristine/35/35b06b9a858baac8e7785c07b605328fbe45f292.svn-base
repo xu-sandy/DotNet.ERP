@@ -1,0 +1,229 @@
+﻿<Page x:Class="Pharos.POS.Retailing.Pages.PosPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" ShowsNavigationUI="False" 
+      xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"       
+      xmlns:converter="clr-namespace:Pharos.Wpf.XamlConverters;assembly=Pharos.Wpf"       
+      mc:Ignorable="d" 
+      d:DesignHeight="768" d:DesignWidth="1024" Title="东本 | 夏日1店" x:Name="posPage" Margin="10">
+    <Page.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\PosPageStyle.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <converter:EnumForTitleConverter x:Key="EnumForTitleConverter"></converter:EnumForTitleConverter>
+        </ResourceDictionary>
+    </Page.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="10"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="10"></RowDefinition>
+            <RowDefinition Height="180"></RowDefinition>
+            <RowDefinition Height="40"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+            <ColumnDefinition Width="Auto"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+
+        <Grid x:Name="menuPanel" Margin="10,0,0,0" Width="{Binding ElementName=menu,Path=Width}" Grid.Column="1" Visibility="Collapsed" Grid.Row="2" Grid.RowSpan="3"></Grid>
+
+        <Border Grid.Row="0" Grid.ColumnSpan="3" CornerRadius="5" Background="#dbd8dc">
+            <Grid Margin="20,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="350"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="70"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Style="{StaticResource PageTitle}" Text="{Binding ElementName=posPage,Path=Title}"></TextBlock>
+                <StackPanel Grid.Column="1">
+                    <control:Marquee Margin="0,15,20,0" Name="notice" Style="{StaticResource noticeStyle}"></control:Marquee>
+                </StackPanel>
+                <control:PosButton Background="#C9452C" Margin="0" Grid.Column="2" Foreground="White" FontSize="20">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="..\Images\PosWindow\exit.png" Width="25"></Image>
+                        </StackPanel>
+                    </Button.Content>
+                </control:PosButton>
+            </Grid>
+        </Border>
+        <Border Grid.Row="2" Background="#E0E3E8" CornerRadius="5" Margin="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"></RowDefinition>
+                    <RowDefinition Height="40"></RowDefinition>
+                </Grid.RowDefinitions>
+                <Border CornerRadius="5,5,0,0" Background="White">
+                    <DataGrid BorderThickness="0" ItemsSource="{Binding OrderList,Mode=TwoWay}" CanUserDeleteRows="True" Margin="0" TabIndex="14" Foreground="#4B4B4B" BorderBrush="#5C5753"  VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn FocusManager.IsFocusScope="False" SortDirection="Ascending" CanUserReorder="False" CanUserResize="False" Width="65" CanUserSort="False" Header="" IsReadOnly="True" Binding="{Binding Id,Mode=TwoWay}"></DataGridTextColumn>
+                            <DataGridTextColumn FocusManager.IsFocusScope="False"  CanUserSort="False" MinWidth="160"  Header="条码" IsReadOnly="True" Binding="{Binding Barcode,Mode=TwoWay}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="Height" Value="auto"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn FocusManager.IsFocusScope="False" MinWidth="250" CanUserSort="False" Header="品名" IsReadOnly="True" Binding="{Binding Title,Mode=TwoWay}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="Height" Value="auto"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <DataGridTextColumn Header="数量" Width="200" Binding="{Binding Number,Mode=TwoWay}"></DataGridTextColumn>
+
+                            <DataGridTextColumn FocusManager.IsFocusScope="False"  CanUserSort="False" Width="45"   Header="单位" IsReadOnly="True" Binding="{Binding Unit,Mode=TwoWay}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="Height" Value="auto"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="零售价" Binding="{Binding Price,Mode=TwoWay}" Width="200"></DataGridTextColumn>
+                            <DataGridTextColumn Header="折后/特价" Width="200" Binding="{Binding ActualPrice,Mode=OneWay}"></DataGridTextColumn>
+
+                            <DataGridTextColumn FocusManager.IsFocusScope="False"  CanUserSort="False" MinWidth="120" Width="*" Header="小计" IsReadOnly="True" Binding="{Binding Total,Mode=TwoWay,StringFormat='{}{0:N}'}"></DataGridTextColumn>
+                            <DataGridTemplateColumn Header="操作" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <control:PosButton BorderBrush="#B85D5C" BorderThickness="1"  FontSize="16" Width="65" Height="35"  Background="White" Foreground="#B85D5C" Content="移除" Command="{Binding RemoveCommand}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+                <Grid Grid.Row="1" >
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="50"></ColumnDefinition>
+                        <ColumnDefinition Width="200"></ColumnDefinition>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <!--<Line X1="0" Y1="0" X2="{Binding ElementName=POSLIST,Path=ActualWidth}" Y2="0" Grid.ColumnSpan="10" Stroke="Black" StrokeThickness="1"/>-->
+                    <TextBlock FontWeight="Bold" Style="{StaticResource titleStyle}" Text="条码："></TextBlock>
+                    <control:IconTextBox PreviewKeyDown="txtBarcode_PreviewKeyDown" x:Name="txtBarcode" Height="35" MaxWidth="350"  Grid.Column="1" Style="{StaticResource contentStyle}" Text="{Binding Barcode,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"></control:IconTextBox>
+                </Grid>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="10"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="10"></ColumnDefinition>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <Border Background="#DBDCDE" CornerRadius="5" Padding="10">
+                <Grid MaxWidth="500" MinWidth="300">
+                    <Grid.RowDefinitions>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition MinWidth="80" MaxWidth="100"></ColumnDefinition>
+                        <ColumnDefinition MinWidth="180"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Style="{StaticResource titleStyle}" Text="手机号："></TextBlock>
+                    <TextBlock  Grid.Row="0" Grid.Column="1" Style="{StaticResource rightTextStyle}" Text="1234567890" Margin="0,0,0,7" VerticalAlignment="Bottom"></TextBlock>
+
+                    <TextBlock Grid.Row="1" Style="{StaticResource titleStyle}" Text="会员卡号："></TextBlock>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource rightTextStyle}" Text="1234567890"></TextBlock>
+
+                    <TextBlock Grid.Row="2" Style="{StaticResource titleStyle}" Text="会员姓名："></TextBlock>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource rightTextStyle}" Text="张三"></TextBlock>
+
+
+                    <TextBlock Grid.Row="3" Style="{StaticResource titleStyle}" Text="可用积分："></TextBlock>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource rightTextStyle}" Text="12345678.90"></TextBlock>
+
+                    <TextBlock Grid.Row="4" Style="{StaticResource titleStyle}" Text="操作人："></TextBlock>
+                    <TextBlock Style="{StaticResource rightTextStyle}" Grid.Row="4" Grid.Column="1">
+                        <Label Padding="0" Margin="0,0,1,0" Content="{Binding}"  Foreground="#659D14"></Label>
+                        <Label Padding="0" Margin="0,0,25,0" Content="{Binding MemberInfo.OperatorName}"  Foreground="#659D14"></Label> 
+                        <Label Padding="0" Content="{Binding MemberInfo.Date,StringFormat='HH:mm:ss'}"  Foreground="#659D14"></Label>
+                    </TextBlock>
+
+                </Grid>
+            </Border>
+            <Border Grid.Column="2" Background="#DBDCDE" CornerRadius="5" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition Height="40"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition MinWidth="60" MaxWidth="90"></ColumnDefinition>
+                        <ColumnDefinition MinWidth="120"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+
+
+                    <TextBlock Grid.Row="0" Style="{StaticResource titleStyle}" FontSize="25" Text="应收："></TextBlock>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource rightTextStyle}" Foreground="#659D14" FontSize="25"><Run Text="￥"></Run><Run Text="{Binding Receivable,Mode=TwoWay}"></Run></TextBlock>
+
+                    <TextBlock Grid.Row="1" Style="{StaticResource titleStyle}" Text="已优惠：" Foreground="#659D14"></TextBlock>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource rightTextStyle}"  Foreground="#659D14" ><Run Text="￥"></Run><Run Text="{Binding Preferential,Mode=TwoWay}"></Run> <Run Text=" "></Run></TextBlock>
+                    <TextBlock Grid.Row="2" Style="{StaticResource titleStyle}" Text="件数："  FontSize="20"></TextBlock>
+
+                    <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource rightTextStyle}"  Foreground="#659D14" FontSize="20"> <Run Text="{Binding Num,Mode=TwoWay}"></Run></TextBlock>
+                </Grid>
+            </Border>
+            <Border Grid.Column="4" Background="#DBDCDE" CornerRadius="5" Padding="10">
+                <Grid  Width="400">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="90"></RowDefinition>
+                        <RowDefinition Height="6"></RowDefinition>
+                        <RowDefinition  Height="60"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="220"></ColumnDefinition>
+                        <ColumnDefinition Width="6"></ColumnDefinition>
+                        <ColumnDefinition MinWidth="150" MaxWidth="200"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <control:PosButton   Background="#659D14" Foreground="#ffffff" Content="结算" FontSize="30"></control:PosButton>
+                    <control:PosButton Grid.Column="2" Background="#B07064" Foreground="#ffffff" Content="清空" FontSize="30"></control:PosButton>
+                    <control:PosButton Grid.Row="2" Grid.Column="0" Background="#807C7B" Foreground="#ffffff" Content="整单折扣" FontSize="20"></control:PosButton>
+                    <control:PosButton  Grid.Column="2" Grid.Row="2" Background="#807C7B" Foreground="#ffffff"  FontSize="20">
+                        <Button.Content>
+                            <TextBlock><Run>挂单</Run><Run Text="(1)"></Run></TextBlock>
+                        </Button.Content>
+                    </control:PosButton>
+
+
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Style="{StaticResource statusStyle}" MouseDown="SaleStatusTextBlock_MouseDown"><Run Text="状态："></Run> <Run Text="{Binding Converter={StaticResource EnumForTitleConverter},Path=SaleStatus,Mode=TwoWay}"></Run></TextBlock>
+            <TextBlock Grid.Column="1" Style="{StaticResource statusStyle}" MouseDown="PrintStatusTextBlock_MouseDown"><Run Text="小票打印："></Run> <Run Text="{Binding Converter={StaticResource EnumForTitleConverter},Path=PrintStatus,Mode=TwoWay}"></Run></TextBlock>
+            <TextBlock Grid.Column="2" Style="{StaticResource statusStyle}"><Run Text="POS机号："></Run> <Run Text="{Binding MachineSn}"></Run></TextBlock>
+            <TextBlock Grid.Column="4" Style="{StaticResource statusStyle}" Text="道诚 · 科技  商业管理软件"></TextBlock>
+        </Grid>
+
+    </Grid>
+
+
+
+</Page>

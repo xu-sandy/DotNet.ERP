@@ -1,0 +1,80 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Models
+{
+    public class TreeModel : BaseObservable
+    {
+        #region Constructors
+        public TreeModel(string name, object id)
+        {
+            this.Name = name;
+            this.Id = id;
+            this.Children = new List<TreeModel>();
+            HasChild = false;
+        }
+        public TreeModel() { }
+        #endregion
+
+        public TreeModel Parent { get; set; }
+
+        public List<TreeModel> Children { get; set; }
+
+        public bool HasChild { get; set; }
+        public string Name { get; set; }
+
+        public object Id { get; set; }
+
+        bool _isSelected;
+        public bool IsSelected
+        {
+            get
+            {
+                return _isSelected;
+            }
+            set
+            {
+                _isSelected = value;
+                this.OnPropertyChanged("IsSelected");
+                if (_isSelected)
+                {
+                    if (SelectCallback != null)
+                    {
+                        SelectCallback(this);
+                    }
+                }
+            }
+        }
+
+        public Action<TreeModel> SelectCallback { get; set; }
+
+        public TreeModel SelectedTreeItem { get; set; }
+
+        public static TreeModel FindSelectItem(IEnumerable<TreeModel> list)
+        {
+            var result = list.FirstOrDefault(o => o._isSelected);
+            if (result == null)
+            {
+                foreach (var item in list)
+                {
+                    result = FindSelectItem(item.Children);
+                    if (result != null)
+                    {
+                        break;
+                    }
+                }
+            }
+            return result;
+        }
+
+        public void CreateTreeWithChildren(TreeModel children, bool? isChecked)
+        {
+            children.SelectCallback = SelectCallback;
+            this.Children.Add(children);
+            children.Parent = this;
+            HasChild = Children.Count > 0;
+            OnPropertyChanged("HasChild");
+        }
+    }
+}

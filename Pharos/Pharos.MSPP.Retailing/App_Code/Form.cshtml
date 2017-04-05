@@ -1,0 +1,58 @@
+﻿
+@helper UserCombobox(string name, object value = null, List<System.Web.Mvc.SelectListItem> items = null, string dataOptions = "", string empty="全部")
+{
+    var val = value == null ? "" : ",value:'" + value + "'";
+    var opt = dataOptions == "" ? "" : dataOptions+",";
+    <select name="@name" id="@name" class="easyui-combobox datacontrol" data-options="@(opt)mode:'remote',valueField:'id',textField:'name',loader:userComboLoad @(val)">
+        @if (items != null && items.Count > 0)
+        {
+            foreach (var item in items)
+            {
+                <option value="@item.Value" @(item.Selected ? "selected" : "")>@item.Text</option>
+            }
+        }
+    </select>
+
+    <script type="text/javascript">
+        var userComboLoad = function (param, success, error) {
+            //获取输入的值
+            var q = param.q || "";
+            //此处q的length代表输入多少个字符后开始查询
+            //if (q.length <= 1) return false;
+            var uid = $(this).combobox("getValue");
+            $.ajax({
+                url: "@(Context.Request.ApplicationPath == "/" ? "" : Context.Request.ApplicationPath)/SysAdmin/GetUserInput",
+                type: "post",
+            data: {
+                term: q,
+                maxRows: 100,
+                empty: '@empty',
+                UID: uid
+            },
+            dataType: "json",
+            success: function (data) {
+                var items = $.map(data.rows, function (item) {
+                    return { id: item.UID, name: item.FullName };
+                });
+                //$("#@name").combobox("clear");
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+        }
+    </script>
+}
+@functions{
+    /// <summary>
+    /// 测试
+    /// </summary>
+    /// <param name="count"></param>
+    /// <returns></returns>
+    public static IHtmlString Get(string count)
+    {
+        return new HtmlString(count);
+    }
+}

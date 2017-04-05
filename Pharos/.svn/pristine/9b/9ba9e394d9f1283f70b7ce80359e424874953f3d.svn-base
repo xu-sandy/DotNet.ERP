@@ -1,0 +1,341 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link href="css/global.css" rel="stylesheet" />
+    <link href="css/switchery.css" rel="stylesheet" />
+    <script src="javascript/echarts.min.js"></script>
+    <script src="javascript/switchery.js"></script>
+    <script src="javascript/jquery-3.1.0.min.js"></script>
+    <title></title>
+</head>
+<body>
+
+    <div class="menu">
+        <div>分店POS控制台</div>
+        <ul>
+            <li class="active">运行状况</li>
+            <li><a href="reg.html">服务注册</a></li>
+            <li>POS配置</li>
+            <li>快捷按键</li>
+            <li>系统日志</li>
+            <li>软件更新</li>
+        </ul>
+    </div>
+    <div>
+        <header>
+            <span>退出登录</span>
+        </header>
+        <div class="container">
+            <h4>资源占比</h4>
+            <div class="item">
+                <div id="main1" style="width:30%;height:350px;float:left;padding-bottom:35px;"></div>
+                <div id="main2" style="width: 30%; height: 350px; float: left;"></div>
+                <div id="main3" style="width: 30%; height: 350px; float: left;"></div>
+            </div>
+            <h4>服务状态</h4>
+            <div class="item">
+                <ul class="status">
+                    <li>
+                        <span class="status01"></span>
+                        <p>同步服务<input type="checkbox" class="js-switch01" checked /></p>
+                    </li>
+                    <li>
+                        <span class="status01 status02"></span>
+                        <p>API服务<input type="checkbox" class="js-switch02" checked /></p>
+                    </li>
+                    <li>
+                        <span class="status01 status03"></span>
+                        <p>促销服务<input type="checkbox" class="js-switch03" checked /></p>
+                    </li>
+                    <li>
+                        <span class="status01 status04"></span>
+                        <p>Socket通信<input type="checkbox" class="js-switch04" checked /></p>
+                    </li>
+                </ul>
+            </div>
+            <h4>数据交互</h4>
+            <div class="item">
+                <table class="data">
+                    <tr>
+                        <td>当前正在交互：</td>
+                        <td>用户设备信息<span>90%</span></td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>用户设备信息<span>80%</span></td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>用户设备信息<span>70%</span></td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>用户设备信息<span>60%</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            startRequest();
+            setInterval("startRequest()", 10000);
+        });
+        function startRequest() {
+            jQuery.ajax({
+                type: 'GET',
+                url: 'api/StoreManager/GetServerStates',
+                dataType: 'json',
+                cache: false,
+                success: function (datas) {
+                    for (var item in datas.Result) {
+                        switch (datas.Result[item].Project) {
+                            case "CPU":
+                                // 基于准备好的dom，初始化echarts实例
+                                var myChart = echarts.init(document.getElementById('main1'));
+
+                                // 指定图表的配置项和数据
+                                var option = {
+                                    title: {
+                                        text: datas.Result[item].Project,
+                                        y: 'bottom',
+                                        x: 'center',
+                                        textStyle: {
+                                            fontSize: '16',
+                                            color: '#515151',
+                                            fontWeight: '400'
+                                        }
+                                    },
+                                    tooltip: {
+                                        trigger: 'item',
+                                        formatter: "{a} <br/>{b}: {c} ({d}%)"
+                                    },
+                                    series: [
+                                        {
+                                            name: datas.Result[item].Project,
+                                            type: 'pie',
+                                            radius: ['50%', '70%'],
+                                            avoidLabelOverlap: false,
+                                            label: {
+                                                normal: {
+                                                    show: false,
+                                                    position: 'center'
+                                                },
+                                                emphasis: {
+                                                    show: true,
+                                                    textStyle: {
+                                                        fontSize: '20',
+                                                        fontWeight: 'bold'
+                                                    }
+                                                }
+                                            },
+                                            labelLine: {
+                                                normal: {
+                                                    show: false
+                                                }
+                                            },
+                                            data: [
+                                                { value: datas.Result[item].InUse, name: 'CPU使用率', itemStyle: { normal: { color: '#2196f3' } } },
+                                                { value: 100 - datas.Result[item].InUse, name: 'CPU未使用率', itemStyle: { normal: { color: '#d5d5d5' } } }
+                                            ]
+                                        }
+                                    ]
+                                };
+
+                                // 使用刚指定的配置项和数据显示图表。
+                                myChart.setOption(option);
+                                break;
+                            case "内存":
+                                // 基于准备好的dom，初始化echarts实例
+                                var myChart = echarts.init(document.getElementById('main2'));
+
+                                // 指定图表的配置项和数据
+                                var option = {
+                                    title: {
+                                        text: datas.Result[item].Project,
+                                        y: 'bottom',
+                                        x: 'center',
+                                        textStyle: {
+                                            fontSize: '16',
+                                            color: '#515151',
+                                            fontWeight: '400'
+                                        }
+                                    },
+                                    tooltip: {
+                                        trigger: 'item',
+                                        formatter: "{a} <br/>{b}: {c} ({d}%)"
+                                    },
+                                    series: [
+                                        {
+                                            name: datas.Result[item].Project,
+                                            type: 'pie',
+                                            radius: ['50%', '70%'],
+                                            avoidLabelOverlap: false,
+                                            label: {
+                                                normal: {
+                                                    show: false,
+                                                    position: 'center'
+                                                },
+                                                emphasis: {
+                                                    show: true,
+                                                    textStyle: {
+                                                        fontSize: '20',
+                                                        fontWeight: 'bold'
+                                                    }
+                                                }
+                                            },
+                                            labelLine: {
+                                                normal: {
+                                                    show: false
+                                                }
+                                            },
+                                            data: [
+                                                { value: datas.Result[item].InUse, name: '内存使用率', itemStyle: { normal: { color: '#aa55bb' } } },
+                                                { value: 100 - datas.Result[item].InUse, name: '内存未使用率', itemStyle: { normal: { color: '#d5d5d5' } } }
+                                            ]
+                                        }
+                                    ]
+                                };
+
+                                // 使用刚指定的配置项和数据显示图表。
+                                myChart.setOption(option);
+                                break;
+                            case "硬盘":
+
+                                // 基于准备好的dom，初始化echarts实例
+                                var myChart = echarts.init(document.getElementById('main3'));
+
+                                // 指定图表的配置项和数据
+                                var option = {
+                                    title: {
+                                        text: datas.Result[item].Project,
+                                        y: 'bottom',
+                                        x: 'center',
+                                        textStyle: {
+                                            fontSize: '16',
+                                            color: '#515151',
+                                            fontWeight: '400'
+                                        }
+                                    },
+                                    tooltip: {
+                                        trigger: 'item',
+                                        formatter: "{a} <br/>{b}: {c} ({d}%)"
+                                    },
+                                    series: [
+                                        {
+                                            name: datas.Result[item].Project,
+                                            type: 'pie',
+                                            radius: ['50%', '70%'],
+                                            avoidLabelOverlap: false,
+                                            label: {
+                                                normal: {
+                                                    show: false,
+                                                    position: 'center'
+                                                },
+                                                emphasis: {
+                                                    show: true,
+                                                    textStyle: {
+                                                        fontSize: '20',
+                                                        fontWeight: 'bold'
+                                                    }
+                                                }
+                                            },
+                                            labelLine: {
+                                                normal: {
+                                                    show: false
+                                                }
+                                            },
+                                            data: [
+                                                { value: datas.Result[item].InUse, name: '磁盘使用率', itemStyle: { normal: { color: '#ee3377' } } },
+                                                { value: 100 - datas.Result[item].InUse, name: '磁盘未使用率', itemStyle: { normal: { color: '#d5d5d5' } } }
+                                            ]
+                                        }
+                                    ]
+                                };
+
+                                // 使用刚指定的配置项和数据显示图表。
+                                myChart.setOption(option);
+                                break;
+                        }
+                    }
+                }
+
+            })
+        }
+
+
+
+
+    </script>
+    <script>
+        var elem = document.querySelector('.js-switch01');
+        var init = new Switchery(elem);
+
+        defaults = {
+            color: '#30d9c4'
+  , secondaryColor: '#dfdfdf'
+  , jackColor: '#c6c6c6'
+  , jackSecondaryColor: null
+  , className: 'switchery'
+  , disabled: false
+  , disabledOpacity: 0.5
+  , speed: '0.1s'
+  , size: 'default'
+        }
+
+
+
+        var elem = document.querySelector('.js-switch02');
+        var init = new Switchery(elem);
+
+        defaults = {
+            color: '#30d9c4'
+  , secondaryColor: '#dfdfdf'
+  , jackColor: '#c6c6c6'
+  , jackSecondaryColor: null
+  , className: 'switchery'
+  , disabled: false
+  , disabledOpacity: 0.5
+  , speed: '0.1s'
+  , size: 'default'
+        }
+
+
+
+        var elem = document.querySelector('.js-switch03');
+        var init = new Switchery(elem);
+
+        defaults = {
+            color: '#30d9c4'
+  , secondaryColor: '#dfdfdf'
+  , jackColor: '#c6c6c6'
+  , jackSecondaryColor: null
+  , className: 'switchery'
+  , disabled: false
+  , disabledOpacity: 0.5
+  , speed: '0.1s'
+  , size: 'default'
+        }
+
+
+
+
+
+        var elem = document.querySelector('.js-switch04');
+        var init = new Switchery(elem);
+
+        defaults = {
+            color: '#30d9c4'
+  , secondaryColor: '#dfdfdf'
+  , jackColor: '#c6c6c6'
+  , jackSecondaryColor: null
+  , className: 'switchery'
+  , disabled: false
+  , disabledOpacity: 0.5
+  , speed: '0.1s'
+  , size: 'default'
+        }
+    </script>
+</body>
+</html>

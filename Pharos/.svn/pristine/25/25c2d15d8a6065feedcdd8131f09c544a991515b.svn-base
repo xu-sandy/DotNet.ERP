@@ -1,0 +1,166 @@
+﻿using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels.Pay
+{
+    public class JiFuBaoPayViewModel : BaseViewModel
+    {
+
+        public JiFuBaoPayViewModel(decimal _amount, PayAction _payAction, int reason = 0)
+        {
+            var isWipeZero = Global.MachineSettings.MachineInformations.IsNonCashWipeZero;
+
+            IsOperatEnabled = true;
+            Amount = _amount;
+            PayAction = _payAction;
+            Reason = reason;
+
+            if (isWipeZero)
+            {
+                WipeZeroAfter = Math.Round(_amount, 1, MidpointRounding.AwayFromZero);//摸零后
+
+            }
+            else
+            {
+                WipeZeroAfter = _amount;
+            }
+            WipeZero = _amount - WipeZeroAfter;//摸零金额
+            //if (WipeZero < 0)
+            //{
+            //    WipeZero = 0;
+            //}
+        }
+
+        private decimal wipeZeroAfter;
+
+        public decimal WipeZeroAfter
+        {
+            get { return wipeZeroAfter; }
+            set { wipeZeroAfter = value; this.OnPropertyChanged(o => o.WipeZeroAfter); }
+        }
+
+        /// <summary>
+        /// 抹零
+        /// </summary>
+        private decimal wipeZero;
+
+        public decimal WipeZero
+        {
+            get { return wipeZero; }
+            set
+            {
+                wipeZero = value;
+                this.OnPropertyChanged(o => o.WipeZero);
+            }
+        }
+        int Reason { get; set; }
+        /// <summary>
+        /// 支付类型 正常销售、退换货补款
+        /// </summary>
+        private PayAction payAction;
+
+        public PayAction PayAction
+        {
+            get { return payAction; }
+            set { payAction = value; }
+        }
+
+
+        /// <summary>
+        /// 钱
+        /// </summary>
+        private decimal amount;
+
+        public decimal Amount
+        {
+            get { return amount; }
+            set { amount = value; this.OnPropertyChanged(o => o.Amount); }
+        }
+
+        /// <summary>
+        /// 即付宝完成支付
+        /// </summary>
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    IsOperatEnabled = false;
+                    this.OnPropertyChanged(o => o.IsOperatEnabled);
+                    //直接调支付接口
+                    //接口参数
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machineInfo = Global.MachineSettings.MachineInformations;
+                        List<PayWay> payWay = new List<PayWay>();
+                        PayWay _payWay = new PayWay()
+                        {
+                            Amount = WipeZeroAfter,
+                            Change = 0,
+                            Receive = WipeZeroAfter,
+                            Type = PayMode.JiFuBao,
+                            WipeZero = WipeZero
+                        };
+                        payWay.Add(_payWay);
+                        ApiPayParams _params = new ApiPayParams()
+                        {
+                            StoreId = _machineInfo.StoreId,
+                            MachineSn = _machineInfo.MachineSn,
+                            CompanyToken = _machineInfo.CompanyToken,
+                            Mode = PayAction,
+                            Receivable = WipeZeroAfter,
+                            Payway = payWay,
+                            OrderAmount = Amount,
+                            Reason = Reason,
+                            OldOrderSn = (RefundChangeViewModel.Current!=null? RefundChangeViewModel.Current.RefundOrder.PaySn:"")
+                        };
+                        var result = ApiManager.Post<ApiPayParams, ApiRetrunResult<object>>(@"api/Pay", _params);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            if (result.Code == "200")
+                            {
+                                //  PosViewModel.Current.ClearOrder.Execute(null);
+                                //跳到支付成功界面
+                                ZhiFuWanCheng page = new ZhiFuWanCheng(WipeZeroAfter, WipeZeroAfter, 0, "即付宝", PayAction, (DateTime)result.Result);
+                                page.Owner = Application.Current.MainWindow;
+
+                                CurrentWindow.Hide();
+                                page.ShowDialog();
+                                CurrentWindow.Close();
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }
+                            IsOperatEnabled = true;
+                        }));
+                    });
+
+                });
+            }
+        }
+
+        bool _IsOperatEnabled = true;
+
+        public bool IsOperatEnabled
+        {
+            get { return _IsOperatEnabled; }
+            set
+            {
+                _IsOperatEnabled = value;
+                this.OnPropertyChanged(o => o.IsOperatEnabled);
+            }
+        }
+    }
+}

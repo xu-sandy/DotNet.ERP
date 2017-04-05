@@ -1,0 +1,165 @@
+﻿using AX.CSF.Encrypt;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class DeviceAuthorService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<DeviceAuthorize> DeviceAuthorRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<Devices> DevicesRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysUserInfo> UserRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysDataDictionary> DictRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<Traders> TraderRepository { get; set; }
+        public OpResult SaveOrUpdate(DeviceAuthorize obj,string category, string brand,string spec)
+        {
+            //if (!TraderRepository.GetQuery(o => o.CID == obj.CID).Any())
+                //return OpResult.Fail("商户不存在!");
+            if (category.IsNullOrEmpty() || brand.IsNullOrEmpty() || spec.IsNullOrEmpty())
+                return OpResult.Fail("设备分类等信息选择不完整！");
+            var cate = short.Parse(category);
+            var device= DevicesRepository.Find(o => o.CategoryId == cate && o.Brand == brand && o.Spec == spec);
+            if (device == null) return OpResult.Fail("设备分类不存在，请重新选择！");
+            obj.DeviceId = device.DeviceId;
+            if (DeviceAuthorRepository.GetQuery(o => o.DeviceId == obj.DeviceId && o.DeviceNo == obj.DeviceNo && o.Status != 2 && o.Id != obj.Id).Any())
+                return OpResult.Fail("同设备和编码下不允许重复添加！");
+            if (obj.Id == 0)
+            {
+                obj.CreateDT = DateTime.Now;
+                obj.CreateUID = CurrentUser.UID;
+                obj.ExpirationDT = DateTime.Parse(obj.EffectiveDT).AddMonths(obj.ValidityNum.GetValueOrDefault()).ToString("yyyy-MM-dd");
+                DeviceAuthorRepository.Add(obj);
+            }
+            else
+            {
+                var res = DeviceAuthorRepository.Get(obj.Id);
+                obj.ToCopyProperty(res, new List<string>() { "CreateDT", "CreateUID", "CID","MachineSN","SerialNo" });
+                res.ExpirationDT = DateTime.Parse(obj.EffectiveDT).AddMonths(obj.ValidityNum.GetValueOrDefault()).ToString("yyyy-MM-dd");
+                DeviceAuthorRepository.SaveChanges();
+            }
+            return OpResult.Success();
+        }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var text = nvl["searchText"];
+            var category = nvl["category"];
+            var assigner = nvl["assigner"];
+            var searchField = nvl["searchField"];
+            var state = nvl["state"];
+            var queryDev = DevicesRepository.GetQuery();
+            var queryDict = DictRepository.GetQuery();
+            var queryUser = UserRepository.GetQuery();
+            var where= DynamicallyLinqHelper.Empty<DeviceAuthorize>();
+            if(!text.IsNullOrEmpty())
+            {
+                int cid=0;
+                text = text.Trim();
+                int.TryParse(text,out cid);
+                if (searchField == "Cid")
+                    where = where.And(o => o.CID == cid);
+                else if (searchField == "DeviceNo")
+                    where = where.And(o =>o.DeviceNo!=null && o.DeviceNo.StartsWith(text));
+                else if (searchField == "ContractNo")
+                    where = where.And(o => o.ContractNo != null && o.ContractNo.StartsWith(text));
+            }
+            if(!state.IsNullOrEmpty())
+            {
+                var st=short.Parse(state);
+                where = where.And(o => o.Status == st);
+            }
+            if (!assigner.IsNullOrEmpty())
+            {
+                where = where.And(o => o.AssignerUID == assigner);
+            }
+            var queryDevAuth = DeviceAuthorRepository.GetQuery(where);
+            var query = from x in queryDevAuth
+                        join y in queryDev on x.DeviceId equals y.DeviceId
+                        select new
+                        {
+                            x.Id,
+                            x.CID,
+                            x.Title,
+                            x.Source,
+                            Category = queryDict.Where(o=>o.DicSN== y.CategoryId).Select(o=>o.Title).FirstOrDefault(),
+                            y.Spec,
+                            y.Brand,
+                            x.DeviceNo,
+                            x.StoreName,
+                            x.EffectiveDT,
+                            x.ValidityNum,
+                            x.ExpirationDT,
+                            x.ContractNo,
+                            x.Status,
+                            y.CategoryId,
+                            x.CreateDT,
+                            x.MachineNo,
+                            Assigner = queryUser.Where(o=>o.UserId== x.AssignerUID).Select(o=>o.FullName).FirstOrDefault()
+                        };
+            if (!category.IsNullOrEmpty())
+            {
+                var st = short.Parse(category);
+                query = query.Where(o => o.CategoryId == st);
+            }
+            recordCount = query.Count();
+            return query.ToPageList();
+        }
+
+        public Pharos.Utility.OpResult Deletes(int[] ids)
+        {
+            var list= DeviceAuthorRepository.GetQuery(o=>ids.Contains(o.Id)).ToList();
+            return OpResult.Result(DeviceAuthorRepository.RemoveRange(list));
+        }
+
+        public DeviceAuthorize GetOne(object id)
+        {
+            var obj= DeviceAuthorRepository.Get(id);
+            return obj;
+        }
+        public DeviceAuthorize GetOneByCID(int cid)
+        {
+            return DeviceAuthorRepository.Find(o=>o.CID==cid);
+        }
+
+
+        public OpResult SetState(string ids, short state)
+        {
+            var idlist= ids.Split(',').Select(o => int.Parse(o));
+            var list= DeviceAuthorRepository.GetQuery(o => idlist.Contains(o.Id)).ToList();
+            list.ForEach(o => o.Status = state);
+            if(state==1)
+            {
+                var stores = list.Select(o => o.StoreName).ToList();
+                var cids = list.Select(o => o.CID).ToList();
+                var dids = list.Select(o => o.DeviceId).ToList();
+                var mnos = list.Select(o => o.MachineNo).ToList();
+                var sid = list.Select(o => o.Id).ToList();
+                //var devs= DevicesRepository.GetQuery(o => dids.Contains(o.DeviceId)).ToList();
+                //devs.Select(o=>o.CategoryId)
+                var devices = DeviceAuthorRepository.GetQuery(o => 
+                    stores.Contains(o.StoreName) 
+                    && cids.Contains(o.CID) 
+                    && mnos.Contains(o.MachineNo) 
+                    && dids.Contains(o.DeviceId)
+                    && !sid.Contains(o.Id) && o.Status == 1).ToList();
+                devices.ForEach(o =>
+                {
+                    o.Status = 2;
+                });
+            }
+            DeviceAuthorRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        
+    }
+}

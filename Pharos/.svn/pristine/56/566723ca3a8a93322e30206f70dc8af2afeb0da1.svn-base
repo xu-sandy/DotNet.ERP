@@ -1,0 +1,101 @@
+﻿@model Receipts
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var colcount = 2;
+    var i = 0;
+}
+
+<div class="default-form" style="margin-left:50px;">
+    @using (Html.BeginForm("Save", "Voucher", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-form" width="100%" height="180px">
+                <tr>
+                    <td class="name">单据类别：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.CategoryId, ViewBag.types as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo'" })</td>
+                    <td class="name">张 数：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Pages, new { @class = "easyui-numberbox", data_options = "required:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">单据编号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Number, new { @class = "easyui-textbox", data_options = "required:true" })</td>
+                    <td class="name">金 额：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Amount, new { @class = "easyui-numberbox", data_options = "precision:2,required:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">抬 头：</td>
+                    <td colspan="3" class="input input-long-1">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", style = "width:420px", data_options = "required:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">备 注：</td>
+                    <td colspan="3" class="input input-long-1">@Html.TextBoxFor(o => o.Memo, new { @class = "easyui-textbox", style = "width:420px" })</td>
+                </tr>
+                <tr>
+                    <td class="name">交单人：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.CreateTitle)</td>
+                    <td class="name">交单日期：</td>
+                    <td class="input">@Html.ValueFor(o => o.CreateDT, "{0:yyyy-MM-dd}")</td>
+                </tr>
+            </table>
+            <table>
+                <tr>
+                    <td valign="top">
+                        <label style="vertical-align: top; display: inline-block;width:65px; text-align:right;height:30px; line-height:30px;">上传附件：</label>
+                    </td>
+                    <td>
+                        <span id="dfs" style=" display:inline-block;width:240px; ">
+                            <input type="file" name="File1" id="File1" class="font-12" style="margin-bottom:5px;margin-top:6px;" />
+                        </span>
+                    </td>
+                    <td valign="bottom">
+                        <a href="#" class="easyui-linkbutton cus1 linkbtn" style="margin-top:6px;" data-options="iconCls:'icon-add'" onclick="addFile()">添加</a>
+                    </td>
+                </tr>
+            </table>
+            @if (Model.Attachments != null)
+            {
+                <table class="ListPartial">
+                    <tr>
+                        @foreach (var file in Model.Attachments)
+                        {
+                            if (i == colcount)
+                            {
+                                ViewContext.Writer.Write("</tr><tr>");
+                                i = 0;
+                            }
+                            <td><a href="@Url.Action("DownFile", "Attach", new { id=file.Id})">@file.Title</a><img src="~/Content/image/close.png" width="12" height="12" onclick="delFile(this,'@file.Id')" /></td>
+                            i++;
+                        }
+                    </tr>
+                </table>
+            }
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    $(function () {
+        $("#Title").textbox({ width: 420 });
+        $("#Memo").textbox({ width: 420 });
+    });
+    var i=2;
+    function addFile() {
+        var obj = $("#File1").clone().attr({ name: "File" + i, id: "File" + i });
+        obj.val("");
+        $("#dfs").prepend(obj);
+        i++;
+    }
+    function delFile(obj,fid){
+        $.messager.confirm("提示","是否确定删除该附件?",function(r){
+            if (!r) {return r;}
+            $.post("@Url.Action("DeleteFile")",{Id:$("#Id").val(),fileId:fid,t:Math.random()},function(d){
+                if (d.successed) {
+                    $(obj).parent().remove();
+                } else {
+                    $.messager.alert("提示", "删除失败！" + d.message, "error");
+                }
+            },"json")
+        });
+    }
+</script>

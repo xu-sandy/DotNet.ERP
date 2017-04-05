@@ -1,0 +1,102 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Http;
+using System.Net.Http;
+using Newtonsoft.Json.Linq;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.ApiData.Mobile.Exceptions;
+namespace Pharos.Api.Retailing.Controllers
+{
+    public class GetImgsController : ApiController
+    {
+        static string _Theme = null;
+        static string Theme
+        {
+            get {
+                if (_Theme==null)
+                {
+                    _Theme=System.Configuration.ConfigurationManager.AppSettings["theme"]??"1"; 
+                }
+                return _Theme;
+            }
+        }
+        /// <summary>
+        /// 获取配置图片
+        /// </summary>
+        /// <param name="json"></param>
+        /// <returns></returns>
+        public object POST([FromBody]JObject json)
+        {
+            var source = json.Property("source", true);
+            var type = json.Property("type", true);
+            var ratio = json.Property("ratio", true);
+            var position = json.Property("position", true);
+            //var screenWidth = Request.Headers.GetCookies();
+            if (source.IsNullOrEmpty()) throw new MessageException("来源不能为空!");
+            if (type.IsNullOrEmpty()) throw new MessageException("类型不能为空!");
+            if (position.IsNullOrEmpty()) throw new MessageException("位置不能为空!");
+            var url = Request.GetUrlHelper().Content("~/Images/");
+            var list = new List<object>();
+            var version = Theme;
+            if (string.Equals(source, "APP", StringComparison.CurrentCultureIgnoreCase))
+            {
+                string width = "", height = "";
+                if(string.Equals(type, "Android", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    if (ratio.IsNullOrEmpty()) ratio = "640x960";
+                    if(ratio.StartsWith("640x",StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        type = "android640";
+                    }
+                }
+                if (string.Equals(type, "IOS", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    if (ratio.IsNullOrEmpty()) ratio = "750x1334";
+                    if (ratio.StartsWith("750x", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        type = "ios640";
+                    }
+                }
+                var path = AppDomain.CurrentDomain.BaseDirectory + "/Images/app/" + type + "/" + version;
+                System.IO.DirectoryInfo dir = new System.IO.DirectoryInfo(path);
+                if (string.Equals(position, "sysLogo", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    url += "app/" + type + "/" + version + "/login_sysLogo.png";
+                    list.Add(new { Url = url, Width = width, Height = height });
+                }
+                else if (string.Equals(position, "sysLogo2", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    url += "app/" + type + "/" + version + "/index_sysLogo.png";
+                    list.Add(new { Url = url, Width = width, Height = height });
+                }
+                else if (string.Equals(position, "sysLoginBj", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    var files = dir.GetFiles("login_bg_*");
+                    Random random = new Random();
+                    var idx= random.Next(0,files.Count());
+                    url += "app/" + type + "/" + version + "/" + (files.Any() ? files[idx].Name : "");
+                    list.Add(new { Url = url, Width = width, Height = height });
+                }
+                else if (string.Equals(position, "indexTop", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    url += "app/" + type + "/" + version + "/index_bg.png";
+                    list.Add(new { Url = url, Width = width, Height = height });
+                }
+                else if (string.Equals(position, "consumerLogo", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    url += "app/" + type + "/" + version + "/db_logo.png";
+                    list.Add(new { Url = url, Width = width, Height = height });
+                }
+                else if (string.Equals(position, "indexAdv", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    var files= dir.GetFiles("index_slides_*");
+                    foreach(var fs in files)
+                        list.Add(new { Url = url + "app/" + type + "/" + version + "/" + fs.Name, Width = width, Height = height });
+                }
+            }
+            return list;
+        }
+    }
+}

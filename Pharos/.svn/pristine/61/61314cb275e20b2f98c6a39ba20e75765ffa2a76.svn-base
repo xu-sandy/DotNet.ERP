@@ -1,0 +1,371 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+using Pharos.Sys.Entity;
+using Pharos.Utility;
+using System.Linq.Expressions;
+using System.Reflection;
+
+namespace Pharos.Logic.BLL
+{
+    public class MembershipCardService : BaseService<MembershipCard>
+    {
+        public object FindMembershipCardPageList(string type, short? state, int beOverdue, DateTime? dueTimeStart, DateTime? dueTimeEnd, string keyWord, int[] cardTypes, out int count)
+        {
+            try
+            {
+                var cardTypeStrs = new List<string>();
+                foreach (var item in cardTypes)
+                {
+                    cardTypeStrs.Add("," + item + ",");
+                }
+
+                var query = (from a in CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId)
+                             //join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                             //on a.UserUID equals b.UID
+                             join b in BaseService<Members>.CurrentRepository.Entities
+                             on a.MemberId equals b.MemberId into d
+                             from e in d.DefaultIfEmpty()
+                             join c in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                             on a.CreateUID equals c.UID
+                             join ci in BaseService<CardInfo>.CurrentRepository.Entities
+                             on a.CardTypeId equals ci.CardTypeId
+                             where cardTypeStrs.Any(o => ("," + ci.CardType + ",").Contains(o))
+                             select new
+                             {
+                                 Id = a.Id,
+                                 BatchSN = a.BatchSN,
+                                 CardSN = a.CardSN,
+                                 CardType = a.CardTypeId,
+                                 MemberId = a.MemberId,
+                                 UserUID = e.RealName + ((e.MobilePhone == "" || e.MobilePhone == null) ? "" : "(" + e.MobilePhone + ")"),
+                                 ReChargeTotal = a.ReChargeTotal,
+                                 GiveTotal = a.GiveTotal,
+                                 Balance = a.Balance,
+                                 //Integer = a.Integer,
+                                 Deposit = a.Deposit,
+                                 State = a.State,
+                                 ExpiryStart = a.ExpiryStart,
+                                 ExpiryEnd = a.ExpiryEnd,
+                                 CreateDT = a.CreateDT,
+                                 CreateUID = c.FullName,
+                                 LeadTime = a.LeadTime,
+                                 AllowRecharge = ci.CardType.Contains("1") ? "是" : "否",//只有储蓄卡可以充值
+                                 MinRecharge = ci.MinRecharge
+                             });
+
+                if (!string.IsNullOrEmpty(type))
+                {
+                    query = query.Where(o => o.CardType == type);
+                }
+                if (state != null && state != -1)
+                {
+                    query = query.Where(o => o.State == state);
+                }
+                if (beOverdue > 0)
+                {
+                    DateTime startTime = DateTime.Now;
+                    DateTime endTime = new DateTime();
+                    switch (beOverdue)
+                    {
+                        case 1:
+                        case 2:
+                        case 3:
+                        case 4:
+                        case 5:
+                        case 6:
+                            endTime = startTime.AddMonths(beOverdue);
+                            break;
+                    }
+                    query = query.Where(o => o.ExpiryEnd > startTime && o.ExpiryEnd < endTime);
+                }
+                if (dueTimeStart.HasValue)
+                {
+                    query = query.Where(o => o.LeadTime > dueTimeStart);
+                }
+                if (dueTimeEnd.HasValue)
+                {
+                    dueTimeEnd = dueTimeEnd.Value.AddDays(1);
+                    query = query.Where(o => o.LeadTime < dueTimeEnd.Value);
+                }
+                if (!string.IsNullOrEmpty(keyWord))
+                {
+                    query = query.Where(o => o.CardSN.Contains(keyWord) || o.UserUID.Contains(keyWord));
+                }
+                query = query.OrderByDescending(o => o.CreateDT);
+                count = query.Count();
+                object result = null;
+                if (count > 0)
+                {
+                    result = query.ToPageList();
+                }
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+
+        }
+        /// <summary>
+        /// 更改会员卡状态
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="ids"></param>
+        /// <returns></returns>
+        public OpResult UpdateMemberCardState(short state, string ids)
+        {
+            try
+            {
+                var cards = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ","));
+                //cards.Each(o => o.State = state);
+                var message = new StringBuilder();
+                var stateStr = string.Empty;
+                switch (state)
+                {
+                    case 1://0:未激活；1：正常；2 已挂失；3：已作废；4 已退卡
+                        stateStr = "成功激活会员卡【{0}】!";
+                        break;
+                    case 2://
+                        stateStr = "会员卡【{0}】已挂失!";
+                        break;
+                    case 3://
+                        stateStr = "会员卡【{0}】已作废!";
+                        break;
+                    case 4://
+                        stateStr = "会员卡【{0}】已退卡!";
+                        break;
+                }
+                foreach (var item in cards)
+                {
+                    item.State = state;
+                    message.Append(string.Format(stateStr, item.CardSN));
+                }
+                CurrentRepository.Update(new MembershipCard());
+                return new OpResult() { Successed = true, Message = message.ToString() };
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+        }
+
+        public static void UpdateState(short state, string ids)
+        {
+            var datas = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ","));
+            datas.Each(o => o.State == state);
+            CurrentRepository.Update(new MembershipCard());
+        }
+
+        public object UpdateCardType(string type, string ids)
+        {
+            try
+            {
+                var cards = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ","));
+                cards.Each(o => o.CardTypeId = type);
+                CurrentRepository.Update(new MembershipCard());
+                return new OpResult() { Successed = true, Message = "修改成功！" };
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+        }
+        /// <summary>
+        /// 查询会员卡根据id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public MembershipCard FindMembershipCardById(int id)
+        {
+            var result = (from a in CurrentRepository.QueryEntity.Where(o => o.Id == id)
+                          join b in BaseService<Members>.CurrentRepository.QueryEntity
+                          on a.MemberId equals b.MemberId into c
+                          from d in c.DefaultIfEmpty()
+                          select new
+                          {
+                              Id = a.Id,
+                              CardSN = a.CardSN,
+                              BatchSN = a.BatchSN,
+                              MemberId = d.RealName + "(" + d.MobilePhone + ")",
+                              Deposit = a.Deposit
+                          });
+            return result.ToList().ConvertAll<MembershipCard>(a => new MembershipCard()
+            {
+                Id = a.Id,
+                CardSN = a.CardSN,
+                BatchSN = a.BatchSN,
+                MemberId = a.MemberId,
+                Deposit = a.Deposit
+            }).FirstOrDefault();
+        }
+        /// <summary>
+        /// 发卡
+        /// </summary>
+        /// <param name="_membershipCard"></param>
+        /// <returns></returns>
+        public OpResult BindMembershipCard(MembershipCard _membershipCard)
+        {
+            //发卡
+            try
+            {
+                var _oldCard = CurrentRepository.Entities.Where(o => o.Id == _membershipCard.Id).FirstOrDefault();
+                if (_oldCard != null)
+                {
+                    _oldCard.MemberId = _membershipCard.MemberId;
+                    _oldCard.LeadTime = _membershipCard.LeadTime;
+                    _oldCard.Deposit = _membershipCard.Deposit;
+                    CurrentRepository.Update(_oldCard);
+                }
+                return new OpResult() { Successed = true, Message = "操作成功！" };
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+        /// <summary>
+        /// 更新会员卡实体
+        /// </summary>
+        /// <param name="_membershipCard"></param>
+        /// <returns></returns>
+        public OpResult UpdateMembershipCard(MembershipCard _membershipCard)
+        {
+            var membershipCard = CurrentRepository.Entities.FirstOrDefault(o => o.Id == _membershipCard.Id);
+            if (membershipCard != null)
+            {
+                membershipCard.Balance = _membershipCard.Balance;
+                membershipCard.GiveTotal = _membershipCard.GiveTotal;
+                //membershipCard.Integer = _membershipCard.Integer;
+                membershipCard.ReChargeTotal = _membershipCard.ReChargeTotal;
+                CurrentRepository.Update(membershipCard);
+            }
+            return new OpResult() { Successed = true, Message = "操作成功！" };
+        }
+
+        /// <summary>
+        /// get car batch name deosit by cardSn
+        /// </summary>
+        /// <param name="cardSN"></param>
+        /// <returns></returns>
+        public object GetMembersCardByCardSn(string cardSN)
+        {
+            try
+            {
+                var query = CurrentRepository.Entities.Where(o => o.CardSN == cardSN && o.CompanyId == CommonService.CompanyId);
+                var queryData = query.FirstOrDefault();
+                if (queryData == null)
+                {
+                    return OpResult.Fail("该卡号不存在！");
+                }
+                if (queryData.State != 1)
+                {
+                    switch (queryData.State)
+                    {
+                        case 0:
+                            return OpResult.Fail("该卡未激活，不可充值！");
+                        case 2:
+                            return OpResult.Fail("该卡已挂失，不可充值！");
+                        case 3:
+                            return OpResult.Fail("该卡已作废，不可充值！");
+                        case 4:
+                            return OpResult.Fail("该卡已退卡，不可充值！");
+                        case 5:
+                            return OpResult.Fail("该卡已过期，不可充值！");
+                    }
+                }
+                var _memberCardInfo = (from a in query
+                                       join b in BaseService<Members>.CurrentRepository.Entities
+                                       on a.MemberId equals b.MemberId into c
+                                       from d in c.DefaultIfEmpty()
+                                       join cf in BaseService<CardInfo>.CurrentRepository.Entities
+                                       on a.CardTypeId equals cf.CardTypeId
+                                       select new
+                                       {
+                                           Batch = a.BatchSN,
+                                           RealName = d.RealName,
+                                           Deposit = a.Deposit,
+                                           CardSN = a.CardSN,
+                                           Balance = a.Balance,
+                                           CardType = cf.CardType,
+                                           Integer = d.UsableIntegral == null ? 0 : d.UsableIntegral,
+                                           State = a.State
+                                       }).FirstOrDefault();
+                if (_memberCardInfo.CardType == "2")
+                {
+                    return OpResult.Fail("该卡为购物卡，不可充值！");
+                }
+                return new OpResult() { Successed = true, Data = _memberCardInfo };
+            }
+            catch (Exception e)
+            {
+
+                throw;
+            }
+        }
+        public object GetMemberCardInfoByCardSN(string cardSN)
+        {
+            var _memberCardInfo = (from a in CurrentRepository.Entities.Where(o => o.CardSN == cardSN && o.CompanyId == CommonService.CompanyId)
+                                   join b in BaseService<Members>.CurrentRepository.Entities
+                                   on a.MemberId equals b.MemberId into c
+                                   from d in c.DefaultIfEmpty()
+                                   select new
+                                   {
+                                       Id = a.Id,
+                                       Batch = a.BatchSN,
+                                       RealName = d.RealName,
+                                       Deposit = a.Deposit,
+                                       CardSN = a.CardSN,
+                                       State = a.State,
+                                       Phone = d.MobilePhone
+                                   }).FirstOrDefault();
+            return _memberCardInfo;
+        }
+
+        /// <summary>
+        /// get member card by like query
+        /// </summary>
+        /// <param name="param"></param>
+        /// <returns></returns>
+        public object GetMemberCardByContainsParam(string param)
+        {
+            return CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && o.CardSN.StartsWith(param)).ToList();
+        }
+        /// <summary>
+        /// 加载会员的会员卡
+        /// </summary>
+        /// <param name="memberId"></param>
+        /// <returns></returns>
+        public IEnumerable<MembershipCard> GetMembershipCardByMember(string memberId)
+        {
+            var datas = from m in CurrentRepository.Entities.Where(o => o.MemberId == memberId && o.CompanyId == CommonService.CompanyId)
+                        join c in BaseService<CardInfo>.CurrentRepository.Entities
+                        on m.CardTypeId equals c.CardTypeId
+                        select new
+                        {
+                            Id = m.Id,
+                            CardSN = m.CardSN,
+                            CardTypeId = c.CardName,
+                            Balance = m.Balance,
+                            State = m.State
+                        };
+            return datas.ToList().ConvertAll<MembershipCard>(o => new MembershipCard()
+            {
+                Id = o.Id,
+                CardSN = o.CardSN,
+                CardTypeId = o.CardTypeId,
+                Balance = o.Balance,
+                State = o.State
+            });
+        }
+
+        public static List<MembershipCard> GetMembershipListByState()
+        {
+            return CurrentRepository.Entities.Where(p => p.State > 1 && p.ExpiryEnd != null).ToList();
+        }
+
+    }
+}

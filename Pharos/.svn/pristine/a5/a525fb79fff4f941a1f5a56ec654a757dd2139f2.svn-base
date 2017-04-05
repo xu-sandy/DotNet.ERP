@@ -1,0 +1,237 @@
+﻿using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using System.Web.Mvc;
+
+namespace Pharos.Logic.BLL
+{
+    public class SaleOrdersService : BaseService<SaleOrders>
+    {
+        static readonly SaleOrderDAL saleOrderDal = new SaleOrderDAL();
+
+        /// <summary>
+        /// 销售总额
+        /// </summary>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="uid"></param>
+        /// <param name="machineSn"></param>
+        /// <returns></returns>
+        public static decimal GetTotalSales(DateTime startTime, DateTime endTime, string uid, string machineSn)
+        {
+            return CurrentRepository.FindList(o => o.CreateDT >= startTime && o.CreateDT <= endTime && o.CreateUID == uid && o.MachineSN == machineSn)
+                .Select(o => (decimal?)o.TotalAmount)
+                .Sum() ?? 0;
+        }
+        /// <summary>
+        /// 获取销售中收银员
+        /// </summary>
+        /// <returns></returns>
+        public static List<SelectListItem> GetCashiers()
+        {
+            var uids = CurrentRepository.Entities.Select(o => o.CreateUID).Distinct().ToList();
+            var list = UserInfoService.FindList(o => uids.Contains(o.UID));
+            return list.Select(o => new SelectListItem()
+            {
+                Text = o.FullName,
+                Value = o.UID
+            }).ToList();
+        }
+        /// <summary>
+        /// 获取销售中导购员
+        /// </summary>
+        /// <returns></returns>
+        public static List<SelectListItem> GetSalers()
+        {
+            var uids = CurrentRepository.Entities.Select(o => o.Salesman).Where(o => o != null || o != "").Distinct().ToList();
+            var list = UserInfoService.FindList(o => uids.Contains(o.UID));
+            return list.Select(o => new SelectListItem()
+            {
+                Text = o.FullName,
+                Value = o.UID
+            }).ToList();
+        }
+
+        /// <summary>
+        /// 获得首页销售订单数据
+        /// </summary>
+        /// <param name="beginTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public static List<SaleOrders> GetIndexSaleOrder(DateTime beginTime, DateTime endTime, string storeId = "")
+        {
+            var query = CurrentRepository.QueryEntity.Where(o => o.CreateDT >= beginTime && o.CreateDT <= endTime);
+            if (!string.IsNullOrEmpty(storeId))
+                query = query.Where(o => o.StoreId == storeId);
+            var saleOrderList = query.ToList();
+            if (saleOrderList == null)
+                saleOrderList = new List<SaleOrders>();
+            return saleOrderList;
+        }
+
+
+        #region 销售管理
+
+        public static System.Data.DataTable QuerySaleOrdersPageList(NameValueCollection nvl, out int recordCount, out object footer)
+        {
+            recordCount = 0;
+            var nl = new NameValueCollection() { nvl };
+            if (nl["date"].IsNullOrEmpty() && nl["date2"].IsNullOrEmpty())
+            {
+                nl["date"] = DateTime.Now.ToString("yyyy-MM-dd");
+                nl["date2"] = DateTime.Now.AddDays(1).ToString("yyyy-MM-dd");
+            }
+            else if (!nl["date"].IsNullOrEmpty() && nl["date2"].IsNullOrEmpty())
+            {
+                nl["date2"] = DateTime.MaxValue.ToString("yyyy-MM-dd");
+            }
+            else if (nl["date"].IsNullOrEmpty())
+            {
+                nl["date"] = "2015-01-01";
+                nl["date2"] = DateTime.Parse(nl["date2"]).AddDays(1).ToString("yyyy-MM-dd");
+            }
+            else
+                nl["date2"] = DateTime.Parse(nl["date2"]).AddDays(1).ToString("yyyy-MM-dd");
+            var dt = saleOrderDal.QuerySaleOrdersPageList(nl);
+            if (nl["ispage"] != "0")//分页
+            {
+                if (dt.Rows.Count > 0)
+                {
+                    recordCount = Convert.ToInt32(dt.Rows[0]["RecordTotal"]);
+                }
+            }
+            decimal PurchaseNumberTotal = 0, AmountTotal = 0, PreferentialPriceTotal = 0;
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                PurchaseNumberTotal += Convert.ToDecimal(dt.Rows[i]["PurchaseNumber"]);
+                if (i == 0)
+                {
+                    AmountTotal += Convert.ToDecimal(dt.Rows[i]["TotalAmount"]);
+                    PreferentialPriceTotal += Convert.ToDecimal(dt.Rows[i]["PreferentialPrice"]);
+                }
+                else
+                {
+                    if (dt.Rows[i]["PaySN"].ToString() != dt.Rows[i - 1]["PaySN"].ToString())
+                    {
+                        AmountTotal += Convert.ToDecimal(dt.Rows[i]["TotalAmount"]);
+                        PreferentialPriceTotal += Convert.ToDecimal(dt.Rows[i]["PreferentialPrice"]);
+                    }
+                }
+            }
+            footer = new List<object>() { 
+                new {PurchaseNumber=PurchaseNumberTotal,TotalAmount=AmountTotal,PreferentialPrice=PreferentialPriceTotal,Title="本页合计:"}
+            };
+            return dt;
+        }
+
+        /// <summary>
+        /// /// 修改销售单信息
+        /// </summary>
+        /// <param name="paySN">订单流水号</param>
+        /// <param name="newPreferentialPrice">修改后的优惠合计</param>
+        /// <param name="newTotalAmount">修改后的金额合计（优惠后）</param>
+        /// <param name="changedDetailsStr">发生修改的订单明细的json字符串</param>
+        /// <param name="uid">操作者UID</param>
+        /// <returns></returns>
+        public static OpResult UpdateSaleOrder(string paySN, decimal newPreferentialPrice, decimal newTotalAmount, string changedDetailsStr, string uid)
+        {
+            var opResult = new OpResult();
+            try
+            {
+                var order = Find(o => o.PaySN == paySN && o.State == 0);
+                if (order == null)
+                {
+                    return OpResult.Fail("未查找到该订单，不允许退货！");
+                }
+
+                if (changedDetailsStr.IsNullOrEmpty())
+                {
+                    opResult = OpResult.Fail("订单未发生修改！");
+                }
+                else
+                {
+                    var returnId = CommonRules.GUID;
+                    var changedDetails = changedDetailsStr.ToObject<List<Pharos.Logic.Entity.SaleDetail>>();
+
+                    #region 更新 销售单、销售明细、退换单、退换明细
+                    BaseService<SalesReturns>.CurrentRepository.Add(new SalesReturns()
+                    {
+                        CreateDT = DateTime.Now,
+                        CreateUID = uid,
+                        MachineSN = "-1",
+                        ReasonId = 156,  // 对应字典类型“换货理由”下的“录错商品”
+                        ReturnId = returnId,
+                        ReturnPrice = 0,
+                        ReturnType = 3,
+                        Source = 1,
+                        State = 2,
+                        StoreId = order.StoreId
+                    }, false);
+
+                    var deletedDetailIds = changedDetails.Where(a => a.Id != -1).Select(a => a.Id).Distinct();
+                    if (deletedDetailIds.Any())
+                    {
+                        var deletedDetails = BaseService<SaleDetail>.FindList(a => deletedDetailIds.Contains(a.Id));
+                        if (deletedDetails.Any())
+                        {
+                            foreach (var deletedDetail in deletedDetails)
+                            {
+                                BaseService<SalesReturnsDetailed>.Add(new SalesReturnsDetailed()
+                                {
+                                    Barcode = deletedDetail.Barcode,
+                                    Number = deletedDetail.PurchaseNumber,
+                                    Price = deletedDetail.SysPrice,
+                                    TradingPrice = deletedDetail.ActualPrice,
+                                    ReceiptsNumber = deletedDetail.PaySN,
+                                    ReturnId = returnId,
+                                }, false);
+
+                                //更新 库存(回撤)
+                                InventoryService.UpdateStock(deletedDetail.Barcode, deletedDetail.PurchaseNumber, order.StoreId, deletedDetail.PaySN, 7, true);
+                            }
+                            SaleDetailService.CurrentRepository.RemoveRange(deletedDetails);
+                        }
+                    }
+
+                    var insertedDetails = changedDetails.Where(a => a.Id == -1).ToList();
+                    SaleDetailService.AddRange(insertedDetails);
+
+                    //更新 库存(扣除)
+                    foreach (var insertedDetail in insertedDetails)
+                    {
+                        InventoryService.UpdateStock(insertedDetail.Barcode, insertedDetail.PurchaseNumber, order.StoreId, insertedDetail.PaySN, 8, false);
+                    }
+                    #endregion
+
+                    BaseService<SaleOrderHistory>.Add(new SaleOrderHistory()
+                    {
+                        ReturnId = returnId,
+                        PaySN = order.PaySN,
+                        PreviousPreferentialPrice = order.PreferentialPrice,
+                        PreviousTotalAmount = order.TotalAmount
+                    }, false);
+
+                    order.PreferentialPrice = newPreferentialPrice;
+                    order.TotalAmount = newTotalAmount;
+                    order.ReturnId = order.ReturnId.IsNullOrEmpty() ? returnId : (order.ReturnId + "," + returnId);
+                    //是否要修改State字段？
+                    opResult = Update(order);
+                }
+            }
+            catch (Exception ex)
+            {
+                opResult.Message = ex.Message;
+                Log.WriteError(ex);
+            }
+            return opResult;
+        }
+        #endregion
+    }
+}

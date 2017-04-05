@@ -1,0 +1,124 @@
+﻿using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.IO;
+using System.Security.AccessControl;
+using System.Windows;
+using System.Xml.Serialization;
+
+namespace Pharos.POS.Retailing.Models
+{
+    public class PosMachineInfo
+    {
+        private const string FILEPATH = "PharosPosMachineInfo.Config";
+
+        public PosMachineInfo()
+        {
+            AutoDataSync = true;
+            MaxResponseContentBufferSize = 50 * 1024 * 1024;
+        }
+
+        public string MachineId { get; set; }
+        public string StoreId { get; set; }
+        public string StoreName { get; set; }
+
+        public string StorePhone { get; set; }
+        public string CompanyName { get; set; }
+
+        public string ServerUrl { get; set; }
+        public int MaxResponseContentBufferSize { get; set; }
+        public int MachineType { get; set; }
+        /// <summary>
+        /// 是否自动同步
+        /// </summary>
+        public bool AutoDataSync { get; set; }
+
+        private static PosMachineInfo infos;
+        public static PosMachineInfo Infos
+        {
+            get
+            {
+                if (infos == null)
+                {
+                    infos = new PosMachineInfo();
+                    //infos.AutoDataSync = true;
+                }
+                return infos;
+            }
+        }
+
+        public static bool ReadConfig()
+        {
+            try
+            {
+                using (FileStream fs = new FileStream(FILEPATH, FileMode.OpenOrCreate))
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof(PosMachineInfo));
+                    var result = serializer.Deserialize(fs) as PosMachineInfo;
+                    fs.Close();
+                    fs.Dispose();
+                    infos = result;
+                    if (infos == null)
+                    {
+                        var page = new SettingPages.SetMachineInfo();
+                        page.ShowDialogInScreen();
+                        return false;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                var page = new SettingPages.SetMachineInfo();
+                page.ShowDialogInScreen();
+                return false;
+            }
+            return true;
+        }
+
+        public bool WriteConfig()
+        {
+            try
+            {
+                if (!File.Exists(FILEPATH))
+                    File.Create(FILEPATH);
+                //SetFolderACL(AppDomain.CurrentDomain.BaseDirectory, "Everyone", System.Security.AccessControl.FileSystemRights.WriteData, System.Security.AccessControl.AccessControlType.Allow);
+                using (FileStream fs = new FileStream(FILEPATH, FileMode.Create, FileAccess.ReadWrite))
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof(PosMachineInfo));
+                    serializer.Serialize(fs, this);
+                    fs.Close();
+                    fs.Dispose();
+                }
+            }
+            catch (Exception)
+            {
+                Toast.DoShow("配置失败，配置未能保存！");
+                return false;
+            }
+            return true;
+        }
+        public static bool SetFolderACL(String FolderPath, String UserName, FileSystemRights Rights, AccessControlType AllowOrDeny)
+        {
+
+            InheritanceFlags inherits = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
+
+            return SetFolderACL(FolderPath, UserName, Rights, AllowOrDeny, inherits, PropagationFlags.None, AccessControlModification.Add);
+
+        }
+        public static bool SetFolderACL(String FolderPath, String UserName, FileSystemRights Rights, AccessControlType AllowOrDeny, InheritanceFlags Inherits, PropagationFlags PropagateToChildren, AccessControlModification AddResetOrRemove)
+        {
+
+            bool ret;
+
+            DirectoryInfo folder = new DirectoryInfo(FolderPath);
+
+            DirectorySecurity dSecurity = folder.GetAccessControl(AccessControlSections.All);
+
+            FileSystemAccessRule accRule = new FileSystemAccessRule(UserName, Rights, Inherits, PropagateToChildren, AllowOrDeny); dSecurity.ModifyAccessRule(AddResetOrRemove, accRule, out ret);
+
+            folder.SetAccessControl(dSecurity);
+
+            return ret;
+
+        }
+    }
+}

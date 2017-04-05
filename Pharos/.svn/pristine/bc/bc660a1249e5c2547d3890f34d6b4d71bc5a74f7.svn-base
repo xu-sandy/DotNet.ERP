@@ -1,0 +1,60 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.Sale.Marketings;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Pos.Extensions;
+using System.Web;
+using System.Threading.Tasks;
+using System.Threading;
+
+namespace Pharos.Logic.ApiData.Pos
+{
+    public static class StoreManager
+    {
+        private static readonly string KeyFormat = "{0}*-*{1}";
+
+        private static readonly IDictionary<string, MarketingManager> MarketingCaches = new Dictionary<string, MarketingManager>();
+
+        public static string GetKey(int token, string storeId)
+        {
+            var key = string.Format(KeyFormat, token, storeId);
+            return key;
+        }
+
+
+        public static void InitStores()
+        {
+            var stores = DataAdapterFactory.DefualtDataAdapter.GetWarehouseInformations();
+            foreach (var item in stores)
+            {
+                SetUpStore(item.CompanyToken, item.StoreId);
+                break;
+            }
+            Task.Factory.StartNew(() =>
+            {
+                Thread.Sleep(new TimeSpan(24, 0, 0));
+                InitStores();
+            });
+        }
+
+        public static void SetUpStore(int token, string storeId)
+        {
+            var key = GetKey(token, storeId);
+            MarketingManager marketingManager = new MarketingManager(storeId, token);
+            if (MarketingCaches.ContainsKey(key))
+            {
+                MarketingCaches.Remove(key);
+            }
+            MarketingCaches.Add(key, marketingManager);
+        }
+
+        public static MarketingManager GetMarketing(int token, string storeId)
+        {
+            var key = GetKey(token, storeId);
+            return MarketingCaches[key];
+        }
+    }
+}

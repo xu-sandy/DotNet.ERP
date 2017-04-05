@@ -1,0 +1,508 @@
+﻿using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Http;
+using Pharos.Utility.Helpers;
+using System.Net.Http;
+using System.Net;
+using System.IO;
+using System.Text;
+using Newtonsoft.Json;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS;
+using System.Security.Cryptography;
+using QCT.Api.Pay.Utils;
+using Pharos.Logic.OMS.Entity;
+using QCT.Pay.Common;
+using System.Collections;
+using System.ComponentModel.DataAnnotations;
+using System.Web.Http.Results;
+using QCT.Pay.Common.Models;
+
+namespace QCT.Api.Pay.Controllers
+{
+    /// <summary>
+    /// QCT 支付相关
+    /// </summary>
+    public class PayController : BasePayController
+    {
+        // GET: /Pay/
+        #region Ninject Properties
+        /// <summary>
+        /// 支付交易Service
+        /// </summary>
+        [Ninject.Inject]
+        PayTradeService PayTradeSvc { get; set; }
+
+        #endregion
+
+        #region Test
+        /// <summary>
+        /// fishtest
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        public object Test([FromBody]JObject requestParams)
+        {
+            //var tradeRst = new TradeResult();
+            //tradeRst.CreateDT = DateTime.Now;
+            //tradeRst.MchId3 = "201609100000000002";
+            //tradeRst.OutTradeNo = "201612161519280001";
+            //tradeRst.PayChannel = 1;
+            //tradeRst.ReceiptAmount = (decimal)0.01;
+            //tradeRst.TradeStatus = 1;
+            //tradeRst.SignType = "MD5";
+            //tradeRst.TradeDate = "20161216";
+            //tradeRst.TradeTime = "145719";
+            //tradeRst.TradeType = (short)QctTradeType.Income;
+            //tradeRst.Signature = "aaaa";
+            //tradeRst.Version = "1.0";
+            //var tradeOrder = new TradeOrder();
+            //var isSucc = PayTradeSvc.SaveMchTradeResult(tradeRst, out tradeOrder);
+
+
+
+            return "ddd";
+        }
+        #endregion
+
+        #region Qct支付平台接口调用
+
+        #region Qct Pay接口
+        /// <summary>
+        /// Qct支付接口调用（第三方随心付SxfPay）
+        /// </summary>
+        /// <param name="reqPms">请求参数</param>
+        /// <returns></returns>
+        [HttpPost]
+        public object QctPay([FromBody]JObject reqPms)
+        {
+            var result = QctPayReturn.Fail(msg: "参数格式错误");
+            String rstStrSxf = String.Empty;
+            var sign = String.Empty;
+            try
+            {
+                String method = reqPms.Property("method", true);
+                {
+                    //var methodFirst = method.Substring(0, method.LastIndexOf("."));
+                    switch (method)
+                    {
+                        case PayConst.QCTTRADE_PAY_BUYERSCAN_DYNA: //主扫支付动态（买家扫码支付动态二维码）
+                            #region 主扫支付动态
+                            //验证参数格式，判断商户权限（1、支付许可权限；2、商家支付通道权限；3、商家接口调用权限；）
+                            var reqObj = reqPms.ToObject<PayBuyerScanDynaRequest>();
+                            var checkObjZS = CheckAccessAndValidate<PayBuyerScanDynaRequest>(reqObj,(short)PayOperateType.Receipt);
+                            if (checkObjZS.Successed == false)
+                                return checkObjZS;
+                            else
+                            {
+                                var merchObj = (TradersChannelModel)checkObjZS.Data;
+                                //创建主扫支付动态支付订单
+                                var order = PayTradeSvc.CreateBuyerScanDynaOrder(reqObj, merchObj);
+                                if (order == null)
+                                    return QctPayReturn.Fail(msg: "订单号或商户门店信息错误");
+                                else
+                                {
+                                    //构建Sxf请求参数，签名，发起请求
+                                    var sxfBuildReq = new SxfBuildPayTokenRequest(order, PayConfig.SxfNotifyUrl);
+                                    rstStrSxf = SendPost(PayConfig.SxfPayUrl, ToDicAndSign(sxfBuildReq, merchObj.SecretKey3, "signature"));
+                                    var rstObjSxf = JsonConvert.DeserializeObject<SxfBuildPayTokenResponse>(rstStrSxf);
+                                    if (rstObjSxf.IsSuccess())
+                                    {
+                                        //处理返回成功结果，将返回结果进行Qct签名并返回给商户，fishtodo:暂忽略验证Sxf返回的响应结果签名
+                                        var resultObj = new PayBuyerScanDynaResponse(order, rstObjSxf);
+                                        return ToDicAndSign(resultObj, merchObj.SecretKey, "sign");
+                                    }
+                                    else
+                                    {
+                                        //处理返回失败结果
+                                        LogEngine.WriteError(string.Format("[QctPay主扫动态预订单请求返回错误，订单号：{0}，返回参数：{1}]", sxfBuildReq.OutTradeNo, rstStrSxf), null, LogModule.支付交易);
+                                        result = QctPayReturn.Fail(rstObjSxf.ReturnCode, rstObjSxf.ReturnMsg);
+                                        return result;
+                                    }
+                                }
+                            }
+                            #endregion
+                            break;
+                        case PayConst.QCTTRADE_PAY_MERCHSCAN://被扫支付（商家扫码支付）
+                            #region 被扫支付
+                            //验证参数格式，判断商户权限（1、支付许可权限；2、商家支付通道权限；3、商家接口调用权限；）
+                            var merchScanReq = reqPms.ToObject<PayMerchScanRequest>();
+                            var checkObjBS = CheckAccessAndValidate<PayMerchScanRequest>(merchScanReq, (short)PayOperateType.Receipt);
+                            if (checkObjBS.Successed == false)
+                                return checkObjBS;
+                            else
+                            {
+                                var merchObj = (TradersChannelModel)checkObjBS.Data;
+                                //创建被扫支付订单
+                                var merchScanOrder = PayTradeSvc.CreateBuyerScanDynaOrder(merchScanReq, merchObj);
+                                if (merchScanOrder == null)
+                                    return QctPayReturn.Fail(msg: "订单号或商户门店信息错误");
+                                else
+                                {
+                                    //构建Sxf请求参数，签名，发起请求
+                                    var sxfScanPayReq = new SxfScanPayRequest(merchScanOrder, PayConfig.SxfNotifyUrl);
+                                    rstStrSxf = SendPost(PayConfig.SxfPayUrl, ToDicAndSign(sxfScanPayReq, merchObj.SecretKey3, "signature"));
+                                    var rstObjSxf = JsonConvert.DeserializeObject<SxfScanPayResponse>(rstStrSxf);
+                                    if (rstObjSxf.IsSuccess())
+                                    {
+                                        //处理返回成功结果，保存被扫支付结果，后进行Qct签名并返回结果回发给商户，fishtodo:暂忽略验证Sxf返回的响应结果签名
+                                        PayTradeSvc.SaveMerchScanResult(rstObjSxf, out merchScanOrder);
+                                        var merchScanRsp = new PayMerchScanResponse(merchScanOrder, rstObjSxf);
+                                        return ToDicAndSign(merchScanRsp, merchObj.SecretKey, "sign");
+                                    }
+                                    else
+                                    {
+                                        //处理返回错误结果
+                                        LogEngine.WriteError(string.Format("[QctPay被扫支付请求返回错误，订单号：{0}，返回参数：{1}]", sxfScanPayReq.OutTradeNo, rstStrSxf), null, LogModule.支付交易);
+                                        result = QctPayReturn.Fail(rstObjSxf.ReturnCode, rstObjSxf.ReturnMsg);
+                                        return result;
+                                    }
+                                }
+                            }
+                            #endregion
+                            break;
+                        case PayConst.QCTTRADE_REFUNDAPPLY://退款申请
+                            #region 退款申请
+                            //验证参数格式，判断商户权限（1、支付许可权限；2、商家支付通道权限；3、商家接口调用权限；）
+                            var rfdReq = reqPms.ToObject<RefundApplyRequest>();
+                            var checkObjTK = CheckAccessAndValidate<RefundApplyRequest>(rfdReq, (short)PayOperateType.Refund);
+                            if (checkObjTK.Successed == false)
+                                return checkObjTK;
+                            else
+                            {
+                                var merchObj = (TradersChannelModel)checkObjTK.Data;
+                                //创建支付订单
+                                var rfdOrder = PayTradeSvc.CreateRefundApplyOrder(rfdReq, merchObj);
+                                if (rfdOrder == null)
+                                    return QctPayReturn.Fail(msg: "退款单号或商户门店信息错误");
+                                else
+                                {
+                                    //构建Sxf请求参数，签名，发起请求
+                                    var sxfRfdReq = new SxfRefundApplyRequest(rfdOrder, PayConfig.SxfNotifyUrl);
+                                    var sxfRfdReqDic = ToDicAndSign(sxfRfdReq, merchObj.SecretKey3, "signature");
+                                    rstStrSxf = SendPost(PayConfig.SxfPayUrl, sxfRfdReqDic);
+                                    var rstObjSxf = JsonConvert.DeserializeObject<SxfRefundApplyResponse>(rstStrSxf);
+                                    if (rstObjSxf.IsSuccess())
+                                    {
+                                        //处理返回成功结果，后将返回结果回发给商户，fishtodo:暂忽略验证Sxf返回的响应结果签名
+                                        var rfdApplyRsp = new RefundApplyResponse(rfdOrder, rstObjSxf)
+                                        {
+                                            OldOutTradeNo = sxfRfdReq.OldOutTradeNo
+                                        };
+                                        return ToDicAndSign(rfdApplyRsp, merchObj.SecretKey, "sign");
+                                    }
+                                    else
+                                    {
+                                        //处理返回错误结果
+                                        LogEngine.WriteError(string.Format("[QctPay退款申请请求返回错误，订单号：{0}，返回参数：{1}]", sxfRfdReq.OutTradeNo, rstStrSxf), null, LogModule.支付交易);
+                                        result = QctPayReturn.Fail(rstObjSxf.ReturnCode, rstObjSxf.ReturnMsg);
+                                        return result;
+                                    }
+                                }
+                            }
+                            #endregion
+                            break;
+                        default:
+                            return QctPayReturn.Fail(msg: "[method]参数错误");
+                            break;
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                LogEngine.WriteError("[QctPay参数Json解析失败]" + ex.Message, ex, LogModule.支付交易);
+                result = QctPayReturn.Fail(msg: "参数格式错误");
+                return result;
+            }
+        }
+        #endregion
+
+        #region Qct Notify
+        /// <summary>
+        /// 支付结果、退款结果通知调用 fishtodo:验证签名有效性
+        /// </summary>
+        /// <param name="requestParams"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public object SxfTradeNotify([FromBody]JObject requestParams)
+        {
+            var result = QctPayReturn.Fail();
+            var sxfResult = SxfPayReturn.Fail();
+            try
+            {
+                var type = requestParams.Property("type", true);
+                var secretKey3 = String.Empty;
+                var sign = String.Empty;
+                TradeOrder tradeOrder = null;
+
+                switch (type)
+                {
+                    case PayConst.SXF_TYPE_PAYNOTIFY: //支付后台结果通知
+                        #region 支付结果后台通知
+                        //接收支付结果通知参数
+                        var sxfPayNotifyReq = requestParams.ToObject<SxfPayNotifyRequest>();
+                        var payTradeResult = new TradeResult(sxfPayNotifyReq);
+                        //保存通知结果并更改TradeOrder状态
+                        var isSucc = PayTradeSvc.SaveMchTradeResult(payTradeResult, out tradeOrder);
+                        if(!isSucc)
+                            return SxfPayReturn.Fail(msg: "数据接收失败");
+                        else
+                        {
+                            var payNotify = new PayNotifyRequest(tradeOrder, payTradeResult);
+                            var payNotifyDic = ToASCIIDictionary(payNotify);
+                            return PostNotify(PayConst.QCTTRADE_NOTIFY_PAY, payNotifyDic, tradeOrder.CID, tradeOrder.PayNotifyUrl);
+                        }
+                        #endregion
+                        break;
+                    case PayConst.SXF_TYPE_RFDNOTIFY://退款结果通知
+                        #region 退款结果后台通知
+                        var sxfRfdNotifyReq = requestParams.ToObject<SxfRefundNotifyRequest>();
+                        var rfdTradeResult = new TradeResult(sxfRfdNotifyReq);
+                        //保存通知结果并更改TradeOrder状态
+                        var success = PayTradeSvc.SaveMchTradeResult(rfdTradeResult, out tradeOrder);
+                        if (!success)
+                            return SxfPayReturn.Fail(msg: "数据接收失败");
+                        else
+                        {
+                            var rfdNotify = new RefundNotifyRequest(tradeOrder, rfdTradeResult);
+                            var rfdNotifyDic = ToASCIIDictionary(rfdNotify);
+                            return PostNotify(PayConst.QCTTRADE_NOTIFY_REFUND, rfdNotifyDic, tradeOrder.CID, tradeOrder.RfdNotifyUrl);
+                        }
+                        #endregion
+                        break;
+                    default:
+                            return SxfPayReturn.Fail(msg: "通知类型错误");
+                        break;
+                }
+            }
+            catch (WebException ex)
+            {
+                LogEngine.WriteError(string.Format("[SxfTradeNotify通知格式错误，错误信息：{0}，返回参数：{1}]", ex.Message, requestParams.ToJson()), ex, LogModule.支付交易);
+                return SxfPayReturn.Fail(msg: "通知格式错误");
+            }
+        }
+        /// <summary>
+        /// 回发通知给商家
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="dic"></param>
+        /// <param name="cid"></param>
+        /// <param name="notifyUrl"></param>
+        /// <returns></returns>
+        private object PostNotify(string method, Dictionary<string, object> dic, int cid, string notifyUrl)
+        {
+            var secretKey = (new CommonPayService()).GetMerchSecretKeyByID(cid);
+            if (secretKey.IsNullOrEmpty())
+            {
+                LogEngine.WriteError(string.Format("[PostNotify后台通知错误，找不到SecretKey，接口参数名：{0}，通知URL：{1}，返回参数：{2}]", method, notifyUrl, dic.ToJson()), null, LogModule.支付交易);
+                return SxfPayReturn.Fail(msg: "数据接收失败");
+            }
+            else
+            {
+                //Qct签名
+                dic = SetSign(dic, secretKey, "sign");
+                try
+                {
+                    //给商家发送结果通知
+                    var resultStr = SendPost(notifyUrl, dic);
+                    var resultObj = JsonConvert.DeserializeObject<JObject>(resultStr);
+
+                    if (resultObj.Property("return_code", true) == PayConst.SUCCESS_CODE)
+                    {
+                        return SxfPayReturn.Success();
+                    }
+                    else
+                    {
+                        return SxfPayReturn.Fail(msg: "数据接收失败");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogEngine.WriteError(string.Format("[PostNotify后台通知商家请求错误，商户通知Url无响应，接口参数名：{0}，通知URL：{1}]", method, notifyUrl), ex, LogModule.支付交易);
+                    return SxfPayReturn.Fail(PayConst.FAIL_CODE, "");
+                }
+            }
+        }
+        #endregion
+
+        #region Qct 支付查询
+        /// <summary>
+        /// 单笔支付订单查询
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <returns></returns>
+        public object PayQuery([FromBody]JObject reqParams)
+        {
+            try
+            {
+                var reqObj = reqParams.ToObject<PayQueryRequest>();
+                var checkObj = CheckAccessAndValidate<PayQueryRequest>(reqObj,-1);
+                if (checkObj.Successed == false)
+                    return checkObj;
+                else
+                {
+                    var merchObj = (TradersChannelModel)checkObj.Data;
+                    var merchStore = PayTradeSvc.GetMerchStoreByStoreId(merchObj, reqObj.SID);
+                    if (merchStore == null)
+                    {
+                        return Json(QctPayReturn.Fail(msg: "未找到所查找的商户门店"));
+                    }
+                    var sxfReq = new SxfPayQueryRequest(reqObj, merchStore);
+                    //sxf签名并请求
+                    var sxfResult = SendPost(PayConfig.SxfPayUrl, ToDicAndSign(sxfReq, merchObj.SecretKey3, "signature"));
+                    //处理返回结果
+                    var sxfResultObj = JsonConvert.DeserializeObject<SxfPayQueryResponse>(sxfResult);
+                    var result = sxfResultObj.ToPayQueryResponse(merchStore);
+                    //Qct签名
+                    var rstRsp = ToDicAndSign(result, merchObj.SecretKey, "sign");
+                    return Json(rstRsp);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogEngine.WriteError(string.Format("[PayQuery支付订单查询请求错误,错误信息：{0}，请求参数：{1}]", ex.Message, reqParams.ToString()), null, LogModule.支付交易);
+                return Json(QctPayReturn.Fail());
+            }
+        }
+
+        /// <summary>
+        /// 单笔退款订单查询
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <returns></returns>
+        public object RefundQuery([FromBody]JObject reqParams)
+        {
+            try
+            {
+                var reqObj = reqParams.ToObject<RefundQueryRequest>();
+                var checkObj = CheckAccessAndValidate<RefundQueryRequest>(reqObj,-1);
+                if (checkObj.Successed == false)
+                    return checkObj;
+                else
+                {
+                    var merchObj = (TradersChannelModel)checkObj.Data;
+                    var merchStore = PayTradeSvc.GetMerchStoreByStoreId(merchObj, reqObj.SID);
+                    if (merchStore == null)
+                    {
+                        return Json(QctPayReturn.Fail(msg: "未找到所查找的商户门店"));
+                    }
+                    var sxfReq = new SxfRefundQueryRequest(reqObj, merchStore);
+                    //sxf签名并请求
+                    var sxfResult = SendPost(PayConfig.SxfPayUrl, ToDicAndSign(sxfReq, merchObj.SecretKey3, "signature"));
+                    //处理返回结果
+                    var sxfResultObj = JsonConvert.DeserializeObject<SxfRefundQueryResponse>(sxfResult);
+                    var result = sxfResultObj.ToRefundQueryResponse(merchStore);
+                    //Qct签名
+                    var rstRsp = ToDicAndSign(result, merchObj.SecretKey, "sign");
+                    return Json(rstRsp);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogEngine.WriteError(string.Format("[RefundQuery退款订单查询请求错误，错误信息：{0}，请求参数：{1}]", ex.Message, reqParams.ToString()), null, LogModule.支付交易);
+                return Json(QctPayReturn.Fail());
+            }
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <returns></returns>
+        public object PayBatchQuery([FromBody]JObject reqParams)
+        {
+            try
+            {
+                var reqObj = reqParams.ToObject<PayBatchQueryRequest>();
+                var checkObj = CheckAccessAndValidate<PayBatchQueryRequest>(reqObj,-1);
+                if (checkObj.Successed == false)
+                    return checkObj;
+                else
+                {
+                    var merchObj = (TradersChannelModel)checkObj.Data;
+                    var merchStore = PayTradeSvc.GetMerchStoreByStoreId(merchObj, reqObj.SID);
+                    if (merchStore == null)
+                    {
+                        return Json(QctPayReturn.Fail("未找到所查找的商户门店"));
+                    }
+                    var sxfReq = new SxfPayBatchQueryRequest(reqObj, merchStore);
+                    //sxf签名并请求
+                    var sxfResult = SendPost(PayConfig.SxfPayUrl, ToDicAndSign(sxfReq, merchObj.SecretKey3, "signature"));
+                    //处理返回结果
+                    var sxfJObj = JObject.Parse(HttpUtility.UrlDecode(sxfResult));
+                    var sxfResultRsp = sxfJObj.ToObject<SxfPayBatchQueryResponse>();
+
+                    if (sxfResultRsp.IsSuccess())
+                    {
+                        var result = sxfResultRsp.ToPayBatchQueryRsp(merchStore);
+                        //Qct签名
+                        var resultDic = ToDicAndSign(result, merchObj.SecretKey, "sign");
+                        return Json(resultDic);
+                    }
+                    else
+                    {
+                        LogEngine.WriteError(string.Format("[PayBatchQuery支付订单分页查询请求错误，接口参数名：{0}，返回参数：{1}]", sxfResultRsp.Method, sxfResult), null, LogModule.支付交易);
+                        var rst = QctPayReturn.Fail(sxfResultRsp.ReturnCode, sxfResultRsp.ReturnMsg);
+                        return rst;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogEngine.WriteError(string.Format("[PayBatchQuery支付订单分页查询请求参数解析错误，错误信息：{0}，请求参数：{1}]", ex.Message, reqParams.ToString()), null, LogModule.支付交易);
+                var rst = QctPayReturn.Fail();
+                return rst;
+            }
+        }
+        /// <summary>
+        /// 验证参数格式，判断商户权限（1、支付许可权限；2、商家支付通道权限；3、商家接口调用权限；）
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="pms"></param>
+        /// <returns></returns>
+        private QctPayReturn CheckAccessAndValidate<T>(T pms,short optType) where T : BaseTradeRequest
+        {
+            var errMsg = pms.TryValidateObject(pms);
+            if (!errMsg.IsNullOrEmpty())
+            {
+                return QctPayReturn.Fail(msg: errMsg);
+            }
+            //判断商户权限（1、支付许可权限；2、商家支付通道权限；3、商家接口通道权限；）
+            var checkObj = PayTradeSvc.CheckMerchAccess(pms.CID, pms.Method, pms.Version.ToType<decimal>(),optType);
+            return checkObj;
+        }
+        #endregion
+
+        #endregion
+
+        #region 平台内部各系统间调用
+        /// <summary>
+        /// 获取支付全局提示描述支付
+        /// </summary>
+        /// <returns></returns>
+        public string GetPayPrompt(int type)
+        {
+            string msg = string.Empty;
+            if (type == 1)
+                msg = "支持微信扫码";
+            return msg;
+        }
+        /// <summary>
+        /// 根据商户CID获得该商户的可以通道
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public object GetPayChannelsByCID(int cid)
+        {
+
+            return new object[] { };
+        }
+        #endregion
+    }
+
+}

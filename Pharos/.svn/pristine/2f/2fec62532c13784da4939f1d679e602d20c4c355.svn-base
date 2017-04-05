@@ -1,0 +1,37 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.BLL;
+using System.Data;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class DomainLicenseController : BaseController
+    {
+        [Ninject.Inject]
+        //商户资料
+        TradersService tradersService { get; set; }
+
+        public ActionResult Save(int? id, int BankState = 0)
+        {
+            var obj = new Realm
+            {
+
+            };
+            if (id.HasValue)
+            {
+
+            }
+            //一级域名
+            ViewBag.Nature = ListToSelect(tradersService.getDataList(600).Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+            return View(obj.IsNullThrow());
+        }
+    }
+}

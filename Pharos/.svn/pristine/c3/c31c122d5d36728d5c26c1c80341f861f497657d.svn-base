@@ -1,0 +1,29 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Infrastructure.Data.Normalize
+{
+    public class MemberNo : SwiftNumber
+    {
+        public MemberNo(int companyId, string storeId)
+            : base(string.Format("MemberNo{0}_{1}", companyId, storeId), SwiftNumberMode.Normal)
+        {
+            CompanyId = companyId;
+            StoreId = storeId;
+        }
+        public string StoreId { get; set; }
+        public int CompanyId { get; set; }
+        public override string ToString()
+        {
+            return GetNumber().ToString("000000");
+        }
+    }
+
+    public class MemberNoDto : SwiftNumberDto
+    {
+        public string StoreId { get; set; }
+        public int CompanyId { get; set; }
+    }
+}

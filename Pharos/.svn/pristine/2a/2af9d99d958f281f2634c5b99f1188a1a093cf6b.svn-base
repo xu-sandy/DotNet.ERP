@@ -1,0 +1,87 @@
+﻿using Pharos.POS.Retailing.Models;
+using System.Windows;
+using System.Windows.Input;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// GuaDanList.xaml 的交互逻辑
+    /// </summary>
+    public partial class GuaDanList : Window, IDataGridOperat
+    {
+        public GuaDanList()
+        {
+            InitializeComponent();
+            this.InitPublicSettings();
+            DataGridLocalBill.ItemsSource = PosMachine.Current.LocalBills;
+        }
+
+        void Current_UiHandler(string key, ref object result, params object[] _params)
+        {
+            switch (key)
+            {
+                case "CloseGuaDanList":
+                    this.Close();
+                    break;
+            }
+        }
+
+        public void SetDataGridSelectLastItem()
+        {
+            DataGridLocalBill.SelectedItem = PosMachine.Current.LocalBills.LastOrDefault();
+            DataGridLocalBill.ScrollIntoView(DataGridLocalBill.SelectedItem);
+            Keyboard.Focus(DataGridLocalBill);
+        }
+
+        public object GetDataGridSelectItem()
+        {
+            return DataGridLocalBill.SelectedItem;
+        }
+
+        public void SetPreviousSelectItem()
+        {
+            if (DataGridLocalBill.SelectedIndex > 0)
+            {
+                DataGridLocalBill.SelectedIndex--;
+                DataGridLocalBill.ScrollIntoView(DataGridLocalBill.SelectedItem);
+
+            }
+        }
+
+        public void SetNextSelectItem()
+        {
+            if (PosMachine.Current.LocalBills.Count() - 1 > DataGridLocalBill.SelectedIndex)
+            {
+                DataGridLocalBill.SelectedIndex++;
+                DataGridLocalBill.ScrollIntoView(DataGridLocalBill.SelectedItem);
+
+            }
+        }
+
+        private void DataGridLocalBill_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var obj = this.GetDataGridSelectItem();
+
+            switch (e.Key)
+            {
+                case Key.Delete:
+                    if (obj != null)
+                    {
+                        var result = obj as HangBill;
+                        result.RemoveBill.Execute(this);
+                        e.Handled = true;
+                    }
+                    break;
+                case Key.Enter:
+                    if (obj != null)
+                    {
+                        var result = obj as HangBill;
+                        result.ReadBill.Execute(this);
+                        e.Handled = true;
+                    }
+                    break;
+            }
+        }
+    }
+}

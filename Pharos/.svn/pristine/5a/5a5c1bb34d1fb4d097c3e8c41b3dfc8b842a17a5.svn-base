@@ -1,0 +1,59 @@
+﻿@{
+    ViewBag.Title = "ProductIntegralIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.积分管理_编辑规则);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.积分管理_查看积分) && hideAdd;
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.积分管理_移除规则);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增商品规则",editText:"编辑商品规则",hideAdd:hideAdd,hideDel:hideDel));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input type="text" class="datacontrol easyui-textbox font-12" name="searchText" data-options="prompt:'品名/条码'" />
+            </td>
+        </tr>
+    </table>
+}
+<script type="text/javascript">
+    pharos.manager.editurl = "@Url.Action("SaveProductIntegral")";
+     pharos.manager.columns = [[
+            { field: 'Id', checkbox: true },
+            { field: 'DateSpacing', title: '有效期', width: 180 },
+            { field: 'CustomerObj', title: '适用客户', width: 140 },
+            { field: 'Scale', title: '积分比例', width: 80 },
+            {
+                field: 'Promotion', title: '包含促销', width: 60, formatter: function (value, row, index) {
+                    return value == 1 ? "是" : "否";
+                }
+            },
+            { field: 'BarcodeOrCategorySN', title: '条码(分类)', width: 150 },
+            { field: 'Title', title: '名称', width: 150 },
+            { field: 'SaleMoney', title: '销售金额', width: 70 },
+            { field: 'IntegralCount', title: '附加积分', width: 70 }
+     ]];
+     pharos.manager.loadSuccess = function () {
+         pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'IntegralId', columns: ['DateSpacing', 'CustomerObj', 'Id', 'Scale', 'Promotion'] });
+     }
+     pharos.manager.addItem = function () {
+         this.Id = "";
+         openDialogMax(this.addText, this.editurlNocache());
+     }
+     pharos.manager.editItem = function (id) {
+         this.Id = id;
+         var w = $(window.parent).width() - 80;
+         var h = $(window.parent).height() - 80;
+         @if(showDetail)
+         { 
+             @:openDialog("查看详情", this.editurlNocache(),w,h,true);
+         }
+         else if(!hideAdd)
+         {
+             @:openDialogMax(this.editText, this.editurlNocache());
+         }
+     }
+</script>

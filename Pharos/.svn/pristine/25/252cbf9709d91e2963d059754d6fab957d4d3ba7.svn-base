@@ -1,0 +1,233 @@
+﻿@model Contract
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var jias = Model.ContractBoths.FirstOrDefault();
+    var yis = Model.ContractBoths.LastOrDefault();
+
+    var colcount = 2;
+    var i = 0;
+}
+<div class="default-form" style="min-width:1100px; overflow:auto;">
+    @using (Html.BeginForm("AddContract", "Contract", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="ContractBox">
+            <div class="ContractListTitle">基本信息：</div>
+            <div class="ContractlistItem padding-top-1">
+                <label>合同名称：</label>
+                @Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox ", data_options = "required:true,novalidate:true",style = "padding-left:7px;" })
+            </div>
+            <div style="width: 25%; float: left;" class="table-form">
+                <label>合同编号：</label>
+                @*@Html.TextBoxFor(o => o.ContractSN, new { @class = "easyui-validatebox ", id = "ContractSNForAdd", data_options = "validtype:'contractSN', prompt:'为空则系统自动生成' ", style = "width:52%;" })*@
+                <div id="ContractSNForAdd_div">
+                    @Html.TextBoxFor(o => o.ContractSN, new { @class = "easyui-textbox ", id = "ContractSNForAdd", data_options = "prompt:'系统自动生成',readonly:true ", style = "width:58.5%;" })
+                </div>
+                   @Html.LabelFor(o => o.ContractSN, Model.ContractSN, new { id = "ContractSNForEdit",style = "text-align:left; padding-left:7px;" }) 
+            </div>
+            <div class="ContractlistItem">
+                <label>合同分类：</label>
+                <div class="input">
+                    @Html.DropDownListFor(o => o.ClassifyId, ViewBag.Classify as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo',novalidate:true,editable:false" ,style="width:56%;"})
+                </div>
+            </div>
+            <div class="ContractlistItem">
+                <label>版本类型：</label>
+                <label style="text-align:left; padding-left:7px;">@ViewBag.Version</label> 
+            </div>
+            <div class="ContractlistItem">
+                <label>供应商号：</label>
+                @Html.DropDownListFor(o => o.SupplierId, ViewBag.Suppliers as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false", Style = "width:56%;" })
+            </div>
+            <div style="width: 25%; float: left;" class="table-form">
+                <label>签订日期：</label>              
+                @Html.TextBoxFor(o => o.SigningDate, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", data_options = "required:true", style = "width:52%;" })
+            </div>
+            <div style="width: 25%; float: left;" class="table-form">
+                <label>生效日期：</label>              
+                    @Html.TextBoxFor(o => o.StartDate, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", id = "StartDate", data_options = "required:true", style = "width:52%;", autocomplete="off" })               
+            </div>
+            <div style="width: 25%; float: left;" class="table-form">
+                <label>结束日期：</label>
+                @Html.TextBoxFor(o => o.EndDate, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", id = "EndDate", data_options = "required:true ,validType:'greaterDate[\"#StartDate\"]',invalidMessage:'结束日期必须大于生效日期' ", style = "width:52%;", autocomplete = "off" })
+            </div>
+        </div>
+        @Html.Hidden("detailId", jias.Id)
+        <div class="ContractBox">
+            <div class="ContractListTitle">甲方信息：</div>
+            <div class="ContractlistItem">
+                <label>甲方简称：</label>
+                @Html.TextBox("CompanyName", jias.CompanyName, new { @class = "easyui-textbox", id = "jiaCompanyName", data_options = "required:true,novalidate:true" })
+            </div>
+            <div class="ContractlistItem">
+                <label>甲方代表：</label>
+                @Html.TextBox("Representative", jias.Representative, new { @class = "easyui-textbox", id = "jiaRepresentative", data_options = "required:true,novalidate:true" })
+            </div>
+            <div class="ContractlistItem">
+                <label>电话：</label>
+                <input name="Tel" value="@jias.Tel" class="easyui-textbox" validtype="phone" />
+            </div>
+            <div class="ContractlistItem">
+                <label>传真：</label>
+                <input name="Fax" value="@jias.Fax" class="easyui-textbox" validtype="faxno" />
+            </div>
+            <div class="ContractlistItem">
+                <label>税号：</label>
+                <input name="TaxNumber" value="@jias.TaxNumber" class="easyui-textbox" validtype="length[1,20]" />              
+            </div>
+            <div class="ContractlistItem">
+                <label>网址：</label>
+                <input name="Url" value="@jias.Url" class="easyui-textbox" validtype="url" invalidmessage="网址格式不正确,正确示例： http://www.example.com" />
+            </div>
+            <div class="ContractlistItem">
+                <label>地址：</label>
+                <input name="Address" value="@jias.Address" class="easyui-textbox" validtype="length[1,100]" />
+            </div>
+            <div class="ContractlistItem">
+                <label>邮编：</label>
+                <input name="PostCode" value="@jias.PostCode" class="easyui-textbox" validtype="zip" />
+            </div>
+            <div class="ContractlistItem_big">
+                <label>开户银行：</label>
+                <input name="BankName" value="@jias.BankName" class="easyui-textbox" validtype="length[1,50]" />
+            </div>
+            <div class="ContractlistItem_big">
+                <label>银行账号：</label>
+                <input name="BankAccount" value="@jias.BankAccount" class="easyui-textbox" validtype="length[1,20]" />
+            </div>
+        </div>
+        @Html.Hidden("detailId", yis.Id)
+        <div class="ContractBox">
+            <div class="ContractListTitle">乙方信息：</div>
+            <div class="ContractlistItem">
+                <label>乙方全称：</label>
+                @*@Html.TextBox("CompanyName", yis.CompanyName, new { @class = "easyui-textbox", data_options = "required:true " })*@
+                <input name="CompanyName" value="@yis.CompanyName" class="easyui-textbox" required="required" validtype="noEqualTo['#jiaCompanyName']" invalidmessage="不能与甲方简称相同" />           
+            </div>
+            <div class="ContractlistItem">
+                <label>乙方代表：</label>
+                @*@Html.TextBox("Representative", yis.Representative, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true"})*@
+                <input name="Representative" value="@yis.Representative" class="easyui-textbox" required="required" validtype="noEqualTo['#jiaRepresentative']" invalidmessage="不能与甲方代表相同" />
+            </div>
+            <div class="ContractlistItem">
+                <label>电话：</label>
+                <input name="Tel" value="@yis.Tel" class="easyui-textbox" validtype="phone" />
+            </div>
+            <div class="ContractlistItem">
+                <label>传真：</label>
+                <input name="Fax" value="@yis.Fax" class="easyui-textbox" validtype="faxno" />
+            </div>
+            <div class="ContractlistItem">
+                <label>支付行号：</label>
+                <input name="PayNumber" value="@yis.PayNumber" class="easyui-textbox" validtype="length[1,20]" />
+            </div>
+            <div class="ContractlistItem">
+                <label>网址：</label>
+                <input name="Url" value="@yis.Url" class="easyui-textbox" validtype="url" invalidmessage="网址格式不正确,正确示例： http://www.example.com" />
+            </div>
+            <div class="ContractlistItem">
+                <label>地址：</label>
+                <input name="Address" value="@yis.Address" class="easyui-textbox" validtype="length[1,100]" />
+            </div>
+            <div class="ContractlistItem">
+                <label>邮编：</label>
+                <input name="PostCode" value="@yis.PostCode" class="easyui-textbox" validtype="zip" />
+            </div>
+            <div class="ContractlistItem_big">
+                <label>开户银行：</label>
+                <input name="BankName" value="@yis.BankName" class="easyui-textbox" validtype="length[1,50]" />
+            </div>
+            <div class="ContractlistItem_big">
+                <label>银行账号：</label>
+                <input name="BankAccount" value="@yis.BankAccount" class="easyui-textbox" validtype="length[1,20]" />
+            </div>
+        </div>
+
+        <div class="ContractBox" style="border-bottom: 0; ">
+            <div class="ContractListTitle">相关附件：</div>
+            <div style="padding-left: 2.5%; ">
+                <span id="dfs" style=" display: inline-block; width: 350px; float:left;">
+                    <input type="file" name="File1" id="File1" class="font-12" style="margin-bottom:5px; " />
+                    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="addFile()">添加</a>
+                </span>
+            </div>
+            @if (Model.Attachments != null)
+            {
+                <table class="ListPartial">
+                    <tr>
+                        @foreach (var file in Model.Attachments)
+                        {
+                            if (i == colcount)
+                            {
+                                ViewContext.Writer.Write("</tr><tr>");
+                                i = 0;
+                            }
+                            <td><a href="@Url.Action("DownFile", "Attach", new { id=file.Id})">@file.Title</a><img src="~/Content/image/close.png" width="12" height="12" onclick="delFile(this,'@file.Id')" /></td>
+                            i++;
+                        }
+                    </tr>
+                </table>
+            }
+
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        if ($("#Id").val() == "") {           
+            $("#ContractSNForEdit").attr("hidden", "hidden"); 
+        }
+        else {          
+            //$("#ContractSNForAdd").attr("hidden", "hidden");
+            //$("#ContractSNForAdd").validatebox("disableValidation");
+            $("#ContractSNForAdd_div").css("display", "none");
+        }
+    })
+
+    var i = 2;
+    function addFile() {
+        var obj = $("#File1").clone().attr({ name: "File" + i, id: "File" + i });
+        obj.val("");
+        $("#dfs").prepend(obj);
+        i++;
+    }
+    function delFile(obj, fid) {
+        $.messager.confirm("提示", "是否确定删除该附件?", function (r) {
+            if (!r) { return r; }
+            $.post("@Url.Action("DeleteFile")", { Id: $("#Id").val(), fileId: fid, t: Math.random() }, function (d) {
+                if (d.successed) {
+                    $(obj).parent().remove();
+                } else {
+                    $.messager.alert("提示", "删除失败！" + d.message, "error");
+                }
+            }, "json")
+        });
+    }
+
+    function SaveBefore() {
+        var filepath = $("input[name='File1']").val(); 
+        var extStart = filepath.lastIndexOf("."); 
+        var ext = filepath.substring(extStart, filepath.length).toUpperCase();
+        if ((filepath != null) && (filepath != "") && (ext != ".DOC") && (ext != ".DOCX") && (ext != ".DOCM") && (ext != ".DOCT") && (ext != ".DOTM")
+                && (ext != ".XLS") && (ext != ".XLST") && (ext != ".XLSM") && (ext != ".XLTX") && (ext != ".XLTM") && (ext != ".XLSB") && (ext != ".XLAM")
+                && (ext != ".PPT") && (ext != ".PPTX") && (ext != ".PPTM") && (ext != ".PPSX") && (ext != ".POTX") && (ext != ".POTM") && (ext != ".PPAM")
+                && (ext != ".PDF") && (ext != ".TXT")
+                && (ext != ".BMP") && (ext != ".PNG") && (ext != ".GIF") && (ext != ".JPG") && (ext != ".JPEG")) {
+            alert("附件格式不正确！只能上传Office类型和图片类型的文件！");
+            return false;
+        }
+        return true;
+    }
+
+    //$.extend($.fn.validatebox.defaults.rules, {
+    //    contractSN:{ //合同编号
+    //        validator: function (value) {
+    //            return /^((?!^[a-zA-Z]+$)[0-9a-zA-Z]{3,20})$/i.test(value);
+    //        },
+    //        message: '只能输入3-20位的数字或数字与字母的组合，为空则系统自动生成'
+    //    }
+    //});
+
+</script>

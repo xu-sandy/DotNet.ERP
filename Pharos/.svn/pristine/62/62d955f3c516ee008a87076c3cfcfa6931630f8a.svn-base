@@ -1,0 +1,633 @@
+﻿@model Pharos.Sys.Entity.SysWebSetting
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var prefix =Url.Content("~/SysImg/" + SysCommonRules.CompanyId + "/");
+}
+
+<style>
+    body { text-align: center; }
+</style>
+<div class="default-form">
+@using (Html.BeginForm("WebSetting", "SysAdmin", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+    <div class="WebSettingBox">
+        @Html.HiddenFor(o=>o.Id)
+        <table class="table">
+            <tr>
+                <td class="leftTd title">
+                    基本信息 :</td>
+                <td class="rightTd"></td>
+                <td class="leftTd"></td>
+                <td class="rightTd"></td>
+            </tr>
+            <tr>
+                <td class="leftTd">登陆Logo : </td>
+                <td class="rightTd">
+                    <input type="text" name="LoginLogo" value="@Model.LoginLogo" id="LoginLogo" onclick="getLoginLogo()" class="datacontrol" readonly="readonly" title="145*50">
+                    <input type="file" name="LoginLogo" id="hidLoginLogo" onchange="handleLoginLogo()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winLoginLogo').window('open')">
+                            <img src="@(prefix+Model.LoginLogo)" height="30" id="imgLoginLogo" />
+                        </a>
+                    </div>
+                    <div id="winLoginLogo" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix + Model.LoginLogo)" id="sourceLoginLogo" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">顶部Logo : </td>
+                <td class="rightTd">                  
+                    <input type="text" name="TopLogo" value="@Model.TopLogo" id="TopLogo" onclick="getTopLogo()" class="datacontrol" readonly="readonly" title="746*70">
+                    <input type="file" name="TopLogo" id="hidTopLogo" onchange="handleTopLogo()" style="display:none;">
+                </td>
+                <td colspan="2" >
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winTopLogo').window('open')">
+                            <img src="@(prefix+Model.TopLogo)" height="30" id="imgTopLogo" />
+                        </a>
+                    </div>
+                    <div id="winTopLogo" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix+Model.TopLogo)" id="sourceTopLogo" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>    
+            <tr>
+                <td class="leftTd">底部Logo : </td>
+                <td class="rightTd">
+                    <input type="text" name="BottomLogo" value="@Model.BottomLogo" id="BottomLogo" onclick="getBottomLogo()" class="datacontrol" readonly="readonly" title="20*20">
+                    <input type="file" name="hidBottomLogo" id="hidBottomLogo" onchange="handleBottomLogo()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winBottomLogo').window('open')">
+                            <img src="@(prefix+Model.BottomLogo)" height="30" id="imgBottomLogo" />
+                        </a>
+                    </div>
+                    <div id="winBottomLogo" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix+Model.BottomLogo)" id="sourceBottomLogo" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">App登陆页logo(640): </td>
+                <td class="rightTd">
+                    <input type="text" name="AppIcon640" value="@Model.AppIcon640" id="AppIcon640" onclick="getAppIcon()" class="datacontrol" readonly="readonly" title="129*55">
+                    <input type="file" name="hidAppIcon640" id="hidAppIcon640" onchange="handleAppIcon()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winAppIcon').window('open')">
+                            <img src="@(prefix+Model.AppIcon640)" height="30" id="imgAppIcon640" />
+                       </a>
+                    </div>
+                    <div id="winAppIcon" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix+Model.AppIcon640)" id="sourceAppIcon640" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">App登陆页logo(960): </td>
+                <td class="rightTd">
+                    <input type="text" name="AppIcon960" value="@Model.AppIcon960" id="AppIcon960" onclick="$('#hidAppIcon960').click();" class="datacontrol" readonly="readonly" title="194*82">
+                    <input type="file" name="hidAppIcon960" id="hidAppIcon960" onchange="handleAppIcon960()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winAppIcon960').window('open')">
+                            <img src="@(prefix+Model.AppIcon960)" height="30" id="imgAppIcon960" />
+                        </a>
+                    </div>
+                    <div id="winAppIcon960" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix+Model.AppIcon960)" id="sourceAppIcon960" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">App首页logo(640): </td>
+                <td class="rightTd">
+                    <input type="text" name="AppIndexIcon640" value="@Model.AppIndexIcon640" id="AppIndexIcon640" onclick="$('#hidAppIndexIcon640').click();" class="datacontrol" readonly="readonly" title="137*58">
+                    <input type="file" name="hidAppIndexIcon640" id="hidAppIndexIcon640" onchange="handleAppIndexIcon()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winAppIndexIcon640').window('open')">
+                            <img src="@(prefix+Model.AppIndexIcon640)" height="30" id="imgAppIndexIcon640" />
+                        </a>
+                    </div>
+                    <div id="winAppIndexIcon640" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix+Model.AppIndexIcon640)" id="sourceAppIndexIcon640" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">App首页logo(960): </td>
+                <td class="rightTd">
+                    <input type="text" name="AppIndexIcon960" value="@Model.AppIndexIcon960" id="AppIndexIcon960" onclick="$('#hidAppIndexIcon960').click();" class="datacontrol" readonly="readonly" title="205*87">
+                    <input type="file" name="hidAppIndexIcon960" id="hidAppIndexIcon960" onchange="handleAppIndexIcon960()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winAppIndexIcon960').window('open')">
+                            <img src="@(prefix+Model.AppIndexIcon960)" height="30" id="imgAppIndexIcon960" />
+                        </a>
+                    </div>
+                    <div id="winAppIndexIcon960" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix+Model.AppIndexIcon960)" id="sourceAppIndexIcon960" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">App首页背景(640): </td>
+                <td class="rightTd">
+                    <input type="text" name="AppIndexbg640" value="@Model.AppIndexbg640" id="AppIndexbg640" onclick="$('#hidAppIndexbg640').click();" class="datacontrol" readonly="readonly" title="640*491">
+                    <input type="file" name="hidAppIndexbg640" id="hidAppIndexbg640" onchange="handleAppIndexbg640()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winAppIndexbg640').window('open')">
+                            <img src="@(prefix+Model.AppIndexbg640)" height="30" id="imgAppIndexbg640" />
+                        </a>
+                    </div>
+                    <div id="winAppIndexbg640" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix+Model.AppIndexbg640)" id="sourceAppIndexbg640" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">App首页背景(960): </td>
+                <td class="rightTd">
+                    <input type="text" name="AppIndexbg960" value="@Model.AppIndexbg960" id="AppIndexbg960" onclick="$('#hidAppIndexbg960').click();" class="datacontrol" readonly="readonly" title="960*737">
+                    <input type="file" name="hidAppIndexbg960" id="hidAppIndexbg960" onchange="handleAppIndexbg960()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winAppIndexbg960').window('open')">
+                            <img src="@(prefix+Model.AppIndexbg960)" height="30" id="imgAppIndexbg960" />
+                        </a>
+                    </div>
+                    <div id="winAppIndexbg960" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix+Model.AppIndexbg960)" id="sourceAppIndexbg960" style="vertical-align:middle;" />
+                        ></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">App首页文字(640): </td>
+                <td class="rightTd">
+                    <input type="text" name="AppCustomer640" value="@Model.AppCustomer640" id="AppCustomer640" onclick="getAppCustomer()" class="datacontrol" readonly="readonly" title="292*197">
+                    <input type="file" name="hidAppCustomer640" id="hidAppCustomer640" onchange="handleAppCustomer640()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winAppCustomer').window('open')">
+                            <img src="@(prefix+Model.AppCustomer640)" height="30" id="imgAppCustomer640" />
+                        </a>
+                    </div>
+                    <div id="winAppCustomer" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix+Model.AppCustomer640)" id="sourceAppCustomer640" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">App首页文字(960): </td>
+                <td class="rightTd">
+                    <input type="text" name="AppCustomer960" value="@Model.AppCustomer960" id="AppCustomer960" onclick="$('#hidAppCustomer960').click();" class="datacontrol" readonly="readonly" title="438*295">
+                    <input type="file" name="hidAppCustomer960" id="hidAppCustomer960" onchange="handleAppCustomer960()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winAppCustomer960').window('open')">
+                            <img src="@(prefix+Model.AppCustomer960)" height="30" id="imgAppCustomer960" />
+                        </a>
+                    </div>
+                    <div id="winAppCustomer960" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="@(prefix+Model.AppCustomer960)" id="sourceAppCustomer960" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">系统Icon : </td>
+                <td class="rightTd">
+                    <input type="text" name="SysIcon" value="@Model.SysIcon" id="SysIcon" onclick="getSysIcon()" class="datacontrol" readonly="readonly" title="64*64">
+                    <input type="file" name="hidSysIcon" id="hidSysIcon" onchange="handleSysIcon()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <a href="javascript:void(0)" onclick="$('#winSysIcon').window('open')">
+                            <img src="~/@(Model.SysIcon)" height="30" id="imgSysIcon" />
+                        </a>
+                    </div>
+                    <div id="winSysIcon" class="easyui-window" title="查看原图" data-options="closed:'true', collapsible: false, minimizable: false, maximizable: false, resizable: false " style="text-align: center; margin: 0 auto; width: 1000px; height: 500px; ">
+                        <div style="text-align: center; width: 980px; height: 455px; margin: 0 auto; padding: 2px; overflow: auto; vertical-align: middle; line-height: 455px; ">
+                            <img src="~/@(Model.SysIcon)" id="sourceSysIcon" style="vertical-align:middle;" />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="leftTd">公司简称 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.CompanyTitle, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true",validtype="length[1,50]" })
+                </td>
+                <td class="leftTd">公司电话 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.Tel, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true",validtype="phone" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">官网地址 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.WebsiteUrl, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+
+                </td>
+                <td class="leftTd">页面Title : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.PageTitle, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,50]" })
+                </td>
+            </tr>           
+            <tr>
+                <td class="leftTd title" colspan="4">
+                    SMTP :
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">服务器 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPServer, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "length[1,100]" })
+                </td>
+                <td class="leftTd">端口号 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPPort, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "integer" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">显示名称 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPShowName, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd">SSL端口 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPSSLPort, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "integer" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">账号 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPAccount, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "email length[1,100]" })
+                </td>
+                <td class="leftTd">密码 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPPwd, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "length[4,20]", type = "password" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd title" colspan="4">
+                    环信IM :
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">Url : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMReqUrlBase, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd">Id : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppId, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "length[1,200]" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">Secret : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppSecret, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd">org_name : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppOrg, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "length[1,200]" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">app_name : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppName, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd"></td>
+                <td class="rightTd"></td>
+            </tr>      
+        </table>
+        @if(CurrentUser.HasPermiss(SysConstLimits.基本配置_编辑配置信息))
+        { 
+        <div class="buttonBox">
+            <a class="easyui-linkbutton cus4 linkbtn btn" onclick="Submit()">保存</a>
+            <a class="easyui-linkbutton cus4 linkbtn btn" onclick="window.location.reload();" style="float:right;">重置</a>
+        </div>
+        }
+    </div> 
+    
+}
+</div>
+
+<script type="text/javascript">
+    //保存
+    function Submit() {  
+        $('form').submit();     
+    }
+    function Refresh() {
+            window.location.reload();
+    }
+
+    var hidLoginLogo = document.getElementById("hidLoginLogo");
+    var hidTopLogo = document.getElementById("hidTopLogo");
+    var hidBottomLogo = document.getElementById("hidBottomLogo");
+    var hidAppIcon640 = document.getElementById("hidAppIcon640");
+    var hidAppIcon960 = document.getElementById("hidAppIcon960");
+    var hidAppIndexIcon640 = document.getElementById("hidAppIndexIcon640");
+    var hidAppIndexIcon960 = document.getElementById("hidAppIndexIcon960");
+    var hidAppCustomer640 = document.getElementById("hidAppCustomer640");
+    var hidAppCustomer960 = document.getElementById("hidAppCustomer960");
+    var hidAppIndexbg640 = document.getElementById("hidAppIndexbg640");
+    var hidAppIndexbg960 = document.getElementById("hidAppIndexbg960");
+    var hidSysIcon = document.getElementById("hidSysIcon");
+    //LoginLogo  
+    function getLoginLogo() { //点击文本框，触发选择文件按钮
+        $("#hidLoginLogo").click();
+    }
+    //TopLogo  
+    function getTopLogo() { //点击文本框，触发选择文件按钮
+        $("#hidTopLogo").click();
+    }
+    function handleLoginLogo() { //选择文件后，将选择的文件名复制到文本框并读取图片预览  
+        document.getElementById("LoginLogo").value = hidLoginLogo.value;
+        preImg(hidLoginLogo, "hidLoginLogo", "imgLoginLogo", "sourceLoginLogo");
+    }
+    function handleTopLogo() { //选择文件后，将选择的文件名复制到文本框并读取图片预览  
+        document.getElementById("TopLogo").value = hidTopLogo.value;
+        preImg(hidTopLogo, "hidTopLogo", "imgTopLogo", "sourceTopLogo");
+    }
+    //BottomLogo
+    function getBottomLogo() {
+        $("#hidBottomLogo").click();
+    }
+    function handleBottomLogo() {
+        document.getElementById("BottomLogo").value = hidBottomLogo.value;
+        preImg(hidBottomLogo, "hidBottomLogo", "imgBottomLogo", "sourceBottomLogo");
+    }
+    //AppIcon640
+    function getAppIcon() {
+        $("#hidAppIcon640").click();
+    }
+    function handleAppIcon() {
+        document.getElementById("AppIcon640").value = hidAppIcon640.value;
+        preImg(hidAppIcon640, "hidAppIcon640", "imgAppIcon640", "sourceAppIcon640");
+    }
+    function handleAppIcon960() {
+        document.getElementById("AppIcon960").value = hidAppIcon960.value;
+        preImg(hidAppIcon960, "hidAppIcon960", "imgAppIcon960", "sourceAppIcon960");
+    }
+    function handleAppIndexIcon() {
+        document.getElementById("AppIndexIcon640").value = hidAppIndexIcon640.value;
+        preImg(hidAppIndexIcon640, "hidAppIndexIcon640", "imgAppIndexIcon640", "sourceAppIndexIcon640");
+    }
+    function handleAppIndexIcon960() {
+        document.getElementById("AppIndexIcon960").value = hidAppIndexIcon960.value;
+        preImg(hidAppIndexIcon960, "hidAppIndexIcon960", "imgAppIndexIcon960", "sourceAppIndexIcon960");
+    }
+    function handleAppIndexbg640() {
+        document.getElementById("AppIndexbg640").value = hidAppIndexbg640.value;
+        preImg(hidAppIndexbg640, "hidAppIndexbg640", "imgAppIndexbg640", "sourceAppIndexbg640");
+    }
+    function handleAppIndexbg960() {
+        document.getElementById("AppIndexbg960").value = hidAppIndexbg960.value;
+        preImg(hidAppIndexbg960, "hidAppIndexbg960", "imgAppIndexbg960", "sourceAppIndexbg960");
+    }
+    //AppCustomer640
+    function getAppCustomer() {
+        $("#hidAppCustomer640").click();
+    }
+    function handleAppCustomer640() {
+        document.getElementById("AppCustomer640").value = hidAppCustomer640.value;
+        preImg(hidAppCustomer640, "hidAppCustomer640", "imgAppCustomer640", "sourceAppCustomer640");
+    }
+    function handleAppCustomer960() {
+        document.getElementById("AppCustomer960").value = hidAppCustomer960.value;
+        preImg(hidAppCustomer960, "hidAppCustomer960", "imgAppCustomer960", "sourceAppCustomer960");
+    }
+    //SysIcon
+    function getSysIcon() {
+        $("#hidSysIcon").click();
+    }
+    function handleSysIcon() {
+        document.getElementById("SysIcon").value = hidSysIcon.value;
+        preImg(hidSysIcon, "hidSysIcon", "imgSysIcon", "sourceSysIcon");
+    }
+
+    //读取图片后马上预览;查看原图
+    function preImg(inputStr, fileId, imgId, sourceId) {
+        if (inputStr.value == "") {
+            //document.getElementById(imgId).style.display = "none";
+            document.getElementById(imgId).src = "#";
+        }
+        else {  
+        var imgPre = document.getElementById(imgId);
+        var imgSource = document.getElementById(sourceId);
+            var url = "";
+            var file = document.getElementById(fileId);
+            var agent = navigator.userAgent; 
+            if (!!window.ActiveXObject || "ActiveXObject" in window) {
+                //url = file.value;
+                url = window.URL.createObjectURL(file.files.item(0));
+            } else if (agent.indexOf("Firefox") > 0) {
+                url = window.URL.createObjectURL(file.files.item(0));
+            } else if (agent.indexOf("Chrome") > 0) {
+                url = window.URL.createObjectURL(file.files.item(0));
+            }
+            imgPre.src = url;            
+            imgSource.src = url;
+        }
+    }
+   
+    function SaveBefore() { 
+        //图片不能为空
+        var fileName = new Array(4);
+        fileName[0] = document.getElementById("TopLogo").value;
+        fileName[1] = document.getElementById("BottomLogo").value;
+        fileName[2] = document.getElementById("AppIcon640").value;
+        fileName[3] = document.getElementById("AppCustomer640").value;
+        fileName[4] = document.getElementById("SysIcon").value;
+        var strName = "";
+        var itemName = "";
+        var countName = 0;       
+        for (var i = 0; i < 5; i++)  
+        {
+            if ((fileName[i] == null) ||(fileName[i] == "")) {
+                itemName = itemName + i.toString() + ",";
+            }
+            else {
+                itemName = itemName + ",";
+            }
+        }      
+        var splitName = itemName.split(",");
+        if (splitName[0] == "0")
+        {
+            strName += "顶部Logo";
+            countName = countName + 1;
+        }
+        if (splitName[1] == "1")
+        {
+            if (countName > 0) {
+                strName += "、底部Logo";
+                countName = countName + 1;
+            }
+            else {
+                strName += "底部Logo";
+                countName = countName + 1;
+            }
+        }
+        if (splitName[2] == "2") {
+            if (countName > 0) {
+                strName += "、App Icon";
+                countName = countName + 1;
+            }
+            else {
+                strName += "App Icon";
+                countName = countName + 1;
+            }
+        }
+        if (splitName[3] == "3") {
+            if (countName > 0) {
+                strName += "、App首页背景";
+                countName = countName + 1;
+            }
+            else {
+                strName += "App首页背景";
+                countName = countName + 1;
+            }
+        }
+        if (splitName[4] == "4") {
+            if (countName > 0) {
+                strName += "、系统Icon";
+                countName = countName + 1;
+            }
+            else {
+                strName += "、系统Icon";
+                countName = countName + 1;
+            }
+        }
+        if (countName > 0)
+        {
+            strName+="不能为空，请选择文件！";
+            alert(strName);
+            return false;
+        }
+
+        //限制图片上传的格式
+        var filepath = new Array(4);
+        filepath[0] = $("input[id='hidTopLogo']").val();
+        filepath[1] = $("input[id='hidBottomLogo']").val();
+        filepath[2] = $("input[id='hidAppIcon640']").val();
+        filepath[3] = $("input[id='hidAppCustomer640']").val();
+        filepath[4] = $("input[id='hidSysIcon']").val();
+        var str = "";
+        var item = "";
+        var count = 0;       
+        for (var i = 0; i < 4; i++)  
+        {
+            var extStart = filepath[i].lastIndexOf(".");
+            var ext = filepath[i].substring(extStart, filepath[i].length).toUpperCase();
+            if ((filepath[i] != null) && (filepath[i] != "") && (ext != ".PNG")) {
+                item = item + i.toString() + ",";
+            }
+            else {
+                item = item + ",";
+            }
+        }
+        var extStart4 = filepath[4].lastIndexOf(".");
+        var ext4 = filepath[4].substring(extStart4, filepath[4].length).toUpperCase();
+        if ((filepath[4] != null) && (filepath[4] != "") && (ext4 != ".ICO")) {
+            item = item + "4";
+        }
+
+        var splitCount = item.split(",");
+        if (splitCount[0] == "0")
+        {
+            str += "顶部Logo";
+            count = count + 1;
+        }
+        if (splitCount[1] == "1")
+        {
+            if (count > 0) {
+                str += "、底部Logo";
+                count = count + 1;
+            }
+            else {
+                str += "底部Logo";
+                count = count + 1;
+            }
+        }
+        if (splitCount[2] == "2") {
+            if (count > 0) {
+                str += "、App Icon";
+                count = count + 1;
+            }
+            else {
+                str += "App Icon";
+                count = count + 1;
+            }
+        }
+        if (splitCount[3] == "3") {
+            if (count > 0) {
+                str += "、App首页背景";
+                count = count + 1;
+            }
+            else {
+                str += "App首页背景";
+                count = count + 1;
+            }
+        }
+        if (count > 0)
+        {
+            str += "格式不正确，请选择.png类型的图片！"
+        }
+        if (splitCount[4] == "4") {
+            if (count > 0) {                                       
+                str += "\n系统Icon格式不正确，请选择.ico类型的图片！";
+                count = count + 1;
+            }
+            else {
+                str += "系统Icon格式不正确，请选择.ico类型的图片！";
+                count = count + 1;
+            }
+        }
+        if (count > 0) {
+            alert(str);
+            return false;
+        }
+        return true;
+    }
+
+</script>

@@ -1,0 +1,834 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  Traders
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .formbox td {
+        padding:5px 0px;
+    }
+
+    .a_del a {
+    color: #8cc152;
+  }
+
+  .a_del {
+    color: #8cc152;
+  }
+
+    #tr_OrderList td div {
+        height:28px;
+        line-height:28px;
+        overflow:hidden;
+        margin: 5px 0px;
+    }
+
+    #tr_OrderList td div span{
+        display:block;
+        float:left;
+        width:200px;
+        overflow:hidden;
+    }
+
+    #tab {
+        overflow:hidden;
+    }
+
+    #tab a{
+        display:block;
+        width:100px;
+        height:35px;
+        line-height:35px;
+        text-align:center;
+        color:#232323;
+        font-size:104%;
+        float:left;
+        border:1px solid  #d4d4d4;
+        overflow:hidden;
+        margin-bottom:10px;
+    }
+
+        #tab .sel {
+            background-color:#d4d4d4;
+        }
+
+    #tabSummary {
+        border-collapse:collapse;
+    }
+
+    #tabSummary, #tabSummary th, #tabSummary td {
+        border:1px solid #ccc;
+    }
+
+        #tabSummary td {
+            padding:7px 0px;
+        }
+
+       #tabSummary td .noedit {
+           border:0px;
+           text-align:center;
+       }
+
+
+   #table_OrderList {
+        border-collapse:collapse;
+    }
+
+    #table_OrderList, #table_OrderList th, #table_OrderList td {
+        border:1px solid #ccc;
+    }
+
+    #table_OrderList td {
+            padding:7px;
+        }
+
+</style>
+
+<script type="text/javascript">
+     
+    var Status = "@Model.Status";
+
+    //获取时间
+    function getDT() {
+        var dt = "";
+        $.ajax({
+            url: "/Member/getDT",
+            type: "post",
+            async: false,
+            dataType: "html",
+            data: {},
+            success: function (data) {
+                dt = data;
+            }
+        });
+        return dt;
+    }
+
+    //删除
+    function delSummary(d) {
+        $(d).parent().parent().remove();
+    }
+    //增加回访跟踪记录
+    function addSummary() {
+        $('#txtSummary').validatebox('enableValidation');
+        var isValid = $('#txtSummary').validatebox("isValid");
+        if (isValid) {
+            var vdt = $("tr[name=tr_VisitTrack] td").eq(0).find("input").val();
+            vdt = $.trim(vdt);
+
+            var txtSummary = $("tr[name=tr_VisitTrack] td").eq(1).find("input").val();
+            txtSummary = $.trim(txtSummary);
+
+            var uid = $("tr[name=tr_VisitTrack] td").eq(2).find("input[name=uid]").val();
+            uid = $.trim(uid);
+
+            var name = $("tr[name=tr_VisitTrack] td").eq(2).find("input[name=name]").val();
+            name = $.trim(name);
+
+            var dt = getDT();
+
+            //记录时间
+            var addDT = dt;
+            //修改时间
+            var upDT = dt;
+
+            var v = '<tr name="addVisit">';
+            v = v + '<td style="text-align:center;" ><input class="datacontrol noedit" style="width:75%;" onclick="clickTime(this)" value="' + vdt + '" /></td>';
+            v = v + '<td style="text-align:left;padding:7px 10px;" onclick="editSummary(this)">' + txtSummary + '</td>';
+            v = v + '<td style="text-align:center;">' + name + '<input  type="hidden" value="' + uid + '" name="uid"/></td>';
+            v = v + '<td style="text-align:center;">' + addDT + '</td>';
+            v = v + '<td style="text-align:center;">' + upDT + '</td>';
+            v = v + '<td style="text-align:center;"><a href="javascript:;"  onclick="delSummary(this)"  class="a_del">删除</a></td>';
+            v = v + '</tr>';
+
+            $("tr[name=tr_VisitTrack]").before(v);
+        }
+        else {
+            $('#txtSummary').focus();
+        }
+
+    }
+
+    //编辑回访小结
+    function editSummary(s) {
+        var al = "@ViewBag.all";
+        //所有客户
+        if (al == "0") {
+            return false;
+        }
+
+        var l = $(s).find("input").length;
+        if (l > 0) {
+            return false;
+        }
+        else {
+            //旧值
+            var oldv = $.trim($(s).html());
+            var txt = '<input maxlength="100" type="text" style="width:510px;" value="' + oldv + '"  />';
+            $(s).html(txt);
+            $(s).find("input").focus();
+            $(s).find("input").blur(function () {
+                var newv = $.trim($(this).val());
+                if (newv == "") {
+                    newv = oldv;
+                }
+                $(this).remove();
+                $(s).html(newv);
+                //修改时间
+                if (newv != oldv) {
+                    var upDate = getDT();
+                    $(s).parent().find("td").eq(4).html(upDate);
+                }
+            });
+        }
+    }
+
+
+    function clickTime(t) {
+        //旧日期
+        var oldDate = $(t).val();
+        $(t).removeClass("noedit");
+        $(t).addClass("Wdate");
+        WdatePicker({
+            dateFmt: 'yyyy-MM-dd',
+            isShowClear: false,
+            readOnly: true,
+            onpicked: function (dp) {
+                $(t).removeClass("Wdate");
+                $(t).addClass("noedit");
+                //新日期
+                var newDate = dp.cal.getNewDateStr();
+                if (oldDate != newDate) {
+                    var upDate = getDT();
+                    $(t).parent().parent().find("td").eq(4).html(upDate);
+                }
+            }
+        });
+    }
+
+    //增加采购意向清单
+    function addOrder() {
+
+        var l = $("#table_OrderList tr[name=addOrder]").length;
+        if (l > 15) {
+            $.messager.alert('提示', '最多只能添加15条采购意向清单');
+            return false;
+        }
+
+        //产品
+        $('#dClass').combobox('enableValidation');
+        var isdClass = $("#dClass").combobox("isValid");
+        if (!isdClass) {
+            $('#dClass').combobox().next('span').find('input').focus();
+            return false;
+        }
+
+        //数量
+        $('#numOrder').validatebox('enableValidation');
+        var isNumOrder = $("#numOrder").validatebox("isValid");
+        if (!isNumOrder) {
+            $('#numOrder').focus();
+            return false;
+        }
+
+        //单位
+        $('#oUnit').combobox('enableValidation');
+        var isOUnit = $("#oUnit").combobox("isValid");
+        if (!isOUnit) {
+            $('#oUnit').combobox().next('span').find('input').focus();
+            return false;
+        }
+
+        //备注
+        $('#remarkOrder').validatebox('enableValidation');
+        var isRemarkOrder = $("#remarkOrder").validatebox("isValid");
+        if (!isRemarkOrder) {
+            $('#remarkOrder').focus();
+            return false;
+        }
+
+        //产品
+        var dClassV = $.trim($("#dClass").combobox("getValue"));
+        var dClassT = $.trim($("#dClass").combobox("getText"));
+
+        //数量
+        var numOrder = $.trim($("#numOrder").val());
+
+        //单位
+        var oUnitV = $.trim($("#oUnit").combobox("getValue"));
+        var oUnitT = $.trim($("#oUnit").combobox("getText"));
+
+        //备注
+        var remarkOrder = $.trim($("#remarkOrder").val());
+
+        var v = '<tr name="addOrder">';
+        v = v + '<td style="text-align:center;" >' + dClassT + '</td>';
+        v = v + '<td style="text-align:center;" onclick="editOrderNum(this)">' + numOrder + '</td>';
+        v = v + '<td style="text-align:center;">' + oUnitT + '</td>';
+        v = v + '<td style="text-align:left;">' + remarkOrder + '</td>';
+        v = v + '<td style="text-align:center;"><a href="javascript:;"  onclick="delSummary(this)"  class="a_del">删除</a><input type="hidden" value="' + dClassV + '" name="dClassV" /><input type="hidden" value="' + oUnitV + '" name="oUnitV" /></td>';
+        v = v + '</tr>';
+
+        $("tr[name=tr_OrderList]").before(v);
+    }
+
+    //编辑数量
+    function editOrderNum(n) {
+        var al = "@ViewBag.all";
+        //所有客户
+        if (al == "0") {
+            return false;
+        }
+
+        var l = $(n).find("input").length;
+        if (l > 0) {
+            return false;
+        }
+        else {
+            //旧值
+            var oldv = $.trim($(n).html());
+            var txt = '<input maxlength="4" type="text"  value="' + oldv + '" style=" width:50px;"  />';
+            $(n).html(txt);
+            $(n).find("input").focus();
+
+            $(n).find("input").keyup(function () {
+                //先把非数字的都替换掉，除了数字
+                $(this).val($(this).val().replace(/[^0-9]/g, ""));
+            }).css("ime-mode", "disabled");   //CSS设置输入法不可用
+
+            $(n).find("input").blur(function () {
+                var newv = $.trim($(this).val());
+                if (newv == "") {
+                    newv = oldv;
+                }
+                $(this).remove();
+                $(n).html(newv);
+            });
+        }
+    }
+
+    var all = "@ViewBag.all";
+    var isRequired = true;
+    if (all == "0") {
+        isRequired = false;
+    }
+    //加载次数
+    var loadNum = 0;
+
+    //加载省份
+    function loadProvince() {
+        $('#Province').combobox({
+            url: '/Member/getProvince',
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: isRequired,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                loadCity(newValue);
+                loadDistrict(0);
+            },
+            onLoadSuccess: function () {
+                $(this).combobox('setValue', '@Model.CurrentProvinceId');
+                //所有客户
+                if (all == "0") {
+                    $(this).combobox("readonly");
+                }
+            }
+        });
+
+    }
+
+    //加载城市
+    function loadCity(provinceKey) {
+        $('#City').combobox({
+            url: '/Member/getCity?ProvinceID=' + provinceKey,
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            width: 100,
+            required: isRequired,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            onChange: function (newValue, oldValue) {
+                loadDistrict(newValue);
+            },
+            onLoadSuccess: function () {
+                if (loadNum<2)
+                {
+                    $(this).combobox('setValue', '@Model.CurrentCityId');
+                }
+                //所有客户、已审核、无效
+                if (all == "0"||Status=="1"||Status=="2") {
+                    $(this).combobox("readonly");
+                }
+            }
+        });
+
+    }
+
+    //加载区县
+    function loadDistrict(cityKey) {
+        $('#District').combobox({
+            url: '/Member/getDistrict?CityID=' + cityKey,
+            valueField: 'AreaID',
+            textField: 'Title',
+            editable: false,
+            required: isRequired,
+            novalidate: false,
+            validType: 'requiredForCombo',
+            width: 130,
+            onLoadSuccess: function () {
+                if (loadNum < 2)
+                {
+                    $(this).combobox('setValue', '@Model.CurrentCounty');
+                }
+                //所有客户、已审核、无效
+                if (all == "0" || Status == "1" || Status == "2") {
+                    $(this).combobox("readonly");
+                }
+                //加载次数
+                loadNum = loadNum + 1;
+            }
+        });
+    }
+
+    //加载省市区
+    function loadPCD() {
+        loadProvince();
+    }
+
+    $(function () {
+
+        loadPCD();
+
+        $("#tab a").click(function (){
+            v=$(this).attr("v");
+            $("#tab a").removeClass("sel");
+            $(this).addClass("sel");
+            $(".formbox").hide();
+            $("."+v).show();
+        }).eq(0).trigger("click");
+
+        //基本信息的备注
+        $("#Memo").keyup(function(){
+            remaining(this);
+        }).trigger("keyup");
+
+        //回访跟踪记录备注
+        $("#txtSummary").keyup(function(){
+            remarkSummary(this);
+        }).trigger("keyup");
+
+        //禁用业务员
+        var v = "@ViewBag.all";
+        if (v == "1") {
+            $("#AssignerUID").combobox("disable");
+            $("#AssignerUID").next("span").find("input[type=hidden]").removeAttr("disabled");
+            //已审核
+            if (Status == "1") {
+                Status1();
+            }
+        }
+            //所有客户
+        else {
+            dis2();
+            //查看采购意向清单
+            viewOrder();
+            //查看回访跟踪记录
+            viewSummary();
+        }
+
+        //禁用验证
+        dis();
+    });
+
+    //采购意向清单
+    function addOrderList() {
+        var jso = "{\"OrderList\": [";
+        var tabC = 0;
+        $("#table_OrderList tr[name=addOrder]").each(function (i) {
+            //设备名称
+            var Title = $.trim($(this).find("td").eq(0).html());
+            //设备名称ID
+            var Id = $.trim($(this).find("input[name=dClassV]").val());
+            //数量
+            var OrderNum = $.trim($(this).find("td").eq(1).html());
+            //单位名称
+            var uName = $.trim($(this).find("td").eq(2).html());
+            //单位名称ID
+            var uId = $.trim($(this).find("input[name=oUnitV]").val());
+            //备注
+            var remark = $.trim($(this).find("td").eq(3).html());
+
+
+
+            if (tabC == 0) {
+                jso = jso + "{ \"Title\":\"" + Title + "\" ,\"Id\":\"" + Id + "\" , \"OrderNum\":\"" + OrderNum + "\", \"uName\":\"" + uName + "\", \"uId\":\"" + uId + "\", \"remark\":\"" + remark + "\" }";
+            }
+            else {
+                jso = jso + "," + "{ \"Title\":\"" + Title + "\" ,\"Id\":\"" + Id + "\" , \"OrderNum\":\"" + OrderNum + "\", \"uName\":\"" + uName + "\", \"uId\":\"" + uId + "\", \"remark\":\"" + remark + "\" }";
+            }
+            tabC = tabC + 1;
+
+        });
+        jso = jso + "]}";
+        $("#h_OrderList").val(jso);
+    }
+
+    //回访小结
+    function addVisitTrack() {
+        var jso = "{\"VisitTrack\": [";
+        var tabC = 0;
+        $("#tabSummary tr[name=addVisit]").each(function (i) {
+            //回访小结
+            var content = $.trim($(this).find("td").eq(1).html());
+            if (content != "") {
+                //回访时间
+                var VisitDT = $.trim($(this).find("td").eq(0).find("input").val());
+                //记录人ID
+                var CreateUID = $.trim($(this).find("td").eq(2).find("input").val());
+                // 记录时间
+                var addDT = $.trim($(this).find("td").eq(3).html());
+                // 修改时间
+                var upDT = $.trim($(this).find("td").eq(4).html());
+                if (tabC == 0) {
+                    jso = jso + "{ \"VisitDT\":\"" + VisitDT + "\" , \"content\":\"" + content + "\", \"CreateUID\":\"" + CreateUID + "\", \"addDT\":\"" + addDT + "\", \"upDT\":\"" + upDT + "\"}";
+                }
+                else {
+                    jso = jso + "," + "{ \"VisitDT\":\"" + VisitDT + "\" , \"content\":\"" + content + "\", \"CreateUID\":\"" + CreateUID + "\", \"addDT\":\"" + addDT + "\", \"upDT\":\"" + upDT + "\"}";
+                }
+                tabC = tabC + 1;
+            }
+        });
+        jso = jso + "]}";
+        $("#h_VisitTrack").val(jso);
+    }
+
+    function SaveBefore() {
+        addOrderList();
+        addVisitTrack();
+        //禁用验证
+        dis();
+        return true;
+    }
+
+    //基本信息的备注
+    function remaining(oTextArea) {
+        //获得textarea的maxlength属性
+        var MaxLength = oTextArea.getAttribute("maxlength");
+        var num = MaxLength - oTextArea.value.length;
+        $('#s_num').html(num);
+    }
+
+    //回访跟踪记录备注
+    function remarkSummary(oTextArea) {
+        //获得textarea的maxlength属性
+        var MaxLength = oTextArea.getAttribute("maxlength");
+        var num = MaxLength - oTextArea.value.length;
+        $('#spanSummary').html(num);
+    }
+
+    //禁用验证
+    function dis() {
+        $('#dClass').combobox('disableValidation');
+        $('#numOrder').validatebox('disableValidation');
+        $('#oUnit').combobox('disableValidation');
+        $('#remarkOrder').validatebox('disableValidation');
+        $('#txtSummary').validatebox('disableValidation');
+    }
+
+    //禁用
+    function dis2() {
+        $("#tr_prompt").remove();
+        $("textarea").attr("readonly", "readonly");
+        $('input').removeAttr("onclick");
+        $(".easyui-combobox").combobox("readonly");
+        $("input[type='checkbox']").attr("onclick", "return false");
+        var tbox = $(".easyui-textbox");
+        tbox.textbox({ prompt: '', readonly: true });
+    }
+
+    //查看采购意向清单
+    function viewOrder() {
+        var tab = $("#table_OrderList");
+        tab.find("tr[name=tr_OrderList]").remove();
+        tab.find("tr").each(function () {
+            $(this).find("td").eq(4).remove();
+        });
+        var l = tab.find("tr[name=addOrder]").length;
+        if (l == 0) {
+            tab.append('<tr><td style="text-align:center; " colspan="4">无记录</td></tr>');
+        }
+    }
+
+    //查看回访跟踪记录
+    function viewSummary() {
+        var tab = $("#tabSummary");
+        tab.find("tr[name=tr_VisitTrack]").remove();
+        tab.find("tr").each(function () {
+            $(this).find("td").eq(5).remove();
+        });
+        var l = tab.find("tr[name=addVisit]").length;
+        if (l == 0) {
+            tab.append('<tr><td style="text-align:center;" colspan="5">无记录</td></tr>');
+        }
+    }
+
+    //已审核
+    function Status1()
+    {
+        $("#tr_prompt").remove();
+        $("textarea").attr("readonly", "readonly");
+        $(".easyui-combobox").combobox("readonly");
+        $("input[type='checkbox']").attr("onclick", "return false");
+        var tbox = $(".easyui-textbox");
+        tbox.textbox({ prompt: '', readonly: true });
+        //采购意向清单
+        var tab = $("#table_OrderList");
+        tab.find("tr[name=tr_OrderList]").remove();
+        tab.find("tr").each(function () {
+            $(this).find("td").eq(4).find(".a_del").attr("onclick", "");
+            $(this).find("td").eq(4).find(".a_del").attr("style", "color:#BEBEBE;");
+        });
+        var l = tab.find("tr[name=addOrder]").length;
+        if (l == 0) {
+            tab.append('<tr><td style="text-align:center; " colspan="5">无记录</td></tr>');
+        }
+    }
+
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+
+        <div class="content">
+
+            <div id="tab">
+                <a href="javascript:;"  v="tab1">基本信息</a>
+                <a href="javascript:;"  v="tab2" style="border-left-style:none; border-right-style:none;">采购意向清单</a>
+                <a href="javascript:;"  v="tab3">回访跟踪记录</a>
+            </div>
+            
+            <div class="formbox tab1" style="display:none;" >
+                <table class="table-form" width="100%" height="100px">
+                    <tr>
+                        <td class="name">业务员：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AssignerUID, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name" style="width:8%;">客户简称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'2-10个字符',validType: 'length[2,10]',width:120" })</td>
+                        <td class="name">客户全称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'2-50个字符',validType: 'length[2,50]',width:140" })</td>
+                        <td class="name" style="width:8%;">客户类型：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.BusinessModeId, ViewBag.ModeId as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">客户来源：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Source, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'限20个字符',validType: 'length[1,20]',width:120" })</td>
+                        <td class="name">跟进状态：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.TrackStautsId, ViewBag.StautsId as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name">联系人：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.LinkMan, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'联系人',width:140" })</td>
+                        <td class="name">电话/手机：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.MobilePhone, new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'手机',validType:'length[7,20]',width:120" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">经营类别：</td>
+                        <td class="input" colspan="7"  style="width:90%; line-height:30px;">
+                            @foreach (var v in ViewBag.BusinessScopeId as List<Business>)
+                            {
+                                <input type="checkbox" value="@v.ById" id="BusinessScopeId_@v.Id" name="BusinessScopeId" @(Html.Raw(Model.BusinessScopeId.Contains(v.ById.ToString()) ? "checked=\"checked\"" : "")) />@:&nbsp;<label for="BusinessScopeId_@v.Id">@v.Title</label>&nbsp; &nbsp;
+                            }
+
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">支付方式：</td>
+                        <td class="input" colspan="7" style="width:90%; line-height:30px;">
+                            @foreach (var v in ViewBag.pay as List<SysDataDictionary>)
+                            {
+                                <input type="checkbox" value="@v.DicSN" id="BusinessScopeId_@v.DicSN" name="Pay" @(Html.Raw(Model.Pay.Contains(v.DicSN.ToString()) ? "checked=\"checked\"" : "")) />@:&nbsp;<label for="BusinessScopeId_@v.DicSN">@v.Title</label>&nbsp; &nbsp;
+                            }
+
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">所在区域：</td>
+                        <td class="input" colspan="7">
+                            <input id="Province" name="CurrentProvinceId" class="easyui-combobox datacontrol" />-
+                            <input id="City" name="CurrentCityId" class="easyui-combobox datacontrol" />-
+                            <input id="District" name="CurrentCounty" class="easyui-combobox datacontrol" />&nbsp;&nbsp;
+                            @Html.TextBoxFor(o => o.Address, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'街道地址',width:200" })
+                        </td>
+                    </tr>
+                </table>
+             </div>
+
+            <div class="formbox tab1" style="display:none;">
+                <table class="table-form" width="100%" height="100px">
+
+                    <tr>
+                        <td class="name" style="width:13%;">现有系统名称/品牌：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.ExistsystemName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'限50个字',validType: 'length[0,50]'" })</td>
+                        <td class="name" style="width:31%;">现有设备名称/品牌：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.ExistDeviceName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'限50个字',validType: 'length[0,50]'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">现有门店数量：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.ExistStoreNum, ViewBag.storeNum as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })</td>
+                        <td class="name">每门店收银电脑台数：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.EachStorePosNum, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "1", Value = "1" }, new SelectListItem() { Text = "2", Value = "2" }, new SelectListItem() { Text = "3", Value = "3" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">每门店人均数：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.EachStorePersonNum, ViewBag.averageNum as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })</td>
+                        <td class="name">近2年计划扩张门店数量：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.PlanExpandStoreNum, ViewBag.storeNum as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })</td>
+                    </tr>
+                    <tr>
+                        <td class="name">竞争对手：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Rival, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'限50个字',validType: 'length[0,50]'" })</td>
+                        <td class="name">竞争对手的营销模式：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Marketing, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'限50个字',validType: 'length[0,50]'" })</td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox tab1" style=" border-bottom:0px; display:none;">
+                <table class="table-form" width="100%" height="100px">
+
+                    <tr>
+                        <td class="name" style="width:13%;">备注说明：</td>
+                        <td class="input">@Html.TextAreaFor(o => o.Memo, new { @class = "easyui-validatebox", style = "width:709px; height: 100px; max-width: 709px; max-height: 100px; resize: none; ", maxlength = "200", data_options = "novalidate:false,required:false,prompt:'备注',validType: 'length[0,200]'" })</td>
+                    </tr>
+
+                    <tr id="tr_prompt">
+                        <td class="name"></td>
+                        <td class="input">限长200个字，还可以输入 <span style="color:#FF0000;" id="s_num">200</span> 个字</td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox tab2" style="display:none;border-bottom:0px;">
+
+                <table class="table-form" width="100%"  id="table_OrderList">
+
+                    <input type="hidden" id="h_OrderList" name="h_OrderList" value="" />
+
+                    <tr style="background-color:#eff4fb;">
+                        <td style="width:13%;text-align:center;">产品</td>
+                        <td style="text-align:center;width:5%;">数量</td>
+                        <td style="text-align:center; width:7%;">单位</td>
+                        <td style="text-align:center;">备注</td>
+                        <td style="text-align:center;width:7%;">操作</td>
+                    </tr>
+
+                   @foreach (var v in ViewBag.OrderList as List<ViewOrderList>)
+                   {
+                       if (!v.IsNullOrEmpty())
+                       {
+                        <tr name="addOrder">
+                            <td style="text-align:center;">@v.pName</td>
+                            <td style="text-align:center;" onclick="editOrderNum(this)">@v.OrderNum</td>
+                            <td style="text-align:center;">@v.uName</td>
+                            <td style="text-align:left;">@v.Remark</td>
+                            <td style="text-align:center;"><a href="javascript:;" onclick="delSummary(this)" class="a_del">删除</a><input type="hidden" value="@v.DeviceId" name="dClassV" /><input type="hidden" value="@v.UnitID" name="oUnitV" /></td>
+                        </tr>
+                       }
+                   }
+
+                    <tr name="tr_OrderList">
+                        <td style="text-align:center;">
+                             @Html.DropDownList("dClass", ViewBag.DeviceClass as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:false,validType:'requiredForCombo', editable: false,width:120" })
+                        </td>
+                        <td style="text-align:center;">
+                            <input type="text" style=" width:50px;" value="1" maxlength="4" class="easyui-validatebox" data-options="novalidate:false,required:true,validType:'integer'" id="numOrder" />
+                        </td>
+                        <td style="text-align:center;">
+                            @Html.DropDownList("oUnit", ViewBag.OrderUnit as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:false,validType:'requiredForCombo', editable: false,width:70" })
+                        </td>
+                        <td style="text-align:center;">
+                            <input id="remarkOrder" maxlength="51" type="text" style="width:580px;" value="" class="easyui-validatebox" data-options="novalidate:false,validType: 'length[0,50]'" />
+                        </td>
+                        <td style="text-align:center;">
+                            <a href="javascript:;" class="easyui-linkbutton" onclick="addOrder()" >添加</a>
+                        </td>
+                    </tr>
+
+                </table>
+
+           </div>
+
+            <div class="formbox tab3" style="display:none; border-bottom:0px;">
+                <table class="table-form" width="100%"  id="tabSummary">
+
+                    <tr style="background-color:#eff4fb">
+                        <td class="name" style="width:13%;text-align:center;">回访日期</td>
+                        <td style="text-align:center;">回访小结</td>
+                        <td style="text-align:center; width:7%;">记录人</td>
+                        <td style="text-align:center; width:9%;">记录时间</td>
+                        <td style="text-align:center; width:9%;">修改时间</td>
+                        <td style="text-align:center;width:5%;">操作</td>
+                    </tr>
+
+                    @foreach (var v in ViewBag.VisitTrack as List<ViewVisitTrack>)
+                    {
+                        <tr name="addVisit">
+                            <td style="text-align:center;"><input class="datacontrol noedit" style="width:75%;" onclick="clickTime(this)" value="@v.VisitDT" /></td>
+                            <td style="text-align:left; padding:7px 10px;" onclick="editSummary(this)">@v.Content</td>
+                            <td style="text-align:center;">@v.FullName<input type="hidden" value="@v.CreateUID" name="uid" /></td>
+                            <td style="text-align:center;">@v.CreateDT</td>
+                            <td style="text-align:center;">@v.UpdateDT</td>
+                            <td style="text-align:center;"><a href="javascript:;" onclick="delSummary(this)" class="a_del">删除</a></td>
+                        </tr>
+                    }
+
+                    <tr name="tr_VisitTrack">
+                        <td style="text-align:center;">
+                            <div style="padding-bottom:27px;"><input class="Wdate datacontrol" style="width:75%;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd',readOnly:true,isShowClear:false})" value="@DateTime.Now.ToString("yyyy-MM-dd")" name="VisitDT" /></div>
+                        </td>
+                        <td style="text-align:center;">
+                            <input id="txtSummary" maxlength="100" type="text" style="width:510px;" value="" class="easyui-validatebox" data-options="novalidate:false,required:true,validType: 'length[1,100]'" name="txtSummary" />
+                            <div style="text-align:left; margin-top:10px; padding-left:12px;">限长100个字，还可以输入<span style="color:#FF0000;" id="spanSummary">100</span>个字</div>
+                        </td>
+                        <td style="text-align:center;">
+                            @ViewBag.Create <input  type="hidden" value="@Model.CreateUID" name="uid"/>
+                            <input type="hidden" value="@ViewBag.Create" name="name" />
+                        </td>
+                        <td style="text-align:center;">
+                           
+                        </td>
+                        <td style="text-align:center;">
+                            
+                        </td>
+                        <td style="text-align:center;">
+                          <a href="javascript:;" class="easyui-linkbutton" onclick="addSummary()" id="addVisit">添加</a>
+                        </td>
+                    </tr>
+
+                    <input type="hidden" value="" id="h_VisitTrack" name="h_VisitTrack" />
+
+
+                </table>
+            </div>
+
+       </div>
+    }
+</div>
+
+
+

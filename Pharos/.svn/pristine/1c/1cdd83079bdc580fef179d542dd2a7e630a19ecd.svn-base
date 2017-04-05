@@ -1,0 +1,95 @@
+﻿using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class PayComplete : BaseViewModel,IDisposable
+    {
+        private bool isRunning= true;
+
+        public PayComplete(decimal _amount)
+
+
+
+        {
+            Amount = _amount;
+            ViewModelBinded += PayComplete_ViewModelBinded;
+        }
+
+        void PayComplete_ViewModelBinded(BaseViewModel model)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                while (isRunning)
+                {
+                    CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                    {
+                        if (Second == 0)
+                        {
+                            CurrentWindow.Close();
+                        }
+                        else
+                        {
+                            Second--;
+                        }
+                    }));
+                    Thread.Sleep(1000);
+                }
+            });
+        }
+
+      
+
+        private int _Second = 3;
+
+        public int Second
+        {
+            get { return _Second; }
+            set
+            {
+                _Second = value;
+                this.OnPropertyChanged(o => o.Second);
+            }
+        }
+
+        /// <summary>
+        /// 成功支付金额
+        /// </summary>
+        private decimal amount;
+
+        public decimal Amount
+        {
+            get { return amount; }
+            set { amount = value; }
+        }
+        /// <summary>
+        /// 关闭当前窗口
+        /// </summary>
+        public ICommand CloseCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    CurrentWindow.Close();
+                });
+            }
+        }
+
+
+        public void Dispose()
+        {
+            isRunning = false;
+        }
+        ~PayComplete() 
+        {
+            Dispose();
+        }
+    }
+}

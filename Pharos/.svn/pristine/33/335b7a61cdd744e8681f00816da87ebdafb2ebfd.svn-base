@@ -1,0 +1,41 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL商家支付许可档案
+    /// </summary>
+    public class PayLicenseService : BaseService<PayLicense>
+    {
+        [Ninject.Inject]
+        // 商户资料
+        IBaseRepository<Traders> TradersRepository { get; set; }
+
+        // 商家支付许可档案
+        [Ninject.Inject]
+        IPayLicenseRepository pRepository { get; set; }
+
+        /// <summary>
+        /// 获取CID
+        /// </summary>
+        /// <param name="nvl"></param>
+        /// <returns></returns>
+        public List<Traders> GetCIDWhere(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            //关键字
+            var keyword = (nvl["keyword"] ?? "").Trim();
+            string keyw = "'"+keyword+"%'";
+            return pRepository.getListCID(keyw);
+        }
+    }
+}

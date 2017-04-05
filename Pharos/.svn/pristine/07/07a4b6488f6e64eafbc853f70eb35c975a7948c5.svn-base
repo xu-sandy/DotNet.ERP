@@ -1,0 +1,27 @@
+﻿using Pharos.Logic.ApiData.Pos.DataSynchronism.Models;
+using Pharos.Logic.ApiData.Pos.DataSynchronism.Protocol;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+
+namespace Pharos.Logic.ApiData.Pos.DataSynchronism.Commands
+{
+    public class DataSyncPackageCommand : BaseCommand
+    {
+        public DataSyncPackageCommand()
+            : base(0x00, new byte[] { 0x00, 0x01 })
+        {
+        
+
+        }
+        public override void ExecuteCommand(SocketClient client, CommandInfo commandInfo)
+        {
+              var JSON = SocketClient.defaultEncoding.GetString(commandInfo.Datas);
+              DataAgentResult result = JsonConvert.DeserializeObject<DataAgentResult>(JSON);
+            //TODO instance Dbprovider
+
+        }
+    }
+}

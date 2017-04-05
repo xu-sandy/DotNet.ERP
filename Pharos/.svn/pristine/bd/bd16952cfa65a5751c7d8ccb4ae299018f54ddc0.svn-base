@@ -1,0 +1,70 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Linq;
+using Pharos.Infrastructure.Data.Cache;
+using Pharos.ObjectModels;
+using Pharos.ObjectModels.DTOs;
+using Pharos.Infrastructure.Data.Normalize;
+using System.Collections.Generic;
+
+namespace Pharos.Logic.ApiData.Pos.Cache
+{
+    public class ProductCache : RedisCacheWrapper<ProductInfo>
+    {
+        public ProductCache()
+            : base("ProductCache", new TimeSpan(2, 0, 0), true)
+        {
+        }
+
+
+        public static void RefreshProduct(int companyId, IEnumerable<MemoryCacheRefreshQuery> _params)
+        {
+            var cache = new ProductCache();
+            foreach (var item in _params)
+            {
+                var storeIds = item.StoreId.Split(",".ToArray(), StringSplitOptions.RemoveEmptyEntries);
+                foreach (var storeId in storeIds)
+                {
+                    var key = KeyFactory.ProductKeyFactory(companyId, storeId, item.Barcode);
+                    if (cache.ContainsKey(key))
+                        RefreshProduct(key, companyId, item, item.StoreId, cache.Get(key));
+                }
+            }
+        }
+        /// <summary>
+        /// 重置缓存中的产品信息
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="companyId"></param>
+        /// <param name="barcode"></param>
+        /// <param name="storeId"></param>
+        private static void RefreshProduct(string key, int companyId, MemoryCacheRefreshQuery _params, string storeId, ProductInfo info)
+        {
+            try
+            {
+                ProductInfo result = null;
+                switch (_params.ProductType)
+                {
+                    case ProductType.Bundling:
+                        {
+                            var adapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, string.Empty, companyId, string.Empty);
+                            result = adapter.GetProductInfoFromBundlingByBarcode(_params.Barcode);
+                        }
+                        break;
+                    default:
+                        {
+                            var adapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, string.Empty, companyId, string.Empty);
+                            result = adapter.GetProductInfoByBarcode(_params.Barcode);
+                        }
+                        break;
+                }
+                //加到缓存中
+                if (result != null)
+                    new ProductCache().Set(key, result);
+            }
+            catch { }
+        }
+
+    }
+}

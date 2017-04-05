@@ -1,0 +1,65 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.BLL;
+using System.Data;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class PayAccountController : BaseController
+    {
+        [Ninject.Inject]
+        TradersService tradersService { get; set; }
+
+        [Ninject.Inject]
+        TradersPaySecretKeyService tradersPaySecretKeyService { get; set; }
+
+        public ActionResult Index()
+        {
+            //指派人
+            ViewBag.user = ListToSelect(tradersService.getUserList().Select(o => new SelectListItem() { Value = o.UserId, Text = o.FullName }), emptyTitle: "全部");
+            return View();
+        }
+
+        public ActionResult Save(int? id)
+        {
+            var obj = new Traders
+            {
+
+            };
+            if (id.HasValue)
+            {
+                obj = tradersService.GetOne(id.Value);
+            }
+            //指派人
+            ViewBag.user = ListToSelect(tradersService.getUserList().Select(o => new SelectListItem() { Value = o.UserId, Text = o.FullName }), emptyTitle: "请选择");
+            return View(obj.IsNullThrow());
+        }
+
+        public ActionResult FindPageList()
+        {
+            var count = 0;
+            var list = tradersPaySecretKeyService.GetPageList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+
+        /// <summary>
+        /// 获取CID
+        /// </summary>
+        /// <param name="keyword"></param>
+        /// <returns></returns>
+        public ActionResult GetCidWhere(string keyword)
+        {
+            var list = tradersPaySecretKeyService.GetCIDWhere(Request.Params);
+            return ToDataGrid(list, 0);
+        }
+
+    }
+}

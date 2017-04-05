@@ -1,0 +1,201 @@
+﻿using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class ZhiFuBaoPayViewModel : BaseViewModel, IDisposable
+    {
+        private bool isRunning = true;
+        private Thread loopThread;
+        MachineInformations _machinesInfo = Global.MachineSettings.MachineInformations;
+        public ZhiFuBaoPayViewModel(string url, string paySn, decimal _amount, PayAction mode)
+        {
+            IsOperatEnabled = true;
+            PayAction = mode;
+            this.url = url;
+            this.OnPropertyChanged(o => o.ScanImage);
+            PaySn = paySn;
+            Amount = _amount;
+            Task.Factory.StartNew(() =>
+            {
+                loopThread = Thread.CurrentThread;
+                while (isRunning)
+                {
+                    //调查询状态接口
+                    //成功则跳出当前线程，跳到支付成功页面
+                    ThirdPartyPaymentStatusParams _params = new ThirdPartyPaymentStatusParams()
+                    {
+                        StoreId = _machinesInfo.StoreId,
+                        MachineSn = _machinesInfo.MachineSn,
+                        CompanyToken = _machinesInfo.CompanyToken,
+                        PaySn = paySn,
+                        Mode = 3
+                    };
+                    var result = ApiManager.Post<ThirdPartyPaymentStatusParams, ApiRetrunResult<int>>(@"api/ThirdPartyPaymentStatus", _params);
+                    if (result.Code == "200")
+                    {
+                        switch (result.Result)
+                        {
+                            case -1://支付失败
+                                Dispose();
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    Toast.ShowMessage("支付失败！", CurrentWindow);
+                                }));
+                                goto Return;
+                            case 0://等待支付结果
+                                Thread.Sleep(1000);
+                                break;
+                            case 1://支付成功
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    Dispose();
+                                    //ResetPosView();
+                                    //跳到支付成功界面
+                                    ZhiFuWanCheng page = new ZhiFuWanCheng(Amount, amount, 0, "支付宝", PayAction);
+                                    page.Owner = Application.Current.MainWindow;
+
+                                    CurrentWindow.Hide();
+                                    page.ShowDialog();
+                                    CurrentWindow.Close();
+                                }));
+                                goto Return;
+                        }
+                    }
+                    else
+                    {
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            Toast.ShowMessage(result.Message, CurrentWindow);
+                        }));
+                        goto Return;
+                    }
+
+                }
+            Return:
+                loopThread = null;
+            });
+        }
+        public PayAction PayAction { get; set; }
+        /// <summary>
+        /// 重置主界面数据
+        /// </summary>
+        //public void ResetPosView()
+        //{
+        //    PosViewModel.Current.ClearOrder.Execute(null);
+        //}
+
+        /// <summary>
+        /// 二维码地址
+        /// </summary>
+        private string url;
+
+        public ImageSource ScanImage
+        {
+            get { return new BitmapImage(new Uri(url)); }
+
+        }
+        /// <summary>
+        /// 订单金额
+        /// </summary>
+        private decimal amount;
+
+        public decimal Amount
+        {
+            get { return amount; }
+            set { amount = value; }
+        }
+
+        /// <summary>
+        /// 支付流水号
+        /// </summary>
+        private string paySn;
+
+        public string PaySn
+        {
+            get { return paySn; }
+            set { paySn = value; this.OnPropertyChanged(o => o.PaySn); }
+        }
+        /// <summary>
+        /// 手动设置支付完成
+        /// </summary>
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    IsOperatEnabled = false;
+                    this.OnPropertyChanged(o => o.IsOperatEnabled);
+                    //停掉自动查询状态的线程
+                    if (loopThread != null)
+                    {
+                        loopThread.Abort();
+                        loopThread = null;
+                    }
+                    //手动设置订单支付完成  成功则跳到支付成功的页面
+                    ThirdPartyPaymentStatusParams _params = new ThirdPartyPaymentStatusParams()
+                    {
+                        StoreId = _machinesInfo.StoreId,
+                        MachineSn = _machinesInfo.MachineSn,
+                        CompanyToken = _machinesInfo.CompanyToken,
+                        PaySn = paySn,
+                        Mode = 3
+                    };
+                    var result = ApiManager.Post<ThirdPartyPaymentStatusParams, ApiRetrunResult<object>>(@"api/SetThirdPartyPaymentComplete", _params);
+                    if (result.Code == "200")
+                    {
+                       // ResetPosView();
+                        //跳到支付成功界面
+                        ZhiFuWanCheng page = new ZhiFuWanCheng(Amount, Amount, 0, "支付宝", PayAction);
+                        page.Owner = Application.Current.MainWindow;
+
+                        CurrentWindow.Hide();
+                        page.ShowDialog();
+                        CurrentWindow.Close();
+                        IsOperatEnabled = true;
+                    }
+                    else
+                    {
+                        Toast.ShowMessage(result.Message, CurrentWindow);
+                        IsOperatEnabled = true;
+                    }
+
+                });
+            }
+        }
+
+
+        public void Dispose()
+        {
+            if (loopThread != null)
+            {
+                loopThread.Abort();
+                loopThread = null;
+            }
+            isRunning = false;
+        }
+
+        bool _IsOperatEnabled = true;
+
+        public bool IsOperatEnabled
+        {
+            get { return _IsOperatEnabled; }
+            set
+            {
+                _IsOperatEnabled = value;
+                this.OnPropertyChanged(o => o.IsOperatEnabled);
+            }
+        }
+    }
+}

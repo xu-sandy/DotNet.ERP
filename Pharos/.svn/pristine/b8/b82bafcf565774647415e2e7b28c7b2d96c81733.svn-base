@@ -1,0 +1,73 @@
+﻿using Pharos.Logic.ApiData.Pos.Common;
+using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.ApiData.Pos.Cache
+{
+    public class ProductCache : MemoryCacheWrapper<ProductInfo>
+    {
+        public ProductCache()
+            : base("ProductCache", new TimeSpan(2, 0, 0), true)
+        {
+        }
+
+
+
+        public void RefreshProduct(int companyId, MemoryCacheRefreshQuery _params)
+        {
+
+            if (string.IsNullOrEmpty(_params.StoreId))//
+            {
+                var rule = "(?<=" + KeyFactory.ProductKeyFactory(companyId, ").*(?=", _params.ProductType == Sale.ProductType.Weigh ? _params.ProductCode : _params.Barcode) + ")";
+                Regex regex = new Regex(rule);
+                foreach (var item in Keys)
+                {
+                    var match = regex.Match(item);
+                    var matchStoreId = match.Value;
+                    RefreshProduct(item, companyId, _params, matchStoreId);
+                }
+            }
+            else
+            {
+                var key = KeyFactory.ProductKeyFactory(companyId, _params.StoreId, _params.Barcode);
+                RefreshProduct(key, companyId, _params, _params.StoreId);
+            }
+        }
+        /// <summary>
+        /// 重置缓存中的产品信息
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="companyId"></param>
+        /// <param name="barcode"></param>
+        /// <param name="storeId"></param>
+        private void RefreshProduct(string key, int companyId, MemoryCacheRefreshQuery _params, string storeId)
+        {
+
+            //缓存中不存在符合条件的数据从数据库中查找
+            var dataAdapter = DataAdapterFactory.DbFactory(MachinesSettings.Mode, storeId, DataAdapterFactory.DEFUALT, companyId);
+            ProductInfo result = null;
+            switch (_params.ProductType)
+            {
+                case Sale.ProductType.Weigh:
+                    result = dataAdapter.GetProductInfoByProductCode(_params.ProductCode);
+                    break;
+                case Sale.ProductType.Bundling:
+                    result = dataAdapter.GetProductInfoFromBundlingByBarcode(_params.ProductCode);
+                    break;
+                default:
+                    result = dataAdapter.GetProductInfoByBarcode(_params.Barcode);
+                    break;
+            }
+            //加到缓存中
+            if (result != null)
+                DataAdapterFactory.ProductCache.Set(key, result);
+        }
+    }
+}

@@ -1,0 +1,29 @@
+﻿using Pharos.POS.Retailing.Models.SalesPromotionRules.Discount;
+using System;
+using System.Windows;
+using System.Windows.Data;
+
+namespace Pharos.POS.Retailing.Converters
+{
+    public class TabItemSuperscriptVisibilityConverter : IValueConverter
+    {
+
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            var title = value as string;
+            switch (title) 
+            {
+                case "赠品":
+                  return  BaseDiscount.PendingGift.Count > 0 ? Visibility.Visible : Visibility.Hidden;
+                case "优惠券|代金券":
+                  return BaseDiscount.PendingCoupon.Count > 0 ? Visibility.Visible : Visibility.Hidden;
+            }
+            return Visibility.Hidden;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return null;
+        }
+    }
+}

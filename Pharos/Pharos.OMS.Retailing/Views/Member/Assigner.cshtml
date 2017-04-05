@@ -1,0 +1,75 @@
+﻿@{
+    ViewBag.Title = "指派业务员";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideSearch: true, searchHeight: 87));
+}
+
+
+<div class="easyui-layout" data-options="fit:true,border:false">
+
+    <div class="default-form" data-options="region:'north',split:false,border:false" style="">
+        @using (Html.BeginForm())
+        {
+            <div id="div_assigner" style="padding:10px; height:50px; line-height:50px;">
+                @Html.Hidden("ids", ViewBag.ids as string)
+                <span style="padding-right:5px;">将下列客户指派给业务员：</span>@Html.DropDownList("AssignerUID", ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, validType:'requiredForCombo', editable:true,width:120" })
+            </div>
+        }
+    </div>
+
+    <div data-options="region:'center',split:false,border:false">
+        <table id="grid"></table>
+    </div>
+
+</div>
+
+
+
+    <script type="text/javascript">
+
+        $(function () {
+
+            $('#grid').datagrid({
+                url: '/Member/GetListAssigner?ids=@ViewBag.ids',
+                method: 'GET',
+                idField: 'Id',
+                fit: true,
+                striped: true,
+                fitColumns: true,
+                singleSelect: false,
+                rownumbers: true,
+                pagination: false,
+                nowrap: false,
+                pageSize: 20,
+                pageList: [10, 20, 30, 40, 50],
+                showFooter: false,
+                frozenColumns: [[
+
+                ]],
+                columns: [[
+                    { field: 'FullName', title: '业务员', editor: { type: 'text', required: true }, width: 60 },
+                    { field: 'Title', title: '跟进状态', editor: { type: 'text', required: true }, width: 80 },
+                    {
+                        field: 'Status', title: '状态', editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) {
+                            if (value == "0") {
+                                return "未审核";
+                            } else if (value == "1") {
+                                return "已审核";
+                            } else {
+                                return "无效";
+                            }
+                        }
+                    },
+                    { field: 'CID', title: '商户号', editor: { type: 'text', required: true }, width: 60 },
+                    { field: 'khTitle', title: '客户简称', editor: { type: 'text', required: true }, width: 120 },
+                    { field: 'khFullTitle', title: '客户全称', editor: { type: 'text', required: true }, width: 120 },
+                    { field: 'khType', title: '客户类型', editor: { type: 'text', required: true }, width: 120 },
+                    { field: 'city', title: '城市', editor: { type: 'text', required: true }, width: 80 }
+                ]]
+            });
+
+        });
+    </script>
+
+
+

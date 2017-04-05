@@ -1,0 +1,228 @@
+﻿using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using System;
+using Pharos.POS.Retailing.Extensions;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.Wpf.ViewModelHelpers;
+using Pharos.Wpf.Extensions;
+using Pharos.POS.Retailing.Models.ViewModels.Pay;
+using System.Threading.Tasks;
+using System.Threading;
+
+namespace Pharos.POS.Retailing.ChildWin.Pay
+{
+    /// <summary>
+    /// MultiPay.xaml 的交互逻辑
+    /// </summary>
+    public partial class MultiPay : DialogWindow02
+    {
+        MultiPayViewModel MultiPayViewModel;
+        public MultiPay(decimal amount, PayAction action)
+        {
+            InitializeComponent();
+            MultiPayViewModel = new Models.ViewModels.Pay.MultiPayViewModel(amount, action);
+            MultiPayViewModel.PayItems = new ObservableCollection<MultiPayItemViewModel> { 
+                new MultiPayItemViewModel(){ IsFrist=true, IsLast=false},
+                new MultiPayItemViewModel(){ IsFrist=false, IsLast=true},
+            };
+            this.ApplyBindings(this, MultiPayViewModel);
+            this.InitDefualtSettings();
+            this.PreviewKeyDown += MultiPay_PreviewKeyDown;
+            this.Closing += MultiPay_Closing;
+            this.Loaded += MultiPay_Loaded;
+        }
+
+        void MultiPay_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (payItem != null)
+            {
+                switch (payItem.Mode)
+                {
+                    case PayMode.CashPay:
+                        CallAddPay(PayMode.CashPay);
+                        break;
+                    case PayMode.CashCoupon:
+                        CallAddPay(PayMode.CashCoupon);
+                        break;
+                    default:
+                        AddPay(payItem, MultiPayViewModel.WipeZeroAfter);
+                        break;
+                }
+            }
+            else
+            {
+                CallAddPay();
+            }
+        }
+        public MultiPay(decimal amount, PayAction action, PayItem _payItem)
+            : this(amount, action)
+        {
+            this.payItem = _payItem;
+        }
+        private PayItem payItem;
+        void MultiPay_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (MultiPayViewModel.PayItems.Any(o => !o.EnableClose && !o.IsLast && !o.IsFrist) && !MultiPayViewModel.isComplate)
+            {
+                Toast.ShowMessage("支付未完成不允许关闭窗口！", this);
+                e.Cancel = true;
+            }
+        }
+
+        void MultiPay_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Add || e.Key == Key.OemPlus)
+            {
+                Label_MouseDown(null, null);
+                e.Handled = true;
+            }
+        }
+        public void SetPayItem(PayMode mode)
+        {
+            var payItem = MultiPayViewModel.PayItems.LastOrDefault(o => o.PayItem != null && o.PayItem.Mode == mode);
+            if (payItem != null)
+            {
+                RemovePayItem(payItem);
+            }
+
+        }
+
+        public void AddPay(PayItem payItem, decimal amount)
+        {
+            if (payItem != null)
+            {
+                //if (amount <= 0)
+                //{
+                //    Toast.ShowMessage("支付金额应大于0！", this);
+                //    return;
+                //}
+                if (MultiPayViewModel.PayAction == PayAction.Refund || MultiPayViewModel.PayAction == PayAction.Change || MultiPayViewModel.PayAction == PayAction.RefundAll && MultiPayViewModel.Amount < 0)
+                {
+                    amount = -amount;
+                }
+                var cashCoupon = 0m;
+                cashCoupon = MultiPayViewModel.PayItems.Where(o => o.PayItem != null && o.PayItem.Mode == PayMode.CashCoupon).Sum(o => o.Amount);
+                var notCash = MultiPayViewModel.PayItems.Where(o => o.PayItem != null && o.PayItem.Mode != PayMode.CashPay && o.PayItem.Mode != PayMode.CashCoupon).Sum(o => o.Amount);
+                switch (payItem.Mode)
+                {
+                    case PayMode.CashPay:
+                        break;
+                    case PayMode.CashCoupon:
+                        cashCoupon += amount;
+                        break;
+                    default:
+                        notCash += amount;
+                        break;
+                }
+                var needNotCash = (MultiPayViewModel.WipeZeroAfter - cashCoupon);
+                if (notCash > needNotCash && notCash > 0)
+                {
+                    Toast.ShowMessage("非现金收款金额超出！", this);
+                    return;
+                }
+
+                MultiPayViewModel.CurrentPayItem = new MultiPayItemViewModel() { IsFrist = false, PayItem = payItem, IsLast = false, IsSelected = true, Amount = amount, PayName = payItem.Title };
+                MultiPayViewModel.PayItems.Insert(MultiPayViewModel.PayItems.Count - 1, MultiPayViewModel.CurrentPayItem);
+
+                Statistics();
+            }
+        }
+        private void Statistics()
+        {
+            MultiPayViewModel.Received = MultiPayViewModel.PayItems.Sum(o => o.Amount);
+            var shangqian = MultiPayViewModel.WipeZeroAfter - MultiPayViewModel.Received;
+            if ((shangqian >= 0 && MultiPayViewModel.Amount >= 0) || (shangqian < 0 && MultiPayViewModel.Amount < 0))
+            {
+                MultiPayViewModel.StillOwe = shangqian;
+                MultiPayViewModel.Change = 0m;
+            }
+            else
+            {
+                MultiPayViewModel.StillOwe = 0m;
+                MultiPayViewModel.Change = -shangqian;
+            }
+        }
+        private void Label_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            CallAddPay();
+        }
+
+        private void CallAddPay(PayMode? mode = null)
+        {
+            //if (MultiPayViewModel.StillOwe == 0)
+            //{
+            //    Toast.ShowMessage("已全额收款，请注意尚欠金额！", this);
+            //    return;
+            //}
+            if (MultiPayViewModel.CurrentPayItem != null && MultiPayViewModel.CurrentPayItem.HasOperat)
+            {
+                Toast.ShowMessage(MultiPayViewModel.CurrentPayItem.RequestOperatMessage, this);
+                return;
+            }
+            ChoosePayWindow page = new ChoosePayWindow(MultiPayViewModel.PayAction);
+            page.Owner = this;
+            if (mode.HasValue)
+            {
+                page.SetPayItem(mode.Value);
+            }
+            page.ShowDialog();
+            if (!page.isCannel)
+                AddPay(page.PayItem, page.Amount);
+        }
+        private void RemovePay_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            RemovePayItem((sender as Border).DataContext as MultiPayItemViewModel);
+        }
+        private void RemovePayItem(MultiPayItemViewModel model)
+        {
+            if (model.EnableClose)
+            {
+                MultiPayViewModel.PayItems.Remove(model);
+                var item = MultiPayViewModel.PayItems.LastOrDefault(o => !o.IsLast && !o.IsFrist);
+                MultiPayViewModel.CurrentPayItem = item;
+                Statistics();
+            }
+        }
+
+        private void InputCardNoPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.Enter:
+                    ((TextBox)sender).MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                    e.Handled = true;
+                    if (MultiPayViewModel.CurrentPayItem.EnableClose)
+                        MultiPayViewModel.CurrentPayItem.DoPay();
+                    break;
+            }
+        }
+
+        private void txtcardno_Initialized(object sender, EventArgs e)
+        {
+            Task.Factory.StartNew((o) =>
+            {
+                Thread.Sleep(200);
+                Application.Current.Dispatcher.Invoke(new Action(() =>
+                {
+                    ((TextBox)o).Focus();
+                }));
+            }, sender);
+        }
+    }
+
+}

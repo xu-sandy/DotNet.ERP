@@ -1,0 +1,75 @@
+
+--2015-11-10
+CREATE TABLE [dbo].[PayNotifyResult](
+	[Id] [INT] IDENTITY(1,1) PRIMARY key,
+	[ApiCode] [INT] NULL,
+	[PaySN] [VARCHAR](40) NULL,
+	[TradeNo] [VARCHAR](40) NULL,
+	[CashFee] [MONEY] NULL,
+	[CreateDT] [DATETIME] DEFAULT GETDATE()
+)
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'记录ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'PayNotifyResult', @level2type=N'COLUMN',@level2name=N'Id'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'支付方式  14-支付宝13-微信' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'PayNotifyResult', @level2type=N'COLUMN',@level2name=N'ApiCode'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'销售单流水号' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'PayNotifyResult', @level2type=N'COLUMN',@level2name=N'PaySN'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'交易号' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'PayNotifyResult', @level2type=N'COLUMN',@level2name=N'TradeNo'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'支付金额' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'PayNotifyResult', @level2type=N'COLUMN',@level2name=N'CashFee'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'创建时间' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'PayNotifyResult', @level2type=N'COLUMN',@level2name=N'CreateDT'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'用于管理本系统的支付结果信息' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'PayNotifyResult'
+GO
+--2015-11-10
+ALTER TABLE dbo.ProductRecord ADD TradePrice MONEY
+ALTER TABLE dbo.ProductRecord ADD JoinPrice MONEY
+UPDATE ProductRecord SET TradePrice=SysPrice,JoinPrice=SysPrice
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'批发价' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductRecord', @level2type=N'COLUMN',@level2name=N'TradePrice'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'加盟价' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductRecord', @level2type=N'COLUMN',@level2name=N'JoinPrice'
+GO
+--重新执行vw_product
+
+--2015-11-12
+CREATE TABLE [dbo].[ProductTradePrice](
+	[Id] [VARCHAR](40) PRIMARY KEY,
+	[Wholesaler] [VARCHAR](MAX) NOT NULL,
+	[State] [SMALLINT] NOT NULL,
+	[CreateUID] [VARCHAR](40) NOT NULL,
+	[AuditorUID] [VARCHAR](40) NULL,
+	[CreateDT] [DATETIME] NOT NULL,
+	[AuditorDT] [DATETIME] NULL
+)
+CREATE TABLE [dbo].[ProductTradePriceList](
+	[Id] [INT] IDENTITY(1,1) PRIMARY KEY,
+	[TradePriceId] [VARCHAR](40) NOT NULL,
+	[Barcode] [VARCHAR](30) NOT NULL,
+	[BuyPrice] [MONEY] NOT NULL,
+	[SysPrice] [MONEY] NOT NULL,
+	[TradePrice] [MONEY] NOT NULL,
+	[StartDate] [DATETIME] NOT NULL,
+	[EndDate] [DATETIME] NOT NULL,
+	[Memo] [VARCHAR](300) NULL
+)
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'批发价' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductTradePriceList', @level2type=N'COLUMN',@level2name=N'TradePrice'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'有效期，开始' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductTradePriceList', @level2type=N'COLUMN',@level2name=N'StartDate'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'有效期，结束' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductTradePriceList', @level2type=N'COLUMN',@level2name=N'EndDate'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'批发商，多个以逗号隔开' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductTradePrice', @level2type=N'COLUMN',@level2name=N'Wholesaler'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'状态 0-未审批1-已审批2-已失效' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductTradePrice', @level2type=N'COLUMN',@level2name=N'State'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'录入人' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductTradePrice', @level2type=N'COLUMN',@level2name=N'CreateUID'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'审批人' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductTradePrice', @level2type=N'COLUMN',@level2name=N'AuditorUID'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'创建时间' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductTradePrice', @level2type=N'COLUMN',@level2name=N'CreateDT'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'审批时间' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductTradePrice', @level2type=N'COLUMN',@level2name=N'AuditorDT'
+GO
+

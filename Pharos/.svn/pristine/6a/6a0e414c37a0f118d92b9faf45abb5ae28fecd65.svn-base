@@ -1,0 +1,83 @@
+﻿@{
+    ViewBag.Title = "ProductWeighList";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: true, hideDel: true, hideSearch: true));
+}
+@section toolbar
+{
+@*<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick='window.location.href="@Url.Action("ExportOption")?@Html.Raw(Request.QueryString)"'>上一步</a>
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">确定</a>*@
+<span>所选条数: <b style="color:red;font-size:14px;" id="selcount">0</b></span> 
+<div class="default-form">
+    <form id="frm" action="@Url.Action("ExportWeight")" method="post">
+        <input type="hidden" name="selectBarcodes" id="selectBarcodes" />
+        <input type="hidden" name="MaxRecord" id="maxRecord" />
+        <input type="hidden" name="store" id="store" value="@Request["store"]" />
+        <input type="hidden" name="ExportType" id="ExportType" value="@Request["ExportType"]" />
+        <input type="hidden" name="Weigh" id="Weigh" value="@Request["Weigh"]" />
+    </form>
+</div>
+}
+
+<script type="text/javascript">
+    $(function(){
+        window.top.$('#lbsave .l-btn-text').width(80).html('确定');
+        window.top.$('#lbadd').show();
+        $("form").submit(Export);
+    });
+    pharos.manager.geturl = "@Url.Action("FindPageList")?ValuationType=2&@Html.Raw(Request.QueryString)";
+    pharos.manager.pageList = [112, 224];
+    pharos.manager.pageSize = @(Request["MaxRecord"]??"112");
+    pharos.manager.$dg.datagrid({
+        onCheck: function (index, row) {
+            getSelectCount();
+        },
+        onUncheck: function (index, row) {
+            getSelectCount();
+        },
+        onCheckAll: function (rows) {
+            getSelectCount();
+        },
+        onUncheckAll: function (rows) {
+            getSelectCount();
+        }
+    });
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ProductCode', title: '货号', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'CategoryTitle', title: '品类', width: 120 },
+        { field: 'Title', title: '品名', width: 120 },
+        { field: 'Size', title: '规格', width: 100 },
+        { field: 'BrandTitle', title: '品牌', width: 80 },
+        { field: 'SubUnit', title: '单位', width: 40 },
+        { field: 'SysPrice', title: '系统售价', width: 40 }
+    ]];
+    function Export() {
+        if($("#hidadd").val()=="1"){
+            window.location.href="@Url.Action("ExportOption")?@Html.Raw(Request.QueryString)";
+            return false;
+        }
+        var rows = pharos.manager.$dg.datagrid("getChecked");
+        if (!rows || rows.length <= 0) {
+            $.messager.alert("提示", "请先选择记录!"); return false;
+        }
+        var bars = $.map(rows, function (r, i) { return r.Barcode; });
+        $("#selectBarcodes").val(bars.join());
+        var pager = pharos.manager.$dg.datagrid("getPager");
+        $("#maxRecord").val(pager.pagination("options").pageSize);
+        setTimeout(function () {
+            pharos.manager.$dg.datagrid("clearChecked");
+            $("#selectBarcodes").val("");
+        }, 2000);
+        return true;
+    }
+    function getSelectCount() {
+        var rows = pharos.manager.$dg.datagrid("getChecked");
+        $("#selcount").html(rows.length);
+    }
+    function SaveBefore() {
+        alert("ddd")
+        Export();
+        return false;
+    }
+</script>

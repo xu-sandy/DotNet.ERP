@@ -1,0 +1,122 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.HotKeyHelper;
+using System;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using Pharos.Wpf.Extensions;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// PosWindow.xaml 的交互逻辑
+    /// </summary>
+    public partial class PosWindow : Window, IPosDataGrid, IBarcodeControl
+    {
+        public PosWindow(string appInfo, string winIcon)
+        {
+            InitializeComponent();
+            Application.Current.MainWindow = this;
+            this.ApplyHotKeyBindings();
+            Task.Factory.StartNew(() =>
+            {
+                CurrentModel = new PosViewModel(appInfo, winIcon);
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    this.ApplyBindings(this, CurrentModel);
+                }));
+            });
+            CurrentIInputElement = txtBarcode;
+            CurrentGrid = dgOrderList;
+            this.Loaded += PosPage_Loaded;
+            this.PreviewKeyDown += PosWindow_PreviewKeyDown;
+        }
+
+        void PosWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.Down:
+                    if (CurrentGrid.SelectedIndex == -1 && CurrentModel.OrderList.Count > 0)
+                    {
+                        CurrentModel.SetScrollIntoView(0);
+                    }
+                    else if (CurrentModel.OrderList.Count > 0 && CurrentGrid.SelectedIndex < CurrentModel.OrderList.Count)
+                    {
+                        CurrentModel.SetScrollIntoView(CurrentGrid.SelectedIndex + 1);
+                    }
+                    e.Handled = true;
+                    break;
+                case Key.Up:
+                    if (CurrentGrid.SelectedIndex == -1 && CurrentModel.OrderList.Count > 0)
+                    {
+                        CurrentModel.SetScrollIntoView(CurrentModel.OrderList.Count - 1);
+                    }
+                    else if (CurrentModel.OrderList.Count > 0 && CurrentGrid.SelectedIndex > 0)
+                    {
+                        CurrentModel.SetScrollIntoView(CurrentGrid.SelectedIndex - 1);
+                    }
+                    e.Handled = true;
+                    break;
+                case Key.Delete:
+                    if (CurrentGrid.SelectedItem != null)
+                    {
+                        var product = (Product)CurrentGrid.SelectedItem;
+                        product.RemoveCommand.Execute(null);
+                    }
+                    break;
+            }
+        }
+        PosViewModel CurrentModel { get; set; }
+        public DataGrid CurrentGrid { get; set; }
+        public IInputElement CurrentIInputElement { get; set; }
+
+        void PosPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            Keyboard.Focus(txtBarcode);
+        }
+
+
+        private void SaleStatusTextBlock_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            switch (CurrentModel.PosStatus)
+            {
+                case PosStatus.Normal:
+                    CurrentModel.PosStatus = PosStatus.Gift;
+                    break;
+                case PosStatus.Gift:
+                    CurrentModel.PosStatus = PosStatus.Normal;
+                    break;
+            }
+        }
+
+        private void PrintStatusTextBlock_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            switch (CurrentModel.PrintStatus)
+            {
+                case PrintStatus.Open:
+                    CurrentModel.PrintStatus = PrintStatus.Close;
+                    break;
+                case PrintStatus.Close:
+                    CurrentModel.PrintStatus = PrintStatus.Open;
+                    break;
+            }
+        }
+
+        private void txtBarcode_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var ctrl = sender as TextBox;
+            if (e.Key == Key.Enter)
+            {
+                ctrl.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                Keyboard.Focus(ctrl);
+            }
+        }
+
+
+
+    }
+}

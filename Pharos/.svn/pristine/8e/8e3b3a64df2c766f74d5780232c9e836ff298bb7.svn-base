@@ -1,0 +1,38 @@
+﻿@{
+    ViewBag.Title = "ExchangeInfo";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增兑换单", delText: "移除", hideDel: true, hideAdd: true, hideSearch: true));
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("IntegralRecordPageList")";
+    pharos.manager.editurl = "@Url.Action("IntegralRecordDetails")";
+    pharos.manager.columns = [[
+        { field: 'Id', hidden: true, width: 60 },
+        { field: 'Member', title: '会员', width: 100 },
+        { field: 'OrderSn', title: '交易单号', width: 80 },
+        { field: 'Intergal', title: '返赠数值', width: 80 },
+        { field: 'Unit', title: '计量单位', width: 80 },
+        { field: 'ReturnType', title: '返赠时间', width: 80 },
+        { field: 'Adapter', title: '返赠项目', width: 80 },
+        { field: 'Condition', title: '条件', width: 160 },
+        { field: 'Memo', title: '备注', width: 130 },
+        { field: 'User', title: '记录人', width: 60 },
+        { field: 'CreateDT', title: '记录时间', width: 100 },
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache());
+    };
+    pharos.manager.editItem = function (id) {
+        var rows = this.$dg.datagrid('getRows');
+        for (var i = 0; i < rows.length; i++) {
+            if (rows[i].Id == id) {
+                if (rows[i].ReturnType == "即时") {
+                    return false;
+                }
+            }
+        }
+        this.Id = id;
+        openWin({ 'title': '分期详情', 'width': 800, 'height': 500, hideSave: true, 'url': this.editurlNocache() });
+    }
+</script>

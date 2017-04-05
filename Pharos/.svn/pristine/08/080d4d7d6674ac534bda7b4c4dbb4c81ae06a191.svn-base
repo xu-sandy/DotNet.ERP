@@ -1,0 +1,88 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.SyncService.Client.LocalDataServices
+{
+    public class SyncStoreUserInfoSyncLocalService : ISyncDataService
+    {
+        public IEnumerable<ISyncDataObject> GetSyncObjects()
+        {
+            try
+            {
+                using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+                {
+                    var result = db.SysStoreUserInfos.Select(o => new SyncDataObject() { SyncItemId = o.SyncItemId, SyncItemVersion = o.SyncItemVersion }).ToList();
+                    return result;
+                }
+            }
+            catch
+            {
+                return new List<ISyncDataObject>();
+            }
+        }
+
+        public ISyncDataObject GetItem(Guid guid)
+        {
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                return db.SysStoreUserInfos.Select(o => new SingleSyncDataObject<SysStoreUserInfo>() { Enity = o, SyncItemId = o.SyncItemId, SyncItemVersion = o.SyncItemVersion }).FirstOrDefault();
+            }
+        }
+
+        public void CreateItem(ISyncDataObject data, Guid guid)
+        {
+            var temp = data as SingleSyncDataObject<SysStoreUserInfo>;
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                db.SysStoreUserInfos.Add(temp.Enity);
+                db.SaveChanges();
+            }
+        }
+
+        public byte[] UpdateItem(Guid guid, ISyncDataObject mergedData)
+        {
+            var temp = mergedData as SingleSyncDataObject<SysStoreUserInfo>;
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var dbEntity = db.SysStoreUserInfos.FirstOrDefault(o => o.SyncItemId == guid);
+                temp.InitDbEntity(dbEntity);
+                db.SaveChanges();
+                dbEntity = db.SysStoreUserInfos.FirstOrDefault(o => o.SyncItemId == guid);
+                return dbEntity.SyncItemVersion;
+            }
+        }
+
+        public void DeleteItem(Guid syncItemId)
+        {
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var dbEntity = db.SysStoreUserInfos.FirstOrDefault(o => o.SyncItemId == syncItemId);
+                db.SysStoreUserInfos.Remove(dbEntity);
+                db.SaveChanges();
+            }
+        }
+        /// <summary>
+        /// 冲突合并
+        /// </summary>
+        /// <param name="syncDataObject1">本地数据</param>
+        /// <param name="syncDataObject2">远程数据</param>
+        /// <returns>合并冲突对象</returns>
+        public ISyncDataObject Merge(ISyncDataObject local, ISyncDataObject remote)
+        {
+            var tempLocal = local as SingleSyncDataObject<SysStoreUserInfo>;
+            var tempRemote = remote as SingleSyncDataObject<SysStoreUserInfo>;
+
+            if (tempLocal.Enity.LoginDT != tempRemote.Enity.LoginDT) 
+            {
+                tempRemote.Enity.LoginDT = tempLocal.Enity.LoginDT;
+                tempRemote.Enity.SyncItemVersion = tempLocal.Enity.SyncItemVersion; 
+            }
+            return tempRemote;
+        }
+    }
+}

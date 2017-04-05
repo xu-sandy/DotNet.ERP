@@ -1,0 +1,117 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using System;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    public class PayCashModel : BaseObservable
+    {
+
+
+        private decimal receivable;
+        /// <summary>
+        /// 应收
+        /// </summary>
+        public decimal Receivable
+        {
+            get
+            {
+
+                return receivable;
+            }
+            set
+            {
+                receivable = value;
+                OnPropertyChanged("Receivable");
+            }
+        }
+
+
+        private decimal receipt = 0;
+        /// <summary>
+        /// 收款
+        /// </summary>
+        public decimal Receipt
+        {
+            get { return receipt; }
+            set
+            {
+                receipt = value;
+                var tempChange = receipt - receivable;
+                if (tempChange >= 0)
+                {
+                    Change = tempChange;
+                }
+                else
+                {
+                    Change = 0;
+                }
+                OnPropertyChanged("Receipt");
+            }
+        }
+        private string receiptStr = "";
+        public string ReceiptStr
+        {
+            get { return receiptStr; }
+            set
+            {
+                receiptStr = value;
+                try
+                {
+                    Receipt = Convert.ToDecimal(receiptStr);
+                }
+                catch { }
+                OnPropertyChanged("ReceiptStr");
+            }
+        }
+
+        private decimal change;
+        /// <summary>
+        /// 找零
+        /// </summary>
+        public decimal Change
+        {
+            get { return change; }
+            set
+            {
+                change = value;
+                OnPropertyChanged("Change");
+            }
+        }
+
+
+        public string SalesmanUid { get; set; }
+
+
+        string salesmanUserCode = string.Empty;
+        public string SalesmanUserCode
+        {
+            get { return salesmanUserCode; }
+            set
+            {
+
+                salesmanUserCode = value.Trim();
+                VerifySaleMan();
+                OnPropertyChanged("SalesmanUserCode");
+            }
+        }
+
+        public bool VerifySaleMan()
+        {
+            if (!string.IsNullOrEmpty(SalesmanUserCode))
+            {
+                var result = SysStoreUserInfoLocalService.IsSaleMan(SalesmanUserCode, PosMachineInfo.Infos.StoreId);
+                if (string.IsNullOrEmpty(result) && !string.IsNullOrEmpty(SalesmanUserCode))
+                {
+                    Toast.DoShow("输入导购员无效！");
+                    SalesmanUid = string.Empty;
+                    salesmanUserCode = string.Empty;
+                    OnPropertyChanged("SalesmanUserCode");
+                    return false;
+                }
+                SalesmanUid = result;
+            }
+            return true;
+        }
+    }
+}

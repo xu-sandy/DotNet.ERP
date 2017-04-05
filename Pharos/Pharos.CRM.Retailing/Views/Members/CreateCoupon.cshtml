@@ -1,0 +1,1017 @@
+﻿@model MakingCouponCard
+@{
+    ViewBag.Title = "CreateCoupon";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id);
+        @Html.HiddenFor(o => o.BatchSN);
+        @Html.HiddenFor(o => o.CompanyId);
+        @Html.HiddenFor(o => o.CreateDT);
+        @Html.HiddenFor(o => o.CreateUID);
+        <span style="display:none">@Html.TextBox("tod", Model.Id == 0 ? DateTime.Now.ToString("yyyy-MM-dd") : Model.CreateDT.ToString("yyyy-MM-dd"), new { @class = "easyui-datebox" })</span>
+
+        <div class="content">
+            <table class="table-form" width="100%" height="117px">
+                <tr>
+                    <td class="name">类别：</td>
+                    <td class="input">
+                        @Html.DropDownListFor(o => o.CouponType, ViewBag.types as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo',editable:false" })
+                    </td>
+                    <td class="name">形式：</td>
+                    <td class="input">
+                        @Html.DropDownListFor(o => o.CouponFrom, ViewBag.forms as List<SelectListItem>, new { @class = "easyui-combobox", id = "CouponFrom", data_options = "validType:'requiredForCombo',onChange:CouponFormChange ,editable:false" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">新增数量：</td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.MakeNumber, new { @class = "easyui-validatebox", id = "MakeNumber", data_options = "required:true,validType:'lessThanMaxVal(this.value,5000)' ", @title = "新增数量为0或空表示不限" })
+                        <input type="hidden" id="makeNum" />
+                    </td>
+                    <td class="name">有效期：</td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.ExpiryStart, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", id = "StartDate", data_options = "required:true, validType:'greaterEqualDate[\"#tod\"]',invalidMessage:'开始日期必须大于等于创建日期'", autocomplete = "off" }) -
+                        @Html.TextBoxFor(o => o.ExpiryEnd, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", id = "EndDate", data_options = "validType:'greaterEqualDate[\"#StartDate\"]',invalidMessage:'结束日期必须大于等于开始日期' ", autocomplete = "off", @title = "结束日期为空表示永久" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">领取期限：</td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.ReceiveStart, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", id = "RecStart", data_options = "required:true,validType:'betweenDate[\"#tod\",\"#EndDate\"]',invalidMessage:'开始日期必须介于创建日期与有效期截止日期之间'", autocomplete = "off" }) -
+                        @Html.TextBoxFor(o => o.ReceiveEnd, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", id = "RecEnd", data_options = "validType:'betweenDate[\"#RecStart\",\"#EndDate\"]',invalidMessage:'结束日期必须介于领取日期开始日期与有效期截止日期之间' ", autocomplete = "off", @title = "结束日期为空表示永久" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">适用门店：</td>
+                    <td class="input choose" colspan="3">
+                        @Html.CheckBoxListFor(o => o.StoreIds, ViewBag.shops as List<SelectListItem>, new { data_options = "required:true,novalidate:true,missingMessage:'必勾选一项'", @class = "easyui-validatebox", id = "store" }, 7)
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">适用商品：</td>
+                    <td class="input" colspan="3">
+                        @Html.RadioButtonFor(o => o.ProductTypes, "-1", new { id = "proType_1", @checked = "checked" }) <label for="proType_1">全部商品</label>
+                        @Html.RadioButtonFor(o => o.ProductTypes, "2", new { id = "proType_2", style = "margin-left:15px;" }) <label for="proType_2">指定品类</label>
+                        @Html.RadioButtonFor(o => o.ProductTypes, "3", new { id = "proType_3", style = "margin-left:15px;" }) <label for="proType_3">具体商品</label>
+                        @Html.RadioButtonFor(o => o.ProductTypes, "4", new { id = "proType_4", style = "margin-left:15px;" }) <label for="proType_4">指定品牌</label>
+                        <input name="ProductCode" type="hidden" />
+                    </td>
+                </tr>
+            </table>
+            <div id="win" class="easyui-dialog" data-options="title:'选择品类',cache:false,modal:true,width:800,height:450,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+            <div id="ptype_2" style="margin-top:10px;">
+                @*<a href="#" class="easyui-linkbutton" onclick="SelectType('gridType')" style="margin:5px 0px;">添加指定品类</a>*@
+                <table id="gridType"></table>
+            </div>
+            <div id="ptype_3" style="margin-top:10px;">
+                <a href="#" class="easyui-linkbutton" onclick="selectProduct('gridProduct')" style="margin:5px 0px;">添加具体商品</a>
+                <table id="gridProduct"></table>
+            </div>
+            <div id="ptype_4" style="margin-top:10px;">
+                <table id="gridBrand"></table>
+            </div>
+            <p style="margin-top:30px;">
+                说明：<br />
+                1)形式选择“纸质”，新增数量必填，且必须是小于5000的正整数；<br />
+                &nbsp;&nbsp;&nbsp;形式选择“电子”，新增数量为“0”或空表示无限，如果数量有填值，必须是小于5000的非负整数；<br />
+                2)如果有效期的截止时间不为空，则领取期限的截止日期也不能为空；<br />
+                &nbsp;&nbsp;&nbsp;领取期限的开始日期必须介于创建日期与有效期截止日期之间；<br />
+                &nbsp;&nbsp;&nbsp;领取期限的结束日期必须介于领取日期开始日期与有效期截止日期之间；<br />
+                3)适用商品，选择具体商品时，录入货号或条码后自动填充相关商品信息；<br />
+                4)适用商品，选择指定品牌时，录入品牌名称或简拼后自动填充相关品牌信息；<br />
+            </p>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        //适用门店点击事件
+        $("[name='StoreIds']").click(function () {
+            if ($(this).val() == "-1") {
+                var chk = this.checked;
+                $("[name='StoreIds']:not(:first)").each(function (i, r) {
+                    r.checked = chk;
+                })
+            } else {
+                $("[name='StoreIds']:first")[0].checked = $("[name='StoreIds']:not(:first):checked").size() == $("[name='StoreIds']:not(:first)").size();
+            }
+            storeRequired();
+        });
+        storeRequired();
+
+        //品类、品牌数据源
+        pharos.dropdown['parenttypes'] = @Html.Raw(ViewBag.parenttypes)
+        pharos.dropdown['brands'] =@Html.Raw(ViewBag.brands)
+        //品类网格
+        $("#gridType").datagrid({
+            showFooter: false,
+            border: true,
+            rownumbers: true,
+            fit: false,
+            fitColumns: true,
+            pagination: false,
+            singleSelect: true,
+            url: 'LoadTypeList',
+            queryParams: { Id: '@Request["Id"]', type: 2 },
+            onLoadSuccess: appendItemType,
+            //onLoadError: function () { alert("品类加载错误"); },
+            columns: [[
+                { field: 'Id', hidden: true, editor: { type: 'textbox' } },
+                { field: 'StrId', hidden: true, editor: { type: 'textbox' } },
+                { field: 'CategorySN', hidden: true, editor: { type: 'textbox' }, width: 120, title: '类别' },
+                { field: 'CategoryGrade', hidden: true, editor: { type: 'textbox' }, width: 120, title: '层级' },
+                { field: 'BrandSN', hidden: true, editor: { type: 'textbox' }, width: 120, title: '品牌ID' },
+                { field: 'BigCategoryTitle', editor: { type: 'combobox', options: { required: true, data: pharos.dropdown['parenttypes'], onSelect: bigTypeSelect1, editable: false } }, width: 120, title: '大类' },
+                { field: 'MidCategoryTitle', editor: { type: 'combobox', options: { required: true, onSelect: midTypeSelect1, editable: false } }, width: 150, title: '中类' },
+                { field: 'SubCategoryTitle', editor: { type: 'combobox', options: { required: false, onSelect: childTypeSelect1, editable: false } }, width: 150, title: '子类' },
+                { field: 'BrandTitle', hidden: true, editor: { type: 'combobox', options: { data: pharos.dropdown['brands'], onSelect: brandSelect1 } }, width: 120, title: '品牌' },
+                { field: 'StockNums', hidden: true, editor: { type: 'textbox', options: { disabled: true } }, width: 120, title: '库存' },
+                { field: 'Editor', formatter: operationType, width: 50, title: '操作' }
+            ]]
+        });
+
+        //具体商品网格
+        $("#gridProduct").datagrid({
+            showFooter: false,
+            border: true,
+            rownumbers: true,
+            fit: false,
+            fitColumns: true,
+            pagination: false,
+            singleSelect: true,
+            url: 'LoadTypeList',
+            queryParams: { Id: '@Request["Id"]', type: 3 },
+            onLoadSuccess: appendItemProc,
+            //onLoadError: function () { alert("具体商品加载错误"); },
+            columns: [[
+                { field: 'ProductCode', hidden: true, editor: { type: 'textbox', options: { disabled: true } }, width: 150, title: '货号' },
+                { field: 'Barcode', editor: { type: 'combobox', options: { prompt: '请输入条码...', required: true, mode: 'remote', valueField: 'barcode', textField: 'title', loader: comboload, onChange: comboSelect1 } }, width: 150, title: '条码' },
+                { field: 'Title', editor: { type: 'textbox', options: { disabled: true } }, width: 150, title: '品名' },
+                { field: 'CategoryTitle', editor: { type: 'textbox', options: { disabled: true } }, width: 150, title: '品类' },
+                { field: 'SubUnit', editor: { type: 'textbox', options: { disabled: true } }, width: 60, title: '单位' },
+                { field: 'SysPrice', editor: { type: 'textbox', options: { disabled: true } }, width: 80, title: '系统售价' },
+                { field: 'StockNums', editor: { type: 'textbox', options: { disabled: true } }, width: 80, title: '库存量' },
+                { field: 'Editor', formatter: operationProc, width: 50, title: '操作' }
+            ]]
+        });
+
+        //品牌网格
+        $("#gridBrand").datagrid({
+            showFooter: false,
+            border: true,
+            rownumbers: true,
+            fit: false,
+            fitColumns: true,
+            pagination: false,
+            singleSelect: true,
+            url: 'LoadTypeList',
+            queryParams: { Id: '@Request["Id"]', type: 4 },
+            onLoadSuccess: appendItemBrand,
+            //onLoadError: function () { alert("品牌加载错误"); },
+            columns: [[
+                { field: 'Id', hidden: true, editor: { type: 'textbox', options: { disabled: true } }, width: 50, title: 'ID' },
+                { field: 'BrandSN', hidden: true, editor: { type: 'textbox', options: { disabled: true } }, width: 50, title: '编号' },
+                { field: 'ClassifyTitle', editor: { type: 'textbox', options: { disabled: true } }, width: 150, title: '分类' },
+                { field: 'Title', editor: { type: 'combobox', options: { prompt: '请输入名称或简拼...', required: true, mode: 'remote', valueField: 'title', textField: 'title', loader: comboloadBrand, onChange: comboBrandSelect1 } }, width: 150, title: '品牌名称' },
+                { field: 'JianPin', editor: { type: 'textbox', options: { disabled: true } }, width: 150, title: '简拼' },
+                { field: 'Num', editor: { type: 'textbox', options: { disabled: true } }, width: 150, title: '档案商品量' },
+                { field: 'Editor', formatter: operationBrand, width: 50, title: '操作' }
+            ]]
+        });
+
+        //选择不同适用商品，显示不同的网格列表
+        SelectedType();
+        $("[name='ProductTypes']").click(function () {
+            SelectedType();
+        });
+
+        //形式为纸质(213)，新增数量必填，且是1-5000之间的整数；形式为电子(211)，新增数量为0-5000，0或空表示无限
+        if ($("#CouponFrom").val() == "" || $("#CouponFrom").val() == 211) {
+            CouponFormChange("");
+        }
+        else {
+            var makeNum = $("#MakeNumber").val();
+            $("#makeNum").val(makeNum);
+        }
+
+        //如果有效期的截止时间不为空，则领取期限的截止日期不能为空
+        $("[name='ExpiryEnd']").blur(function () {
+            var expValue = $("[name='ExpiryEnd']").val();
+            if (expValue == "") {
+                $("[name='ReceiveEnd']").validatebox({ required: false });
+            }
+            else {
+                $("[name='ReceiveEnd']").validatebox({ required: true });
+            }
+        });
+    });
+
+    //适用门店必填校验
+    if ($("[name='StoreIds']:first").attr("checked")) {
+        $("[name='StoreIds']:not(:first)").attr("checked", true);
+    }
+
+    function storeRequired() {
+        if ($("[name='StoreIds']:checked").size() <= 0)
+            $("#store").validatebox("enableValidation");
+        else
+            $("#store").validatebox("disableValidation");
+    }
+
+    //根据所选的适用商品不用，显示不同的网格列表
+    function SelectedType() {
+        var selectedType = $("[name='ProductTypes']:checked").val();
+        if (selectedType == -1) {
+            document.getElementById("ptype_2").style.display = "none";
+            document.getElementById("ptype_3").style.display = "none";
+            document.getElementById("ptype_4").style.display = "none";
+        }
+        else if (selectedType == 2) {
+            document.getElementById("ptype_2").style.display = "block";
+            document.getElementById("ptype_3").style.display = "none";
+            document.getElementById("ptype_4").style.display = "none";
+            $("#gridType").datagrid("resize");
+        }
+        else if (selectedType == 3) {
+            document.getElementById("ptype_2").style.display = "none";
+            document.getElementById("ptype_3").style.display = "block";
+            document.getElementById("ptype_4").style.display = "none";
+            $("#gridProduct").datagrid("resize");
+        }
+        else if (selectedType == 4) {
+            document.getElementById("ptype_2").style.display = "none";
+            document.getElementById("ptype_3").style.display = "none";
+            document.getElementById("ptype_4").style.display = "block";
+            $("#gridBrand").datagrid("resize");
+        }
+    }
+
+    //形式为纸质(213)，新增数量必填，且是1-5000之间的整数；形式为电子(211)，新增数量为0，表示无限
+    function CouponFormChange(fromVal) {
+        if (fromVal == 213) {
+            var mNum = $("#makeNum").val();
+            $("#MakeNumber").val(mNum);
+            $("#MakeNumber").validatebox({ required: true });
+            $("#MakeNumber").validatebox("options").validType = 'lessThanMaxVal(this.value,5000)';
+            //$("#MakeNumber").validatebox("enableValidation");
+        }
+        else if (fromVal == 211) {
+            $("#MakeNumber").validatebox({ required: false });
+            $("#MakeNumber").validatebox("options").validType = 'lessThanMaxVal_Nonnegative(this.value,5000)';
+            //$("#MakeNumber").validatebox("disableValidation");
+            $("#MakeNumber").val(0);
+        }
+        else if (fromVal == "") {
+            $("#MakeNumber").val("");
+            $("#MakeNumber").validatebox({ required: false });
+            $("#MakeNumber").validatebox("options").validType = 'lessThanMaxVal_Nonnegative(this.value,5000)';
+            //$("#MakeNumber").validatebox("disableValidation");
+        }
+    }
+
+    var editIndex = undefined, clickIndex = undefined, opadd = false;
+    var $dgt;
+    var first = true;
+    var $dgType = $("#gridType"), $dgPro = $("#gridProduct"), $dgBrand = $("#gridBrand");
+
+    var editTypeIndex = undefined, editProcNoIndex = undefined, editTypeNoIndex = undefined,
+        clickProcIndex = undefined, clickProcNoIndex = undefined, opaddPro = false,
+        opaddType = false, opaddProNO = false, opaddTypeNo = false, comboRows = [], comboProcNoRows = [];
+    var editProcIndex = undefined, proBarcodes = [];
+    var opaddBrand = false, editBrandIndex = undefined, proBrands = [];
+
+    //品类网格【操作】列
+    function operationType(value, row, index) {
+        if (opadd) {
+            opadd = false;
+            return "<a href='javascript:void(0)' onclick='appendItemType()'>添加</a>";
+        } else if (row.SubCategoryTitle != undefined) {
+            return "<a href='javascript:void(0)' onclick=\"removeItemType('" + row.Id + "')\">删除</a>";
+        }
+    }
+
+    //品类网格【操作】列 - 添加
+    function appendItemType() {
+        if (endClickEditing() && endTypeEditing()) {
+
+            $dgType = $dgType ? $dgType : $("#gridType");
+            opadd = true;
+            $dgType.datagrid('appendRow', {
+                Id: "",
+                CategorySN: "",
+                CategoryGrade: "",
+                BrandSN: 0,
+                BigCategoryTitle: "",
+                MidCategoryTitle: "",
+                SubCategoryTitle: "",
+                BrandTitle: "",
+                StockNums: "",
+                Editor: ""
+            })
+            editIndex = $dgType.datagrid('getRows').length - 1;
+            $dgType.datagrid('selectRow', editIndex)
+                .datagrid('beginEdit', editIndex);
+            if (!first) {
+                if (editIndex != 0)
+                    clickIndex = editIndex - 1;
+                //numChange('a', '2');
+            }
+            changeValue();
+            first = false;
+        }
+    }
+
+    //品类网格【操作】列-删除
+    function removeItemType(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dgType.datagrid("selectRecord", id);
+            var row = $dgType.datagrid("getSelected")
+            var index = $dgType.datagrid("getRowIndex", row);
+            //proBarcodes.remove(row.Barcode);
+            $dgType.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+
+    //有的没的
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dgType.datagrid('validateRow', clickIndex)) {
+            $dgType.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            changeValue();
+            return true;
+        } else {
+            return false;
+        }
+    }
+    function maxId(type) {
+        //var $dg = type == 1 ? $dgType : type == 2 ? $dgTypeNo : $dgt;
+        var $dg = type == 1 ? $dgType : $dgt;
+        var rows = $dg.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? row.Id : 0;
+        });
+        var maxId = Math.max.apply(null, ids);
+        if (maxId == -Infinity) maxId = 0;
+        return maxId + 1;
+    }
+
+    function endTypeEditing() {
+        if (editTypeIndex == undefined) { return true }
+        if ($dgType.datagrid('validateRow', editTypeIndex)) {
+            var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'SubCategoryTitle' });
+            var edm = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+            var edp = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BigCategoryTitle' });
+            var edb = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BrandTitle' });
+            if (ed) {
+                var brandTitle = $(edb.target).combobox('getText');
+                var brandId = $(edb.target).combobox('getValue');
+                var subTitle = $(ed.target).combobox('getText');
+                var subId = $(ed.target).combobox('getValue');
+                var midTitle = $(edm.target).combobox('getText');
+                var midId = $(edm.target).combobox('getValue');
+                var bigTitle = $(edp.target).combobox('getText');
+                var bigId = $(edp.target).combobox('getValue');
+                var rows = $dgType.datagrid("getRows");
+                brandId = brandId ? brandId : "0";
+                midId = midId ? midId : "0";
+                var categorySN = subId ? subId : midId;
+                var titles = categorySN + '~' + brandId;
+                var alltitles = $.map(rows, function (item) {
+                    return item.CategorySN + '~' + item.BrandSN;
+                })
+                if (alltitles.indexOf(titles) != -1) {
+                    $.messager.alert("提示", "该类别信息已存在!", "warning");
+                    return false;
+                }
+                $(edp.target).combobox('setValue', bigTitle);//改变文本
+                $(ed.target).combobox('setValue', subTitle);//改变文本
+                $(edm.target).combobox('setValue', midTitle);//改变文本
+                $(edb.target).combobox('setValue', brandTitle);//改变文本
+                var edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'CategorySN' });
+                $(edid.target).textbox("setValue", categorySN);
+                edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BrandSN' });
+                $(edid.target).textbox("setValue", brandId);
+                edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'StrId' });
+                $(edid.target).textbox("setValue", titles);
+                edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'Id' });
+                $(edid.target).textbox("setValue", maxId(1));
+            }
+            $dgType.datagrid('endEdit', editTypeIndex);
+            editTypeIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+
+    function changeValue() {
+        editTypeIndex = $dgType.datagrid('getRows').length - 1;
+        if (editTypeIndex < 0) editTypeIndex = undefined;
+        
+        editProcIndex = $dgPro.datagrid('getRows').length - 1;
+        if (editProcIndex < 0) editProcIndex = undefined;
+
+        editBrandIndex = $dgBrand.datagrid('getRows').length - 1;
+        if (editBrandIndex < 0) editBrandIndex = undefined;
+    }
+
+    //开启品类网格验证
+    function enabledTypeGrid() {
+        if (editTypeIndex != undefined) {
+            var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BigCategoryTitle' });
+            if (ed) {
+                $(ed.target).combobox('enableValidation');
+                ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+                $(ed.target).combobox('enableValidation');
+                ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BrandTitle' });
+                $(ed.target).combobox('enableValidation');
+            }
+        }
+    }
+    //关闭品类网格验证
+    function disabedTypeGrid() {
+        if (editTypeIndex != undefined) {
+            var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BigCategoryTitle' });
+            if (ed) {
+                $(ed.target).combobox('disableValidation');
+                ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+                $(ed.target).combobox('disableValidation');
+                ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BrandTitle' });
+                $(ed.target).combobox('disableValidation');
+            }
+        }
+    }
+
+    //打开选择品类窗口
+    function SelectType(dg) {
+        $dgt = $("#" + dg);
+        var url = "@Url.Action("SelectType", "Product")?t=" + Math.random();
+        var rows = $dgt.datagrid("getRows");
+        var cds = $.map(rows, function (row) {
+            return row.StrId;
+        }).join(",");
+        url += "&cds=" + cds;
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $('#win').dialog({ title: "选择品类" });
+        $("#win").dialog({ content: cont, buttons: btntypes }).dialog("open");
+    }
+
+    var btntypes = [{
+        text: '添加所选系列',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            var data = $dgt.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            var names = $.map(data.rows, function (item) { return item.StrId; });
+            $.each(chks, function (idx, row) {
+                if (names.indexOf(row.Id) == -1) {
+                    $dgt.datagrid('insertRow',
+                    {
+                        index: lastIndex,
+                        row: {
+                            CategorySN: row.CategorySN, MidCategoryTitle: row.MidCategoryTitle, SubCategoryTitle: row.SubCategoryTitle, BigCategoryTitle: row.BigCategoryTitle, BrandTitle: row.BrandTitle, BrandSN: row.BrandSN,
+                            StockNums: row.StockNums, StrId: row.CategorySN + '~' + row.BrandSN, Id: maxId()
+                        }
+                    });
+                    lastIndex++;
+                }
+            });
+            changeValue();
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+
+    //品类-大类下拉框
+    function bigTypeSelect1(record) {
+        $dgType = $dgType ? $dgType : $("#gridType");
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+        if (ed) {
+            $(ed.target).combobox("clear").combobox('reload', "@Url.Action("ChildCategory", "ProductType")?emptyTitle=&psn=" + record.value);
+        }
+    }
+    //品类-中类下拉框
+    function midTypeSelect1(record) {
+        $dgType = $dgType ? $dgType : $("#gridType");
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'SubCategoryTitle' });
+        if (ed) {
+            $(ed.target).combobox("clear").combobox('reload', "@Url.Action("ChildCategory", "ProductType")?emptyTitle=&psn=" + record.value);
+            ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'CategoryGrade' });
+            $(ed.target).textbox("setValue", 2);
+            var edcsn = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'CategorySN' });
+            $(edcsn.target).textbox("setValue", record.value);
+        }
+    }
+    //品类-子类下拉框
+    function childTypeSelect1(record) {
+        $dgType = $dgType ? $dgType : $("#gridType");
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'CategoryGrade' });
+        if (ed) {
+            $(ed.target).textbox("setValue", 3);
+            var edcsn = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'CategorySN' });
+            $(edcsn.target).textbox("setValue", record.value);
+        }
+    }
+    //品类-品牌下拉框
+    function brandSelect1(record) {
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'SubCategoryTitle' });
+        var subCate = $(ed.target).combobox('getValue');
+        ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'StockNums' });
+        if (ed) {
+            $.post("@Url.Action("BrandSelect", "Product")", { SubCategorySN: subCate, BrandSN: record.value, t: Math.random() }, function (data) {
+                if (data && data.length > 0)
+                    $(ed.target).textbox('setValue', data[0].StockNums);
+            }, "json");
+        }
+    }
+
+    //具体商品网格操作列
+    function operationProc(value, row, index) {
+        if (opaddPro) {
+            opaddPro = false;
+            return "<a href='javascript:void(0)' onclick='appendItemProc()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItemProc('" + row.Id + "')\">删除</a>";
+        }
+    }
+
+    //具体商品网格操作列-添加
+    function appendItemProc() {
+        $dgPro = $dgPro ? $dgPro : $("#gridProduct");
+        //enabledProcGrid();
+        if (endProcEditing()) {
+            opaddPro = true;
+            $dgPro.datagrid('appendRow', { Id: guidGenerator() });
+            editProcIndex = $dgPro.datagrid('getRows').length - 1;
+            $dgPro.datagrid('selectRow', editProcIndex)
+                .datagrid('beginEdit', editProcIndex);
+            changeValue();
+            //disabedProcGrid();
+        }
+    }
+
+    //具体商品网格操作列-删除
+    function removeItemProc(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dgPro.datagrid("selectRecord", id);
+            var row = $dgPro.datagrid("getSelected")
+            var index = $dgPro.datagrid("getRowIndex", row);
+            proBarcodes.remove(row.Barcode);
+            $dgPro.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+
+    //有的没的
+    function endProcEditing() {
+        if (editProcIndex == undefined) { return true }
+        if ($dgPro.datagrid('validateRow', editProcIndex)) {
+            var ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'Barcode' });
+            if (ed) {
+                var vl = $(ed.target).combobox('getValue');
+                var data = $dgPro.datagrid("getData");
+                if (isExists(data.rows, vl)) {
+                    $.messager.alert("提示", "该条形码已存在", "warning", function () {
+                        $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                    });
+                    return false;
+                }
+                if (!vl) return false;
+                if (!isExists(comboRows, vl)) {
+                    $.messager.alert("提示", "该条形码不存在", "warning", function () {
+                        $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                    });
+                    return false;
+                }
+                proBarcodes.add(vl);
+            }
+            $dgPro.datagrid('endEdit', editProcIndex);
+            editProcIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+
+    //判断条码是否已存在
+    function isExists(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.Barcode == cd) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+
+    //开启具体商品网格验证
+    function enabledProcGrid() {
+        if (editProcIndex != undefined) {
+            var ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'Barcode' });
+            if (!ed) return;
+            $(ed.target).combobox('enableValidation');
+        }
+    }
+
+    //关闭具体商品网格验证
+    function disabedProcGrid() {
+        if (editProcIndex != undefined) {
+            var ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'Barcode' });
+            if (!ed) return;
+            $(ed.target).combobox('disableValidation');
+        }
+    }
+
+    //具体商品网格输入条码下拉提示
+    var comboload = function (param, success, error) {
+        var q = param.q || "";
+        if (q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url: "@Url.Action("GetProductInput", "Product")",
+            type: "post",
+            data: {
+                //传值，还是JSON数据搜索
+                searchName: q,
+                storeId: $.map($("[name='StoreIds']:checked"), function (r) { return $(r).val(); }).join()
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function (item) {
+                    return { barcode: item.Barcode, title: item.Title };
+                });
+                //执行loader的success方法
+                success(items);
+                var val = $combo.combobox("getValue");
+                if (val) {
+                    comboSelect1(val);
+                }
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+
+    //具体商品网格-选择商品
+    function comboSelect1(newValue, oldValue) {
+        var obj = getRow(newValue);
+        if (!obj) return;
+        var ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'ProductCode' });
+        $(ed.target).textbox('setValue', obj.ProductCode);
+        ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'Title' });
+        $(ed.target).textbox('setValue', obj.Title);
+        ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'SubUnit' });
+        $(ed.target).textbox('setValue', obj.SubUnit);
+        ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'SysPrice' });
+        $(ed.target).textbox('setValue', obj.SysPrice);
+        ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'CategoryTitle' });
+        $(ed.target).textbox('setValue', obj.CategoryTitle);
+        ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'StockNums' });
+        $(ed.target).textbox('setValue', obj.StockNums);
+    }
+
+    //获取具体商品网格的一个对象
+    function getRow(cd) {
+        var obj = null;
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == cd) {
+                obj = row; return;
+            }
+        });
+        return obj;
+    }
+
+    //打开添加具体商品窗口
+    function selectProduct(dg) {
+        $dgp = $("#" + dg);
+        var url = "@Url.Action("SelectProduct", "Product")?t=" + Math.random();
+        var rows = $dgp.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Barcode;
+        }).join(",");
+        url += "&cds=" + ids;
+        url += "&store=" + $.map($("[name='StoreIds']:checked"), function (r) { return $(r).val(); }).join()
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $('#win').dialog({ title: "选择具体商品" });
+        $("#win").dialog({ content: cont, buttons: btnprods }).dialog("open");
+    }
+    var btnprods = [{
+        text: '添加所选产品',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            var data = $dgp.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            $.each(chks, function (idx, row) {
+                if (!isExists(data.rows, row.Barcode)) {
+                    $dgp.datagrid('insertRow',
+                    {
+                        index: lastIndex,
+                        row: {
+                            ProductCode: row.ProductCode, Barcode: row.Barcode, CategoryTitle: row.CategoryTitle, SubUnit: row.SubUnit, StockNums: row.StockNums,
+                            SysPrice: row.SysPrice, BrandTitle: row.BrandTitle, CategorySN: row.CategorySN, Title: row.Title
+                        }
+                    });
+                    if ($dgp.attr("id") == "gridProduct")
+                        proBarcodes.add(row.Barcode);
+                    else
+                        pronoBarcodes.add(row.Barcode);
+                    lastIndex++;
+                }
+            });
+            changeValue();
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+
+    //品牌网格操作列
+    function operationBrand(value, row, index) {
+        if (opaddBrand) {
+            opaddBrand = false;
+            return "<a href='javascript:void(0)' onclick='appendItemBrand()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItemBrand('" + row.Id + "')\">删除</a>";
+        }
+    }
+
+    //品牌网格操作列-添加
+    function appendItemBrand() {
+        $dgBrand = $dgBrand ? $dgBrand : $("#gridBrand");
+        //enabledBrandGrid();
+        if (endBrandEditing()) {
+            opaddBrand = true;
+            $dgBrand.datagrid('appendRow', { Id: guidGenerator() });
+            editBrandIndex = $dgBrand.datagrid('getRows').length - 1;
+            $dgBrand.datagrid('selectRow', editBrandIndex)
+                .datagrid('beginEdit', editBrandIndex);
+            changeValue();
+            //disabedBrandGrid();
+        }
+    }
+
+    //品牌网格操作列-删除
+    function removeItemBrand(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dgBrand.datagrid("selectRecord", id);
+            var row = $dgBrand.datagrid("getSelected")
+            var index = $dgBrand.datagrid("getRowIndex", row);
+
+            $dgBrand.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+
+    //有的没的
+    function endBrandEditing() {
+        if (editBrandIndex == undefined) { return true }
+        if ($dgBrand.datagrid('validateRow', editBrandIndex)) {
+            var ed = $dgBrand.datagrid('getEditor', { index: editBrandIndex, field: 'Title' });
+            if (ed) {
+                var vl = $(ed.target).combobox('getValue');
+                var data = $dgBrand.datagrid("getData");
+                if (isExistsBrand(data.rows, vl)) {
+                    $.messager.alert("提示", "该品牌已存在", "warning", function () {
+                        $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                    });
+                    return false;
+                }
+                if (!vl) return false;
+                if (!isExistsBrand(comboRows, vl)) {
+                    $.messager.alert("提示", "该品牌不存在", "warning", function () {
+                        $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                    });
+                    return false;
+                }
+                proBrands.add(vl);
+            }
+            $dgBrand.datagrid('endEdit', editBrandIndex);
+            editBrandIndex = undefined;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    //判断品牌是否已存在
+    function isExistsBrand(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.Title == cd) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+
+    //开启品牌网格验证
+    function enabledBrandGrid() {
+        if (editBrandIndex != undefined) {
+            var ed = $dgBrand.datagrid('getEditor', { index: editBrandIndex, field: 'Title' });
+            if (!ed) return;
+            $(ed.target).combobox('enableValidation');
+        }
+    }
+
+    //关闭品牌网格验证
+    function disabedBrandGrid() {
+        if (editBrandIndex != undefined) {
+            var ed = $dgBrand.datagrid('getEditor', { index: editBrandIndex, field: 'Title' });
+            if (!ed) return;
+            $(ed.target).combobox('disableValidation');
+        }
+    }
+
+    //品牌网格输入品牌名称下拉提示
+    var comboloadBrand = function (param, success, error) {
+        var q = param.q || "";
+        if (q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url: "@Url.Action("GetBrandInput")",
+            type: "post",
+            data: {
+                //传值，还是JSON数据搜索
+                searchName: q,
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function (item) {
+                    return { title: item.Title, jianpin: item.JianPin };
+                });
+                //执行loader的success方法
+                success(items);
+                var val = $combo.combobox("getValue");
+                if (val) {
+                    comboBrandSelect1(val);
+                }
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+
+    //品牌网格-选择品牌
+    function comboBrandSelect1(newValue, oldValue) {
+        var obj = getBrandRow(newValue);
+        if (!obj) return;
+        var ed = $dgBrand.datagrid('getEditor', { index: editBrandIndex, field: 'Id' });
+        $(ed.target).textbox('setValue', obj.Id);
+        ed = $dgBrand.datagrid('getEditor', { index: editBrandIndex, field: 'BrandSN' });
+        $(ed.target).textbox('setValue', obj.BrandSN);
+        ed = $dgBrand.datagrid('getEditor', { index: editBrandIndex, field: 'ClassifyTitle' });
+        $(ed.target).textbox('setValue', obj.ClassifyTitle);
+        ed = $dgBrand.datagrid('getEditor', { index: editBrandIndex, field: 'Title' });
+        $(ed.target).textbox('setValue', obj.Title);
+        ed = $dgBrand.datagrid('getEditor', { index: editBrandIndex, field: 'JianPin' });
+        $(ed.target).textbox('setValue', obj.JianPin);
+        ed = $dgBrand.datagrid('getEditor', { index: editBrandIndex, field: 'Num' });
+        $(ed.target).textbox('setValue', obj.Num);
+    }
+
+    //获取品牌网格的一个对象
+    function getBrandRow(cd) {
+        var obj = null;
+        $.each(comboRows, function (i, row) {
+            if (row.Title == cd) {
+                obj = row; return;
+            }
+        });
+        return obj;
+    }
+
+    //打开添加具体商品窗口
+    function selectBrand(dg) {
+        $dgp = $("#" + dg);
+        var url = "@Url.Action("SelectProduct", "Product")?t=" + Math.random();
+        var rows = $dgp.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Barcode;
+        }).join(",");
+        url += "&cds=" + ids;
+        url += "&store=" + $.map($("[name='StoreIds']:checked"), function (r) { return $(r).val(); }).join()
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $('#win').dialog({ title: "选择具体商品" });
+        $("#win").dialog({ content: cont, buttons: btnprods }).dialog("open");
+    }
+    var btnprods = [{
+        text: '添加所选产品',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            var data = $dgp.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            $.each(chks, function (idx, row) {
+                if (!isExists(data.rows, row.Barcode)) {
+                    $dgp.datagrid('insertRow',
+                    {
+                        index: lastIndex,
+                        row: {
+                            ProductCode: row.ProductCode, Barcode: row.Barcode, CategoryTitle: row.CategoryTitle, SubUnit: row.SubUnit, StockNums: row.StockNums,
+                            SysPrice: row.SysPrice, BrandTitle: row.BrandTitle, CategorySN: row.CategorySN, Title: row.Title
+                        }
+                    });
+                    if ($dgp.attr("id") == "gridProduct")
+                        proBarcodes.add(row.Barcode);
+                    else
+                        pronoBarcodes.add(row.Barcode);
+                    lastIndex++;
+                }
+            });
+            changeValue();
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+
+
+    //保存之前获取值
+    function SaveBefore() {
+        var selectVal = $("input[name=ProductTypes]:checked").val();
+        var vals = "";
+        switch (selectVal) {
+            case "2":
+                var rows = $dgType.datagrid("getRows");
+                vals += rows[0].CategorySN;
+                for (var i = 1; i < rows.length; i++) {
+                    if (rows[i].CategorySN != "" && rows[i].CategorySN != undefined) {
+                        vals += ("," + rows[i].CategorySN);
+                    }
+                }
+                break;
+            case "3":
+                var rows = $dgPro.datagrid("getRows");
+                vals += rows[0].Barcode;
+                for (var i = 1; i < rows.length; i++) {
+                    if (rows[i].Barcode != "" && rows[i].Barcode != undefined) {
+                        vals += ("," + rows[i].Barcode)
+                    }
+                }
+                break;
+            case "4":
+                var rows = $dgBrand.datagrid("getRows");
+                vals += rows[0].BrandSN;
+                for (var i = 1; i < rows.length; i++) {
+                    if (rows[i].BrandSN != "" && rows[i].BrandSN != undefined) {
+                        vals += ("," + rows[i].BrandSN);
+                    }
+                }
+                break;
+        }
+        if (selectVal != "-1" && (vals == "" || vals == "undefined")) {
+            $.messager.alert("提示", "请选择适用商品！", "info"); 
+            return false;
+        }
+        $("input[name='ProductCode']").val(vals);
+        disabedTypeGrid();
+        disabedProcGrid();
+        disabedBrandGrid();
+        //$(this).form("enableValidation").form('validate');
+        return true;
+    }
+</script>

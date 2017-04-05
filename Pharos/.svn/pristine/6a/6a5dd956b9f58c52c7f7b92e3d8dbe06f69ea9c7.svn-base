@@ -1,0 +1,25 @@
+﻿using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class NoticeService : BaseGeneralService<Pharos.Logic.Entity.Notice, EFDbContext>
+    {
+
+        public static IEnumerable<Announcement> Announcements(string storeId, string machineSn, int token)
+        {
+            return CurrentRepository.Entities.Where(o => ("," + o.StoreId + ",").Contains("," + storeId + ",") && o.CompanyId == token)
+                .Select(o => new Announcement()
+                {
+                    Content = o.NoticeContent,
+                    Theme = o.Theme,
+                    ImgUrl = o.Url
+                }).ToList();
+        }
+    }
+}

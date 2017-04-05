@@ -1,0 +1,57 @@
+﻿using Pharos.Logic.ApiData.Pos.Sale;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class ProductRecordService : BaseGeneralService<VwProduct, EFDbContext>
+    {
+        public static ProductInfo GetProductRecod(string barcode)
+        {
+            var query = (from a in CurrentRepository.Entities
+                         where a.Barcode == barcode
+                         select a).ToList().Select(a => new ProductInfo()
+                         {
+                             Brand = a.BrandTitle,
+                             Category = a.CategoryTitle,
+                             EnableEditNum = true,
+                             EnableEditPrice = ((a.Favorable ?? 1) == 1 ? true : false),
+                             ProductCode = a.ProductCode,
+                             Size = a.Size,
+                             SystemPrice = a.SysPrice,
+                             Title = a.Title,
+                             Unit = a.SubUnit,
+                             ProductType = (a.Nature == 0 ? ProductType.Normal : a.Nature == 1 ? ProductType.Combination : ProductType.Split)
+                         }).FirstOrDefault();
+
+            return query;
+        }
+
+        internal static ProductInfo GetProductRecodByProductCode(string productCode)
+        {
+            var query = (from a in CurrentRepository.Entities
+                         where a.ProductCode == productCode
+                         select a).ToList().Select(a => new ProductInfo()
+                         {
+                             Brand = a.BrandTitle,
+                             Category = a.CategoryTitle,
+                             EnableEditNum = true,
+                             EnableEditPrice = ((a.Favorable ?? 1) == 1 ? true : false),
+                             ProductCode = a.ProductCode,
+                             Size = a.Size,
+                             SystemPrice = a.SysPrice,
+                             Title = a.Title,
+                             Unit = a.SubUnit,
+                             ProductType = (a.Nature == 0 ? ProductType.Normal : a.Nature == 1 ? ProductType.Combination : ProductType.Split)
+                         }).FirstOrDefault();
+
+            return query;
+        }
+    }
+}

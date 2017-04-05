@@ -1,0 +1,62 @@
+﻿@model Pharos.CRM.Retailing.Models.CompanyAuthorize
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using(Html.BeginForm())
+    {
+        @Html.Hidden("hidadd","1")
+        <div class="content">
+            <table class="table-form" width="100%" height="320px">
+                <tr>
+                    <td class="name">商户号：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.CID)</td>
+                </tr>
+                <tr>
+                    <td class="name">入驻方式：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.Way, new List<SelectListItem>() { new SelectListItem() { Text = "在线", Value = "1" }, new SelectListItem() { Text = "独立", Value = "2" } })</td>
+                </tr>
+                <tr>
+                    <td class="name">客户名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">用户数量：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.UserNum, new { @class = "easyui-numberbox", data_options = "precision:0" })</td>
+                </tr>
+                <tr>
+                    <td class="name">门店数量：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.StoreNum, new { @class = "easyui-numberbox", data_options = "precision:0" })</td>
+                </tr>
+                <tr>
+                    <td class="name">分店专属后台：</td>
+                    <td class="input">@Html.CheckBox("StoreProper",Model.StoreProper=="Y",new { @class = "easyui-switchbutton",value="Y" })</td>
+                </tr>
+                <tr>
+                    <td class="name">POS次屏显示：</td>
+                    <td class="input">@Html.CheckBox("PosMinorDisp", Model.PosMinorDisp == "Y", new { @class = "easyui-switchbutton", value = "Y" })</td>
+                </tr>
+                <tr>
+                    <td class="name">APP手机端：</td>
+                    <td class="input">@Html.CheckBox("AppProper", Model.PosMinorDisp == "Y", new { @class = "easyui-switchbutton", value = "Y" })</td>
+                </tr>
+                <tr>
+                    <td class="name">开通版本：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.OpenVersionId, new List<SelectListItem>() { new SelectListItem() { Text = "零售版", Value = "1" }, new SelectListItem() { Text = "餐饮版", Value = "2" }, new SelectListItem() { Text = "鞋服版", Value = "3" } }, new { @class = "easyui-combobox", data_options = "required:true" })</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <a class="easyui-linkbutton cus4 linkbtn btn" href="#" onclick="$('form').submit()">发送申请</a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    function Refresh() {
+        window.location.href = '@Url.Action("Activate")';
+    }
+</script>

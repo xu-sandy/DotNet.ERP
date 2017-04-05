@@ -1,0 +1,127 @@
+﻿using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows.Input;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using System.Threading.Tasks;
+using Pharos.POS.Retailing.ChildWin;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class CashPayViewModel : BaseViewModel
+    {
+        public CashPayViewModel(decimal _amount, PayAction _mode)
+        {
+            Amount = _amount;
+            Mode = _mode;
+        }
+
+        private PayAction mode;
+
+        public PayAction Mode
+        {
+            get { return mode; }
+            set { mode = value; this.OnPropertyChanged(o => o.Mode); }
+        }
+
+        /// <summary>
+        /// 订单金额
+        /// </summary>
+        private decimal amount;
+
+        public decimal Amount
+        {
+            get { return amount; }
+            set { amount = value; this.OnPropertyChanged(o => o.Amount); }
+        }
+        /// <summary>
+        /// 现金收款
+        /// </summary>
+        private decimal cash;
+
+        public decimal Cash
+        {
+            get { return cash; }
+            set
+            {
+                cash = value;
+                this.OnPropertyChanged(o => o.Cash);
+                Change = Cash - Amount;
+            }
+        }
+        /// <summary>
+        /// 找零
+        /// </summary>
+        private decimal change;
+
+        public decimal Change
+        {
+            get { return change; }
+            set { change = value; this.OnPropertyChanged(o => o.Change); }
+        }
+        /// <summary>
+        /// 现金支付确认事件
+        /// </summary>
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (Cash >= Amount)
+                    {
+                        Task.Factory.StartNew(() =>
+                        {
+                            var _machinesInfo = Global.MachineSettings.MachineInformations;
+                            List<PayWay> payWay = new List<PayWay>();
+                            PayWay _payWay = new PayWay()
+                            {
+                                Amount = Amount,
+                                Receive = Amount,
+                                Change = Change,
+                                Type = PayMode.CashPay
+                            };
+                            payWay.Add(_payWay);
+                            ApiPayParams _params = new ApiPayParams()
+                            {
+                                StoreId = _machinesInfo.StoreId,
+                                MachineSn = _machinesInfo.MachineSn,
+                                CompanyToken = _machinesInfo.CompanyToken,
+                                Mode = Mode,
+                                Receivable = Amount,
+                                Payway = payWay
+                            };
+                            var result = ApiManager.Post<ApiPayParams, ApiRetrunResult<object>>(@"api/Pay", _params);
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                if (result.Code == "200")
+                                {
+                                    ZhiFuWanCheng page = new ZhiFuWanCheng(Amount);
+                                    page.Owner = Application.Current.MainWindow;
+
+                                    CurrentWindow.Hide();
+                                    page.ShowDialog();
+                                    CurrentWindow.Close();
+                                }
+                                else
+                                {
+                                    Toast.ShowMessage(result.Message, CurrentWindow);
+                                }
+                            }));
+                        });
+                    }
+                    else
+                    {
+                        Toast.ShowMessage("现金收款不得低于订单应收金额！", CurrentWindow);
+                    }
+                });
+            }
+        }
+
+    }
+}

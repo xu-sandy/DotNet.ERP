@@ -1,0 +1,65 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Payment
+{
+    public class PaymentFactory
+    {
+        static PaymentFactory()
+        {
+            try
+            {
+                PayDict = new Dictionary<PayMode, dynamic>();
+                Register(new CashPay());
+                Register(new UnionPay());
+                Register(new WeixinPay());
+                Register(new ZhifubaoPay());
+                Register(new MultiplyPay());
+                Register(new CashCouponPay());
+                Register(new StoredValueCardPay());
+                Register(new Weixin2Pay());
+                Register(new Zhifubao2Pay());
+            }
+            catch (Exception ex)
+            {
+                Console.Write(ex.Message);
+            }
+        }
+        static Dictionary<PayMode, dynamic> PayDict;
+        public static IPay Factory(PayMode mode, IDictionary<PayMode, PayDetails> details, decimal receivable, Action<IPay> callBack = null)
+        {
+            IPay pay = Instance(PayDict[mode]);
+            if (mode == PayMode.Multiply)
+            {
+                var tempPay = pay as MultiplyPay;
+                tempPay.AllPayDetails = details;
+            }
+            else
+            {
+                pay.PayDetails = details.FirstOrDefault().Value;
+            }
+            if (callBack != null)
+                pay.CallBack = callBack;
+            return pay;
+        }
+        public static void Register<T>(T pay) where T : BasePay, new()
+        {
+            PayDict.Add(pay.Mode, pay);
+        }
+
+        private static T Instance<T>(T pay) where T : BasePay, new()
+        {
+            return new T();
+        }
+        public static IEnumerable<IPay> GetPaysStatus(string storeId, int token)
+        {
+            foreach (IPay item in PayDict.Values)
+            {
+                item.RefreshStatus(storeId, token);
+            }
+            return PayDict.Values.Where(o => !(o is MultiplyPay)).Select(o => o as IPay);
+        }
+    }
+}

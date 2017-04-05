@@ -1,0 +1,90 @@
+﻿using Newtonsoft.Json;
+using Pharos.Infrastructure.Data.Redis;
+using Pharos.Logic.BLL;
+using Pharos.Logic.Entity;
+using Pharos.Logic.InstalmentDomain.QuanChengTaoInstalment;
+using Pharos.Logic.InstalmentDomain.QuanChengTaoInstalment.InstalmentItems;
+using Pharos.Logic.InstalmentDomain.QuanChengTaoInstalment.InstalmentParameters;
+using Pharos.Logic.MemberDomain.Interfaces;
+using Pharos.ObjectModels.Events;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.MemberDomain.QuanChengTaoProviders.SubscribeMemberEvents
+{
+    public class SaleOrderEventHandler : IEventHandler
+    {
+        public void Handler()
+        {
+            RedisManager.Subscribe("OrderCompleted", (channel, msg) =>
+            {
+                var orderCompleteEvent = JsonConvert.DeserializeObject<OrderCompletedEvent>(msg);
+                if (string.IsNullOrEmpty(orderCompleteEvent.MemberId)) return;
+                var member = MembersService.GetMember(orderCompleteEvent.MemberId, orderCompleteEvent.CompanyId);
+
+                var ruleProviders = new QuanChengTaoIntegralRuleFactory(orderCompleteEvent.CompanyId).CreateRuleProviders(new DefaultIntegralRuleProviderLoader());
+                var flower = new QuanChengTaoIntegralRuleFlowProvider(orderCompleteEvent.CompanyId);
+                var integralKV = new Dictionary<IIntegralRule, decimal>();
+                foreach (var ruleProvider in ruleProviders)
+                {
+                    var integrals = flower.DoFlow(orderCompleteEvent, ruleProvider, member);
+                    foreach (var item in integrals)
+                    {
+                        integralKV.Add(item.Key, item.Value);
+                    }
+                }
+                var createdt = DateTime.Now;
+                //record 
+                List<IntegralRecords> records = new List<IntegralRecords>();
+                foreach (var item in integralKV)
+                {
+                    var integralRecords = new IntegralRecords()
+                    {
+                        CreateDt = createdt,
+                        Id = Guid.NewGuid().ToString("N"),
+                        Integral = item.Value,
+                        IntegralRuleId = Convert.ToInt32(item.Key.Id),
+                        Source = orderCompleteEvent.OrderSn,
+                        SourceType = 1,
+                        CompanyId = orderCompleteEvent.CompanyId
+                    };
+                    records.Add(integralRecords);
+                }
+                if (records.Count == 0) return;
+                //分期
+                QuanChengTaoInstalmentRuleProvider instalmentRuleProvider = new QuanChengTaoInstalmentRuleProvider();
+                var integralsForInstalment = records.Select(o => new QuanChengTaoIntegralInstalment() { IntegralRecordId = o.Id, CompanyId = o.CompanyId, Integral = o.Integral, IntegralRuleId = o.IntegralRuleId });
+                var instalments = instalmentRuleProvider.Run(integralsForInstalment);
+                var instalmentRecords = new List<InstalmentRecord>();
+                foreach (var item in instalments)
+                {
+                    var instalmentR = item as QuanChengTaoInstalmentItem;
+                    var instalmentRecord = new InstalmentRecord()
+                    {
+                        IntegralRecordId = instalmentR.IntegralRecordId,
+                        CompanyId = orderCompleteEvent.CompanyId,
+                        CreateDT = createdt,
+                        InstalmentDT = instalmentR.InstalmentDT,
+                        InstalmentRuleId = Convert.ToInt32(item.InstalmentRuleId),
+                        Integral = item.InstalmentNumber
+                    };
+                    instalmentRecords.Add(instalmentRecord);
+                }
+                if (instalmentRecords.Count == 0)
+                {
+                    member.UsableIntegral += records.Sum(o => o.Integral);
+                    BaseService<IntegralRecords>.AddRange(records);
+                }
+                else
+                {
+                    var noInstalments = records.Where(o => !instalmentRecords.Any(p => p.IntegralRecordId == o.Id)).ToList();
+                    member.UsableIntegral += noInstalments.Sum(o => o.Integral);
+                    BaseService<IntegralRecords>.AddRange(records, false);
+                    BaseService<InstalmentRecord>.AddRange(instalmentRecords);
+                }
+            });
+        }
+    }
+}

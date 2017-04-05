@@ -1,0 +1,60 @@
+﻿<Window xmlns:Retailing="clr-namespace:Pharos.POS.Retailing"  x:Class="Pharos.POS.Retailing.ChildPages.ZhiFuBaoScan"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowState="Normal" WindowStyle="None"
+        AllowsTransparency="True"  WindowStartupLocation="CenterScreen"
+        Background="Transparent" BorderBrush="Transparent"  Style="{DynamicResource SkinWindowStyle}"
+        Name="mainWindow" Icon="..\Images\JieSuan\2.png"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" 
+        Title="支付宝扫码支付" Height="600" Width="800">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\ZhiFuBaoScanStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="300"></RowDefinition>
+            <RowDefinition Height="40"></RowDefinition>
+            <RowDefinition Height="150"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+            <Grid Name="info">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="200"></ColumnDefinition>
+                    <ColumnDefinition Width="150"></ColumnDefinition>
+                    <ColumnDefinition Width="80"></ColumnDefinition>
+                    <ColumnDefinition Width="150"></ColumnDefinition>
+                    <ColumnDefinition Width="80"></ColumnDefinition>
+                    <ColumnDefinition Width="150"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource txtTitle}" Grid.Column="0">应付金额：</TextBlock>
+                <TextBlock Style="{StaticResource txtJiner}" Text="{Binding ThePayDetails.MoneyNeedPay,StringFormat='{}{0:C}'}" Grid.Column="1"></TextBlock>
+                <TextBlock Style="{StaticResource txtTitle}" Grid.Column="2">收款：</TextBlock>
+
+                <TextBlock Style="{StaticResource txtJiner}" Text="{Binding ThePayDetails.MoneyNeedPay,StringFormat='{}{0:C}'}" Grid.Column="3"></TextBlock>
+            </Grid>
+        </Border>
+        <Border Visibility="Hidden" Grid.Row="1" DockPanel.Dock="Top" Margin="30 10 30 20"  Width="280"  Height="280"
+           Name="webBrowserPlacementTarget" BorderBrush="Transparent" BorderThickness="0"  />
+        <Image Grid.Row="1" Width="280"  Height="280" Name="scanImg"></Image>
+        <TextBlock VerticalAlignment="Center" Grid.Row="2" TextAlignment="Center" FontSize="20" Foreground="#888">请使用您的手机进入支付宝钱包完成付款</TextBlock>
+        <Border  Grid.Row="3" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="220"></ColumnDefinition>
+                    <ColumnDefinition Width="220"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Button TabIndex="2" Grid.Row="3"  Grid.Column="2" Style="{StaticResource BtnBackStyle}" Click="Button_Click">完成支付</Button>
+                <Button TabIndex="1" Grid.Row="3" Grid.Column="1" Style="{StaticResource BtnBackStyle}" Background="#817C7C"  Click="btnCannel_Click">取消</Button>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

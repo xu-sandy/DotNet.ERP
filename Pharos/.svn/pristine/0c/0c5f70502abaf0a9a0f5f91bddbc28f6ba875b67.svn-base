@@ -1,0 +1,27 @@
+﻿using Microsoft.Synchronization;
+using Pharos.SyncService;
+using System;
+namespace Pharos.Sync.Client
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            var providerNameA = new PosLocalDbSyncProvider(1, "10");
+            var providerNameB = new RemoteProviderProxy(1, "10", "WSHttpBinding_PosServerDbSyncService");
+            SyncOrchestrator agent = new SyncOrchestrator();
+            agent.Direction = SyncDirectionOrder.Download;
+            agent.LocalProvider = providerNameA;
+            agent.RemoteProvider = providerNameB;
+            var stats = agent.Synchronize();
+            // Display the SyncOperationStatistics
+            Console.WriteLine("Download Applied:\t {0}", stats.DownloadChangesApplied);
+            Console.WriteLine("Download Failed:\t {0}", stats.DownloadChangesFailed);
+            Console.WriteLine("Download Total:\t\t {0}", stats.DownloadChangesTotal);
+            Console.WriteLine("Upload Total:\t\t {0}", stats.UploadChangesApplied);
+            Console.WriteLine("Upload Total:\t\t {0}", stats.UploadChangesFailed);
+            Console.WriteLine("Upload Total:\t\t {0}", stats.UploadChangesTotal);
+            Console.ReadLine();
+        }
+    }
+}

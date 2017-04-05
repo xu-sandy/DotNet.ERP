@@ -1,0 +1,31 @@
+﻿using Pharos.POS.Retailing.Models.SalesPromotionRules.Discount;
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Data;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// FreebieDiscountPage.xaml 的交互逻辑
+    /// </summary>
+    public partial class FreebieDiscountPage : Window
+    {
+        public FreebieDiscountPage()
+        {
+            InitializeComponent();
+            lvGiftGrid.ItemsSource = BaseDiscount.PendingGift.ToList();
+            lvGiftGrid.Items.GroupDescriptions.Clear();
+            lvGiftGrid.Items.GroupDescriptions.Add(new PropertyGroupDescription("Id"));
+        }
+
+
+
+        public void RefreshView()
+        {
+            lvGiftGrid.ItemsSource = BaseDiscount.PendingGift.ToList();
+            ICollectionView view = CollectionViewSource.GetDefaultView(lvGiftGrid.ItemsSource);
+            view.Refresh();
+        }
+    }
+}

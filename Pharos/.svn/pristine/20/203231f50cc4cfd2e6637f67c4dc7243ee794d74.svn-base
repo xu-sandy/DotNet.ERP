@@ -1,0 +1,721 @@
+﻿@model Pharos.Logic.OMS.Models.PayStaticModel
+@{
+    ViewBag.Title = "Pay";
+    Layout = null;
+    //取得商户当前系统时间
+    var sdf = DateTime.Now.ToString("yyyyMMddHHmmss");
+    //商户订单号
+    String orderId = sdf + "0001";
+    //商户订单日期
+    DateTime orderDate = DateTime.Now;
+}
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0">
+    <title></title>
+</head>
+<body>
+    <form id="form1" name="form1" action="SubmitPay" method="post">
+        <input type="hidden" id="mch_id" name="mch_id" value="@Model.mch_id" />
+        <input type="hidden" id="store_id" name="store_id" value="@Model.store_id" />
+        @*<table>
+                <tr>
+                    <td>请输入金额：</td>
+                    <td>
+                        <input type="text" id="total_amount" name="total_amount" value="0.01" /><span style="color:red">*</span>
+                    </td>
+                    <td>
+                        <input type="submit" value="提交" />
+                    </td>
+                </tr>
+            </table>*@
+        <div class="page">
+            <div class="pay-confirm">
+
+                <div class="pay-form">
+                    <dl class="row clearfix">
+                        <dt>消费总金额(元)</dt>
+                        <dd class="text-right">
+                            <input type="text" id="total_amount" name="total_amount" placeholder="请询问服务员后输入" />
+                        </dd>
+                    </dl>
+                    <dl class="row clearfix">
+                        <dt>选填备注</dt>
+                        <dd class="text-right">
+                            <input type="text" id="goods_desc" name="goods_desc" placeholder="选填备注" />
+                        </dd>
+                    </dl>
+                    <dl class="row clearfix">
+                        <dt>收款方</dt>
+                        <dd class="text-right">民生支付测试商户</dd>
+                    </dl>
+                </div>
+                <div>
+                </div>
+                <div class="btn-area">
+                    <input id="paybutton" type="submit" value="和店员已确认，立即买单" class="btn btn-01 btn-block">
+                </div>
+            </div>
+        </div>
+
+        @*<table>
+                <tr>
+                    <td>商户门店编号：</td>
+                    <td>
+                        <input type="text" id="store_id" name="store_id" value="@Model.store_id" /><span style="color:red">*</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>终端编号：</td>
+                    <td>
+                        <input type="text" id="device_id" name="device_id" value="001" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>商户支付订单号：</td>
+                    <td><input type="text" id="out_trade_no" name="out_trade_no" value="@orderId" /><span style="color:red">*</span></td>
+                </tr>
+                <tr>
+                    <td>交易日期：</td>
+                    <td>
+                        <input type="text" id="create_date" name="create_date" value="@orderDate" /><span style="color:red">*</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>交易金额：</td>
+                    <td>
+                        <input type="text" id="total_amount" name="total_amount" value="0.01" /><span style="color:red">*以元为单位</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>支付结果后台通知地址：</td>
+                    <td>
+                        <input type="text" id="pay_notify_url" name="pay_notify_url" value="http://192.168.10.122:8018/pay/TradeNotify" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>商品名称：</td>
+                    <td>
+                        <input type="text" id="goods_name" name="goods_name" value="测试商品" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>商品描述：</td>
+                    <td>
+                        <input type="text" id="goods_desc" name="goods_desc" value="" />
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <input type="submit" value="button"/>
+                    </td>
+                </tr>
+            </table>*@
+    </form>
+
+    <style type="text/css">
+        /*
+        for all---------------------------*/
+        html, body, div, dl, dt, dd, ul, ol, li, h1, h2, h3, h4, h5, h6, rem, strong, sub, sup, pre, form, label, input, select, textarea, p, th, td {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #f5f5f5;
+            background-size: contain;
+            margin: 0;
+            overflow-x: hidden;
+            color: #333;
+            font: normal 1rem/1.5rem microsoft yahei, Arial, Verdana, Helvetica, sans-serif;
+            height: 100%;
+        }
+
+        a {
+            color: #333;
+            text-decoration: none;
+        }
+
+            a:hover {
+                color: #f60;
+                text-decoration: none;
+            }
+
+        .clear {
+            background: none;
+            border: 0;
+            clear: both;
+            display: block;
+            float: none;
+            font-size: 0;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            visibility: hidden;
+            width: 0;
+            height: 0;
+        }
+
+        .clearfix:after {
+            clear: both;
+            content: ' ';
+            display: block;
+            font-size: 0;
+            line-height: 0;
+            visibility: hidden;
+            width: 0;
+            height: 0;
+        }
+
+        .clearfix {
+            display: inline-block;
+        }
+
+        * html .clearfix {
+            height: 1%;
+        }
+
+        .clearfix {
+            display: block;
+        }
+
+        ul, li {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        img {
+            height: auto;
+            max-width: 100%;
+        }
+
+        .be-relative {
+            position: relative;
+            z-index: 1;
+        }
+
+        .pull-left {
+            float: left;
+            display: inline;
+        }
+
+        .pull-right {
+            float: right;
+            display: inline;
+        }
+
+
+        /*
+        for font---------------------------*/
+        .bold {
+            font-weight: bold;
+        }
+
+        .italic {
+            font-style: italic;
+        }
+
+        .line-through {
+            color: #999;
+            text-decoration: line-through;
+        }
+
+        .cred {
+            color: #f00 !important;
+        }
+
+        .cgreen {
+            color: #2e9206 !important;
+        }
+
+        .cblue {
+            color: #0070af !important;
+        }
+
+        .corange {
+            color: #f60 !important;
+        }
+
+        .cgray {
+            color: #999 !important;
+        }
+
+        .cwhite {
+            color: #fff !important;
+        }
+
+        .cblack {
+            color: #333 !important;
+        }
+
+        a.link-01 {
+            color: #0299ff;
+        }
+
+            a.link-01:hover {
+                color: #f60;
+            }
+
+        a.link-02 {
+            color: #f90;
+        }
+
+            a.link-02:hover {
+                color: #f40;
+            }
+
+        a.link-03 {
+            color: #55b50d;
+        }
+
+            a.link-03:hover {
+                color: #f60;
+            }
+
+        a.underline:hover {
+            text-decoration: underline;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        /*
+        for padding margin------------------------------------------------*/
+        .pad-0 {
+            padding: 0 !important;
+        }
+
+        .pad-5 {
+            padding: 5px !important;
+        }
+
+        .pad-t-5 {
+            padding-top: 5px !important;
+        }
+
+        .pad-b-5 {
+            padding-bottom: 5px !important;
+        }
+
+        .pad-l-5 {
+            padding-left: 5px !important;
+        }
+
+        .pad-r-5 {
+            padding-right: 5px !important;
+        }
+
+        .pad-10 {
+            padding: 10px !important;
+        }
+
+        .pad-t-10 {
+            padding-top: 10px !important;
+        }
+
+        .pad-b-10 {
+            padding-bottom: 10px !important;
+        }
+
+        .pad-l-10 {
+            padding-left: 10px !important;
+        }
+
+        .pad-r-10 {
+            padding-right: 10px !important;
+        }
+
+        .pad-20 {
+            padding: 20px !important;
+        }
+
+        .pad-t-20 {
+            padding-top: 20px !important;
+        }
+
+        .pad-b-20 {
+            padding-bottom: 20px !important;
+        }
+
+        .pad-l-20 {
+            padding-left: 20px !important;
+        }
+
+        .pad-r-20 {
+            padding-right: 20px !important;
+        }
+
+        .mar-0 {
+            margin: 0 !important;
+        }
+
+        .mar-5 {
+            margin: 5px !important;
+        }
+
+        .mar-t-5 {
+            margin-top: 5px !important;
+        }
+
+        .mar-b-5 {
+            margin-bottom: 5px !important;
+        }
+
+        .mar-l-5 {
+            margin-left: 5px !important;
+        }
+
+        .mar-r-5 {
+            margin-right: 5px !important;
+        }
+
+        .mar-t-10 {
+            margin-top: 10px !important;
+        }
+
+        .mar-b-10 {
+            margin-bottom: 10px !important;
+        }
+
+        .mar-l-10 {
+            margin-left: 10px !important;
+        }
+
+        .mar-r-10 {
+            margin-right: 10px !important;
+        }
+
+        .mar-t-20 {
+            margin-top: 20px !important;
+        }
+
+        .mar-b-20 {
+            margin-bottom: 20px !important;
+        }
+
+        .mar-l-20 {
+            margin-left: 20px !important;
+        }
+
+        .mar-r-20 {
+            margin-right: 20px !important;
+        }
+
+
+        /*for btn-----------------------------------------------*/
+        .btn {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            margin-bottom: 0;
+            font-size: 1.2rem;
+            line-height: 1.5;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            cursor: pointer;
+            background-image: none;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            -o-user-select: none;
+            user-select: none;
+        }
+
+            .btn:focus {
+                outline: thin dotted #333;
+                outline: 5px auto -webkit-focus-ring-color;
+                outline-offset: -2px;
+            }
+
+            .btn:hover, .btn:focus {
+                color: #333;
+                text-decoration: none;
+            }
+
+            .btn:active, .btn.active {
+                background-image: none;
+                outline: 0;
+                -webkit-box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+                box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+            }
+
+            .btn.disabled, .btn[disabled], fieldset[disabled] .btn {
+                pointer-events: none;
+                cursor: not-allowed;
+                opacity: 0.65;
+                filter: alpha(opacity=65);
+                -webkit-box-shadow: none;
+                box-shadow: none;
+            }
+
+        .btn-01 {
+            color: #fff;
+            background-color: #44c11a;
+            border-radius: 5px;
+        }
+
+            .btn-01:hover, .btn-01:focus, .btn-01:active, .btn-01.active, .open .dropdown-toggle.btn-01 {
+                color: #fff;
+                background-color: #37ac10;
+            }
+
+            .btn-01:active, .btn-01.active, .open .dropdown-toggle.btn-01 {
+                background-image: none;
+            }
+
+            .btn-01.disabled, .btn-01[disabled], fieldset[disabled] .btn-01, .btn-01.disabled:hover, .btn-01[disabled]:hover, fieldset[disabled] .btn-01:hover, .btn-01.disabled:focus, .btn-01[disabled]:focus, fieldset[disabled] .btn-01:focus, .btn-01.disabled:active, .btn-01[disabled]:active, fieldset[disabled] .btn-01:active, .btn-01.disabled.active, .btn-01[disabled].active, fieldset[disabled] .btn-01.active {
+                background-color: #37ac10;
+            }
+
+        .btn-lg {
+            padding: 0.6rem 2rem;
+            font-size: 2rem;
+            line-height: 1rem;
+            border-radius: 6px;
+        }
+
+        .btn-sm, .btn-xs {
+            padding: 0.3rem 1rem;
+            font-size: 0.8rem;
+            border-radius: 3px;
+        }
+
+        .btn-xs {
+            padding: 0.2rem 0.5rem;
+        }
+
+        .btn-block {
+            display: block !important;
+            text-align: center;
+            width: 100%;
+        }
+
+        /*for layout-----------------------------------------------*/
+        .page {
+            width: 100%;
+        }
+
+        .pay-form {
+            padding: 1rem 0;
+            clear: both;
+        }
+
+            .pay-form .row {
+                padding: 0.5rem 1rem;
+                margin-bottom: 1rem;
+                line-height: 2rem;
+                background-color: #fff;
+                border-top: 1px solid #ccc;
+                border-bottom: 1px solid #ccc;
+            }
+
+                .pay-form .row dt {
+                    float: left;
+                    width: 30%;
+                    color: #999;
+                }
+
+                .pay-form .row dd {
+                    float: left;
+                    width: 70%;
+                    line-height: 2rem;
+                    position: relative;
+                    z-index: 1;
+                }
+
+                .pay-form .row input, .pay-form .row select {
+                    width: 100%;
+                    font-size: 1.2rem;
+                    height: 2rem;
+                    line-height: 2rem;
+                    background: transparent;
+                    border: 0px;
+                }
+
+                .pay-form .row .ui-input-text, .bind-form .row .ui-input-search {
+                    border: none;
+                    margin: 0;
+                }
+
+                .pay-form .row .ui-shadow-inset {
+                    -webkit-box-shadow: none;
+                    -moz-box-shadow: none;
+                    box-shadow: none;
+                }
+
+                .pay-form .row .sentvc {
+                    position: absolute;
+                    right: 0;
+                    top: 0;
+                    margin: 0;
+                }
+
+            .pay-form .btn-area {
+                padding: 1rem;
+                text-align: center;
+            }
+
+        .pay-msg {
+            padding: 1rem;
+            line-height: 2rem;
+            font-size: 1rem;
+            color: #42b035;
+        }
+
+            .pay-msg i {
+                display: inline-block;
+                width: 2rem;
+                height: 2rem;
+                margin-right: 0.5rem;
+                vertical-align: top;
+            }
+
+                .pay-msg i.ic-01 {
+                    background: url(../images/ic_success.png) no-repeat;
+                    background-size: contain;
+                }
+
+                .pay-msg i.ic-02 {
+                    background: url(../images/ic_fail.png) no-repeat;
+                    background-size: contain;
+                }
+
+        .pay-info {
+            background-color: #fff;
+            padding: 1rem;
+        }
+
+            .pay-info .pay-money {
+                text-align: center;
+                padding: 0.5rem 0 1.5rem;
+                border-bottom: 1px solid #ddd;
+            }
+
+                .pay-info .pay-money h2 {
+                    font-size: 1rem;
+                    font-weight: normal;
+                    margin-bottom: 0.5rem;
+                }
+
+                .pay-info .pay-money p {
+                    font-size: 2rem;
+                    font-family: arial;
+                }
+
+            .pay-info .pay-other {
+                color: #666;
+                padding: 0.5rem 0;
+            }
+
+                .pay-info .pay-other dl {
+                    clear: both;
+                    padding: 0.3rem 0;
+                }
+
+                    .pay-info .pay-other dl dt {
+                        float: left;
+                    }
+
+                    .pay-info .pay-other dl dd {
+                        float: right;
+                    }
+
+        .pay-confirm {
+            padding: 1rem 0;
+        }
+
+            .pay-confirm .money {
+                text-align: center;
+                padding: 0.5rem 0 1.5rem;
+            }
+
+                .pay-confirm .money h2 {
+                    font-size: 1rem;
+                    font-weight: normal;
+                    margin-bottom: 0.5rem;
+                }
+
+                .pay-confirm .money p {
+                    font-size: 2rem;
+                    font-family: arial;
+                }
+
+            .pay-confirm .company {
+                text-align: center;
+                padding: 1rem;
+                background-color: #fff;
+            }
+
+            .pay-confirm .btn-area {
+                padding: 1rem 2rem;
+                text-align: center;
+            }
+
+        .shop-name {
+            padding: 2rem 1rem 1rem;
+            text-align: center;
+        }
+
+            .shop-name h2 {
+                font-size: 1.2rem;
+                margin-bottom: 0.5rem;
+            }
+
+        .wx-pay {
+            position: fixed;
+            bottom: 1rem;
+            text-align: center;
+            width: 100%;
+            color: #999;
+        }
+
+            .wx-pay i {
+                display: inline-block;
+                width: 1rem;
+                height: 1rem;
+                margin-right: 0.3rem;
+                vertical-align: center;
+                background: url(../images/wx_pay.png) no-repeat;
+                background-size: contain;
+            }
+
+        .wx-pay-02 {
+            text-align: center;
+            width: 100%;
+            color: #999;
+        }
+
+            .wx-pay-02 i {
+                display: inline-block;
+                width: 1rem;
+                height: 1rem;
+                margin-right: 0.3rem;
+                vertical-align: center;
+                background: url(../images/wx_pay.png) no-repeat;
+                background-size: contain;
+            }
+    </style>
+
+</body>
+</html>
+
+
+
+

@@ -1,0 +1,356 @@
+﻿using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.Printer;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class RefundOrderViewModel : BaseViewModel
+    {
+        public RefundOrderViewModel()
+        {
+            OrderList = new List<BillDetails>();
+            IsOperatEnabled = true;
+            this.OnPropertyChanged(o => o.IsOperatEnabled);
+            Task.Factory.StartNew(() =>
+            {
+                //取退换货理由
+                ReasonParams _params = new ReasonParams()
+                {
+                    StoreId = _machinesInfo.StoreId,
+                    MachineSn = _machinesInfo.MachineSn,
+                    CompanyToken = _machinesInfo.CompanyToken,
+                    Type = (int)ChangeStatus.Refund
+                };
+                var result = ApiManager.Post<ReasonParams, ApiRetrunResult<IEnumerable<ApiReasonResult>>>(@"api/GetReason", _params);
+                if (result.Code == "200")
+                {
+                    CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                    {
+                        ReasonItem = result.Result;
+                        var first = ReasonItem.FirstOrDefault();
+                        if (first != null)
+                            Reason = first.DicSN;
+                    }));
+                }
+                else
+                {
+                    Toast.ShowMessage(result.Message, CurrentWindow);
+                }
+            });
+        }
+
+        MachineInformations _machinesInfo = Global.MachineSettings.MachineInformations;
+
+        string password = string.Empty;
+        public string Password { get { return password; } set { password = value; this.OnPropertyChanged(o => o.Password); } }
+
+        /// <summary>
+        /// 导购员
+        /// </summary>
+        public string SaleMan { get; set; }
+
+        /// <summary>
+        /// 优惠金额
+        /// </summary>
+        private decimal preferentialAmount;
+
+        public decimal PreferentialAmount
+        {
+            get { return preferentialAmount; }
+            set { preferentialAmount = value; }
+        }
+        /// <summary>
+        /// 订单时间
+        /// </summary>
+        private DateTime orderTime;
+
+        public DateTime OrderTime
+        {
+            get { return orderTime; }
+            set { orderTime = value; }
+        }
+
+
+        /// <summary>
+        /// 支付流水号
+        /// </summary>
+        private string paySn;
+
+        public string PaySn
+        {
+            get { return paySn; }
+            set
+            {
+                QueryModel.Current.IsQuery = true;
+
+                //条码变动时加载数据
+                paySn = value.Trim().ToUpper();
+                if (!string.IsNullOrEmpty(paySn))
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+
+                        FindBillHistoryParams _params = new FindBillHistoryParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CompanyToken = _machinesInfo.CompanyToken,
+                            PaySn = paySn
+                        };
+                        var result = ApiManager.Post<FindBillHistoryParams, ApiRetrunResult<BillHistoryInfo>>(@"api/FindBillHistory", _params);
+                        if (result.Code == "200")
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                if (result.Result.OrderType == 0)
+                                {
+                                    if (result.Result.OrderStatus == 0)
+                                    {
+                                        SaleMan = result.Result.SaleManUserCode + result.Result.SaleManName;
+                                        OrderList = result.Result.Details;
+                                        Difference = -result.Result.WipeZeroAfterTotalAmount;
+                                        paySn = result.Result.PaySn;
+                                        PreferentialAmount = result.Result.PreferentialAmount;
+                                        OrderTime = result.Result.OrderTime;
+                                        this.OnPropertyChanged(o => o.PaySn);
+                                    }
+                                    else
+                                    {
+                                        Toast.ShowMessage("该流水号已退单！", CurrentWindow);
+                                    }
+                                }
+                                else
+                                {
+                                    Toast.ShowMessage("该单非销售单，请确认是否正确！", CurrentWindow);
+                                }
+                                QueryModel.Current.IsQuery = false;
+
+                            }));
+
+                        }
+                        else
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                                paySn = string.Empty;
+                                this.OnPropertyChanged(o => o.PaySn);
+                            }));
+
+                        }
+                    });
+                }
+                else
+                {
+                    paySn = string.Empty;
+                    this.OnPropertyChanged(o => o.PaySn);
+                }
+            }
+        }
+        /// <summary>
+        /// 变更列表
+        /// </summary>
+        private IEnumerable<BillDetails> orderList;
+
+        public IEnumerable<BillDetails> OrderList
+        {
+            get { return orderList; }
+            set
+            {
+                orderList = value;
+                this.OnPropertyChanged(o => o.OrderList);
+            }
+        }
+        /// <summary>
+        /// 理由列表
+        /// </summary>
+        private IEnumerable<ApiReasonResult> reasonItem;
+
+        public IEnumerable<ApiReasonResult> ReasonItem
+        {
+            get { return reasonItem; }
+            set { reasonItem = value; this.OnPropertyChanged(o => o.ReasonItem); }
+        }
+        int _Reason;
+        /// <summary>
+        /// 选中的退换货理由
+        /// </summary>
+        public int Reason
+        {
+            get { return _Reason; }
+            set
+            {
+                _Reason = value;
+                this.OnPropertyChanged(o => o.Reason);
+            }
+        }
+
+        /// <summary>
+        /// 差价
+        /// </summary>
+        private decimal difference;
+
+        public decimal Difference
+        {
+            get { return difference; }
+            set { difference = value; this.OnPropertyChanged(o => o.Difference); }
+        }
+        /// <summary>
+        /// 确认事件
+        /// </summary>
+        public GeneralCommand<object> ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    IsOperatEnabled = false;
+                    this.OnPropertyChanged(o => o.IsOperatEnabled);
+                    //调确认的接口
+                    if (OrderList.Count() > 0)
+                    {
+                        Task.Factory.StartNew(() =>
+                        {
+
+                            AuthorizationParams _paramsAuth = new AuthorizationParams()
+                            {
+                                StoreId = _machinesInfo.StoreId,
+                                MachineSn = _machinesInfo.MachineSn,
+                                CompanyToken = _machinesInfo.CompanyToken,
+                                Password = Password
+                            };
+                            var resultAuth = ApiManager.Post<AuthorizationParams, ApiRetrunResult<object>>(@"api/Authorization", _paramsAuth);
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                if (resultAuth.Code == "200")
+                                {
+
+                                    NoNeedPaySaveParams _params = new NoNeedPaySaveParams()
+                                    {
+                                        Amount = Difference,
+                                        PaySn = PaySn,
+                                        Reason = Reason,
+                                        StoreId = _machinesInfo.StoreId,
+                                        MachineSn = _machinesInfo.MachineSn,
+                                        CompanyToken = _machinesInfo.CompanyToken
+                                    };
+                                    var result = ApiManager.Post<NoNeedPaySaveParams, ApiRetrunResult<object>>(@"api/RefundAll", _params);
+                                    if (result.Code == "200")
+                                    {
+                                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                        {
+                                            Toast.ShowMessage("操作成功！", CurrentWindow);
+                                            //print
+                                            try
+                                            {
+                                                #region 打印
+                                                if (PosViewModel.Current.PrintStatus == PrintStatus.Open)
+                                                {
+                                                    int printWidth = 40;
+
+                                                    PrintModelHelper printer = new PrintModelHelper();
+                                                    TicketModel ticketModel = new TicketModel();
+                                                    ticketModel.TicketWidth = printWidth;//发票宽度，按字符数计算，根据打印机型号有所区别(通常在30-70之间),建议系统提供配置入口
+                                                    ticketModel.StoreName = _machinesInfo.StoreName;
+                                                    ticketModel.DeviceNumber = _machinesInfo.MachineSn;
+                                                    ticketModel.SN = paySn;
+                                                    ticketModel.Cashier = Global.CurrentSaleMen.UserCode;
+                                                    List<ProductModel> productList = new List<ProductModel>();
+                                                    foreach (var item in OrderList)
+                                                    {
+                                                        ProductModel productModel = new ProductModel();
+                                                        productModel.Code = item.Barcode;
+                                                        productModel.Name = item.Title;
+                                                        productModel.Num = -item.Number;
+                                                        productModel.Price = item.ActualPrice;
+                                                        productModel.SubTotal = item.Total;
+                                                        productList.Add(productModel);
+                                                    }
+                                                    ticketModel.ProductList = productList;
+                                                    ticketModel.CountNum = -(int)OrderList.Sum(o => o.Number);
+                                                    ticketModel.TotalPrice = Math.Round(Difference, 1, MidpointRounding.AwayFromZero).ToString("0.###");
+                                                    ticketModel.Receivable = Math.Round(Difference, 1, MidpointRounding.AwayFromZero).ToString("0.###");
+                                                    ticketModel.Change = 0;
+                                                    ticketModel.SaleMan = SaleMan;
+                                                    ticketModel.OrderType = 3; ;//3=退单
+                                                    ticketModel.Preferential = PreferentialAmount;
+                                                    var orderTime = DateTime.Now;
+                                                    DateTime.TryParse(result.Result.ToString(), out orderTime);
+
+                                                    ticketModel.CreateDT = orderTime;
+
+                                                    //  ticketModel.Weigh = "0 KG";
+                                                    //ticketModel.PayType = payWays;
+                                                    List<string> footItemList = new List<string>();
+                                                    //if (PreferentialAmount > 0m)
+                                                    //{
+                                                    //    footItemList.Add("已优惠：" + string.Format("{0:N2}", PosViewModel.Current.Preferential));
+
+                                                    //}
+
+                                                    //footItemList.Add("称重商品数量请参照条码标签");
+                                                    footItemList.Add("欢迎光临");
+                                                    footItemList.Add("服务电话：" + _machinesInfo.Phone);
+                                                    footItemList.Add("请保留电脑小票，作为退换货凭证");
+                                                    footItemList.Add("退单小票");
+                                                    ticketModel.FootItemList = footItemList;
+                                                    string titleStr = string.Empty; string printStr = printer.GetPrintStr(ticketModel, out titleStr);
+                                                    PrintHelper.Print(printStr, titleStr);
+                                                }
+                                                #endregion
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Toast.ShowMessage(ex.Message, CurrentWindow);
+                                            }
+                                            //清除当前所有项
+                                            Clear();
+                                            //关闭当前窗体
+                                            CurrentWindow.Close();
+                                        }));
+                                    }
+                                    else
+                                    {
+                                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                        {
+                                            Toast.ShowMessage(result.Message, CurrentWindow);
+                                        }));
+                                    }
+                                }
+                                else
+                                {
+                                    CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                    {
+                                        Toast.ShowMessage(resultAuth.Message, CurrentWindow);
+                                    }));
+                                }
+
+                            }));
+                            IsOperatEnabled = true;
+                            this.OnPropertyChanged(o => o.IsOperatEnabled);
+                        });
+                    }
+                });
+            }
+        }
+
+        /// <summary>
+        /// 清除数据
+        /// </summary>
+        public void Clear()
+        {
+            OrderList = new List<BillDetails>();
+            Difference = 0m;
+            Password = string.Empty;
+            PaySn = string.Empty;
+        }
+
+        public bool IsOperatEnabled { get; set; }
+    }
+}

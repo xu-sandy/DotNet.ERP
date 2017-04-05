@@ -1,0 +1,44 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增授权",editText:"编辑授权",delText:"删除授权"));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'',width:120" />
+            </td>
+        </tr>
+    </table>
+}
+<script type="text/javascript">
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Code', title: '编号', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Category', title: '类别', editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) { return value == 1 ? "在线" : "独立"; } },
+        { field: 'Title', title: '单位简称', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'UserNum', title: '用户数', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'StoreNum', title: '门店数', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'StoreProper', title: '分店专属后台', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'AppProper', title: 'APP手机端', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'PosMinorDisp', title: 'POS次屏显示', editor: { type: 'text', required: true }, width:90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'SupplierProper', title: '供应商专属后台', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'WholesalerProper', title: '批发商专属后台', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'CreateDT', title: '开通时间', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'EffectiveDT', title: '生效日期', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'ValidityYear', title: '有效期(年)', editor: { type: 'text', required: true }, width: 70 },
+        { field: 'Useable', title: '可用状态', editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache(),true);
+    };
+    pharos.manager.editItem = function (id) {
+        this.Id = id;
+        openDialog800(this.editText, this.editurlNocache());
+    }
+</script>

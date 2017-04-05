@@ -1,0 +1,84 @@
+﻿<control:DialogWindow02 x:Class="Pharos.POS.Retailing.ChildWin.AddMember"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:model="clr-namespace:Pharos.POS.Retailing.Models.ApiReturnResults"
+    xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"
+    Title="新增会员" Height="450" Width="900" WindowStartupLocation="CenterScreen" Icon="..\Images\ChaKuCun\search.png" Margin="0" WindowStyle="None">
+    <Window.Resources>
+        <ResourceDictionary>
+            <Style TargetType="{x:Type control:PosButton}" x:Key="BtnSearchStyle">
+                <Setter Property="FontSize" Value="18"/>
+                <Setter Property="Margin" Value="5"/>
+                <Setter Property="Foreground" Value="#FEFDFF"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Height" Value="40"/>
+                <Setter Property="Width" Value="130"/>
+                <Setter Property="HorizontalAlignment" Value="Left"/>
+                <Setter Property="Background" Value="#93C34D"/>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="130"></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition Width="140"></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="18" Grid.Row="0"><Run Text="*" Foreground="Red"></Run> <Run Text="会员编号: "></Run></TextBlock>
+        <TextBox Text="{Binding MemberId}" Grid.Column="1" HorizontalAlignment="Left" FontSize="18" Padding="0,5" Width="200" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="（空将自动生成）" HorizontalAlignment="Right" VerticalAlignment="Center"></TextBlock>
+
+        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="18" Grid.Row="1"><Run Text="*" Foreground="Red"></Run> <Run Text="会员性别: "></Run></TextBlock>
+        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <RadioButton IsChecked="{Binding Sex}" GroupName="sex" Content="男" FontSize="18" Grid.Column="1" HorizontalAlignment="Left"  Grid.Row="1" VerticalAlignment="Top"/>
+            <RadioButton  Content="女" GroupName="sex" FontSize="18" Grid.Column="1" Margin="10,0,0,0" HorizontalAlignment="Left" Grid.Row="1" VerticalAlignment="Top"/>
+        </StackPanel>
+
+
+        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="18" Grid.Row="2"><Run Text="*" Foreground="Red"></Run><Run Text="手机号: "></Run></TextBlock>
+        <TextBox Grid.Column="1" Text="{Binding Phone}" HorizontalAlignment="Left" FontSize="18" Padding="0,5" Width="200" VerticalAlignment="Center" Grid.Row="2" />
+
+        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="18" Grid.Row="3"><Run Text="支付宝: "></Run></TextBlock>
+        <TextBox Grid.Column="1" Text="{Binding ZhiFuBao}" HorizontalAlignment="Left" FontSize="18" Padding="0,5" Width="200" VerticalAlignment="Center" Grid.Row="3" />
+
+
+
+        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="18" Grid.Row="4"><Run Text="居住地址: "></Run></TextBlock>
+        <StackPanel Grid.Column="1" Grid.Row="4" Orientation="Horizontal" VerticalAlignment="Center" Grid.ColumnSpan="3">
+            <ComboBox HorizontalAlignment="Left" ItemsSource="{Binding Provinces}" SelectedValue="{Binding ProvinceID}" SelectedValuePath="AreaID" DisplayMemberPath="Title" FontSize="18" Width="100"/>
+            <ComboBox Margin="5,0,0,0" HorizontalAlignment="Left"  ItemsSource="{Binding Cities}" SelectedValue="{Binding CityID}" SelectedValuePath="AreaID" DisplayMemberPath="Title" FontSize="18" Width="120"/>
+            <ComboBox Margin="5,0,0,0" HorizontalAlignment="Left"  ItemsSource="{Binding Areas}" SelectedValue="{Binding AreaID}" SelectedValuePath="AreaID" DisplayMemberPath="Title" FontSize="18" Width="150"/>
+            <TextBox Margin="5,0,0,0" FontSize="18" Padding="0,5" Text="{Binding PartialAddress}" Width="320" />
+        </StackPanel>
+
+
+
+
+        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="18" Grid.Row="0" Grid.Column="2"><Run Text="*" Foreground="Red"></Run><Run Text="会员名称: "></Run></TextBlock>
+        <TextBox Text="{Binding Name}" Grid.Column="3" HorizontalAlignment="Left" FontSize="18" Padding="0,5" Width="200" VerticalAlignment="Center" />
+
+        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="18" Grid.Row="1" Grid.Column="2"><Run Text="生日: "></Run></TextBlock>
+        <DatePicker Text="{Binding Birthday}" Grid.Column="3" HorizontalAlignment="Left" Width="200" Padding="0,5" FontSize="18" Grid.Row="1" VerticalAlignment="Center"/>
+
+
+
+        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="18" Grid.Row="2" Grid.Column="2"><Run Text="Email: "></Run></TextBlock>
+        <TextBox Text="{Binding Email}" Grid.Column="4" HorizontalAlignment="Left" FontSize="18" Padding="0,5" Width="200" VerticalAlignment="Center" Grid.Row="2" />
+
+        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="18" Grid.Row="3" Grid.Column="2"><Run Text="微信号: "></Run></TextBlock>
+        <TextBox Text="{Binding WeiXin}" Grid.Column="4" HorizontalAlignment="Left" FontSize="18" Padding="0,5" Width="200" VerticalAlignment="Center" Grid.Row="3" />
+
+        <control:PosButton Style="{StaticResource BtnSearchStyle}" VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="0" Width="180" Height="50" Grid.ColumnSpan="4" Grid.Row="5" Command="{Binding SaveCommand}">保存</control:PosButton>
+
+    </Grid>
+</control:DialogWindow02>

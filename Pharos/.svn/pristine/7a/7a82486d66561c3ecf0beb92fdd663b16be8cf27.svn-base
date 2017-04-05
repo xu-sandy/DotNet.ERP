@@ -1,0 +1,46 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL-----回访跟踪记录
+    /// </summary>
+    public class VisitTrackService : BaseService
+    {
+        [Ninject.Inject]
+        // 回访跟踪记录
+        public IBaseRepository<VisitTrack> VisitTrackRepository { get; set; }
+
+        public Utility.OpResult SaveOrUpdate(VisitTrack model)
+        {
+            model.CreateDT = DateTime.Now;
+            model.CreateUID = CurrentUser.UID;
+            if (model.Id == 0)
+            {
+                VisitTrackRepository.Add(model);
+            }
+            else
+            {
+                var source = VisitTrackRepository.Get(model.Id);
+                model.ToCopyProperty(source);
+            }
+
+            if (VisitTrackRepository.SaveChanges())
+            {
+                LogEngine.WriteUpdate("记录ID：" + model.Id, LogModule.回访跟踪记录);
+            }
+            return OpResult.Success();
+        }
+    }
+}

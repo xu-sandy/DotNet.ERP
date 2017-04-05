@@ -1,0 +1,55 @@
+﻿@model Members
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style>
+    .table-form td { padding: 5px 0; }
+</style>
+
+<div id="tt" class="easyui-tabs" style="width:100%;height:280px;">
+    <div title="新增记录" style="padding:20px;">
+        <div class="default-form">
+            @using (Html.BeginForm("SaveFeedback", "Feedback", FormMethod.Post, new { enctype = "multipart/form-data" }))
+            {
+                @Html.HiddenFor(a => a.MemberId)
+                <table class="table-form" style="padding-left:25px;width:100%;">
+                    <tr>
+                        <td style="width:25%">会员姓名：@Model.RealName</td>
+                        <td style="width:25%">手机号：@Model.MobilePhone</td>
+                        <td style="width:25%">微信号：@Model.Weixin</td>
+                        <td style="width:25%">Email：@Model.Email</td>
+                    <tr>
+                        <td>回访信息：</td>
+                    </tr>
+                    <tr>
+                        <td colspan="4"><textarea class="easyui-validatebox" style="width: 90%;height: 120px;" data-options="required:true,validType:'length[0,1000]'" placeholder="最多200个字符" id="Content" name="Content"></textarea></td>
+                    </tr>
+                </table>
+            }
+        </div>
+    </div>
+    <div title="历史记录">
+        <table id="grid"></table>
+    </div>
+</div>
+
+<script>
+    var $grid = null;
+    $(function () {
+        $grid = $('#grid');
+        $grid.datagrid({
+            url: '@Url.Action("GetFollowUpData")',
+            queryParams: { memberId: '@Model.MemberId' },
+            fit: true,
+            nowrap: false,
+            fitColumns: true,
+            rownumbers: true,
+            columns: [[
+                { field: 'CreateDT', title: '时间', width: 100 },
+                { field: 'Content', title: '回访信息', width: 400 }
+            ]]
+        })
+    })
+</script>

@@ -1,0 +1,135 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "开通子域名", hideDel: true, hideAdd: false, searchHeight: 50));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar" style=" padding-top:2px;">
+        <tr>
+
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("State", new List<SelectListItem>() { new SelectListItem() { Text = "全部", Value = "-1" }, new SelectListItem() { Text = "未审核", Value = "1" }, new SelectListItem() { Text = "可用", Value = "2" }, new SelectListItem() { Text = "暂停", Value = "3" }, new SelectListItem() { Text = "注销", Value = "4" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:100" })
+            </td>
+
+            <td class="label-toolbar">
+                <label>类别：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("Category", new List<SelectListItem>() { new SelectListItem() { Text = "全部", Value = "-1" }, new SelectListItem() { Text = "内部", Value = "1" }, new SelectListItem() { Text = "外部", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:100" })
+            </td>
+
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按商户号", Value = "1" }, new SelectListItem() { Text = "按客户名称", Value = "2" }, new SelectListItem() { Text = "按子域名", Value = "3" } }, new { @class = "easyui-combobox datacontrol", data_options = "editable: false,width:120" })
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+            </td>
+
+        </tr>
+
+        @*<tr class="s_tr">
+
+            </tr>*@
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="UpState(2)">设为可用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="UpState(3)">设为停用</a>
+}
+<script type="text/javascript">
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.State == 3) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+    pharos.manager.columns = [[
+        {
+            field: 'Category', title: '类别', editor: { type: 'text', required: true }, width: 120, formatter: function (value, row, index) {
+                if (value == "1") {
+                    return "内部";
+                }
+                else if (value == "2") {
+                    return "外部";
+                }
+            }
+        },
+        {
+            field: 'CID', title: '商户号', editor: { type: 'text', required: true }, width: 120, formatter: function (value, row, index) {
+                if (value == null || value == 0) {
+                    return "无";
+                }
+                else {
+                    return value;
+                }
+            }
+        },
+        { field: 'TradersFullTitle', title: '客户全称', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'Domain', title: '子域名', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'Remark', title: '备注', editor: { type: 'text', required: true }, width: 170 },
+        { field: 'CreateDT', title: '创建时间', editor: { type: 'text', required: true }, width: 120 },
+        {
+            field: 'State', title: '状态', editor: { type: 'text', required: true }, width: 120, formatter: function (value, row, index) {
+                if (value == -1) {
+                    return "未审核";
+                }
+                else if(value==0){
+                    return "禁用";
+                }
+                else if (value == 1) {
+                    return "可用";
+                }
+            }
+        }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 620, 'height': 350, hideSave: false, 'url': this.editurlNocache() });
+    };
+
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        openWin({ 'title': this.editText, 'width': 620, 'height': 350, hideSave: false, 'url': this.editurlNocache() });
+    }
+
+    //将所选项设为
+    function UpState(s) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("UpState")", { ids : ids, state : s, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "设置成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "设置失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+    $(function () {
+
+    });
+</script>
+
+
+
+

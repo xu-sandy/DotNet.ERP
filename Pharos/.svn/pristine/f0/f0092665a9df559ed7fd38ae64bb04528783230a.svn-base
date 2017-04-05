@@ -1,0 +1,116 @@
+﻿@model Pharos.Logic.Entity.ApiLibrary
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">
+    .combo { min-width: 0px; }
+    .table-form .input { height: 32px; }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm("ApiLibrarySave", "SysAdmin", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.ApiOrder)
+        @Html.HiddenFor(o => o.ApiCloseIcon)
+        @Html.HiddenFor(o => o.ApiIcon)
+        <div class="content">
+            <table class="table-form" style="width:600px;margin:0 auto;">
+                <tr>
+                    <td class="name">
+                        <span>接口名称：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true" })
+                    </td>
+                    <td class="name">
+                        <span>接口类型：</span>
+                    </td>
+                    <td class="input">
+                        @Html.DropDownListFor(o => o.ApiType, ViewBag.apiTypes as IList<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo'" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>接口地址：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.ApiUrl, new { @class = "easyui-textbox", data_options = "required:true" })
+                    </td>
+                    <td class="name">
+                        <span>密文TOKEN：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.ApiToken, new { @class = "easyui-textbox", data_options = "" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>帐户：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.ApiAccount, new { @class = "easyui-textbox", data_options = "" })
+                    </td>
+                    <td class="name">
+                        <span>密码：</span>
+                    </td>
+                    <td class="input">
+                        @Html.PasswordFor(o => o.ApiPwd, new { @class = "easyui-textbox", data_options = "type:'password'" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>请求方式：</span>
+                    </td>
+                    <td class="input">
+                        @Html.RadioButtonListFor(o => o.ReqMode, new List<SelectListItem>() { new SelectListItem() { Text = "POST", Value = "1" }, new SelectListItem() { Text = "GET", Value = "2" } })
+                    </td>
+                    <td class="name">
+                        <span>状 态：</span>
+                    </td>
+                    <td colspan="2">
+                        @Html.RadioButtonListFor(o => o.State, new List<SelectListItem>() { new SelectListItem() { Text = "启用", Value = "1" }, new SelectListItem() { Text = "禁用", Value = "0" } })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>支付图标：</span>
+                    </td>
+                    <td class="input" colspan="2">
+                        @Html.TextBox("ApiIcon2", "", new { @class = "easyui-filebox", data_options = "buttonText:'选择文件',prompt:'请选择图片文件...',width:300,onChange:apiIconChange" })
+                    </td>
+                    <td width="100px"><img id="imgpay" height="40px" @(Model.ApiIcon.IsNullOrEmpty()?"":"src="+Url.Content("~/"+Model.ApiIcon)) /></td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>支付关闭图标：</span>
+                    </td>
+                    <td class="input" colspan="2">
+                        @Html.TextBox("ApiCloseIcon2", "", new { @class = "easyui-filebox", data_options = "buttonText:'选择文件',prompt:'请选择图片文件...',width:300,onChange:apiCloseIconChange" })
+                    </td>
+                    <td><img id="imgpayclose" height="40px" @(Model.ApiCloseIcon.IsNullOrEmpty() ? "" : "src=" + Url.Content("~/" + Model.ApiCloseIcon)) /></td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>备 注：</span>
+                    </td>
+                    <td class="input" colspan="4">
+                        @Html.TextAreaFor(o => o.Memo,4,40, new { @class = "textbox" })
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    function apiIconChange() {
+        var file = $(this).next().find("[name='ApiIcon2']");
+        var url= pharos.imgUrl(file.get(0));
+        $("#imgpay").attr("src", url).attr("href", url);
+    }
+    function apiCloseIconChange() {
+        var file = $(this).next().find("[name='ApiCloseIcon2']");
+        var url = pharos.imgUrl(file.get(0));
+        $("#imgpayclose").attr("src", url).attr("href", url);
+    }
+</script>

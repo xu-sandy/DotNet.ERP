@@ -1,0 +1,90 @@
+﻿@{
+    ViewBag.Title = "ReturnRulesIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增规则", delText: "移除", hideDel: true, hideSearch: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>规则方式：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox">
+                    <option>全部</option>
+                    <option>按消费金额</option>
+                    <option>按付款方式</option>
+                    <option>按指定品类</option>
+                    <option>按具体商品</option>
+                    <option>按消费次数</option>
+                </select>
+            </td>
+            <td class="input-toolbar">
+                &nbsp;<input type="text" class="easyui-textbox" data-options="prompt:''" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="SetCardTypeState(0)">设为可用</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="SetCardTypeState(1)">设为禁用</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindReturnRulesList")";
+    pharos.manager.editurl = "@Url.Action("CreateReturnRules")";
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog1000(this.addText, this.editurlNocache(), true);
+    }
+    pharos.manager.editItem = function (Id, row) {
+        this.Id = Id;
+        openDialog1000(this.addText, this.editurlNocache(), true);
+    }
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'CardName', title: '名称', width: 80 },
+        {
+            field: 'Category', title: '类型', width: 80, formatter: function (value, row, index) {
+                if (value == 1) { return "储蓄卡"; }
+                if (value == 2) { return "购物卡"; }
+                if (value == 3) { return "会员卡"; }
+            }
+        },
+        {
+            field: 'CardType', title: '种类', width: 80, formatter: function (value, row, index) {
+                if (value == 1) { return "电子卡"; }
+                if (value == 2) { return "磁卡"; }
+                if (value == 3) { return "IC卡"; }
+            }
+        },
+        { field: 'MinRecharge', title: '最低充值', width: 80 },
+        { field: 'DefaultPrice', title: '初始金额', width: 80 },
+        { field: 'Memo', title: '备注', width: 80 },
+        {
+            field: 'State', title: '状态', width: 80, formatter: function (value, row, index) {
+                if (value == 0) { return "可用"; }
+                if (value == 1) { return "注销"; }
+            }
+        },
+        { field: 'CreateDT', title: '创建时间', width: 80 },
+        { field: 'CreateUID', title: '创建人', width: 80 },
+    ]];
+
+    function SetCardTypeState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("UpdateReturnRuleState")", { state: state, ids: ids }, function (result) {
+            if (result.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+</script>

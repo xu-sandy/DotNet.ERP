@@ -1,0 +1,54 @@
+﻿using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class RefundChangeViewModel : BaseViewModel
+    {
+        public RefundChangeViewModel()
+        {
+            Change = new RefundOrChanging(Models.PosModels.ChangeStatus.Change);
+            Refund = new RefundOrChanging(Models.PosModels.ChangeStatus.Refund);
+            Current = this;
+        }
+        public static RefundChangeViewModel Current { get; set; }
+
+        private RefundOrChanging refund;
+
+        public RefundOrChanging Refund
+        {
+            get { return refund; }
+            set
+            {
+                refund = value;
+                change.CurrentWindow = CurrentWindow;
+                this.OnPropertyChanged(o => o.Refund);
+            }
+        }
+
+        private RefundOrChanging change;
+
+        public RefundOrChanging Change
+        {
+            get { return change; }
+            set
+            {
+                change = value;
+                change.CurrentWindow = CurrentWindow;
+                this.OnPropertyChanged(o => o.Change);
+            }
+        }
+
+        private object refundOrder;
+
+        public object RefundOrder
+        {
+            get { return refundOrder; }
+            set { refundOrder = value; this.OnPropertyChanged(o => o.RefundOrder); }
+        }
+
+    }
+}

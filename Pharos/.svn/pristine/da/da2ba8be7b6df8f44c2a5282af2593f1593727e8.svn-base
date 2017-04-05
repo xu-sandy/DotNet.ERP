@@ -1,0 +1,45 @@
+﻿using Pharos.Logic.OMS.Models;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.OMS.Entity
+{
+    /// <summary>
+    /// 交易流水扩展实体
+    /// </summary>
+    [NotMapped]
+    [Serializable]
+    public partial class TradeOrderExt : TradeOrder
+    {
+        /// <summary>
+        /// 收单渠道
+        /// </summary>
+        public string ChannelCode { get; set; }
+        /// <summary>
+        /// 交易时间
+        /// </summary>
+        public string TradeDateTime { get; set; }
+    }
+    public partial class TradeOrder
+    {
+        public TradeOrder(BaseTradeRequest pms, TradersStoreChannelModel tradersStore)
+        {
+            DateTime createDt = DateTime.Now;
+            CID = pms.CID;
+            SID = pms.SID;
+            DeviceId = pms.DeviceId;
+            DeviceId3 = pms.DeviceId.ToString();
+            SignType = pms.SignType;
+            Version = pms.Version;
+            Signature = pms.Sign;
+            MchId3 = tradersStore.MerchId3;
+            StoreId3 = tradersStore.StoreId3;
+            CreateDT = createDt;
+            UpdateDT = createDt;
+            ChannelNo = tradersStore.ChannelNo;
+        }
+    }
+}

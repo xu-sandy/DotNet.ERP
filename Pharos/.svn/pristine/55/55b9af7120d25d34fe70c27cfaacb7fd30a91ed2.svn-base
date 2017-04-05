@@ -1,0 +1,76 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  AgentsUsers
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .table-form td {
+        padding: 5px 0px;
+    }
+</style>
+
+<script type="text/javascript">
+
+    $(function () {
+        //具体暂停/注销原因
+        $("#specific").keyup(function () {
+            spec(this);
+        }).trigger("keyup");
+    });
+
+    //具体暂停/注销原因
+    function spec(sTextArea) {
+        //获得textarea的maxlength属性
+        var MaxLength = oTextArea.getAttribute("maxlength");
+        var num = MaxLength - oTextArea.value.length;
+        $('#s_num').html(num);
+    }
+
+    function SaveBefore() {
+        return true;
+    }
+
+    //获取url的参数
+    function getUrlParam(name) {
+
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+
+        var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+
+        if (r != null) return unescape(r[2]); return null; //返回参数值
+
+    }
+
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+
+        <div class="content">
+            <table class="table-form" width="100%">
+
+                <tr>
+                    <td class="name">暂停服务商后，该服务商相关登录帐号将无法登录后台服务商系统！</td>
+                </tr>
+
+                <tr>
+                    <td class="input">
+                        @Html.TextArea("specific", new { @class = "easyui-validatebox", style = "width:709px; height: 100px; max-width: 709px; max-height: 100px; resize: none; ", maxlength = "50", data_options = "required:true,prompt:'请填写具体暂停/注销原因',validType: 'length[0,50]'" })
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="input">限长50个字，还可以输入 <span style="color:#FF0000;" id="s_num">50</span> 个字</td>
+                </tr>
+
+            </table>
+        </div>
+    }
+</div>
+
+
+

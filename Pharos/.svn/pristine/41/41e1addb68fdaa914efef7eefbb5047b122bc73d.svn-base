@@ -1,0 +1,41 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("Id")
+        @Html.Hidden("Barcode")
+        @Html.Hidden("LockStoreID")
+        @Html.Hidden("CheckBatch")
+        <div class="content">
+            <table class="table-form" width="100%" height="150px">
+                <tr>
+                    <td class="name">盘点门店：</td>
+                    <td class="input">@Html.DisplayText("StoreTitle")</td>
+                    <td class="name">盘点员：</td>
+                    <td class="input">@Html.DisplayText("FullName")</td>
+                </tr>
+                <tr>
+                    <td class="name formbox">盘点日期：</td>
+                    <td class="input formbox">@Html.DisplayText("LockDate", "{0:yyyy-MM-dd}")</td>
+                    <td class="name formbox">盘点批次：</td>
+                    <td class="input formbox">@Html.DisplayText("CheckBatch")</td>
+                </tr>
+                <tr>
+                    <td class="name">商品条码：</td>
+                    <td class="input">@Html.DisplayText("Barcode")</td>
+                    <td class="name">品 名：</td>
+                    <td class="input">@Html.DisplayText("Title")</td>
+                </tr>
+                <tr>
+                    <td class="name">实盘数量：</td>
+                    <td class="input">@Html.TextBox("ActualNumber", Request["ActualNumber"], new { @class = "easyui-numberspinner", data_options = "min:0,width:100,required:true" })</td>
+                    <td class="name">盘点员:</td>
+                    <td class="input">@Html.DropDownList("CheckUID", ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo'" })</td>
+                </tr>
+        </table>
+    </div>
+    }
+</div>

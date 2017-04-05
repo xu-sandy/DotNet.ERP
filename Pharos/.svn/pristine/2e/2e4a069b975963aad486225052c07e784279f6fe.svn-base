@@ -1,0 +1,45 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace Pharos.Logic.ApiData.Pos.Common
+{
+    /// <summary>
+    /// 流水号生成器
+    /// </summary>
+    public class PaySn
+    {
+        const string FILENAMEFORMAT = "{0}_{1}_{2}_{3}.SerialNumber";
+        public string MachineSn { get; set; }
+        public string StoreId { get; set; }
+        public int CompanyToken { get; set; }
+        public int SerialNumber { get; set; }
+
+        public override string ToString()
+        {
+            return MachineSn + DateTime.Now.ToString("yyyyMMdd") + GetSerialNumber();
+        }
+
+        private string GetSerialNumber()
+        {
+            if (!Directory.Exists(MachinesSettings.CachePath))
+            {
+                Directory.CreateDirectory(MachinesSettings.CachePath);
+            }
+            var path = Path.Combine(MachinesSettings.CachePath, string.Format(FILENAMEFORMAT, MachineSn, StoreId, CompanyToken, DateTime.Now.ToString("yyyyMMdd")));
+            if (SerialNumber == 0)
+            {
+                if (File.Exists(path))
+                {
+                    SerialNumber = Convert.ToInt32(File.ReadAllText(path));
+                }
+            }
+            SerialNumber++;
+            File.WriteAllText(path, SerialNumber.ToString());
+            return SerialNumber.ToString("0000");
+        }
+    }
+}

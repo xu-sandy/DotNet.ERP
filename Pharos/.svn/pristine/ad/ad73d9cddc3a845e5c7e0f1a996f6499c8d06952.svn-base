@@ -1,0 +1,21 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class SysUserService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<SysUser> UserRepository { get; set; }
+        public List<SysUser> GetList(bool normal=true)
+        {
+            var query= UserRepository.GetQuery();
+            if (normal) query = query.Where(o => o.Status == 1);
+            return query.ToList();
+        }
+    }
+}

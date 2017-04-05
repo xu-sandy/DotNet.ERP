@@ -1,0 +1,199 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using QCT.Pay.Common;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// 金融接口-收单渠道信息
+    /// </summary>
+    public class PayChannelInfoService
+    {
+        [Ninject.Inject]
+        IBaseRepository<PayChannelManage> PayChannelRepost { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<SysUserInfo> UserRepository { get; set; }
+        /// <summary>
+        /// 获取收单渠道信息分页数据
+        /// </summary>
+        /// <param name="nvl"></param>
+        /// <param name="totalCount"></param>
+        /// <returns></returns>
+        public IEnumerable<dynamic> GetPaging(System.Collections.Specialized.NameValueCollection nvl, out int totalCount)
+        {
+            var pms = new
+            {
+                KeyValues = nvl["KeyValues"] == null ? "" : nvl["KeyValues"].ToString(),
+                Status = nvl["Status"] == null ? new List<short>(): nvl["Status"].Split(',').Select(o => short.Parse(o)).ToList()
+            };
+            var query = PayChannelRepost.GetQuery().Where(o =>
+                o.ChannelCode.Contains(pms.KeyValues) || o.ChannelTitle.Contains(pms.KeyValues) || o.Memo.Contains(pms.KeyValues));
+            if (pms.Status.Count > 0)
+                query = query.Where(o => pms.Status.Contains(o.State));
+            else {
+                query = query.Where(o => o.State != (short)PayChannelState.Cancel);
+            }
+
+            query = from upay in query
+                    join juc in UserRepository.GetQuery() on upay.CreateUID equals juc.UserId into iuc
+                    from uc in iuc.DefaultIfEmpty()
+                    join jua in UserRepository.GetQuery() on upay.AuditUID equals jua.UserId into iua
+                    from ua in iua.DefaultIfEmpty()
+                    select new PayChannelManageExt()
+                    {
+                        Id = upay.Id,
+                        ChannelNo = upay.ChannelNo,
+                        ChannelCode = upay.ChannelCode,
+                        ChannelTitle = upay.ChannelTitle,
+                        State = upay.State,
+                        Memo = upay.Memo,
+                        AuditDT = upay.AuditDT,
+                        AuditUID = upay.AuditUID,
+                        Auditer = ua.FullName,
+                        CreateDT = upay.CreateDT,
+                        CreateUID = upay.CreateUID,
+                        Creater = uc.FullName
+                    };
+            totalCount = query.Count();
+            return query.ToPageList();
+        }
+        /// <summary>
+        /// 根据ID获得收到渠道信息Model
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public PayChannelManageExt GetOne(int id)
+        {
+            var obj = (from upay in PayChannelRepost.GetQuery(o => o.Id == id)
+                       join juc in UserRepository.GetQuery() on upay.CreateUID equals juc.UserId into iuc
+                       from uc in iuc.DefaultIfEmpty()
+                       join jua in UserRepository.GetQuery() on upay.AuditUID equals jua.UserId into iua
+                       from ua in iua.DefaultIfEmpty()
+                       select new PayChannelManageExt()
+                       {
+                           Id = upay.Id,
+                           ChannelNo = upay.ChannelNo,
+                           ChannelCode = upay.ChannelCode,
+                           ChannelTitle = upay.ChannelTitle,
+                           State = upay.State,
+                           Memo = upay.Memo,
+                           AuditDT = upay.AuditDT,
+                           AuditUID = upay.AuditUID,
+                           Auditer = ua.FullName,
+                           CreateDT = upay.CreateDT,
+                           CreateUID = upay.CreateUID,
+                           Creater = uc.FullName
+                       }).FirstOrDefault();
+            if (obj == null)
+                obj = new PayChannelManageExt();
+            return obj;
+        }
+        /// <summary>
+        /// 设置收单渠道信息状态
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        public OpResult SetStatus(int id, short state)
+        {
+            var entity = PayChannelRepost.GetQuery(o => o.Id == id).FirstOrDefault();
+            if (entity != null)
+            {
+                entity.State = state;
+                entity.AuditDT = DateTime.Now;
+                entity.AuditUID = CurrentUser.UID;
+                return OpResult.Result(PayChannelRepost.SaveChanges());
+            }
+            else
+            {
+                return OpResult.Fail("所选项状态已失效！");
+            }
+        }
+        /// <summary>
+        /// 设置注销数据（注销逻辑todo：dddd）
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        public OpResult CancelPayChannel(int id)
+        {
+            var entity = PayChannelRepost.GetQuery(o => o.Id == id && (o.State == (short)PayChannelState.NotAuditing || o.State == (short)PayChannelState.NotAuditing)).FirstOrDefault();
+            if (entity != null)
+            {
+                if (entity.State == (short)PayChannelState.NotAuditing)
+                { //如果状态为0未审核则直接删除
+                    PayChannelRepost.Remove(entity,true);
+                    return OpResult.Result(true);
+                }
+                else
+                {//如果状态为2停用则直接删除
+                    entity.State = (short)PayChannelState.Cancel;
+                    entity.AuditDT = DateTime.Now;
+                    entity.AuditUID = CurrentUser.UID;
+                    return OpResult.Result(PayChannelRepost.SaveChanges());
+                }
+            }
+            else
+            {
+                return OpResult.Fail("所选项状态已失效！");
+            }
+        }
+        /// <summary>
+        /// 提供支付接口下拉数据（状态为可用的）
+        /// </summary>
+        /// <returns></returns>
+        public List<DropdownItem> GetPayChannelsForPayApi()
+        {
+            var result = new List<DropdownItem>();
+            var query = from pc in PayChannelRepost.GetQuery()
+                        where pc.State == 1
+                        select new { Text = pc.ChannelCode, Value = pc.ChannelNo };
+            var data = query.ToList();
+            if (data != null && data.Count > 0)
+            {
+                data.ForEach(o => { result.Add(new DropdownItem() { Text = o.Text, Value = o.Value.ToString() }); });
+            }
+            return result;
+        }
+        /// <summary>
+        /// 保存或更新收单渠道信息
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveOrUpdate(PayChannelManage model)
+        {
+            var source = model;
+            var existsObj = PayChannelRepost.GetQuery(o => o.Id != model.Id && o.ChannelCode == model.ChannelCode).FirstOrDefault();
+            if (existsObj != null)
+                return OpResult.Fail(message: "收单渠道已经存在，不可重复");
+            if (source.Id > 0)
+            {
+                source = PayChannelRepost.GetQuery(o => o.Id == model.Id).FirstOrDefault();
+                model.ToCopyProperty(source, new List<string>() { "Id", "ChannelNo", "Status", "CreateDT", "CreateUID", "AuditDT", "AuditUID" });
+            }
+            else
+            {
+                var existsCodeObj = PayChannelRepost.GetQuery(o => o.ChannelCode == model.ChannelCode).FirstOrDefault();
+                if (existsCodeObj != null)
+                    return OpResult.Fail(message: "收单渠道已经存在，不可重复");
+
+                source.CreateDT = DateTime.Now;
+                source.CreateUID = CurrentUser.UID;
+                source.ChannelNo = CommonPayService.GetMaxNo("PayChannelInfos", "ChannelNo");
+                PayChannelRepost.Add(source, false);
+            }
+
+            var result = PayChannelRepost.SaveChanges();
+            if (result)
+                return OpResult.Success(data: source);
+            else
+                return OpResult.Fail(message: "保存失败");
+        }
+    }
+}

@@ -1,0 +1,76 @@
+﻿using Pharos.MessageAgent.MessageQueues;
+using Pharos.SuperSocketProtocol;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+using Pharos.MessageAgent.Extensions;
+using System.Globalization;
+using Pharos.MessageAgent.Agent;
+
+namespace Pharos.MessageAgent.Protocol
+{
+    public class MessageServer : SocketServer
+    {
+        public MessageServer()
+            : base(new DefaultRouteProvider(4))
+        {
+            Current = this;
+            ConfigMessageQueue();
+            MessageAgent = new Agent.MessageAgent(this);
+            MessageStore = (IMessageStore)MessageQueue;
+        }
+        public static MessageServer Current { get; private set; }
+        public IMessageQueue MessageQueue { get; private set; }
+
+        public IMessageStore MessageStore { get; private set; }
+        public IMessageAgent MessageAgent { get; private set; }
+        public void ConfigMessageQueue()
+        {
+            var commandAssemblies = new List<Assembly>();
+            List<IMessageQueue> tempRuleProviders = new List<IMessageQueue>();
+            if (!commandAssemblies.Any())
+            {
+                commandAssemblies.Add(this.GetType().Assembly);
+            }
+            foreach (var assembly in commandAssemblies)
+            {
+                try
+                {
+
+                    tempRuleProviders.AddRange(assembly.GetImplementedObjectsByInterface<IMessageQueue>((type) => { return type.FullName.EndsWith(MessageServerConfiguration.GetConfig().MessageQueue, true, CultureInfo.CurrentCulture); }));
+                }
+                catch (Exception exc)
+                {
+                    throw new Exception(string.Format("加载程序集失败，程序集： {0}!", assembly.FullName), exc);
+                }
+            }
+            var messageQueue = tempRuleProviders.FirstOrDefault();
+            if (messageQueue == null)
+            {
+                throw new Exception("尚未初始化消息队列！");
+            }
+            MessageQueue = messageQueue;
+        }
+
+        public static MessageServer InitServer()
+        {
+            return InitServer(MessageServerConfiguration.GetConfig().Port);
+        }
+        public static MessageServer InitServer(int port = 3033)
+        {
+            MessageServer appServer = new MessageServer();
+            if (!appServer.Setup(port)) //Setup with listening port
+            {
+                throw new Exception("Failed to setup!");
+            }
+            if (!appServer.Start())
+            {
+                throw new Exception("Failed to start!");
+            }
+            return appServer;
+        }
+    }
+}

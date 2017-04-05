@@ -1,0 +1,47 @@
+﻿@{
+    ViewBag.Title = "TakeCouponIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText:"新增赠送规则", delText: "删除活动",hideDel: true, hideEdit: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>创建人：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option>
+                </select>
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">设为已过期</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindRechargeGiftPageList")";
+    pharos.manager.editurl = "@Url.Action("CreateRechargeGift")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StateTitle', title: '状态', width: 80 },
+        { field: 'StateTitle2', title: '赠送', width: 80 },
+        { field: 'StateTitle3', title: '分期', width: 80 },
+        { field: 'StateTitle4', title: '限量', width: 80 },
+        { field: 'StateTitle5', title: '有效期限', width: 80 },
+        { field: 'StateTitle6', title: '创建时间', width: 80 },
+        { field: 'StateTitle7', title: '创建人', width: 80 },
+    ]];
+    pharos.manager.addItem = function () {
+        openDialog800(this.addText, this.editurl);
+    }
+</script>

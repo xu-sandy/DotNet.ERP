@@ -1,0 +1,91 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Mapping;
+using System.Data.Entity;
+using System.Data.Entity.ModelConfiguration.Conventions;
+namespace Pharos.Logic.OMS.DAL
+{
+    public partial class EFDbContext : DbContext
+    {
+        static EFDbContext()
+        {
+            //不重建数据库结构
+            Database.SetInitializer<EFDbContext>(null);
+        }
+        public EFDbContext()
+            : base(new Pharos.DBFramework.DBHelper().ConnectionString)        //System.Configuration.ConfigurationManager.AppSettings["ConnectionString"]
+        {
+            ///Leo: disable the Lazy Loading the WCF will not be able to serilize the entities.
+            //是否启用延迟加载:  
+            //  true:   延迟加载（Lazy Loading）：获取实体时不会加载其导航属性，一旦用到导航属性就会自动加载  
+            //  false:  直接加载（Eager loading）：通过 Include 之类的方法显示加载导航属性，获取实体时会即时加载通过 Include 指定的导航属性  
+            this.Configuration.LazyLoadingEnabled = false;
+            this.Configuration.ProxyCreationEnabled = false;
+            //UseLegacyPreserveChangesBehavior
+            //确定是否使用旧的行为， true 使用，false 不使用；
+            this.Configuration.AutoDetectChangesEnabled = true;  //自动监测变化，默认值为 true 
+        }
+        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+            ///移除EF映射默认给表名添加“s“或者“es”
+            modelBuilder.Conventions.Remove<PluralizingTableNameConvention>();
+            ///配置关系
+            modelBuilder.Configurations.Add(new VwProductMap());
+            modelBuilder.Configurations.Add(new PlanMap());
+            modelBuilder.Configurations.Add(new ProductVerMap());
+            modelBuilder.Configurations.Add(new ProductModuleVerMap());
+            modelBuilder.Configurations.Add(new ProductRoleVerMap());
+            modelBuilder.Configurations.Add(new ProductRoleMap());
+            modelBuilder.Configurations.Add(new ProductDictionaryVerMap());
+            modelBuilder.Configurations.Add(new ProductDataVerMap());
+            modelBuilder.Configurations.Add(new ProductPublishVerMap());
+
+            modelBuilder.Configurations.Add(new PayChannelManageMap());
+            modelBuilder.Configurations.Add(new PayChannelDetailMap());
+            modelBuilder.Configurations.Add(new PayApiMap());
+            modelBuilder.Configurations.Add(new CashTransRateMap());
+            modelBuilder.Configurations.Add(new TradeOrderMap());
+            modelBuilder.Configurations.Add(new TradeResultMap());
+            modelBuilder.Configurations.Add(new SysRoleMap());
+            //modelBuilder.Entity<FreeGiftPurchase>().Property(t => t.MinPurchaseNum).HasPrecision(18, 12);
+            base.OnModelCreating(modelBuilder);
+        }
+        //映射方式二
+        public DbSet<Area> Areas { get; set; }
+        public DbSet<Business> Business { get; set; }
+        public DbSet<CompanyAuthorize> CompanyAuthorizes { get; set; }
+        public DbSet<DeviceAuthorize> DeviceAuthorizes { get; set; }
+        public DbSet<OrderList> OrderList { get; set; }
+        public DbSet<ProductBrand> ProductBrands { get; set; }
+        public DbSet<ProductCategory> ProductCategorys { get; set; }
+        public DbSet<ProductRecord> ProductRecords { get; set; }
+        public DbSet<SysDataDictionary> SysDataDictionarys { get; set; }
+        public DbSet<SysLog> SysLogs { get; set; }
+        public DbSet<SysUserInfo> SysUserInfos { get; set; }
+        public DbSet<Traders> Traders { get; set; }
+        public DbSet<TraderType> TraderTypes { get; set; }
+        public DbSet<VisitTrack> VisitTracks { get; set; }
+        public DbSet<SysMenus> SysMenus { get; set; }
+        public DbSet<SysRoles> SysRoles { get; set; }
+        public DbSet<SysLimits> SysLimits { get; set; }
+        public DbSet<SysMenuLimit> SysMenuLimits { get; set; }
+        public DbSet<ImportSet> ImportSets { get; set; }
+        public DbSet<Devices> Devices { get; set; }
+        public DbSet<Realm> Realms { get; set; }
+        public DbSet<AgentsInfo> AgentsInfos { get; set; }
+        public DbSet<AgentsRelationship> AgentsRelationships { get; set; }
+        public DbSet<AgentsUsers> AgentsUsers { get; set; }
+        public DbSet<BankCardInfo> BankCardInfos { get; set; }
+        public DbSet<AgentPay> AgentPays { get; set; }
+        public DbSet<SysUser> SysUsers { get; set; }
+        public DbSet<PayLicense> PayLicenses { get; set; }
+        public DbSet<BankAccount> BankAccounts { get; set; }
+        public DbSet<ApproveLog> ApproveLogs { get; set; }
+        public DbSet<TradersPaySecretKey> TradersPaySecretKeys { get; set; }
+        public DbSet<TradersPayChannel> TradersPayChannels { get; set; }
+        public DbSet<TradersStore> TradersStores { get; set; }
+        public DbSet<TradersUser> TradersUsers { get; set; }
+        public DbSet<SysDepartments> SysDepartments { get; set; }
+        public DbSet<SysPositions> SysPositions { get; set; }
+       
+    }
+}

@@ -1,0 +1,102 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Linq;
+using System.Collections.Generic;
+using Pharos.POS.Retailing.Extensions;
+using System.Threading.Tasks;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using System.Threading;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class CheckInventory : BaseViewModel
+    {
+        public CheckInventory()
+        {
+            categoryTree = categoryTree.InitCategory(CurrentWindow);
+        }
+        string keyword;
+        public string Keyword
+        {
+            get
+            {
+                return keyword;
+            }
+            set
+            {
+                keyword = value;
+                this.OnPropertyChanged(o => o.Keyword);
+            }
+        }
+
+        IEnumerable<InventoryItem> inventoryItems;
+        public IEnumerable<InventoryItem> InventoryItems
+        {
+            get
+            {
+                return inventoryItems;
+            }
+            set
+            {
+                inventoryItems = value;
+                this.OnPropertyChanged(o => o.InventoryItems);
+            }
+        }
+
+        IEnumerable<TreeModel> categoryTree;
+        public IEnumerable<TreeModel> CategoryTree
+        {
+            get
+            {
+                return categoryTree;
+            }
+        }
+
+
+        Thread PageHandler { get; set; }
+        public GeneralCommand<object> SearchCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (PageHandler != null)
+                    {
+                        PageHandler.Abort();
+                        PageHandler = null;
+                    }
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        List<int> _sns = new List<int>();
+                        _sns.Add(TreeModelExtensions.GetSelectItemSN(CategoryTree));
+                        //查询本店库存
+                        GetProductStockParams _params = new GetProductStockParams() { StoreId = _machinesInfo.StoreId, MachineSn = _machinesInfo.MachineSn, CategorySns = _sns, Keyword = keyword, CompanyToken = _machinesInfo.CompanyToken };
+                        PageHandler = Thread.CurrentThread;
+                        ApiManager.FullPager<GetProductStockParams, InventoryItem>(@"api/GetProductStock", _params, (o) =>
+                        {
+                            if (o.Code == "200")
+                            {
+                                if (o.Result.Pager.Index == 1)
+                                {
+                                    InventoryItems = o.Result.Datas;
+                                }
+                                else
+                                {
+                                    InventoryItems = InventoryItems.Concat(o.Result.Datas);
+                                }
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(o.Message, CurrentWindow);
+                            }
+                        });
+                        PageHandler = null;
+                    });
+                });
+            }
+        }
+    }
+}

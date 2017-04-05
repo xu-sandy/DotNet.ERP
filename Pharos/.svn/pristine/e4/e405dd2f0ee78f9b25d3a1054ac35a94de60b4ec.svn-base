@@ -1,0 +1,44 @@
+﻿using Microsoft.Synchronization;
+using System;
+using System.Collections.Generic;
+
+namespace Pharos.SyncService
+{
+    [Serializable()]
+    public class CachedChangeDataRetriever : IChangeDataRetriever
+    {
+        private SyncIdFormatGroup idFormats;
+        private Dictionary<SyncId, ISyncDataObject> cachedData;
+        public CachedChangeDataRetriever(IChangeDataRetriever changeDataRetriever, ChangeBatchBase sourceChanges)
+        {
+            idFormats = changeDataRetriever.IdFormats;
+            cachedData = new Dictionary<SyncId, ISyncDataObject>();
+            foreach (ItemChange itemChange in sourceChanges)
+            {
+                if (itemChange.ChangeKind != ChangeKind.Deleted)
+                {
+                    // This is not delete, so there is some data associated
+                    // with this change.
+
+                    // Create a UserLoadChangeContext to retriever this data.
+                    UserLoadChangeContext loadChangeContext = new UserLoadChangeContext(idFormats, itemChange);
+
+                    // Retrieve the data (we know that our provider uses data of type ItemData.
+                    ISyncDataObject itemData = changeDataRetriever.LoadChangeData(loadChangeContext) as ISyncDataObject;
+
+                    // Cache it
+                    cachedData.Add(itemChange.ItemId, itemData);
+                }
+            }
+        }
+        public SyncIdFormatGroup IdFormats
+        {
+            get { return idFormats; }
+        }
+
+        public object LoadChangeData(LoadChangeContext loadChangeContext)
+        {
+            return cachedData[loadChangeContext.ItemChange.ItemId];
+        }
+    }
+}

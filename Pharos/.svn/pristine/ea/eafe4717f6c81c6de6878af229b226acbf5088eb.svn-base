@@ -1,0 +1,307 @@
+﻿@model ProductRecord
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var units=(List<SelectListItem>)ViewBag.subunits;
+}
+<style type="text/css">
+    .table-form tr {
+        height: 32px;
+    }
+    .name label {
+        font-weight:700;
+        display:inline-block;
+        color: red;
+        margin-right: 5px;
+    }
+</style>
+<script type="text/javascript">
+    var $dg=undefined;
+    var sysPrice=0,tradePrice=0,joinPrice=0;
+    $(function(){
+        $dg=$("#grid");
+        sysPrice=Number($("#selectPrice").html());
+        tradePrice=Number($("#TradePrice").val());
+        joinPrice=Number($("#JoinPrice").val());
+    });
+    var opadd= false,editIndex = undefined,clickIndex=undefined;
+    function operationPrice(value, row, index) {
+        if (opadd) {
+            opadd = false;
+            return "<a href='javascript:void(0)' onclick='appendItem()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItem('" + row.Id + "')\">删除</a>";
+        }
+    }
+    function endEditing() {
+        if (editIndex == undefined) { return true }
+        if ($dg.datagrid('validateRow', editIndex)) {
+            var ed = $dg.datagrid('getEditor', { index: editIndex, field: 'Barcode' });
+            var edp = $dg.datagrid('getEditor', { index: editIndex, field: 'SubUnit' });
+            if (ed) {
+                var rows = $dg.datagrid("getRows");
+                var barcode = $(ed.target).textbox('getValue');
+                //if (isExists(rows, barcode)) {
+                //    $.messager.alert("提示", "该条码已存在!", "warning", function () {
+                //        $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                //    });
+                //    return false;
+                //}
+                var unitid = $(edp.target).combobox('getValue');
+                var unittext = $(edp.target).combobox('getText');
+                $(edp.target).combobox('setValue',unittext);
+                edp = $dg.datagrid('getEditor', { index: editIndex, field: 'SubUnitId' });
+                $(edp.target).textbox('setValue',unitid);
+                edp = $dg.datagrid('getEditor', { index: editIndex, field: 'SaleNum' });
+                var saleNum= $(edp.target).numberbox('getValue');
+                edp = $dg.datagrid('getEditor', { index: editIndex, field: 'SysPrice' });
+                $(edp.target).numberbox('setValue',(sysPrice/saleNum).toFixed(2));
+                edp = $dg.datagrid('getEditor', { index: editIndex, field: 'TradePrice' });
+                $(edp.target).numberbox('setValue',(tradePrice/saleNum).toFixed(2));
+                edp = $dg.datagrid('getEditor', { index: editIndex, field: 'JoinPrice' });
+                $(edp.target).numberbox('setValue',(joinPrice/saleNum).toFixed(2));
+            }
+            $dg.datagrid('endEdit', editIndex);
+            editIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function appendItem() {
+        if (endClickEditing() && endEditing()) {
+            opadd = true;
+            $dg.datagrid('appendRow', {Id:0});
+            editIndex = $dg.datagrid('getRows').length - 1;
+            $dg.datagrid('selectRow', editIndex)
+                .datagrid('beginEdit', editIndex);
+            changeValue();
+        }
+    }
+    function removeItem(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dg.datagrid("selectRecord", id);
+            var row = $dg.datagrid("getSelected")
+            var index = $dg.datagrid("getRowIndex", row);
+            $dg.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+    function clickCell(index, field) {
+        if (endClickEditing() && field!='Editor') {
+            if(field=="Barcode"){
+                var row = $dg.datagrid("selectRow",index).datagrid('getSelected');
+                if (row.Id!=0)  return;
+            }
+            $dg.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+        }
+    }
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dg.datagrid('validateRow', clickIndex)) {
+            var edp = $dg.datagrid('getEditor', { index: clickIndex, field: 'SubUnit' });
+            if (edp) {
+                var unitid = $(edp.target).combobox('getValue');
+                var unittext = $(edp.target).combobox('getText');
+                //$(edp.target).combobox('setValue',unittext);
+                $dg.datagrid("updateRow",{index:clickIndex,row:{SubUnitId:unitid,SubUnit:unittext}});
+                //edp = $dg.datagrid('getEditor', { index: clickIndex, field: 'SubUnitId' });
+                //$(edp.target).textbox('setValue',unitid);
+            }
+            $dg.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            return true;
+        } else {
+            return false;
+        }
+    }
+    function isExists(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.Barcode == cd) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+    function add() {
+        $(".table-form").clone(true).appendTo($(".content"));
+    }
+    function changeValue() {
+        var priceinserted = $dg.datagrid('getChanges', "inserted");
+        var pricedeleted = $dg.datagrid('getChanges', "deleted");
+        var priceupdated = $dg.datagrid('getChanges', "updated");
+        $("#PriceInserted").val(JSON.stringify(priceinserted));
+        $("#PriceDeleteed").val(JSON.stringify(pricedeleted));
+        $("#PriceUpdateed").val(JSON.stringify(priceupdated));
+        editIndex = $dg.datagrid('getRows').length - 1;
+        if (editIndex < 0) editIndex = undefined;
+    }
+    var comboload=function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url:"@Url.Action("GetBarcodeInput")",
+            type:"post",
+        data:{
+            //传值，还是JSON数据搜索
+            searchName: q,
+            nature:0,
+            ValuationType:1
+        },
+        //重要，如果写jsonp会报转换错误，此处不写都可以
+        dataType:"json",
+        success: function (data) {
+            comboRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function(item){
+                return { barcode: item.Barcode, barcode: item.Barcode };
+            });
+            //执行loader的success方法
+            success(items);
+            var val = $combo.combobox("getValue");
+            if (val) {
+                comboSelect(val);
+            }
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+    var comboRows = [];
+    function comboSelect(newValue, oldValue) {
+        var obj = getRow(newValue);
+        if (!obj){
+            $dg.datagrid('loadData',[]);
+            return;
+        }
+        $("#selectTitle").html(obj.Title);
+        $("#selectPrice").html(obj.SysPrice);
+        $("#JoinPrice").val(obj.JoinPrice);
+        $("#TradePrice").val(obj.TradePrice);
+        sysPrice=obj.SysPrice;
+        tradePrice=obj.TradePrice;
+        joinPrice=obj.JoinPrice;
+        $dg.datagrid('options').queryParams.barcode=newValue;
+        $dg.datagrid('reload');
+    }
+    function getRow(cd) {
+        var obj = null;
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == cd) {
+                obj = row; return false;
+            }
+        });
+        return obj;
+    }
+    function disabedGrid() {
+        if (editIndex != undefined) {
+            var ed = $dg.datagrid('getEditor', { index: editIndex, field: 'Barcode' });
+            $(ed.target).combobox('disableValidation');
+            ed = $dg.datagrid('getEditor', { index: editIndex, field: 'Title' });
+            $(ed.target).combobox('disableValidation');
+            ed = $dg.datagrid('getEditor', { index: editIndex, field: 'SubUnit' });
+            $(ed.target).combobox('disableValidation');
+            ed = $dg.datagrid('getEditor', { index: editIndex, field: 'Size' });
+            $(ed.target).combobox('disableValidation');
+            ed = $dg.datagrid('getEditor', { index: editIndex, field: 'SaleNum' });
+            $(ed.target).combobox('disableValidation');
+            ed = $dg.datagrid('getEditor', { index: editIndex, field: 'SysPrice' });
+            $(ed.target).combobox('disableValidation');
+        }
+    }
+    function enabledGrid() {
+        if (editIndex != undefined) {
+            var ed = $dg.datagrid('getEditor', { index: editIndex, field: 'Barcode' });
+            $(ed.target).combobox('enableValidation');
+        }
+    }
+    function afterEdit(index, row, changes) {
+        if(changes.SaleNum){
+            var val =(sysPrice/row.SaleNum).toFixed(2) + '';
+            $dg.datagrid('updateRow', { index: index, row: { SysPrice: val } });
+        }
+        if(changes.SysPrice){
+            var val =(sysPrice/row.SysPrice).toFixed(2) + '';
+            $dg.datagrid('updateRow', { index: index, row: { SaleNum: val } });
+        }
+    }
+    function SaveBefore() {
+        if(!endClickEditing()) return false;
+        changeValue() ;
+        disabedGrid();
+        var result=true;
+        var rows= $dg.datagrid('getRows');
+        //$.each(rows,function(i,r){
+        //    if(!r.Barcode){
+        //        $.messager.alert("提示","条码不能为空!");
+        //        result=false;
+        //        return false;
+        //    }else if(!r.Title){
+        //        $.messager.alert("提示","品名不能为空!");
+        //        result=false;
+        //        return false;
+        //    }else if(!r.SaleNum){
+        //        $.messager.alert("提示","拆分数量不能为空!");
+        //        result=false;
+        //        return false;
+        //    }else if(!r.SysPrice){
+        //        $.messager.alert("提示","售价不能为空!");
+        //        result=false;
+        //        return false;
+        //    }
+        //});
+        //return confirm("拆分后主商品不能再次拆分，是否继续？");
+        return result;
+    }
+    pharos.dropdown["unit"]=@Html.Raw(units.ToJson())
+</script>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.ProductCode2)
+        @Html.HiddenFor(o => o.PriceInserted)
+        @Html.HiddenFor(o => o.PriceDeleteed)
+        @Html.HiddenFor(o => o.PriceUpdateed)
+        <div class="content">
+            <table width="600px">
+                <tr>
+                    <td class="name">父商品条码：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.OldBarcode, new List<SelectListItem>() { new SelectListItem() { Value = Model.OldBarcode, Text = Model.OldBarcode, Selected = true } }, new { @class = "easyui-combobox", data_options = "prompt:'请输入条码...',mode:'remote',valueField:'barcode',textField:'barcode',loader:comboload,onChange:comboSelect,required:true" })</td>
+                    <td class="name">品 名：</td>
+                    <td class="input"><span id="selectTitle">@Model.Title</span></td>
+                    <td class="name">系统售价：</td>
+                    <td class="input"><span id="selectPrice">@Model.SysPrice.ToString("f2")</span>@Html.HiddenFor(o=>o.JoinPrice) @Html.HiddenFor(o => o.TradePrice)</td>
+                </tr>
+            </table>
+            <table class="easyui-datagrid" id="grid"
+                   data-options="url:'@Url.Action("LoadSplitList")',queryParams:{barcode:'@Model.OldBarcode'},idField:'Id',showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect:true,onLoadError:loadError,onClickCell:clickCell,onAfterEdit:afterEdit,onLoadSuccess:function(){setTimeout(appendItem,1000);}">
+                <thead>
+                    <tr>
+                        <th data-options="field:'Id',editor:{type:'textbox',options:{disabled:true}},hidden:true" width="120">ID</th>
+                        <th data-options="field:'Barcode',editor:{type:'textbox',options:{disabled:false,required:false,readonly:true,prompt:'系统自动生成'}}" width="150">条 码</th>
+                        <th data-options="field:'Title',editor:{type:'textbox',options:{disabled:false,required:true}}" width="150">品 名</th>
+                        <th data-options="field:'SubUnitId',editor:{type:'textbox',options:{disabled:false}},hidden:true" width="150">单位</th>
+                        <th data-options="field:'SubUnit',editor:{type:'combobox',options:{prompt:'单位',valueField:'Value',textField:'Text',data:pharos.dropdown['unit'],editable:false,required:true}}" width="80">单 位</th>
+                        <th data-options="field:'Size',editor:{type:'textbox',options:{disabled:false}}" width="150">规 格</th>
+                        <th data-options="field:'SaleNum',editor:{type:'numberbox',options:{precision:2,required:true}}" width="100">拆分数量</th>
+                        <th data-options="field:'SysPrice',editor:{type:'numberbox',options:{precision:2,required:false}}" width="100">售 价</th>
+                        <th data-options="field:'TradePrice',editor:{type:'numberbox',options:{precision:2,required:false}}" width="100">批发价</th>
+                        <th data-options="field:'JoinPrice',editor:{type:'numberbox',options:{precision:2,required:false}}" width="100">加盟价</th>
+                        <th data-options="field:'Editor',formatter:operationPrice" width="120">操作</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    }
+</div>

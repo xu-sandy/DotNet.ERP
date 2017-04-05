@@ -1,0 +1,78 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Infrastructure.Data.IO
+{
+    /// <summary>
+    /// 处理多线程读写
+    /// </summary>
+    public static class FileReadWrite
+    {
+        private static Dictionary<string, object> lockObjects = new Dictionary<string, object>();
+        private static object lockDict = new object();
+        public static void Write(string path, FileMode mode, Action<FileStream> writeAction)
+        {
+            var lockobj = new object();
+            lock (lockDict)
+            {
+                if (!lockObjects.ContainsKey(path))
+                {
+                    lockObjects.Add(path, lockobj);
+                }
+                else
+                {
+                    lockobj = lockObjects[path];
+                }
+            }
+            lock (lockobj)
+            {
+                var dir = Path.GetDirectoryName(path);
+                var identities = new string[] { "Everyone", "Users" };
+                if (!Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir, SecurityControl.CreateDirectorySecurity(identities));
+                }
+                else
+                {
+                   SecurityControl.AddSecurityControllToFolder(identities, dir);
+                }
+                using (FileStream fsWrite = new FileStream(path, mode))
+                {
+                  //  fsWrite.SetAccessControl(SecurityControl.CreateFileSecurity(identities));
+                    writeAction(fsWrite);
+                }
+                if (mode == FileMode.Create || mode == FileMode.CreateNew || mode == FileMode.OpenOrCreate)
+                    SecurityControl.AddSecurityControllToFile(identities, path);
+            }
+        }
+        public static T Read<T>(string path, FileMode mode, Func<FileStream, T> readAction)
+        {
+            var lockobj = new object();
+            var identities = new string[] { "Everyone", "Users" };
+
+            lock (lockDict)
+            {
+                if (!lockObjects.ContainsKey(path))
+                {
+                    lockObjects.Add(path, lockobj);
+                }
+                else
+                {
+                    lockobj = lockObjects[path];
+                }
+            }
+            lock (lockobj)
+            {
+                SecurityControl.AddSecurityControllToFile(identities, path);
+                using (FileStream fsRead = new FileStream(path, mode))
+                {
+                    return readAction(fsRead);
+                }
+            }
+        }
+
+    }
+}

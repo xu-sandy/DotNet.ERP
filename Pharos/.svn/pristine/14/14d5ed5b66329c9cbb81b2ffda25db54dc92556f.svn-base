@@ -1,0 +1,34 @@
+﻿using Pharos.Logic.OMS.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Pharos.Logic.OMS.Entity.View;
+using System.Data;
+using System.Data.SqlClient;
+using Pharos.Logic.OMS.IDAL;
+
+namespace Pharos.Logic.OMS.DAL
+{
+    /// <summary>
+    /// DAL商家登录账号
+    /// </summary>
+    public class TradersUserRepository : BaseRepository<TradersUser>, ITradersUserRepository
+    {
+        /// <summary>
+        /// 获取CID
+        /// </summary>
+        /// <param name="keyword"></param>
+        /// <returns></returns>
+        public List<TradersStore> getCIDStore(string strW = "")
+        {
+            using (EFDbContext db = new EFDbContext())
+            {
+                var sql = "select CID from TradersStore where State=1 " + strW + " group by CID order by CID";
+                List<TradersStore> list = db.Database.SqlQuery<TradersStore>(sql).ToList();
+                return list;
+            }
+        }
+    }
+}

@@ -1,0 +1,25 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Caching;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Cache
+{
+    public interface IMemoryCacheWrapper<T> : ICache<T>
+    {
+        string Name { get; }
+        long CacheMemoryLimitInBytes { get; }
+        long PhysicalMemoryLimit { get; }
+        TimeSpan PollingInterval { get; }
+        IEnumerable<string> Keys { get; }
+        IEnumerable<T> Items { get; }
+        CacheItemPolicy DefaultCacheItemPolicy { get; set; }
+        void Set(string key, T value);
+        T Get(string key);
+        void Remove(string key);
+        bool ContainsKey(string key);
+        long Count { get; }
+        void Dispose();
+    }
+}

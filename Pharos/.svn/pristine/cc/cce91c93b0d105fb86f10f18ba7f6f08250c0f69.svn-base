@@ -1,0 +1,116 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using Pharos.POS.Retailing.Models;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// UMessageBox.xaml 的交互逻辑
+    /// </summary>
+    public partial class UMessageBox : Window
+    {
+        private Dictionary<MessageBoxButton, string> ButtonShowContent = new Dictionary<MessageBoxButton, string>();
+        private UMessageBox()
+        {
+            InitializeComponent();
+            ButtonShowContent.Add(MessageBoxButton.OK, "确定");
+            ButtonShowContent.Add(MessageBoxButton.YesNo, "是|否");
+            ButtonShowContent.Add(MessageBoxButton.YesNoCancel, "是|否|取消");
+            ButtonShowContent.Add(MessageBoxButton.OKCancel, "确定|取消");
+            this.InitPublicSettings();
+
+        }
+
+        private string mssage;
+        public string Message
+        {
+            get { return mssage; }
+            set { mssage = value; }
+        }
+
+        private void initWindow()
+        {
+            var buttonContents = ButtonShowContent[MsgButton].Split("|".ToArray(), StringSplitOptions.RemoveEmptyEntries);
+            for (var i = 0; i < buttonContents.Length; i++)
+            {
+                var item = buttonContents[i];
+                Button btn = new Button();
+                btn.Width = 120;
+                btn.Height = 40;
+                btn.Margin = new Thickness(10, 0, 0, 0);
+                btn.Content = item;
+                btn.Tag = i == 0 ? true : false;
+                btn.Click += btn_Click;
+                ButtonPanel.Children.Add(btn);
+            }
+            ButtonPanel.Margin = new Thickness(0, 0, 20, 20);
+            this.InputBindings.Add(new System.Windows.Input.InputBinding(new GeneralCommand(() =>
+            {
+                if (ButtonPanel.Children.Count == 1)
+                {
+                    btn_Click(ButtonPanel.Children[0], null);
+                }
+            }), new KeyGesture(Key.Enter)));
+        }
+
+        void btn_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = (sender as Button);
+
+            this.DialogResult = (bool)btn.Tag;
+            this.Close();
+        }
+        private MessageBoxButton MsgButton { get; set; }
+        /// <summary>
+        /// 静态方法 模拟MESSAGEBOX.Show方法
+        /// </summary>
+        /// <param name="title">标题</param>
+        /// <param name="msg">消息</param>
+        /// <returns></returns>
+        public static bool Show(string title, string msg)
+        {
+            return UMessageBox.Show(title, msg, MessageBoxButton.OK);
+        }
+        public static bool Show(string title, string msg, MessageBoxButton buttons)
+        {
+            var msgBox = new UMessageBox();
+            msgBox.Title = string.IsNullOrEmpty(title) ? msgBox.Title : title;
+            msgBox.Message = msg;
+            msgBox.MsgButton = buttons;
+            msgBox.initWindow();
+            msgBox.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            msgBox.DataContext = msgBox;
+
+            return msgBox.ShowDialog() ?? false;
+        }
+
+        public static void Show(string title, string msg,params Button[] buttons)
+        {
+            var msgBox = new UMessageBox();
+            msgBox.Title = string.IsNullOrEmpty(title) ? msgBox.Title : title;
+            msgBox.Message = msg;
+            for (var i = 0; i < buttons.Length; i++)
+            {
+                var item = buttons[i];
+                item.CommandParameter = msgBox;
+                msgBox.ButtonPanel.Children.Add(item);
+            }
+            msgBox.ButtonPanel.Margin = new Thickness(0, 0, 20, 20);
+            msgBox.InputBindings.Add(new System.Windows.Input.InputBinding(new GeneralCommand(() =>
+            {
+                if (msgBox.ButtonPanel.Children.Count == 1)
+                {
+                    msgBox.btn_Click(msgBox.ButtonPanel.Children[0], null);
+                }
+            }), new KeyGesture(Key.Enter)));
+            msgBox.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            msgBox.DataContext = msgBox;
+            msgBox.ShowDialog();
+        }
+    }
+}
+

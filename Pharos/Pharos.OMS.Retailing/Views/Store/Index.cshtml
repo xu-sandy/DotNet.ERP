@@ -1,0 +1,209 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增门店", hideAdd: !CurrentUser.HasPermiss(129), hideEdit: !CurrentUser.HasPermiss(129), hideDel: true, searchHeight: 87));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+
+            <td class="label-toolbar">
+                <label>指派人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("AssignerUID", ViewBag.user as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>创建日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_begin" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_end" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+        </tr>
+
+        <tr class="s_tr">
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("State", new List<SelectListItem>() { new SelectListItem() { Text = "全部", Value = "-1" }, new SelectListItem() { Text = "未审核", Value = "0" }, new SelectListItem() { Text = "可用", Value = "1" }, new SelectListItem() { Text = "暂停", Value = "2" }, new SelectListItem() { Text = "注销", Value = "3" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按商户号", Value = "1" }, new SelectListItem() { Text = "按门店编号", Value = "2" }, new SelectListItem() { Text = "按门店名称", Value = "3" }, new SelectListItem() { Text = "按门店主账号", Value = "4" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if (CurrentUser.HasPermiss(130))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(1)">设为可用门店</a>
+    }
+    @if (CurrentUser.HasPermiss(131))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(2)">暂停门店</a>
+    }
+    @if (CurrentUser.HasPermiss(132))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(3)">注销门店</a>
+    }
+    @if (CurrentUser.HasPermiss(133))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(4)">无效门店</a>
+    }
+    @if (CurrentUser.HasPermiss(134))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-delete'" onclick="del()">删除门店</a>
+    }
+}
+<script type="text/javascript">
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.State == 3 || row.State == 4) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Assign', title: '指派人', editor: { type: 'text', required: true }, width: 120 },
+        {
+            field: 'State', title: '门店状态', editor: { type: 'text', required: true }, width: 120, formatter: function (value, row, index) {
+                if (value == "0") {
+                    return "未审核";
+                }
+                else if (value == "1") {
+                    return "可用";
+                }
+                else if (value == "2") {
+                    return "暂停";
+                }
+                else if (value == "3") {
+                    return "注销";
+                }
+                else if (value == "4") {
+                    return "无效";
+                }
+            }
+        },
+        { field: 'CID', title: '系统商户号', editor: { type: 'text', required: true }, width: 120 }
+    ]];
+
+    pharos.manager.columns = [[
+        { field: 'StoreNum', title: '系统门店编号', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'StoreName', title: '门店名称', editor: { type: 'text', required: true }, width: 200 },
+        {
+            field: 'QRCode', title: '门店二维码', editor: { type: 'text', required: true }, width: 120, formatter: function (value, row, index) {
+
+                var v = '<a href="javascript:;" style="color:#8cc152;"  mch_id="' + row.CID + '"  store_id="' + row.StoreNum + '"  aid="' + row.Id + '"  onclick="SeeQRCode(this)">查看</a>';
+                return v;
+            }
+        },
+        { field: 'LoginName', title: '门店主账号', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'StoreNum3', title: '第三方支付平台门店编号', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'CreateDT', title: '创建时间', editor: { type: 'text', required: true }, width: 140 },
+        { field: 'CreatePerson', title: '创建人', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'AuditDT', title: '审核时间', editor: { type: 'text', required: true }, width: 140 },
+        { field: 'AuditPerson', title: '审核人', editor: { type: 'text', required: true }, width: 120 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 810, 'height': 600, hideSave: false, 'url': this.editurlNocache() });
+    };
+
+    pharos.manager.editItem = function (id, row, field) {
+        if (field != "QRCode")
+        {
+            this.Id = id;
+            openWin({ 'title': this.editText, 'width': 810, 'height': 600, hideSave: false, 'url': this.editurlNocache() });
+        }
+    }
+
+    pharos.manager.viewInfo = function (Id, row) {
+        this.Id = Id;
+        openWin({ 'title': this.viewText, 'width': 810, 'height': 600, hideSave: true, 'url': this.viewurlNocache() });
+    }
+
+    //状态
+    function upStatus(s) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("UpState")", { ids: ids, state: s, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "设置成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "设置失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+    //删除
+    function del() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+
+        var isDel = true;
+        $.each(rows, function (i, item) {
+            if (item.State != 0 && item.State != 4) {
+                $.messager.alert("提示", "删除失败，只能删除未审核和无效的门店");
+                isDel = false;
+                return false;
+            }
+        });
+
+        if (!isDel) {
+            return;
+        }
+
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("delete")", { ids: ids, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "删除成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "删除失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+    //查看二维码
+    function SeeQRCode(t) {
+        var mch_id = $(t).attr("mch_id");
+        var store_id = $(t).attr("store_id");
+        var id = $(t).attr("aid");
+        openWin({ 'title': '门店二维码', 'width': 283, 'height': 373, hideSave: true, 'url': '/Store/QRCode/?mch_id=' + mch_id + '&store_id=' + store_id+'&id='+id });
+    }
+
+    $(function () {
+
+    });
+</script>
+

@@ -1,0 +1,84 @@
+﻿<Window x:Class="Pharos.POS.Retailing.LockScreen"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"       
+      xmlns:converter="clr-namespace:Pharos.Wpf.XamlConverters;assembly=Pharos.Wpf" 
+      xmlns:Lconverter="clr-namespace:Pharos.POS.Retailing.XamlConverters" 
+        InputMethod.PreferredImeState="Off" InputMethod.IsInputMethodEnabled="False"
+      mc:Ignorable="d" 
+      d:DesignHeight="768" d:DesignWidth="1024" Title="{Binding WinTitle}" Icon="{Binding WinIcon}" ResizeMode="NoResize" x:Name="posPage" Left="0" Top="0" WindowStyle="None" WindowState="Maximized">
+    <Window.Resources>
+        <Style x:Key="titleStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"></Setter>
+            <Setter Property="HorizontalAlignment" Value="Left"></Setter>
+            <Setter Property="FontSize" Value="16"></Setter>
+            <Setter Property="Margin" Value="10,0,0,0"></Setter>
+            <Setter Property="Foreground" Value="White"></Setter>
+        </Style>
+        <Style TargetType="{x:Type control:IconPasswordBox}" x:Key="IconPasswordBoxStyle">
+            <Setter Property="IconWidth" Value="25"></Setter>
+            <Setter Property="IconMargin" Value="2"></Setter>
+            <Setter Property="IconHeight" Value="25"></Setter>
+            <Setter Property="FontSize" Value="18"></Setter>
+            <Setter Property="Width" Value="260"></Setter>
+            <Setter Property="HorizontalAlignment" Value="Left"></Setter>
+        </Style>
+    </Window.Resources>
+
+    <Window.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Offset="1" Color="#7891A5"></GradientStop>
+            <GradientStop Offset="0.5" Color="#bd9c85"></GradientStop>
+            <GradientStop Offset="0" Color="#747589"></GradientStop>
+        </LinearGradientBrush>
+    </Window.Background>
+    <Grid Tag="系统已锁屏，验证后解锁">
+        <Grid.RowDefinitions>
+            <RowDefinition></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="10"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition Width="300"></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <Grid Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+            <Image  Margin="20" Width="100"  Source="{Binding WinIcon}">
+                
+            </Image>
+        </Grid>
+        <Border Background="White" Grid.Row="1" Grid.Column="1" CornerRadius="5" >
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="30"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Image Source="Images\Login\user.png" Width="25"></Image>
+                <TextBlock Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="20"><Run Text="["></Run><Run Text="{Binding UserCode}"></Run><Run Text="]"></Run> <Run Text="{Binding OperatorName}"></Run></TextBlock>
+            </Grid>
+        </Border>
+        <Border Background="White" Grid.Row="3"  Grid.Column="1" CornerRadius="5" >
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="40"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <control:IconPasswordBox BorderThickness="0" Style="{StaticResource IconPasswordBoxStyle}"  Password="{Binding Password,Mode=TwoWay}" Icon="Images\Login\lock.png" TabIndex="0" ></control:IconPasswordBox>
+                <control:PosButton  TabIndex="1" Command="{Binding UnLock}" Grid.Column="2" FontSize="35" FontFamily="/Pharos.Wpf;component/Fonts/#FontAwesome" Content="&#xf138;"></control:PosButton>
+            </Grid>
+        </Border>
+        <TextBlock Grid.ColumnSpan="3" Grid.Row="5" Style="{StaticResource titleStyle}">
+            <Run Text="门店："></Run><Run Text="{Binding StoreName}"></Run>
+            <TextBlock Margin="50,0,0,0"><Run Text="POS机号："></Run><Run Text="{Binding MachineSn}"></Run></TextBlock>
+            <TextBlock Margin="50,0,0,0"><Run Text="锁屏时间："></Run><Run Text="{Binding LockDate,Mode=OneWay,StringFormat='yyyy-MM-dd HH:mm:ss'}"></Run></TextBlock>
+            <TextBlock Margin="50,0,0,0"><Run Text="当前时间："></Run><Run Text="{Binding Date,StringFormat='yyyy-MM-dd HH:mm:ss'}"></Run></TextBlock>
+        </TextBlock>
+        <TextBlock Grid.ColumnSpan="3" Grid.Row="5" HorizontalAlignment="Right" FontSize="14" Style="{StaticResource titleStyle}" Text="{Binding AppName}"></TextBlock>
+    </Grid>
+</Window>

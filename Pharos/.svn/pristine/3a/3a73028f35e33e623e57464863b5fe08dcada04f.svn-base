@@ -1,0 +1,151 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增软件服务", editText: "编辑软件服务", delText: "删除软件服务", hideDel: false));
+    var months = Form.GetValidityNum();
+    months.ForEach(o => o.Selected = false);
+    months.Insert(0, new SelectListItem() {Text="全部",Value="",Selected=true });
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>审核状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select name="State" class="easyui-combobox" style="width:80px" data-options="editable:false"><option value="" selected>全部</option><option value="0" >未审</option><option value="1" >正常</option><option value="2" >停用</option></select>
+            </td>
+            <td class="label-toolbar">
+                <label>指派人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("Assigner", ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox",data_options="width:120" })
+            </td>
+            <td class="label-toolbar">
+                <label>入驻方式：</label>
+            </td>
+            <td class="input-toolbar">
+                <select name="Way" class="easyui-combobox" style="width:80px" data-options="editable:false"><option value="" selected>全部</option><option value="1">在线</option><option value="2">独立</option></select>
+            </td>
+            <td class="label-toolbar">
+                <label>开通版本：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("OpenVersionId", new List<SelectListItem>() { new SelectListItem() { Text = "全部", Value = "", Selected = true }, new SelectListItem() { Text = "零售版", Value = "1" }, new SelectListItem() { Text = "餐饮版", Value = "2" }, new SelectListItem() { Text = "鞋服版", Value = "3" } }, new { @class = "easyui-combobox", data_options = "width:80,editable:false" })
+            </td>
+            <td class="label-toolbar">
+                <label>有效期：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("ValidityNum", months, new { @class = "easyui-combobox", data_options = "width:70,editable:false" })
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="SearchText" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'商户号/名称/合同号',width:150" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(1)">设为已审</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(2)">设为停用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="generateSerial()">生成序列号</a>
+}
+<script type="text/javascript">
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+    pharos.manager.columns = [[
+        { field: 'Source', title: '客户来源', hidden: true, editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) { return value == 1 ? "本司" : "商户"; } },
+        { field: 'Way', title: '入驻方式', editor: { type: 'text', required: true }, width: 60, formatter: function (value, row, index) { return value == 1 ? "在线" : "独立"; } },
+        { field: 'OpenVersionId', title: '开通版本', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == 1 ? "零售版" : value == 2 ? "餐饮版" : "鞋服版"; } },
+        { field: 'OpenScopeTitle', title: '开通类目', width: 120 },
+        { field: 'ContractNo', title: '合同号', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'BusinessModeTitle', title: '经营模式', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'StoreNum', title: '门店数', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'UserNum', title: '用户数', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'MemberShared', title: '会员共享', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'StoreProper', title: '分店专属后台', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'AppProper', title: 'APP手机端', editor: { type: 'text', required: true }, width: 90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'PosMinorDisp', title: 'POS次屏显示', editor: { type: 'text', required: true }, width:90, formatter: function (value, row, index) { return value == "Y" ? "是" : "否"; } },
+        { field: 'SupperAccount', title: '超管帐号', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'EffectiveDT', title: '生效日期', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'ValidityNum', title: '有效期(月)', editor: { type: 'text', required: true }, width: 70 },
+        { field: 'ExpirationDT', title: '截止日期', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'CreateDT', title: '创建时间', width: 150, formatter: function (value, row, index) { return new Date(value).format("yyyy-MM-dd HH:mm")} },
+        { field: 'Assigner', title: '指派人', editor: { type: 'text', required: true }, width: 100 },
+    ]];
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Status', title: '审核状态', editor: { type: 'text', required: true }, width: 70, formatter: function (value, row, index) { return value == 0 ? "未审" : value == 1 ? "已审" : "停用"; } },
+        { field: 'CID', title: '商户号', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Title', title: '客户名称', editor: { type: 'text', required: true }, width: 120 },
+    ]]
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache(),true);
+    };
+    pharos.manager.editItem = function (id,row) {
+        this.Id = id;
+        if (row.Status == 0 || row.Status == 1)
+            openDialog800(this.editText, this.editurlNocache());
+        else
+            openDialog(this.detailText, this.editurlNocache(),800,450,true);
+    }
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.each(rows, function (i, r) {
+            if (state == 1 && r.Status == 1) {
+                $.messager.alert("提示", "该记录已审核!"); rows = null; return false;
+            }
+            else if (state == 2 && r.Status == 2) {
+                $.messager.alert("提示", "请选择未停用的记录!"); rows = null; return false;
+            }
+        })
+        if (!rows) return;
+        $.messager.confirm("提示", state == 2 ? "停用后该商户将不能再使用系统，是否继续？" : "是否确定改状态？", function (r) {
+            if (!r) return;
+            var ids= $.map(rows, function (r) { return r.Id;}).join();
+            $.post("@Url.Action("SetState")", {ids:ids,state:state}, function (json) {
+                if (json.successed) {
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "操作失败!" + json.message);
+                }
+            },"json");
+        });
+    }
+    function generateSerial(){
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var pass = true;
+        var codes = $.map(rows, function (r) {
+            if (!r.ExpirationDT) {
+                pass = false;
+                $.messager.alert("提示", "生效日期不能为空!");
+                return false;
+            }
+            else if (r.Status != 1) {
+                pass = false;
+                $.messager.alert("提示", "请选择为已审状态!");
+                return false;
+            }
+            return r.Id;
+        }).join();
+        if (!pass) return;
+        openDialog("生成系列号", "@Url.Action("GenerateSerial")?codes=" + rows[0].Id, 600, 370, true);
+    }
+    function removeBefore(row) {
+        if (row.Status == 1) {
+            $.messager.alert("提示", "已审状态不能删除!");
+            return false;
+        }
+        return true;
+    }
+</script>

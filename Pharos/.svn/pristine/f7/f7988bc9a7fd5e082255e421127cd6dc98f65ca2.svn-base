@@ -1,0 +1,61 @@
+﻿using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.DAL
+{
+    /// <summary>
+    /// 销售订单 数据访问
+    /// </summary>
+    internal class SaleOrderDAL : BaseDAL
+    {
+        public DataTable QuerySaleOrdersPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var cashier = nvl["cashier"];
+            var saler = nvl["saler"];
+            var store = nvl["store"];
+            var apiCodes = nvl["apiCodes"];
+            var searchText = nvl["searchText"];
+            string sql = @"SELECT Id,CreateDT,Cashier,Saler,Store,PaySN,(PaySN + (CASE WHEN [Type]=1 THEN ' <font color=''red''>【换货】</font>' ELSE '' END)) PaySNFormat,ISNULL(TradeNo,'') ApiOrderSN,
+                        TotalAmount,PreferentialPrice,ApiTitle,Title,
+                        (Barcode+(CASE WHEN TuiCount>0 OR HuanCount>0 THEN '</br>' ELSE '' END)+(CASE WHEN TuiCount>0 THEN ' <font color=''red''>【已退】</font>' ELSE '' END)+(CASE WHEN TuiCount>0 AND HuanCount>0 THEN '|' ELSE '' END)+(CASE WHEN HuanCount>0 THEN ' <font color=''red''>【已换】</font>' ELSE '' END)) BarcodeFormat,
+                        PurchaseNumber,SysPrice,ActualPrice,Barcode,MobilePhone,
+                        (CASE WHEN SalesClassifyId='49' THEN '赠送' ELSE '销售' END) SalesClassifyId FROM(
+		                SELECT a.*,dbo.F_UserNameById(a.CreateUID) Cashier,dbo.F_UserNameById(Salesman) Saler, dbo.F_StoreNameById(a.StoreId) Store,p.TradeNo,
+        				ISNULL(c.Title,dbo.F_ProductNameBybarcode(b.Barcode)) Title, b.PurchaseNumber, b.SysPrice, b.ActualPrice, b.Barcode, b.SalesClassifyId,
+                        STUFF((SELECT ','+Title FROM ConsumptionPayment,ApiLibrary WHERE ApiLibrary.ApiCode=dbo.ConsumptionPayment.ApiCode AND PaySN=a.PaySN FOR XML PATH('')),1,1,'') ApiTitle,
+                        (SELECT COUNT(*) FROM dbo.SalesReturns sr INNER JOIN dbo.SalesReturnsDetailed srd ON srd.ReturnId=sr.ReturnId WHERE srd.ReceiptsNumber=b.PaySN AND (sr.ReturnType=0 OR sr.ReturnType=2) AND srd.Barcode=b.Barcode AND srd.TradingPrice=b.ActualPrice) AS TuiCount,
+                        (SELECT COUNT(*) FROM dbo.SalesReturns sr INNER JOIN dbo.SalesReturnsDetailed srd ON srd.ReturnId=sr.ReturnId WHERE srd.ReceiptsNumber=b.PaySN AND (sr.ReturnType=1) AND srd.Barcode=b.Barcode AND srd.TradingPrice=b.ActualPrice) AS HuanCount,d.MobilePhone
+                        FROM dbo.SaleOrders a
+				        INNER JOIN dbo.SaleDetail b ON a.PaySN = b.PaySN
+				        LEFT JOIN dbo.ProductRecord c ON b.Barcode = c.Barcode
+                        LEFT JOIN dbo.Members d ON a.MemberId=d.MemberId
+                        LEFT JOIN dbo.PayNotifyResult p ON p.PaySN = a.PaySN
+		                WHERE 1 = 1 AND (a.CreateDT BETWEEN '" + startDate + "' AND '" + endDate + "' ) ";
+            if (!store.IsNullOrEmpty())
+                sql += " AND EXISTS(SELECT 1 FROM dbo.SplitString('" + store + "',',',1) WHERE Value = a.StoreId)";
+            if (!cashier.IsNullOrEmpty())
+                sql += " AND EXISTS(SELECT 1 FROM dbo.SplitString('" + cashier + "',',',1) WHERE Value = a.CreateUID)";
+            if (!saler.IsNullOrEmpty())
+                sql += " AND EXISTS(SELECT 1 FROM dbo.SplitString('" + saler + "',',',1) WHERE Value = a.Salesman)";
+            if (!apiCodes.IsNullOrEmpty())
+                sql += string.Format(" AND EXISTS ( SELECT 1 FROM dbo.SplitString('{0}', ',', 1) where a.ApiCode like '%'+Value+'%')", apiCodes);
+            if (!searchText.IsNullOrEmpty())
+                sql += string.Format(" AND (MobilePhone like '%{0}%' or b.Barcode like '%{0}%' or Title like '%{0}%')", searchText);
+            sql += ") tb";
+            var ispage = nvl["ispage"];
+            if (ispage == "0")
+            {
+                recordCount = 0;
+                return _db.DataTableText(sql + " Order by Id desc", null);
+            }
+            return base.ExceuteSqlForGroupPage(sql, out recordCount);
+        }
+    }
+}

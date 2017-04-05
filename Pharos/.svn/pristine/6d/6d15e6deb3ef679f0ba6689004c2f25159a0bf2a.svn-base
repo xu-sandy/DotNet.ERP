@@ -1,0 +1,127 @@
+﻿@{
+    ViewBag.Title = "CreateRecharge";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style>
+    .stage {
+        display: none;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                @*<tr>
+                        <td></td>
+                        <td><button type="button">读卡</button></td>
+                    </tr>*@
+                <tr>
+                    <td class="name">卡号：</td>
+                    <td class="input"><input type="text" id="cardID" name="CardID" class="easyui-validatebox" data-options="required:true" /></td>
+                    <td class="name">充值金额：</td>
+                    <td class="input"><input type="text" id="rechargeAmount" name="RechargeAmount" class="easyui-validatebox" data-options="required:true" /></td>
+                </tr>
+                <tr>
+                    <td class="name">持卡人：</td>
+                    <td class="input"><input type="text" id="member" name="Member" disabled="disabled" class="easyui-textbox" /></td>
+                    <td class="name">可用余额：</td>
+                    <td class="input"><input type="text" id="balance" name="Balance" disabled="disabled" class="easyui-textbox" /></td>
+                </tr>
+                <tr>
+                    <td class="name">可用积分：</td>
+                    <td class="input"><input type="text" id="afterIntegral" disabled="disabled" name="AfterIntegral" class="easyui-textbox" /></td>
+                    <td class="name">卡类型：</td>
+                    <td class="input"><input type="text" id="cardType" disabled="disabled" name="CardType" class="easyui-textbox" /></td>
+                </tr>
+                <tr>
+                    <td class="name">备  注：</td>
+                    <td class="input"><input type="text" id="memo" name="Memo" class="easyui-validatebox" /></td>
+                </tr>
+
+                @*分期信息*@
+                @*<tr class="stage">
+                        <td class="name">分期总数：</td>
+                        <td class="input"><input type="text" id="stageNumber" name="StageNumber" class="easyui-textbox" /></td>
+                        <td class="name">每期返还：</td>
+                        <td class="input"><input type="text" id="stageAvg" name="StageAvg" class="easyui-textbox" /></td>
+                    </tr>
+                    <tr class="stage">
+                        <td class="name">每月：</td>
+                        <td class="input"><input type="text" id="returnDT" name="ReturnDT" class="easyui-textbox" style="width:50px" />号返还</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td colspan="3">
+                            <label id="remak"></label>
+                        </td>
+                        <td></td>
+                        <td></td>
+                    </tr>*@
+            </table>
+        </div>
+        <input type="hidden" name="ruleId" id="ruleId" />
+        <input type="hidden" name="giftProject" id="giftProject" />
+        <input type="hidden" name="BeforeAmount" id="beforeAmount" />
+    }
+</div>
+<script>
+    $(function () {
+        //卡号失去焦点的时候查询卡信息
+        $("#cardID").blur(function () {
+            var cardSN = $(this).val();
+            if (cardSN != '') {
+                $.ajax({
+                    url: '@Url.Action("GetRechargeCardByCardSn")',
+                    type: 'POST',
+                    data: { cardSN: cardSN },
+                    dataType: "json",
+                    success: function (data) {
+                        if (data.successed) {
+                            $("#member").textbox("setValue", data.data.RealName);
+                            if (data.data.Balance == 0) {
+                                data.data.Balance = "0";
+                            }
+                            $("#balance").textbox("setValue", data.data.Balance);
+                            $("#beforeAmount").val(data.data.Balance);
+                            if (data.data.Integer == 0) {
+                                data.data.Integer = "0";
+                            }
+                            $("#afterIntegral").textbox("setValue", data.data.Integer);
+                            var typeVal = "";
+                            switch (data.data.CardType) {
+                                case "1":
+                                    typeVal = "储蓄卡";
+                                    break;
+                                case "2":
+                                    typeVal = "购物卡";
+                                    break;
+                                case "3":
+                                    typeVal = "会员卡";
+                                    break;
+                            }
+                            $("#cardType").textbox("setValue", typeVal);
+                        } else {
+                            $.messager.alert("提示", data.message, "info");
+                            return false;
+                        }
+                    }
+                })
+            }
+        });
+        document.onkeydown = function (event) {
+            var e = event || window.event || arguments.callee.caller.arguments[0];
+            if (e && e.keyCode == 13) { // enter 键
+                $("#rechargeAmount").focus();
+            }
+        }
+    })
+
+    function SaveBefore() {
+        var pirce = $("#rechargeAmount").val();
+        if (pirce <= 0) {
+            $.messager.alert("提示", "不支持充值 " + pirce + " 元！", "info");
+            return false;
+        }
+    }
+</script>

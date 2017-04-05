@@ -1,0 +1,124 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    /// <summary>
+    /// 出入款
+    /// </summary>
+    public class TakeOutOrDepositMoney : BaseObservable
+    {
+
+        public TakeOutOrDepositMoneyEnum Type { get; set; }
+        public string Title
+        {
+            get { return Type == TakeOutOrDepositMoneyEnum.TakeOutMoney ? "出款操作" : "入款操作"; }
+        }
+        public string MachineId
+        {
+            get { return PosMachine.Current.Infos.MachineId; }
+        }
+
+        public string UserName
+        {
+            get { return PosMachine.Current.CurrentOperator.FullName; }
+        }
+
+        public DateTime OperatTime
+        {
+            get { return DateTime.Now; }
+        }
+
+        string password;
+        public string Password
+        {
+            get { return password; }
+            set
+            {
+                password = value;
+                OnPropertyChanged("Password");
+            }
+        }
+
+        string jineStr;
+        public string JineStr
+        {
+            get { return jineStr; }
+            set
+            {
+                jineStr = value;
+                try
+                {
+                    Jine = Convert.ToDecimal(jineStr);
+                }
+                catch { }
+                OnPropertyChanged("JineStr");
+            }
+        }
+
+        public decimal Jine { get; set; }
+
+
+        public GeneralCommand OpeateChuKuan
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    Type = TakeOutOrDepositMoneyEnum.TakeOutMoney;
+                    var win = o as Window;
+                    if (UserModel.Current.Verify(UserModel.Current.UserName, Password))
+                    {
+                        if (Jine <= 0)
+                        {
+                            Toast.DoShow("金额必须为大于零！",win);
+                            return;
+                        }
+                        PosIncomePayoutLocalService.Save(Jine, (short)Type, UserModel.Current.Uid, PosMachine.Current.Infos.MachineId, PosMachine.Current.Infos.StoreId);
+                        if (o != null)
+                        {
+                           
+                            win.Close();
+                        }
+                    }
+                    else
+                    {
+                        Toast.DoShow("密码验证失败！",win);
+                    }
+                });
+            }
+        }
+
+        public GeneralCommand OpeateRuKuan
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    Type = TakeOutOrDepositMoneyEnum.DepositMoney;
+                    var win = o as Window;
+                    if (UserModel.Current.Verify(UserModel.Current.UserName, Password))
+                    {
+                        if (Jine <= 0)
+                        {
+                            Toast.DoShow("金额必须为大于零！", win);
+                            return;
+                        }
+                        PosIncomePayoutLocalService.Save(Jine, (short)Type, UserModel.Current.Uid, PosMachine.Current.Infos.MachineId, PosMachine.Current.Infos.StoreId);
+                        if (o != null)
+                        {
+
+                            win.Close();
+                        }
+                    }
+                    else
+                    {
+                        Toast.DoShow("密码验证失败！", win);
+                    }
+                });
+            }
+        }
+    }
+}

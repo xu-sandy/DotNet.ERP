@@ -1,0 +1,52 @@
+﻿// --------------------------------------------------
+// Copyright (C) 2015 版权所有
+// 创 建 人：蔡少发
+// 创建时间：2015-05-28
+// 描述信息：常用池
+// --------------------------------------------------
+
+using System;
+
+namespace Pharos.Sys
+{
+    /// <summary>
+    /// 常用池
+    /// </summary>
+    public partial class SysConstPool
+    {
+        /// <summary>
+        /// 默认页面Title
+        /// </summary>
+        public static string Page_Title = "道诚科技·商业管理平台";
+
+        public static string Page_GoError = "/Error.aspx?msg=";
+
+        /// <summary>
+        /// 物理存储路径
+        /// </summary>
+        /// <param name="RelativePath">返回相对路径</param>
+        /// <param name="dir">自定义目录名称</param>
+        /// <returns>绝对路径</returns>
+        public static string SaveAttachPath(ref string RelativePath, string dir = "")
+        {
+            var path = "Attachs\\" + DateTime.Now.ToString("yyyyMM")+"\\";
+            if (!string.IsNullOrEmpty(dir)) path += dir + "\\";
+            RelativePath = path;
+            path = GetRoot + path;
+            if (!System.IO.Directory.Exists(path)) System.IO.Directory.CreateDirectory(path);
+            return path;
+        }
+        /// <summary>
+        /// 保存根目录
+        /// </summary>
+        public static string GetRoot
+        {
+            get {
+                var root = Pharos.Utility.Config.GetAppSettings("SaveRoot");
+                if (string.IsNullOrEmpty(root))
+                    root = AppDomain.CurrentDomain.BaseDirectory;
+                return root;
+            }
+        }
+    }
+}

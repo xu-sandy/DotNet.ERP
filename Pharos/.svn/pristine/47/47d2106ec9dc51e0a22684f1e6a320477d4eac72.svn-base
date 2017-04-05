@@ -1,0 +1,27 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.Scanner
+{
+    public class ScannerFactory
+    {
+        static ScannerFactory()
+        {
+            ScannerFactory.Register<KeyboardScanner>();
+        }
+        static List<IScanner> sanners = new List<IScanner>();
+        public static void MonitorScanner(Window win, Action<string, ScannerType> SetValue)
+        {
+            foreach (var item in sanners)
+            {
+                item.SetScanner(win, SetValue);
+            }
+        }
+
+        public static void Register<T>() where T : IScanner, new()
+        {
+            sanners.Add(new T());
+        }
+    }
+}

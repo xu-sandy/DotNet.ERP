@@ -1,0 +1,117 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增分类", editText: "修改分类",delText:"移除分类", hideDel: false));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类别：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("parentType", ViewBag.parenttypes as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+            </td>
+            @*<td class="label-toolbar">
+        <label>状态：</label>
+    </td>
+    <td class="input-toolbar">
+        @Html.DropDownList("state", ViewBag.states as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+    </td>
+    <td class="label-toolbar">
+        <label>关键字：</label>
+    </td>
+    <td class="input-toolbar">
+        <input name="searchText" class="datacontrol easyui-textbox" placeholder="名称" data-options="prompt:'名称'" />
+    </td>*@
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setEnable(1)">设为可用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-suspend'" onclick="setEnable(0)">设为停用</a>
+}
+
+<script type="text/javascript">
+    pharos.managertree.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'text', title: '分类名称', width: 150 },
+        { field: 'CategoryPSNTitle', title: '上级分类', width: 150,hidden:true },
+        { field: 'Count', title: '档案商品量', width: 150 },
+        { field: 'StateTitle', title: '状态', width: 150 }
+    ]];
+    pharos.managertree.sortName = "OrderNum";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "text";
+    pharos.managertree.pagination = false;
+    function setEnable(state) {
+        var rows = pharos.managertree.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.managertree.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    var removeIds = [];
+    function removeBefore(item) {
+        if (item.Count>0) {
+            $.messager.alert("提示", "无法移除，该分类下存在商品档案信息!"); return false;
+        }
+        var childs = pharos.managertree.$dg.treegrid("getChildren", item.Id);
+        var result = true;
+        $.each(childs, function (i, r) {
+            if (r.Count > 0) {
+                $.messager.alert("提示", "无法移除，该子分类下存在商品档案信息!");
+                result = false;
+                return false;
+            }
+            removeIds.add(r.Id);
+        });
+        return result;
+    }
+    pharos.managertree.removeItem = function (id) {
+        removeIds = [];
+        var rows = pharos.managertree.$dg.treegrid('getChecked');
+        if (!rows || rows.length == 0) {
+            $.messager.alert('提示', '请选择要删除的项');
+            return;
+        }
+        var result = true;
+        $.each(rows, function (i, r) {
+            if (!removeBefore(r)) {
+                result = false; return false;
+            }
+            removeIds.push(r.Id);
+        });
+        if (!result) return;
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r)  return r;
+            $.ajax({
+                url: pharos.managertree.delurl,
+                data: { Ids: removeIds, t: Math.random() },
+                type: "POST",
+                traditional: true, //使用数组
+                dataType: "json",
+                success: function (d) {
+                    if (d.successed) {
+                        $.messager.alert("提示", "删除成功！", "info");
+                        pharos.managertree.gridReload();
+                    } else {
+                        $.messager.alert("提示", "删除失败！" + d.message, "error");
+                    }
+                },
+                error: function () {
+                    $.messager.alert("错误", "删除失败！", "error");
+                }
+            });
+        });
+    }
+</script>

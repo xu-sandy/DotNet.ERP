@@ -1,0 +1,97 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.SalesPromotionRules.Discount;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Models.SalesPromotionRules
+{
+    /// <summary>
+    /// 赠品数据模型
+    /// </summary>
+    public class Gift
+    {
+        public Gift() { }
+        public Gift(GiftDAO info, string discountTitle)
+        {
+            this.Barcode = info.Barcode;
+            this.Title = info.Title;
+            this.SysPrice = info.SysPrice;
+            this.Id = info.GiftId;
+            this.AddMoney = info.AddMoney;
+            this.DiscountTitle = discountTitle;
+            this.GiftNumber = info.Number;
+            this.StoreNumber = info.StoreNumber;
+            this.CommodityId = info.CommodityId;
+        }
+        /// <summary>
+        /// 促销活动ID
+        /// </summary>
+        public string CommodityId { get; set; }
+
+        /// <summary>
+        /// 条码
+        /// </summary>
+        public string Barcode { get; set; }
+        /// <summary>
+        /// 商品名称
+        /// </summary>
+        public string Title { get; set; }
+        /// <summary>
+        /// 系统售价
+        /// </summary>
+        public decimal SysPrice { get; set; }
+        /// <summary>
+        /// 加购价
+        /// </summary>
+        public decimal AddMoney { get; set; }
+        /// <summary>
+        /// 库存量
+        /// </summary>
+        public decimal StoreNumber { get; set; }
+        /// <summary>
+        /// 赠品数量
+        /// </summary>
+        public decimal GiftNumber { get; set; }
+        /// <summary>
+        /// 优惠折扣标题
+        /// </summary>
+        public string DiscountTitle { get; set; }
+        /// <summary>
+        /// 优惠折扣ID
+        /// </summary>
+        public string Id { get; set; }
+
+
+
+        //   public decimal TotalProductToGiftNum { get; set; }
+        //{
+        //    get { return BaseDiscount.PendingGift.Where(p => p.Id == Id).Sum(p => p.ProductToGiftNum); }
+        //    set { }
+        //}
+
+        public GeneralCommand AddGiftCommand
+        {
+
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    var win = o as FreebieDiscountPage;
+                    var currentGiftNum = BaseDiscount.pendingGiftCountDict.Keys.Contains(Id) ? BaseDiscount.pendingGiftCountDict[Id] : 0;
+                    if (currentGiftNum + 1 <= GiftNumber)
+                    {
+                        var isSuccess = PosMachine.Current.BillList.AddFromBarcode(Barcode, 1, AddMoney > 0 ? ProductStatus.AddMoneyGift : ProductStatus.Gift, AddMoney, Id);
+                        if (isSuccess)
+                        {
+                            win.RefreshView();
+                        }
+                    }
+                    else
+                    {
+                        Toast.DoShow("超出赠送数额！", win);
+                    }
+                });
+            }
+        }
+    }
+}

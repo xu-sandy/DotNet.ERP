@@ -1,0 +1,26 @@
+﻿@{
+    ViewBag.Title = "ProductWeighList";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: true, hideDel: true, hideSearch: true));
+}
+@section toolbar
+{
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="window.location.href='@Url.Action("ExportOption")'">上一步</a>
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="openDialog('自定义导出', '@Url.Action("ExportOption")', 1000, 560, true)">确定</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindPageList")?ValuationType=2&@Html.Raw(Request.QueryString)";
+    pharos.manager.pageList = [112, 224];
+    pharos.manager.pageSize = @(Request["MaxRecord"]??"112");
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ProductCode', title: '货号', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'CategoryTitle', title: '品类', width: 120 },
+        { field: 'Title', title: '品名', width: 120 },
+        { field: 'Size', title: '规格', width: 100 },
+        { field: 'BrandTitle', title: '品牌', width: 80 },
+        { field: 'SubUnit', title: '单位', width: 40 },
+        { field: 'SysPrice', title: '系统售价', width: 40 }
+    ]];
+</script>

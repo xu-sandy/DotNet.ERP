@@ -1,0 +1,66 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Data;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.DAL
+{
+    public class PromotionDAL:BaseDAL
+    {
+        public PromotionDAL() { 
+        }
+        /// <summary>
+        /// 验证促销保存
+        /// </summary>
+        /// <param name="type">当前类型 1-单品2-捆绑3-组合4-买赠5-满元</param>
+        /// <param name="startDate"></param>
+        /// <param name="barcodes"></param>
+        /// <param name="categorysns"></param>
+        /// <returns></returns>
+        public string PromotionValidMsg(string type, DateTime startDate, IEnumerable<string> barcodes, IEnumerable<string> categorysns = null)
+        {
+            if ((barcodes != null && barcodes.Any()) || (categorysns != null && categorysns.Any()))
+            {
+                using (EFDbContext db = new EFDbContext())
+                {
+                    var sql = string.Format("SELECT dbo.F_PromotionValidMsg('{0}','{1}','{2}','{3}')", type, startDate.ToShortDateString(), string.Join(",", barcodes), categorysns == null ? "" : string.Join(",", categorysns));
+                    return db.Database.SqlQuery<string>(sql).FirstOrDefault();
+                }
+            }
+            return "";
+        }
+        /// <summary>
+        /// 获取新捆绑条码
+        /// </summary>
+        /// <returns></returns>
+        internal string GetNewBarcode() {
+            var result = base._db.ExecuteScalar("Sys_GenerateNewBundlingCode", null);
+            return result.ToString();
+        }
+        internal DataTable KubangPageData(NameValueCollection nvl, out int recordCount)
+        {
+            string sql = @"SELECT a.CompanyId, a.CreateDT,a.StartDate,a.EndDate,a.CustomerObj,a.State,b.CommodityId,b.NewBarcode,b.BundledPrice,b.TotalBundled,c.Id,c.Number,b.NewBarcode NewBarcode2,a.StoreId,
+               (b.NewBarcode+'<br/>'+b.Title) as NewBar, d.Title,d.BrandSN,d.BrandTitle,d.SysPrice,d.ProductCode,d.Barcode,CONVERT(VARCHAR(20),a.StartDate,23)+'至'+CONVERT(VARCHAR(20),a.EndDate,23) [BetWeen],
+                CASE a.CustomerObj WHEN 1 THEN '内部' WHEN 2 THEN 'VIP' ELSE '不限' END Customer,CASE a.State WHEN 1 THEN '活动中' WHEN 2 THEN '已过期' ELSE '未开始' END StateTitle
+                FROM dbo.CommodityPromotion a
+                INNER JOIN dbo.Bundling b ON b.CommodityId=a.Id
+                INNER JOIN dbo.BundlingList c ON c.CommodityId=a.Id
+                INNER JOIN dbo.Vw_Product d ON (c.Barcode=d.Barcode OR ','+d.Barcodes+',' LIKE '%,'+c.Barcode+',%') and a.CompanyId=d.CompanyId  WHERE 1=1";
+            var state = nvl["state"];
+            var searchText = nvl["searchText"];
+            var storeId = nvl["storeId"];
+            var companyid = nvl["companyid"];
+            if (!storeId.IsNullOrEmpty())
+                sql += " and ','+a.StoreId+',' like '%," + storeId + ",%'";
+            if (!searchText.IsNullOrEmpty())
+                sql +=string.Format(" and (NewBarcode like '%{0}%' or d.ProductCode like '%{0}%' or d.Title like '%{0}%')",searchText);
+            if (!state.IsNullOrEmpty())
+                sql += " and a.state="+state;
+            if (!companyid.IsNullOrEmpty())
+                sql += " and a.CompanyId=" + companyid;
+            return base.ExceuteSqlForGroupPage(sql, out recordCount, nvl);
+        }
+    }
+}

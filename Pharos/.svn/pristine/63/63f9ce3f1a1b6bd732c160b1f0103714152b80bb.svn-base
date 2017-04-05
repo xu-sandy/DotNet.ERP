@@ -1,0 +1,182 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+namespace Pharos.POS.Retailing.Printers
+{
+    public static class PrintLayoutHelper
+    {
+        public static FlowDocument GetDocument()
+        {
+            var doc = new FlowDocument();
+            doc.IsOptimalParagraphEnabled = false;
+            return doc;
+        }
+        public static void Format<T>(this FlowDocument doc, PrintTemplate tpl, T model)
+        {
+            var lines = tpl.GetLines().Select(o => tpl.GetLineTagInfos(o));
+            var ContentTags = new string[] { "BMP", "T" };
+            foreach (var tags in lines)
+            {
+                Paragraph block = new Paragraph();
+                foreach (var tag in tags)
+                {
+                    if (TagFormat(block, tag, tags))
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static bool TagFormat(Paragraph block, Tag tag, IEnumerable<Tag> tags)
+        {
+            var result = false;
+            switch (tag.TagName)
+            {
+                case "BR":
+                    if (!string.IsNullOrEmpty(tag.TagValue))
+                        block.Margin = new System.Windows.Thickness(0, Convert.ToDouble(tag.TagValue), 0, 0);
+                    break;
+                case "BMP":
+                    if (!string.IsNullOrEmpty(tag.TagValue))
+                    {
+                        Figure figure = new Figure();
+                        var bitmap = new BitmapImage(new Uri(tag.TagValue, UriKind.RelativeOrAbsolute));
+                        var image = new Image { Source = bitmap, Stretch = Stretch.Fill };
+
+                        BlockUIContainer imgBlock = new BlockUIContainer(image);
+                        if (tag.SettingTags != null && tag.SettingTags.Count > 0)
+                        {
+                            foreach (var imgSetting in tag.SettingTags)
+                            {
+                                FormatImg(image, imgBlock, imgSetting);
+                            }
+                        }
+                        figure.Blocks.Add(imgBlock);
+                        block.Inlines.Add(figure);
+                        result = true;
+                    }
+                    break;
+                case "T":
+                    if (!string.IsNullOrEmpty(tag.TagValue))
+                    {
+                        Figure figure = new Figure();
+                        TextBlock tb = new TextBlock();
+
+                        BlockUIContainer tBlock = new BlockUIContainer(tb);
+                        foreach (var tempTag in tags)
+                        {
+                            var ctb = new TextBlock();
+                            ctb.Text = tempTag.TagValue;
+                            foreach (var imgSetting in tempTag.SettingTags)
+                            {
+                                FormatText(tb, ctb, tBlock, imgSetting);
+                            }
+                            tb.Inlines.Add(ctb);
+                        }
+                        figure.Blocks.Add(tBlock);
+                        block.Inlines.Add(figure);
+                        result = true;
+                    }
+                    break;
+
+            }
+            return result;
+        }
+        private static void FormatImg(Image img, BlockUIContainer buic, Tag tag)
+        {
+            switch (tag.TagName)
+            {
+                case "W":
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(tag.TagValue))
+                            img.Width = Convert.ToDouble(tag.TagValue);
+                    }
+                    catch { }
+                    break;
+                case "H":
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(tag.TagValue))
+                            img.Height = Convert.ToDouble(tag.TagValue);
+                    }
+                    catch { }
+                    break;
+                case "L":
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(tag.TagValue))
+                            img.Margin = new System.Windows.Thickness(0)
+                            {
+                                Left = Convert.ToDouble(tag.TagValue)
+                            };
+                    }
+                    catch { }
+                    break;
+                case "R":
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(tag.TagValue))
+                            img.Margin = new System.Windows.Thickness(0)
+                            {
+                                Right = Convert.ToDouble(tag.TagValue)
+                            };
+                    }
+                    catch { }
+                    break;
+            }
+        }
+
+        private static void FormatText(TextBlock ptb, TextBlock tb, BlockUIContainer buic, Tag tag)
+        {
+            switch (tag.TagName)
+            {
+                case "L":
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(tag.TagValue))
+                            tb.Margin = new System.Windows.Thickness(0)
+                            {
+                                Left = Convert.ToDouble(tag.TagValue)
+                            };
+                    }
+                    catch { }
+                    break;
+                case "R":
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(tag.TagValue))
+                            tb.Margin = new System.Windows.Thickness(0)
+                            {
+                                Right = Convert.ToDouble(tag.TagValue)
+                            };
+                    }
+                    catch { }
+                    break;
+                case "F":
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(tag.TagValue))
+                            tb.FontSize = Convert.ToDouble(tag.TagValue);
+                    }
+                    catch { }
+                    break;
+                case "B":
+                    try
+                    {
+                        tb.FontWeight = FontWeights.Bold;
+                    }
+                    catch { }
+                    break;
+            }
+        }
+    }
+}

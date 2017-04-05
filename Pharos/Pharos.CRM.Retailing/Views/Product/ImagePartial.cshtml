@@ -1,0 +1,61 @@
+﻿@model ProductRecord
+@{
+    var i = 0;
+}
+<style type="text/css">
+    .imgprev{max-width:100px;_width:expression(this.width > 100 ? "100px" : this.width);} 
+</style>
+<br />
+<table class="list-form" width="100%" height="350px">
+    <tr>
+        <th align="center" width="150px">图片预览</th>
+        <th>上传图片</th>
+        <th>上传时间</th>
+        <th>封面</th>
+        <th align="center">操作</th>
+    </tr>
+    @foreach (var app in Model.ProductImages)
+    {
+        @Html.HiddenFor(o => o.ProductImages[i].ImagePath, new { id = "img" + i })
+        @Html.HiddenFor(o => o.ProductImages[i].Id)
+        <tr>
+            <td><img src="@(app.ImagePath.IsNullOrEmpty()?"": Url.Content("~/"+app.ImagePath))" class="imgprev" id="@("imgprev"+i)" /></td>
+            <td><input type="text" class="easyui-filebox" name="file1" id="@("file"+i)" data-options="buttonText:'选择图片',prompt:'请选择图片...',missingMessage:'请选择图片',accept:'image/*.jpg',multiple:false,onChange:fileChange" style="width:260px;" /></td>
+            <td>@Html.ValueFor(o => o.ProductImages[i].CreateDT, "{0:yyyy-MM-dd HH:mm}")</td>
+            <td>@Html.CheckBoxFor(o => o.ProductImages[i].Status, new { @class = "easyui-switchbutton" })</td>
+            <td width="70px" align="center">
+                @if (!app.ImagePath.IsNullOrEmpty())
+                {
+                    <a href="javascript:delImg('@i')">删除</a>
+                }
+                else
+                {
+                    <a style="color:#a3a3a3">删除</a>
+                }
+            </td>
+        </tr>
+        i++;
+    }
+</table>
+
+<script type="text/javascript">
+    $(function () {
+        $(".list-form").find(":checkbox").click(function () {
+            if(this.checked)
+                $(".list-form").find(":checkbox").not($(this)).attr("checked", false);
+
+        });
+    })
+    function delImg(idx) {
+        $.messager.confirm("提示", "是否确定删除该图片?", function (r) {
+            if (!r) return;
+            $("#img" + idx).val("");
+            $("#file" + idx).filebox("setValue", "");
+            $("#imgprev" + idx).removeAttr("src");
+        })
+    }
+    function fileChange() {
+        var url = pharos.imgUrl($(this).next().find("[type='file']").get(0));
+        $(this).parent().prev().find("img").attr("src", url);
+    }
+</script>

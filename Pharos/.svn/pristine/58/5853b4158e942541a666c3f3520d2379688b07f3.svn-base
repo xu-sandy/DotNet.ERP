@@ -1,0 +1,162 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Sys.BLL;
+using Pharos.Sys.Entity;
+using Pharos.Sys.Models;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class UserController : BaseController
+    {
+        [Ninject.Inject]
+        private OMSSysUserInfoBLL _userBLL { get; set; }
+        //public UserController(IOMSSysUserInfoBLL userBll)
+        //{
+        //    _userBLL = userBll;
+        //}
+        public ActionResult Index()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult GetUsers(int page = 1, int rows = 30)
+        {
+            QueryUserModel queryUserModel = new QueryUserModel();
+
+            if (!Request["keyword"].IsNullOrEmpty())
+            {
+                queryUserModel.Keyword = Request["keyword"].ToString().Trim();
+            }
+            if (!Request["organizationId"].IsNullOrEmpty())
+            {
+                queryUserModel.OrganizationId = int.Parse(Request["organizationId"].ToString());
+            }
+            if (!Request["departmentId"].IsNullOrEmpty())
+            {
+                queryUserModel.DepartmentId = int.Parse(Request["departmentId"].ToString());
+            }
+            if (!Request["roleGroupsId"].IsNullOrEmpty())
+            {
+                queryUserModel.RoleGroupsId = Request["roleGroupsId"].ToString();
+            }
+            if (!Request["status"].IsNullOrEmpty())
+            {
+                queryUserModel.Status = short.Parse(Request["status"]);
+            }
+            var paging = new Paging() { PageIndex = page, PageSize = rows };
+            var entities = _userBLL.GetList(paging, queryUserModel);
+            return ToDataGrid(entities, paging.RecordTotal);
+        }
+        /// <summary>
+        /// 用户管理-新增或编辑用户表单-页面加载
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public ActionResult UserSave(int id = 0)
+        {
+            var model = _userBLL.GetModel(id);
+            ViewBag.sysUserState = EnumToSelect(typeof(Pharos.Sys.SysUserState), emptyTitle: "请选择");
+            return View(model);
+        }
+        /// <summary>
+        /// 用户管理-新增或编辑用户表单-保存用户方法
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult UserSave(OMS_SysUserInfo model)
+        {
+            model.RoleIds = Request["RoleIds"];
+            var result = _userBLL.SaveUser(model);
+            return Content(result.ToJson());
+        }
+        [HttpPost]
+        public ActionResult DeleteUser(object[] ids)
+        {
+            var re = _userBLL.Delete(ids);
+            return Content(re.ToJson());
+        }
+        public ActionResult Login()
+        {
+            //if (CurrentUser.IsLogin)
+            //{
+            //    //已登录，则直接进入主界面
+            //    return Redirect(Url.Action("Index", "Home"));
+            //}
+            var user = new UserLogin();
+            if (Cookies.IsExist("remuc"))
+            {
+                user.UserName = Cookies.Get("remuc", "_uname");
+                user.UserPwd = Cookies.Get("remuc", "_pwd");
+                user.RememberMe = true;
+            }
+            return View(user);
+
+        }
+
+        [HttpPost]
+        public ActionResult Login(UserLogin user)
+        {
+            if (!ModelState.IsValid) return View(user);
+            var obj = _userBLL.Login(user.UserName,user.UserPwd);
+            if (obj == null)
+            {
+                ViewBag.msg = "帐户或密码输入不正确!";
+                return View(user);
+            }
+            var sysuser = new SysUserInfo();
+            obj.ToCopyProperty(sysuser);
+            new Sys.CurrentUser().Login(sysuser, user.RememberMe);
+
+            return Redirect(Url.Action("Index", "Home"));
+        }
+        public ActionResult Logout()
+        {
+            Sys.CurrentUser.Exit();
+            return RedirectToAction("Login");
+        }
+        #region 个人信息
+        public ActionResult UserInfo()
+        {
+            var model = _userBLL.GetModelByUID(Sys.CurrentUser.UID);
+            return View(model);
+        }
+        [HttpPost]
+        public ActionResult UserInfo(int Id, string LoginPwd)
+        {
+            var model = _userBLL.GetModel(Id);
+            model.LoginPwd = LoginPwd;
+            var result = _userBLL.SaveUser(model);
+            return Content(result.ToJson());
+        }
+        #endregion
+    }
+    public class UserLogin
+    {
+        /// <summary>
+        /// 用户名
+        /// </summary>
+        [Display(Name = "用户名", Description = "4-20个字符。")]
+        [Required(ErrorMessage = "×")]
+        [StringLength(20, MinimumLength = 1, ErrorMessage = "×")]
+        public string UserName { get; set; }
+
+        /// <summary>
+        /// 密码
+        /// </summary>
+        [Display(Name = "密码", Description = "6-20个字符。")]
+        [Required(ErrorMessage = "×")]
+        [StringLength(20, MinimumLength = 1, ErrorMessage = "×")]
+        [DataType(DataType.Password)]
+        public string UserPwd { get; set; }
+
+        public bool RememberMe { get; set; }
+
+        public string StoreId { get; set; }
+    }
+}

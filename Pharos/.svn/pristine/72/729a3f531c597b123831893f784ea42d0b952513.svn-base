@@ -1,0 +1,96 @@
+﻿using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class PayWayViewModel : BaseViewModel
+    {
+        public PayWayViewModel(decimal amount, PayAction mode)
+        {
+            Amount = amount;
+            Task.Factory.StartNew(() =>
+            {
+                var result = ApiManager.Post<BaseApiParams, ApiRetrunResult<IEnumerable<PayItem>>>(@"api/PaysStatus", new BaseApiParams()
+                {
+                    CompanyToken = Global.MachineSettings.MachineInformations.CompanyToken,
+                    MachineSn = Global.MachineSettings.MachineInformations.MachineSn,
+                    // StoreId = Global.MachineSettings.MachineInformations.StoreId
+                });
+                if (result.Code == "200")
+                {
+                    Application.Current.Dispatcher.Invoke(new Action(() =>
+                    {
+                        Payways = result.Result;
+                    }));
+                }
+                else
+                {
+                    //Toast.ShowMessage(result.Message, Application.Current.MainWindow);
+                    Payways = new List<PayItem>() { new PayItem() { Mode = PosModels.PayMode.CashPay, ApiCodes = "11", DisableIcon = @"..\Images\ZhiFuFangShi\rmb-gray.png", EnableIcon = @"..\Images\ZhiFuFangShi\rmb.png", Enable = true, Title = "现金支付" } };
+                }
+            });
+            Mode = mode;
+
+        }
+        public decimal Amount { get; set; }
+
+        public PayAction Mode { get; set; }
+        /// <summary>
+        /// 多方式支付事件
+        /// </summary>
+        public ICommand MultiPayCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    DuoFangShiZhiFu page = new DuoFangShiZhiFu(Amount, Mode);
+                    page.Owner = Application.Current.MainWindow;
+                    CurrentWindow.Hide();
+                    page.ShowDialog();
+                    CurrentWindow.Close();
+                });
+            }
+        }
+        /// <summary>
+        /// 关闭按钮事件
+        /// </summary>
+        public ICommand CloseCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    CurrentWindow.Close();
+                });
+            }
+        }
+
+        IEnumerable<PayItem> _Payways;
+        public IEnumerable<PayItem> Payways
+        {
+            get { return _Payways; }
+            set
+            {
+                _Payways = value;
+                foreach (var item in _Payways)
+                {
+                    item.Amount = Amount;
+                    item.Action = Mode;
+                    item.CurrentWindow = CurrentWindow;
+                }
+                this.OnPropertyChanged(o => o.Payways);
+            }
+        }
+    }
+}

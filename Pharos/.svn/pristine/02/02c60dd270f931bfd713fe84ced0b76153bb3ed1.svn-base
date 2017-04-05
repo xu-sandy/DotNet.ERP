@@ -1,0 +1,58 @@
+﻿using Pharos.SyncService.RemoteDataServices;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.SyncService
+{
+    public class RemoteSyncContext : ISyncContext
+    {
+        public RemoteSyncContext()
+        {
+            Register(typeof(SysStoreUserInfo), new SysStoreUserInfoSyncRemoteService());
+            Register(typeof(ApiLibrary), new ApiLibrarySyncRemoteService());
+            Register(typeof(Notice), new NoticeSyncRemoteService());
+            Register(typeof(DeviceRegInfo), new DeviceRegInfoSyncRemoteService());
+            Register(typeof(PosIncomePayout), new PosIncomePayoutSyncRemoteService());
+            Register(typeof(Member), new MembersSyncRemoteService());
+            Register(typeof(MemberIntegral), new MemberIntegralSyncRemoteService());
+            Register(typeof(ProductCategory), new ProductCategorySyncRemoteService());
+            Register(typeof(ProductRecord), new ProductRecordSyncRemoteService());
+            Register(typeof(SysDataDictionary), new SysDataDictionarySyncRemoteService());
+            Register(typeof(SalesRecord), new SalesRecordSyncRemoteService());
+            Register("CommodityBundlingPackage", new CommodityBundlingPackageRemoteService());
+            Register("CommodityDiscountPackage", new CommodityDiscountPackageRemoteService());
+            Register("CommodityFreeGiftPackage", new CommodityFreeGiftPurchasePackageRemoteService());
+            Register("CommodityBlendPackage", new CommodityPromotionBlendPackageRemoteService());
+            Register("MemberIntegralSetPackage", new MemberIntegralPackageSyncRemoteService());
+            Register("SalePackage", new SalePackageSyncRemoteService());
+
+        }
+        Dictionary<string, ISyncDataService> dataServiceDict = new Dictionary<string, ISyncDataService>();
+        private void Register(string syncDataObjectType, ISyncDataService dataService)
+        {
+            dataServiceDict.Add(syncDataObjectType, dataService);
+        }
+        private void Register(Type syncDataObjectType, ISyncDataService dataService)
+        {
+            dataServiceDict.Add(syncDataObjectType.ToString(), dataService);
+        }
+        public IDictionary<string, ISyncDataService> ServiceMappings
+        {
+            get { return dataServiceDict; }
+        }
+
+        public bool Contains(string key)
+        {
+            return dataServiceDict.ContainsKey(key);
+        }
+
+        public ISyncDataService GetDataService(string key)
+        {
+            return dataServiceDict[key];
+        }
+    }
+}

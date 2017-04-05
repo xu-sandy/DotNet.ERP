@@ -1,0 +1,157 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true,searchHeight:80));
+    var screenWidth = Request.Cookies["screenWidth"] == null ? 1000 :int.Parse(Request.Cookies["screenWidth"].Value);
+    int width=120;
+    if (screenWidth > 1350+220)
+    {
+        width = 200;
+    }
+    else if (screenWidth > 1250+220)
+    {
+        width = 180;
+    }
+    else if(screenWidth>1150+220)
+    {
+        width = 150;
+    }
+    width = 260;
+}
+@section search{
+    <table class="table-toolbar" style="margin-left:1px;">
+        <tr>
+            <td class="label-toolbar">
+                <label>品类：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.CategoryCombobox("parentType", showThird: true, panelWidth: 350, controlWidth: width-30)
+            </td>
+            @*<td class="label-toolbar">
+                <label>品牌：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("brandsn", ViewBag.brands as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", style = "width:" + (width - 20) + "px;" })
+            </td>*@
+            <td class="label-toolbar">
+                <label>供应商：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.SupplierCombobox("supplierId", controlWidth:200,emptyTitle:"全部")
+            </td>
+            @*<td class="label-toolbar">
+                <label>状态：</label>
+             </td>
+            <td class="input-toolbar">
+                 <select class="datacontrol easyui-combobox" name="state" style="width:70px;" data-options="editable:false">
+                     <option selected value="">全部</option>
+                     <option value="0">已下架</option>
+                     <option value="1">已上架</option>
+                 </select>
+             </td>*@
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" id="searchText" class="datacontrol easyui-textbox font-12" placeholder="货号/品名/条码" data-options="prompt:'货号/品名/条码'" style="width:@(width-70)px;" />
+            </td>
+        </tr>
+        <tr>
+            @if (Request["store"] == "1")
+            {
+                @*<td class="label-toolbar">
+                    <label>活动状态：</label>
+                </td>
+                <td class="input-toolbar">
+                    <select class="datacontrol easyui-combobox" name="activeState" style="width:80px;">
+                        <option selected value="">全部</option>
+                        <option value="0">常规</option>
+                        <option value="1">促销中</option>
+                    </select>
+                </td>*@
+            }
+            else
+            {
+                <td class="label-toolbar">
+                    <label>门店：</label>
+                </td>
+                <td class="input-toolbar">
+                    @Html.DropDownList("store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "panelWidth:" + (width - 30), style = "width:" + (width - 30) + "px" })
+                </td>
+            }
+            <td class="label-toolbar">
+                <label>结余日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="StartDate" class="Wdate datacontrol" style="width: 120px;" />
+                <label style="width:10px;">-</label>
+                <input name="EndDate" class="Wdate datacontrol" style="width: 120px;"/>
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if(CurrentUser.HasPermiss(SysConstLimits.库存管理_库存导出))
+    { 
+<a href="#" id="btnExcel" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="window.location.href='@Url.Action("Export")?'+$('#frmsearch').serialize()">导出</a>
+    }
+}
+<script type="text/javascript">
+    $(function () {
+        $("#btnExcel").insertAfter($("#searchBtn"));
+    });
+    pharos.manager.geturl = "@Url.Action("QueryInventoryPageList")";
+    //pharos.manager.sortName = "Barcode";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true, hidden:true },
+       @*@if(Request["store"]!="1")
+        {
+        @:{ field: 'StoreTitle', title: '仓库/门店', width: 100, align: 'center' },
+        }*@
+        { field: 'ProductCode', title: '货号', editor: { type: 'text', required: true }, width: 100, align: 'center' },
+        { field: 'Barcode', title: '条码', editor: { type: 'text', required: true }, width: 120, align: 'center' },
+        { field: 'CategoryTitle', title: '品类', width: 120, align: 'center' },
+        { field: 'Title', title: '品名', width: 150, align: 'center' },
+        { field: 'Size', title: '规格', width: 100, align: 'center' },
+        //{ field: 'BrandTitle', title: '品牌', width: 70, align: 'center' },
+        { field: 'SubUnit', title: '单位', width: 60, align: 'center' },
+        { field: 'BalanceDate', title: '结余日期', width: 100, align: 'center' },
+        { field: 'StockNumber', title: '库存量', width: 70, align: 'center' },
+        { field: 'StockAmount', title: '库存金额', width: 70, align: 'center', formatter: numberToFixed },
+        { field: 'SaleAveragePrice', title: '平均售价', width: 70, align: 'center', formatter: numberToFixed },
+        { field: 'SaleAmount', title: '销售金额', width: 70, align: 'center', formatter: numberToFixed }
+        @*{ field: 'DiscountPrice', title: '促销价', width: 60, align: 'center' },
+        { field: 'StateTitle', title: '产品状态', width: 60 },
+        {
+            field: 'Nature', title: ' 产品性质', width: 60, formatter: function (value, row, index) {
+                return value == 2 ? "拆分" : value == 1 ? "组合" : "单品";
+            }
+        },
+        @if(Request["store"]=="1")
+        {
+            @:{ field: 'StateTitle2', title: '活动状况', width: 60, align: 'center' },
+        }
+        else
+        {
+            @:{ field: 'StateTitle', title: '状态', width: 60, align: 'center' }
+        }*@
+
+    ]];
+    pharos.manager.loadSuccess = function () {
+        //if ($("#store").size()>0 && !$("#store").combobox("getValue"))
+        //    pharos.manager.$dg.datagrid("hideColumn", "DiscountPrice");
+        //else
+        //    pharos.manager.$dg.datagrid("showColumn", "DiscountPrice");
+        //if ($("[name='StartDate']").val()== "" && $("[name='StartDate']").val()=="")
+        //    pharos.manager.$dg.datagrid("hideColumn", "BalanceDate");
+        //else
+        //    pharos.manager.$dg.datagrid("showColumn", "BalanceDate");
+        //pharos.manager.$dg.datagrid("autoSubTotalGroupby", { groupby: 'CategoryTitle', columns: ['StockNumber', 'StockAmount', 'SaleAveragePrice', 'SaleAmount'] });
+    }
+    function parentSelect(record) {
+        $.post("@Url.Action("ParentTypeSelect","Product")", { Id: record.value, showTitle: 1, t: Math.random() }, function (data) {
+            $("#childType").combobox("clear").combobox("loadData", data);
+        }, "json");
+    }
+</script>

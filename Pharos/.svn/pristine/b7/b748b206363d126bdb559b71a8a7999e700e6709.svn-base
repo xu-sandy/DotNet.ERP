@@ -1,0 +1,74 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services.LocalCeServices
+{
+    public class MembersService : BaseGeneralService<Members, LocalCeDbContext>
+    {
+        public static MemberInfo GetMemberInfo(string storeId, int token, string phone, string uid, string cardNo)
+        {
+            var memberInfo = new MemberInfo();
+            var member = new Members();
+            if (!string.IsNullOrEmpty(phone) && !string.IsNullOrEmpty(cardNo))
+            {
+                member = CurrentRepository.Find(o => o.MobilePhone == phone && o.CompanyId == token && o.MemberCardNum == cardNo);
+            }
+            else if (!string.IsNullOrEmpty(phone))
+            {
+                member = CurrentRepository.Find(o => o.MobilePhone == phone && o.CompanyId == token);
+            }
+            else if (!string.IsNullOrEmpty(cardNo))
+            {
+                member = CurrentRepository.Find(o => o.CompanyId == token && o.MemberCardNum == cardNo);
+            }
+
+            if (member != null)
+            {
+                memberInfo.MemberId = member.MemberId;
+                memberInfo.MobilePhone = member.MobilePhone;
+                memberInfo.RealName = member.RealName;
+                memberInfo.MemberCardNum = member.MemberCardNum;
+                memberInfo.UsableIntegral = member.UsableIntegral;
+                return memberInfo;
+            }
+            else
+            {
+                var memberId = Guid.NewGuid().ToString("N");
+                var version = new byte[8] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x01 };
+                member = new Members()
+                {
+                    MemberId = memberId,
+                    MobilePhone = phone,
+                    MemberCardNum = cardNo,
+                    StoreId = storeId,
+                    CreateDT = DateTime.Now,
+                    CreateUID = uid,
+                    CompanyId = token,
+                    SyncItemId = Guid.NewGuid(),
+                    SyncItemVersion = version
+                };
+                CurrentRepository.Add(member);
+                memberInfo.MemberId = member.MemberId;
+                memberInfo.MobilePhone = member.MobilePhone;
+                memberInfo.RealName = member.RealName;
+                memberInfo.MemberCardNum = member.MemberCardNum;
+                memberInfo.UsableIntegral = member.UsableIntegral;
+                if (member.Insider == 1)
+                {
+                    memberInfo.Type = Pharos.ObjectModels.DTOs.CustomerType.Insider;
+                }
+                else
+                {
+                    memberInfo.Type = Pharos.ObjectModels.DTOs.CustomerType.VIP;
+                }
+                return memberInfo;
+            }
+        }
+    }
+}

@@ -1,0 +1,123 @@
+﻿@model Pharos.Logic.OMS.Entity.ProductRecord
+@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="easyui-layout" data-options="fit:true">
+    <div data-options="region:'west',width:200">
+        <ul id="tree" class="easyui-tree" data-options="url:'@Url.Action("FindTreeList")',method:'post',onSelect:treeSelect,onLoadSuccess:treeSuccess"></ul>
+    </div>
+    <div data-options="region:'center'">
+        <div class="default-form">
+            @using (Html.BeginForm("Save", "Product"))
+            {
+                @Html.HiddenFor(o => o.Id)
+                @Html.Hidden("BigCategorySN")
+                @Html.Hidden("MidCategorySN")
+                @Html.HiddenFor(o => o.Source)
+                @Html.HiddenFor(o => o.CategorySN)
+                <div class="content">
+                    <table class="table-form" width="100%" height="250px">
+                        <tr>
+                            <td class="name">主条码：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Barcode, new { @class = "easyui-validatebox", id = "Barcode", data_options = "validType:'barcode'", placeholder = "请输入条码或自动生成" })</td>
+                            <td class="name">商品全称：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:'length[1,50]'" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">规 格：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.Size, new { @class = "easyui-textbox", data_options = "" })</td>
+                            <td class="name">计量小单位：</td>
+                            <td class="input">@Html.DropDownListFor(o => o.SubUnitId, ViewBag.subunits as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "prompt:'请输入单位..',required:true,validType:'requiredForCombo'" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">品 类：</td>
+                            <td class="input"><input type="text" class="easyui-textbox" id="category" readonly="readonly" data-options="required:true,missingMessage:'请选择类别'" /></td>
+                            <td class="name">品 牌：</td>
+                            <td class="input">@Html.DropDownListFor(o => o.BrandSN, ViewBag.brands as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "prompt:'请输入品牌..'" })</td>
+                        </tr>
+                        <tr>
+                            <td class="name">系统售价：</td>
+                            <td class="input">@Html.TextBoxFor(o => o.SysPrice, new { @class = "easyui-numberbox", data_options = "" })</td>
+                        </tr>
+                    </table>
+                        
+                </div>
+            }
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    var msg='',tip=undefined,bar=undefined;
+    $(function () {
+       
+    });
+    function checkBarcode13(val){
+        var result=true;
+        if(val){
+            var vals= val.split(',');
+            for (var i = 0; i < vals.length; i++) {
+                var vl= $.trim(vals[i]);
+                if(vl && (vl.length<=15 && vl.length>=5)){}
+                else if(vals[i]){
+                    $.messager.alert("提示","["+vals[i]+"]条码位数不正确!","info");
+                    result=false;
+                    return false;
+                }
+            }
+        }
+        return result;
+    }
+    function treeSuccess(node, data) {
+        var bigsn = $("#BigCategorySN").val();
+        var midsn = $("#MidCategorySN").val();
+        var subsn = $("#CategorySN").val();
+        var node = null;
+        if (!isNull(subsn)) {
+            node = $("#tree").tree("find", subsn);
+        } else if (!isNull(midsn)) {
+            node = $("#tree").tree("find", midsn);
+        } else {
+            node = $("#tree").tree("find", bigsn);
+        }
+        $('#tree').tree('select', node.target).tree("expandTo", node.target);
+    }
+    function treeSelect(node) {
+        if (!$("#tree").tree("isLeaf", node.target)) return;
+        var bigId = $("#BigCategorySN").val();
+        var midNode = $("#tree").tree("getParent", node.target);
+        if (midNode.id == "0") {
+            $("#category").textbox("setValue", node.text);
+            $("#BigCategorySN").val(node.id);
+            $("#CategorySN").val(node.id);
+        } else {
+            var bigNode = $("#tree").tree("getParent", midNode.target);
+            var text = midNode.text + "/" + node.text;
+            if (bigNode && bigNode.id != "0") {
+                $("#BigCategorySN").val(bigNode.id);
+                $("#CategorySN").val(node.id);
+                text = bigNode.text + "/" + midNode.text + "/" + node.text;
+            } else {
+                $("#BigCategorySN").val(midNode.id);
+                $("#CategorySN").val(node.id);
+            }
+            $("#category").textbox("setValue", text);
+        }
+    }
+    
+
+    function SaveBefore() {
+        var unitText = $("#SubUnitId").combobox("getText");
+        if (unitText && $("#SubUnitId").combobox("getValue") == unitText) {
+            $.messager.alert('提示', "计量单位[" + unitText + ']不存在！');
+            return false;
+        }
+        var brandText = $("#BrandSN").combobox("getText");
+        if (brandText && $("#BrandSN").combobox("getValue") == brandText) {
+            $.messager.alert('提示', "品 牌[" + brandText + ']不存在！');
+            return false;
+        }
+        return true;
+    }
+
+</script>

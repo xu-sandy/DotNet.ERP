@@ -1,0 +1,214 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class SysUserController : BaseController
+    {
+        [Ninject.Inject]
+        SysUserService UserService { get; set; }
+        [Ninject.Inject]
+        DepartMentService DeptService { get; set; }
+        [Ninject.Inject]
+        SysRoleService RoleService { get; set; }
+        [Ninject.Inject]
+        PositionService PositService { get; set; }
+        [Ninject.Inject]
+        private LogEngine LogService { get; set; }
+        //
+        // GET: /SysUser/
+        [SysPermissionValidate]
+        public ActionResult Index()
+        {
+            ViewBag.roles =ListToSelect( RoleService.GetListByRoleId().Select(o=>new SelectListItem(){Text=o.Title,Value=o.RoleId.ToString()}),"全部");
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindPageList()
+        {
+            int count = 0;
+            var list = UserService.GetPageList(Request.Params,out count);
+            return ToDataGrid(list, count);
+        }
+        [HttpPost]
+        public ActionResult FindTreeList()
+        {
+            var list = DeptService.GetPageList(false);
+            var trees = new List<DepartMentExt>(){
+                new DepartMentExt(){
+                DeptId = 0,
+                Title = "组织机构",
+                Childrens = new List<DepartMentExt>()
+                }
+            };
+            trees[0].Childrens.AddRange(list);
+            return new JsonNetResult(trees);
+        }
+        [SysPermissionValidate(230)]
+        public ActionResult Save(int? id, int? deptId, string deptName)
+        {
+            var obj = new SysUser() { DeptId=deptId.GetValueOrDefault(),Sex=-1};
+            if (id.HasValue)
+            {
+                obj = UserService.Get(id.Value);
+                if (obj.DeptId>0)
+                {
+                    deptName = DeptService.GetFullTitle().GetValue(obj.DeptId);
+                    deptId = obj.DeptId;
+                }
+            }
+            ViewBag.DeptName = deptName;
+            ViewBag.Roles = RoleService.GetRolesByDept(deptId.GetValueOrDefault()).Select(o => new SelectListItem() { Text = o.Title, Value = o.RoleId.ToString() }).ToList();
+            ViewBag.Posits = ListToSelect(PositService.GetPositByDept(deptId.GetValueOrDefault()).Select(o => new SelectListItem() { Text = o.Title, Value = o.PositId }), "请选择");
+            return View(obj);
+        }
+        [HttpPost]
+        public ActionResult Save(SysUser obj)
+        {
+            obj.RoleIds = Request["RoleIds"];
+            var re = UserService.SaveOrUpdate(obj);
+            return new OpActionResult(re);
+        }
+        [SysPermissionValidate(234)]
+        public ActionResult SaveDept()
+        {
+            int count = 0;
+            ViewBag.depts = ListToSelect(DeptService.GetFullTitle().Select(o => new SelectListItem() { Text = o.Value, Value = o.Key.ToString() }), emptyTitle: "请选择");
+            ViewBag.grids = UserService.GetPageList(Request.Params,out count).ToJson();
+            return View();
+        }
+        [HttpPost]
+        public ActionResult SaveDept(string ids,int deptId)
+        {
+            var re = UserService.SaveDept(ids,deptId);
+            return new OpActionResult(re);
+        }
+        [SysPermissionValidate(235)]
+        public ActionResult SaveAdmin()
+        {
+            var super = UserService.GetSuper();
+            string adminname = "", adminaccount = "";
+            if (super != null)
+            {
+                adminname = super.FullName;
+                adminaccount = super.LoginName;
+            }
+            ViewBag.adminname = adminname;
+            ViewBag.adminaccount = adminaccount;
+            ViewBag.users = ListToSelect(UserService.GetList().Where(o=>!o.IsSuper).Select(o => new SelectListItem() { Text = o.FullName, Value = o.LoginName }), "请选择");
+            return View();
+        }
+        [HttpPost]
+        public ActionResult SaveAdmin(string adminname)
+        {
+            var re = UserService.SaveAdmin(adminname);
+            return new OpActionResult(re);
+        }
+        [HttpPost]
+        public void SetState(short mode, int id)
+        {
+            UserService.SetState(mode, id);
+        }
+
+        public ActionResult Login()
+        {
+            var user = new UserLogin();
+            if (Cookies.IsExist("remuc"))
+            {
+                user.UserName = Cookies.Get("remuc", "_uname");
+                user.UserPwd = Cookies.Get("remuc", "_pwd");
+                user.RememberMe = true;
+            }
+            return View(user);
+
+        }
+        [HttpPost]
+        public ActionResult Login(UserLogin user)
+        {
+            if (!ModelState.IsValid) return View(user);
+            var obj = UserService.Login(user.UserName, user.UserPwd);
+            if (obj == null)
+            {
+                ViewBag.msg = "帐户或密码输入不正确!";
+                return View(user);
+            }
+            new CurrentUser().Login(obj, user.RememberMe);
+            LogService.WriteLogin(string.Format("用户（{0}，{1}）成功登录系统！", obj.LoginName, obj.FullName), LogModule.其他);
+            return Redirect(Url.Action("Index", "Home"));
+        }
+        public ActionResult Logout()
+        {
+            CurrentUser.Exit();
+            return RedirectToAction("Login");
+        }
+        #region 个人信息
+        public ActionResult UserInfo()
+        {
+            var model = UserService.GetOneByUID(CurrentUser.UID);
+            return View(model);
+        }
+        [HttpPost]
+        public ActionResult UserInfo(int Id, string LoginPwd)
+        {
+            var model = UserService.GetOneByUID(CurrentUser.UID);
+            model.LoginPwd = LoginPwd;
+            var result = UserService.SaveOrUpdate(model);
+            return Content(result.ToJson());
+        }
+        #endregion
+
+        public ActionResult ChangePassword()
+        {
+            var model = UserService.GetOneByUID(CurrentUser.UID);
+            return View(model);
+        }
+
+        [HttpPost]
+        public ActionResult ChangePassword(string LoginPwd)
+        {
+            OpResult result = new OpResult();
+            if (LoginPwd.Trim().IsNullOrEmpty())
+            {
+                result.Successed = true;
+            }
+            else
+            {
+                result = UserService.UpdatePassword(CurrentUser.UID,LoginPwd);
+            }
+            return new OpActionResult(result);
+        }
+
+    }
+    public class UserLogin
+    {
+        /// <summary>
+        /// 用户名
+        /// </summary>
+        [Display(Name = "用户名", Description = "4-20个字符。")]
+        [Required(ErrorMessage = "×")]
+        [StringLength(20, MinimumLength = 1, ErrorMessage = "×")]
+        public string UserName { get; set; }
+
+        /// <summary>
+        /// 密码
+        /// </summary>
+        [Display(Name = "密码", Description = "6-20个字符。")]
+        [Required(ErrorMessage = "×")]
+        [StringLength(20, MinimumLength = 1, ErrorMessage = "×")]
+        [DataType(DataType.Password)]
+        public string UserPwd { get; set; }
+
+        public bool RememberMe { get; set; }
+
+        public string StoreId { get; set; }
+    }
+}

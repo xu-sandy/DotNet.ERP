@@ -1,0 +1,114 @@
+﻿@model Pharos.Sys.Entity.SysCustomMenus
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+@*<h2>RoleSettingMenus</h2>*@
+<div class="default-form">
+    @using (Html.BeginForm("SaveRoleSettingMenus", "SysAdmin", FormMethod.Post))
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.ObjId)
+        @Html.HiddenFor(o => o.MenuIds)
+        <div class="content">
+            <div id="layout" data-options="fit:true,border:false">
+                <div data-options="region:'north',split:true">
+                    @Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "总部", Value = "0", Selected = true }, new SelectListItem() { Text = "门店", Value = "1" } }, "MenuType")
+                </div>
+                <div data-options="region:'west',split:true">
+                    <ul id="sys" class="easyui-tree" data-options="url:'@Url.Action("GetMenusTreeLists", "SysAdmin")?roleId=@Request["roleId"]&type=0',checkbox:true,onLoadSuccess:treeLoadSuccess"></ul>
+                    <ul id="sys2" class="easyui-tree" style="display:none" data-options="url:'@Url.Action("GetMenusTreeLists", "SysAdmin")?roleId=@Request["roleId"]&type=1',checkbox:true,onLoadSuccess:treeLoadSuccess"></ul>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+<script>
+    var menuIds = [];
+    var $tree = $("#sys");
+    var $tree2 = $("#sys2");
+    function treeLoadSuccess() {
+        var mIds = $("#MenuIds").val();
+        //var mIdArr = mIds.split(',');
+
+        //$.each(mIdArr, function (index, value) {
+        //    var n = $("#sys").tree('find', value);
+        //    if (n) {
+        //        $("#sys").tree('check', n.target);
+        //    }
+        //})
+
+
+        var nodes = $tree.tree("getChildren");
+        var allnodes = mIds.split(',');
+        //var getDatas = $tree.tree("getData");
+        $.each(nodes, function (i, item) {
+            if (isExit(allnodes,item.id)) {
+                var node = $tree.tree('find', item.id);
+                if (node.children == null) {
+                    if (node) {
+                        $tree.tree('check', node.target);
+                    }
+                }
+            }
+        })
+        nodes = $tree2.tree("getChildren");
+        $.each(nodes, function (i, item) {
+            if (isExit(allnodes, item.id)) {
+                var node = $tree2.tree('find', item.id);
+                if (node.children == null) {
+                    if (node) {
+                        $tree2.tree('check', node.target);
+                    }
+                }
+            }
+        })
+    }
+    $("[name='MenuType']").click(function () {
+        var type = $(this).val();
+        if (type == "0") {
+            $tree.show();
+            $tree2.hide();
+        } else {
+            $tree.hide();
+            $tree2.show();
+        }
+    });
+    //判断数组是否包含子项
+    function isExit(list, val) {
+        var result = false;
+        $.each(list, function (index, temp) {
+            if (temp == val) {
+                result = true;
+            }
+        });
+        return result;
+    }
+
+    function getChecked() {
+        //var nodes = $('#sys').tree('getChecked');
+        var nodes = $tree.tree('getChecked', ['checked', 'indeterminate']);
+        for (var i = 0; i < nodes.length; i++) {
+            menuIds.add(nodes[i].id);
+        }
+        nodes = $tree2.tree('getChecked', ['checked', 'indeterminate']);
+        for (var i = 0; i < nodes.length; i++) {
+            menuIds.add(nodes[i].id);
+        }
+    }
+
+    function submitform() {
+        $('.default-form form').submit();
+    }
+    function Refresh(result) {
+        $.messager.alert("提示", "操作成功!");
+        pharos.easyui.dialog.topClose("formDiv");
+        pharos.easyui.dialog.curJquery("formDiv")("#grid").datagrid("reload");
+    }
+    function SaveBefore() {
+        getChecked();
+        $("#MenuIds").val(menuIds.join());
+        return true;
+    }
+</script>

@@ -1,0 +1,753 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Text.RegularExpressions;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL-----商户资料
+    /// </summary>
+    public class TradersService : BaseService
+    {
+        [Ninject.Inject]
+        // 商户资料
+        IBaseRepository<Traders> TradersRepository { get; set; }
+
+        // 商户资料
+        [Ninject.Inject]
+        ITradersRepository tRepository { get; set; }
+
+        [Ninject.Inject]
+        // 商户分类
+        IBaseRepository<TraderType> TraderTypeRepository { get; set; }
+
+        [Ninject.Inject]
+        //区域管理信息
+        public IBaseRepository<Area> AreaRepository { get; set; }
+
+        [Ninject.Inject]
+        //数据字典信息
+        public IBaseRepository<SysDataDictionary> SysDataDictionaryRepository { get; set; }
+
+        [Ninject.Inject]
+        //行业管理信息
+        public IBaseRepository<Business> BusinessRepository { get; set; }
+
+        [Ninject.Inject]
+        //帐户管理
+        public IBaseRepository<SysUserInfo> SysUserInfoRepository { get; set; }
+
+        [Ninject.Inject]
+        //采购意向清单
+        public IBaseRepository<OrderList> OrderListRepository { get; set; }
+
+        [Ninject.Inject]
+        //回访跟踪记录
+        public IBaseRepository<VisitTrack> VisitTrackRepository { get; set; }
+
+        //BLL-----回访跟踪记录
+        [Ninject.Inject]
+        VisitTrackService visitTrackService { get; set; }
+
+         //BLL-----采购意向清单
+        [Ninject.Inject]
+         OrderListService  orderListService { get; set; }
+
+        [Ninject.Inject]
+        
+        public IBaseRepository<CompanyAuthorize> CompanyAuthorizeRepository { get; set; }
+        [Ninject.Inject]
+
+        public CompAuthorService CompAuthorService { get; set; }
+
+        [Ninject.Inject]
+        //设备授权信息
+        public IBaseRepository<DeviceAuthorize> DeviceAuthorizeRepository { get; set; }
+
+        public List<ViewTrader> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+
+
+            //省份
+            var CurrentProvinceId = (nvl["CurrentProvinceId"] ?? "").Trim();
+            //城市
+            var CurrentCityId = (nvl["CurrentCityId"] ?? "").Trim();
+            //登记日期（开始）
+            var CreateDT_begin = (nvl["CreateDT_begin"] ?? "").Trim();
+            //登记日期（结束）
+            var CreateDT_end = (nvl["CreateDT_end"] ?? "").Trim();
+            //跟踪状态
+            var TrackStautsId = (nvl["TrackStautsId"] ?? "").Trim();
+            //业务员
+            var AssignerUID = (nvl["AssignerUID"] ?? "").Trim();
+            //客户类型
+            var TraderTypeId = (nvl["TraderTypeId"] ?? "").Trim();
+            //经营范围
+            var BusinessScopeId = (nvl["BusinessScopeId"] ?? "").Trim();
+            //关键字类型
+            var keywordType = (nvl["keywordType"] ?? "").Trim();
+            //关键字
+            var keyword = (nvl["keyword"] ?? "").Trim();
+
+            var pageIndex = 1;
+            var pageSize = 20;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+
+            string strw = "";
+            if (!CurrentProvinceId.IsNullOrEmpty() && CurrentProvinceId != "0")
+            {
+                strw = strw + " and t.CurrentProvinceId=" + CurrentProvinceId;
+            }
+            if (!CurrentCityId.IsNullOrEmpty() && CurrentCityId != "0")
+            {
+                strw = strw + " and t.CurrentCityId=" + CurrentCityId;
+            }
+            if (!CreateDT_begin.IsNullOrEmpty())
+            {
+                string c = CreateDT_begin + " " + "00:00:00";
+                strw = strw + " and t.CreateDT >='"+c+"'";
+            }
+            if (!CreateDT_end.IsNullOrEmpty())
+            {
+                var c = CreateDT_end + " " + "23:59:59";
+                strw = strw + " and t.CreateDT <='"+c+"'";
+            }
+            if (!TrackStautsId.IsNullOrEmpty())
+            {
+                strw = strw + " and t.TrackStautsId=" + TrackStautsId;
+            }
+            if (!AssignerUID.IsNullOrEmpty())
+            {
+                string[] aUID = AssignerUID.Split(',');
+                string newAUID = "";
+                if (aUID.Length > 0)
+                {
+                    for (int i = 0; i < aUID.Length; i++)
+                    {
+                        if (newAUID == "")
+                        {
+                            newAUID = "'" + aUID[i] + "'";
+                        }
+                        else
+                        {
+                            newAUID =newAUID+ ",'" + aUID[i] + "'";
+                        }
+                    }
+                    strw = strw + " and t.AssignerUID in ("+newAUID+")";
+                }
+                
+            }
+            if (!TraderTypeId.IsNullOrEmpty())
+            {
+                strw = strw + " and t.TraderTypeId='" + TraderTypeId + "'";
+            }
+            if (!BusinessScopeId.IsNullOrEmpty())
+            {
+                strw = strw + " and t.BusinessScopeId like '%" + BusinessScopeId + "%'";
+            }
+
+            if (!keywordType.IsNullOrEmpty()&&!keyword.IsNullOrEmpty())
+            {
+                if (keywordType == "0")
+                {
+                    if (!IsNumber(keyword) || keyword.Length > 9)
+                    {
+                        keyword = "0";
+                    }
+                    strw = strw + " and t.CID=" + keyword;
+                }
+                if (keywordType == "1")
+                {
+                    strw = strw + " and t.Title like '%" + keyword + "%'";
+                }
+                if (keywordType == "2")
+                {
+                    strw = strw + " and t.LinkMan like '%" + keyword + "%'";
+                }
+                if (keywordType == "3")
+                {
+                    strw = strw + " and t.MobilePhone like '%" + keyword + "%'";
+                }
+            }
+
+            //recordCount = q.Count();
+            //var list = q.ToPageList();
+            //recordCount = 0;
+            //var bussineScopeids= list.Where(o => !o.BusinessScopeId.IsNullOrEmpty()).SelectMany(o => o.BusinessScopeId.Split(',')).Distinct().ToList();
+            //var bussines= BusinessRepository.GetQuery(o => bussineScopeids.Contains(o.ById)).ToList();
+
+            //return list.Select(o=>new{
+            //    bussineTitle = GetBussinTitle(bussines,o.BusinessScopeId),
+
+            //});
+
+           List<ViewTrader> list=  tRepository.getPageList(pageIndex, pageSize, strw, out recordCount);
+           return list;  
+        }
+
+        //string GetBussinTitle(List<Business> list,string bussinScopeId)
+        //{
+        //    if (bussinScopeId.IsNullOrEmpty()) return "";
+        //    var ids = bussinScopeId.Split(',');
+        //    return string.Join(",", list.Where(o=>ids.Contains(o.ById)).Select(o=>o.Title));
+        //}
+
+
+        /// <summary>
+        /// 获取最大CID
+        /// </summary>
+        /// <returns></returns>
+        public int getMaxCID()
+        {
+            //return TradersRepository.GetQuery().Max(o => (int?)o.CID).GetValueOrDefault() + 1;
+            int cid = 0;
+            cid = TradersRepository.GetQuery().Max(o => (int?)o.CID).GetValueOrDefault();
+            if (cid < 101)
+            {
+                cid = 101;
+            }
+            else
+            {
+                cid = cid + 1;
+                if (cid > 9999900)
+                {
+                    cid= -1;
+                }
+            }
+            return cid;
+        }
+
+        public Traders GetOne(object id)
+        {
+            return TradersRepository.Get(id);
+        }
+        public object GetOneByCID(int cid)
+        {
+            if (cid <= 0) return null;
+            var queryTrader= TradersRepository.GetQuery(o=>o.CID==cid);
+            var queryAuth = CompanyAuthorizeRepository.GetQuery();
+            var query = from x in queryTrader
+                        join y in queryAuth on x.CID equals y.CID into tmp
+                        from z in tmp.DefaultIfEmpty()
+                        select new
+                        {
+                            x.CID,
+                            x.Title,
+                            x.FullTitle,
+                            x.Address,
+                            x.BusinessModeId,
+                            x.BusinessScopeId,
+                            x.CurrentCityId,
+                            x.CurrentCounty,
+                            x.CurrentProvinceId,
+                            x.EachStorePersonNum,
+                            x.EachStorePosNum,
+                            x.ExistDeviceName,
+                            x.ExistStoreNum,
+                            x.ExistsystemName,
+                            x.LinkMan,
+                            x.Memo,
+                            x.MobilePhone,
+                            x.PlanExpandStoreNum,
+                            x.Status,
+                            x.TakeStockDates,
+                            x.TraderTypeId,
+                            z.AppProper,
+                            z.PosMinorDisp,
+                            z.StoreProper,
+                            z.OpenVersionId,
+                            z.Way,
+                            z.CreateDT
+                        };
+
+            return query.OrderByDescending(o => o.CreateDT).FirstOrDefault();
+        }
+        /// <summary>
+        /// 增加、修改
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveOrUpdate(Traders model, string[] BusinessScopeId, string[] Pay)
+        {
+            //客户简称是否存在
+            IQueryable<Traders> isExistTitle = null;
+            if (model.Id == 0)
+            {
+                isExistTitle = TradersRepository.GetQuery(o => o.Title == model.Title);
+            }
+            else
+            {
+                isExistTitle = TradersRepository.GetQuery(o =>  o.Title == model.Title && o.Id != model.Id);
+            }
+            if (isExistTitle.Any())
+            {
+                return OpResult.Fail("该客户简称已经存在");
+            }
+
+            //客户全称是否存在
+            IQueryable<Traders> isExistFullTitle = null;
+            if (model.Id == 0)
+            {
+                isExistFullTitle = TradersRepository.GetQuery(o => o.FullTitle == model.FullTitle);
+            }
+            else
+            {
+                isExistFullTitle = TradersRepository.GetQuery(o => o.FullTitle == model.FullTitle && o.Id != model.Id);
+            }
+            if (isExistFullTitle.Any())
+            {
+                return OpResult.Fail("该客户全称已经存在");
+            }
+
+            model.BusinessScopeId = "";
+            
+            if (BusinessScopeId!=null && BusinessScopeId.Length > 0)
+            {
+                foreach (var v in BusinessScopeId)
+                {
+                    if (model.BusinessScopeId == "")
+                    {
+                        model.BusinessScopeId = v;
+                    }
+                    else
+                    {
+                        model.BusinessScopeId = model.BusinessScopeId + "," + v;
+                    }
+
+                }
+            }
+
+            model.Pay = "";
+            if (Pay != null && Pay.Length > 0)
+            {
+                foreach (var v in Pay)
+                {
+                    if (model.Pay == "")
+                    {
+                        model.Pay = v;
+                    }
+                    else
+                    {
+                        model.Pay = model.Pay + "," + v;
+                    }
+
+                }
+            }
+            
+            if (model.Id == 0)
+            {
+                model.AddType = 0;
+                model.CreateUID = CurrentUser.UID;
+                model.CreateDT = DateTime.Now;
+                model.UpdateDT = DateTime.Now;
+                model.CID = getMaxCID();
+                TradersRepository.Add(model);
+            }
+            else
+            {
+                model.UpdateDT = DateTime.Now;
+                var source = TradersRepository.Get(model.Id);
+                model.CID = source.CID;
+                model.ToCopyProperty(source, new List<string>() { "CreateUID", "CreateDT", "CID", "Status", "AddType" });
+                var auths= CompanyAuthorizeRepository.GetQuery(o => o.CID == model.CID && o.Status != 3).ToList();
+                auths.Each(o => o.Title = model.FullTitle);
+            }
+
+            if (TradersRepository.SaveChanges())
+            {
+                LogEngine.WriteUpdate(model.Id + "," + model.Title, LogModule.商户资料);
+            }
+
+            return OpResult.Success(model.CID.ToString());
+        }
+
+        /// <summary>
+        /// 获取省
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getProvince(string defaultTitle = "请选择")
+        {
+            var province = AreaRepository.GetQuery(o => o.Type == 2).ToList();
+            province.Insert(0, new Area() { AreaID = 0, Title = defaultTitle });
+            return province;
+        }
+
+        /// <summary>
+        /// 获取城市
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getCity(int ProvinceID, string defaultTitle = "请选择")
+        {
+            List<Area> list = new List<Area>();
+            if (ProvinceID > 0)
+            {
+                list = AreaRepository.GetQuery(o => o.AreaPID == ProvinceID).ToList();
+            }
+            list.Insert(0, new Area() { AreaID = 0, Title = defaultTitle });
+            return list;
+        }
+
+        /// <summary>
+        /// 获取区县
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getDistrict(int CityID)
+        {
+            List<Area> list = new List<Area>();
+            if (CityID > 0)
+            {
+                list = AreaRepository.GetQuery(o => o.AreaPID == CityID).ToList();
+            }
+            list.Insert(0, new Area() { AreaID = 0, Title = "请选择" });
+            return list;
+        }
+        public List<Traders> GetTraderInput(string searchName)
+        {
+            if (searchName.IsNullOrEmpty()) return null;
+            int cid = 0;
+            int.TryParse(searchName, out cid);
+            var query= TradersRepository.GetQuery();
+            //if (cid > 0) query = query.Where(o => o.CID == cid);
+            query = query.Where(o =>  o.CID == cid || o.Title.Contains(searchName) || o.FullTitle.Contains(searchName));
+            return query.Take(20).ToList();
+        }
+
+        /// <summary>
+        /// 获取商户分类
+        /// </summary>
+        /// <returns></returns>
+        public List<TraderType> getTraderTypeList()
+        {
+            return TraderTypeRepository.GetQuery().ToList();
+        }
+
+        /// <summary>
+        /// 获取经营模式
+        /// </summary>
+        /// <returns></returns>
+        public List<SysDataDictionary> getDataList()
+        {
+            return SysDataDictionaryRepository.GetQuery(w => w.DicPSN == 221).OrderBy(o => o.SortOrder).ToList();
+        }
+
+        /// <summary>
+        /// 获取字典
+        /// </summary>
+        /// <returns></returns>
+        public List<SysDataDictionary> getDataList(int DicPSN)
+        {
+            return SysDataDictionaryRepository.GetQuery(w => w.DicPSN == DicPSN&&w.Status).OrderBy(o => o.SortOrder).ToList();
+        }
+
+        /// <summary>
+        /// 获取经营类目
+        /// </summary>
+        /// <returns></returns>
+        public List<Business> getBusinessList()
+        {
+            //var  dd= BusinessRepository.GetQuery().ToList();
+            //return null;
+            return BusinessRepository.GetQuery().ToList();
+        }
+        public bool ExistsTitle(string title,string fullTitle)
+        {
+            return TradersRepository.GetQuery(o => o.Title == title || o.FullTitle == fullTitle).Any();
+        }
+        /// <summary>
+        /// 获取登记人
+        /// </summary>
+        /// <returns></returns>
+        public string getFullName(string UserId)
+        {
+            string uid = "";
+            if (UserId.IsNullOrEmpty())
+            {
+                uid = CurrentUser.UID;
+            }
+            else
+            {
+                uid = UserId;
+            }
+            return SysUserInfoRepository.GetQuery(o => o.UserId == uid).Select(o=>o.FullName).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// 获取采购意向清单
+        /// </summary>
+        /// <param name="TradersCID">企业ID</param>
+        /// <returns></returns>
+        public List<ViewOrderList> getOrderList(int TradersCID)
+        {
+            //数据字典信息
+            var data = SysDataDictionaryRepository.GetQuery();
+            //采购意向清单
+            var orderList = OrderListRepository.GetQuery(o=>o.CID==TradersCID);
+
+            var order = from o in orderList
+                        join d in data on o.DeviceId equals d.DicSN
+                        into dd
+                        from ddd in dd.DefaultIfEmpty()
+                        join d2 in data on o.UnitID equals d2.DicSN
+                        into dd2
+                        from ddd2 in dd2.DefaultIfEmpty()
+                        select new ViewOrderList
+                        {
+                            pName=ddd==null?"":ddd.Title,
+                            OrderNum=o.OrderNum,
+                            uName = ddd2 == null ? "" : ddd2.Title,
+                            Remark=o.Remark,
+                            DeviceId=o.DeviceId,
+                            UnitID=o.UnitID
+                        };
+            //测试
+            string ssss = order.ToString();
+
+            return order.ToList();
+        }
+
+        /// <summary>
+        /// 获取业务员
+        /// </summary>
+        /// <param name="TradersCID">企业ID</param>
+        /// <returns></returns>
+        public List<SysUserInfo> getUserList()
+        {
+            var uer = SysUserInfoRepository.GetQuery(o=>o.Status==1);
+            return uer.ToList();
+        }
+
+        
+
+        /// <summary>
+        /// 保存
+        /// </summary>
+        /// <param name="traders">商户资料</param>
+        /// <param name="h_OrderList">采购意向清单</param>
+        /// <param name="h_VisitTrack">回访小结</param>
+        /// <param name="h_VisitTrack">经营类目</param>
+        /// <param name="Pay">支付方式</param>
+        /// <returns></returns>
+        public OpResult Save(Traders traders, string h_OrderList, string h_VisitTrack, string[] BusinessScopeId, string[] Pay)
+        {
+            OpResult op = SaveOrUpdate(traders, BusinessScopeId, Pay);
+            if (op.Successed)
+            {
+                int CID = Convert.ToInt32(op.Message);
+                if (CID > 0)
+                {
+                    if (!h_OrderList.IsNullOrEmpty())
+                    {
+                        //采购意向清单
+                        JObject jObj = null;
+                        jObj = JObject.Parse(h_OrderList);
+                        JArray jlist = JArray.Parse(jObj["OrderList"].ToString());
+                        orderListService.Deletes(CID);
+                        foreach (JObject item in jlist)
+                        {
+                            short Id = Convert.ToInt16(item["Id"]);
+                            string Title = item["Title"].ToString();
+                            short OrderNum = Convert.ToInt16(item["OrderNum"]);
+                            string uName = item["uName"].ToString();
+                            int uId = Convert.ToInt32(item["uId"]);
+                            string remark = item["remark"].ToString();
+
+                            OrderList orderList = new OrderList();
+                            orderList.CID = CID;
+                            orderList.DeviceId = Id;
+                            orderList.Title = Title;
+                            orderList.OrderNum = OrderNum;
+                            orderList.UnitName = uName;
+                            orderList.UnitID = uId;
+                            orderList.Remark = remark;
+                            orderListService.SaveOrUpdate(orderList);
+                        }
+                    }
+                    if (!h_VisitTrack.IsNullOrEmpty())
+                    {
+                        //回访小结
+                        JObject jVisitTrack = null;
+                        jVisitTrack = JObject.Parse(h_VisitTrack);
+                        JArray jVisitTrackList = JArray.Parse(jVisitTrack["VisitTrack"].ToString());
+                        visitTrackService.Deletes(CID);
+                        foreach (JObject item in jVisitTrackList)
+                        {
+                            string content = item["content"].ToString();
+                            string VisitDT = item["VisitDT"].ToString();
+                            string CreateUID = item["CreateUID"].ToString();
+
+                            VisitTrack visitTrack = new VisitTrack();
+                            visitTrack.CID = CID;
+                            visitTrack.Content = content;
+                            visitTrack.VisitDT = VisitDT;
+                            visitTrack.CreateUID = CreateUID;
+                            visitTrackService.SaveOrUpdate(visitTrack);
+                        }
+                    }
+                    return OpResult.Success();
+                }
+                else
+                {
+                    return OpResult.Fail("保存失败");
+                }  
+            }
+            else
+            {
+                return op;
+            }
+        }
+        /// <summary>
+        /// webapp保存
+        /// </summary>
+        /// <param name="traders"></param>
+        /// <param name="orders"></param>
+        /// <returns></returns>
+        public OpResult AddTrader(Traders traders,List<OrderList> orders)
+        {
+            if (traders == null) return OpResult.Success("操作时间过长，请重新添加！");
+            var user = SysUserInfoRepository.Find(o => o.LoginName == traders.Assigner);
+            if (user == null) return OpResult.Fail("业务员不存在！");
+            traders.AddType = 1;
+            traders.CreateUID = user.UserId;
+            traders.AssignerUID = traders.CreateUID;
+            traders.CreateDT = DateTime.Now;
+            traders.UpdateDT = DateTime.Now;
+            traders.CID = getMaxCID();
+            orders.Each(o =>
+            {
+                o.CID = traders.CID;
+                o.CreateDT = traders.CreateDT;
+                o.CreateUID = traders.CreateUID;
+            });
+            TradersRepository.Add(traders,false);
+            try
+            {
+                orderListService.OrderListRepository.AddRange(orders);
+            }
+            catch(Exception ex)
+            {
+                LogEngine.WriteError(ex);
+                return OpResult.Fail("保存出现异常！");
+            }
+            return OpResult.Success("添加成功！");
+        }
+        public OpResult Save(Traders traders, string h_OrderList, short way, short openVersionId, string storeProper, string posMinorDisp, string appProper, string machine)
+        {
+            if(traders.CID>0)
+            {
+                var td = TradersRepository.Find(o => o.CID == traders.CID);
+                if (td != null)
+                {
+                    traders.Id = td.Id;
+                    traders.TrackStautsId = td.TrackStautsId;
+                    traders.Source = td.Source;
+                }
+            }
+            var op = Save(traders, h_OrderList, "", traders.BusinessScopeId.IsNullOrEmpty() ? new string[] { } : traders.BusinessScopeId.Split(','), new string[] { });
+            if(op.Successed)
+            {
+                op= CompAuthorService.SaveOrUpdate(new CompanyAuthorize()
+                {
+                    CID=traders.CID,
+                    Title=traders.FullTitle,
+                    Way=way,
+                    StoreProper=storeProper,
+                    PosMinorDisp=posMinorDisp,
+                    AppProper=appProper,
+                    StoreNum=Convert.ToInt16(traders.ExistStoreNum),
+                    UserNum = Convert.ToInt16(traders.EachStorePersonNum),
+                    BusinessMode=traders.BusinessModeId,
+                    OpenScopeId=traders.BusinessScopeId,
+                    OpenVersionId=openVersionId,
+                    SupperAccount="",
+                    SupperPassword="",
+                    ContractNo="",
+                    EffectiveDT=DateTime.Now.ToString("yyyy-MM-dd"),
+                    ValidityNum=12,
+                    MachineSN = machine
+                });
+            }
+            return op;
+        }
+        /// <summary>
+        /// 商户审核通过、设为无效商户
+        /// </summary>
+        public OpResult setStatus(string ids, short status)
+        {
+            var sId = ids.Split(',').Select(o => int.Parse(o));
+            var olist = TradersRepository.GetQuery(o => sId.Contains(o.Id)).ToList();
+            olist.Each(o => o.Status = status);
+            return OpResult.Result(TradersRepository.SaveChanges());
+        }
+
+
+        /// <summary>
+        /// 删除
+        /// </summary>
+        public Utility.OpResult Deletes(int[] ids)
+        {
+            var op = new OpResult();
+            try
+            {
+                var tra = TradersRepository.GetQuery(o => ids.Contains(o.Id));
+                var cid = tra.Select(o => o.CID).ToArray();
+                var CompanyAuthorize = CompanyAuthorizeRepository.GetQuery(o => cid.Contains(o.CID ?? 0));
+                if (CompanyAuthorize.Any())
+                {
+                    op.Message = "无法删除，软件服务包含了选择的商户";
+                    return op;
+                }
+
+                var DAuthorize = DeviceAuthorizeRepository.GetQuery(o => cid.Contains(o.CID ?? 0));
+                if (DAuthorize.Any())
+                {
+                    op.Message = "无法删除，设备服务包含了选择的商户";
+                    return op;
+                }
+
+                var oList = OrderListRepository.GetQuery(o => cid.Contains(o.CID));
+                var vList = VisitTrackRepository.GetQuery(o => cid.Contains(o.CID));
+                
+
+                OrderListRepository.RemoveRange(oList.ToList());
+                VisitTrackRepository.RemoveRange(vList.ToList());
+                TradersRepository.RemoveRange(tra.ToList());
+
+                op.Successed = true;
+                LogEngine.WriteDelete("删除商户", LogModule.商户资料);
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                LogEngine.WriteError(ex);
+            }
+            return op;
+        }
+
+        /// <summary> 
+        /// 判断给定的字符串(strNumber)是否是数值型 
+        /// </summary> 
+        /// <param name="strNumber">要确认的字符串</param> 
+        /// <returns>是则返加true 不是则返回 false</returns> 
+        public bool IsNumber(string strNumber)
+        {
+            return new Regex(@"^([0-9])[0-9]*(\.\w*)?$").IsMatch(strNumber);
+        }
+
+
+    }
+}

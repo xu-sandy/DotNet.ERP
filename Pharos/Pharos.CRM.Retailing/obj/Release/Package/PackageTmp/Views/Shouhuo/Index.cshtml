@@ -1,0 +1,124 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd:true,hideDel:true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>订货人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.UserCombobox("userId")
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="datacontrol easyui-combobox" name="state">
+                    <option selected value="">全部</option>
+                    <option value="1">已收</option>
+                    <option value="2">待收</option>
+                    <option value="3">已换</option>
+                    <option value="4">已退</option>
+                    @*<option value="5">已约待换</option>
+                    <option value="6">已约待退</option>*@
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>采购单号：</label>
+            </td>
+            <td class="input-toolbar">
+                <input type="text" class="datacontrol easyui-textbox" name="orderNo" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-ok'" onclick="setSure()">收货确认</a>
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setReceive()">设为已收货</a>
+@*<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-time'" onclick="tuiHuang()">预约退换货</a>*@
+}
+
+<script type="text/javascript">
+    pharos.manager.sortName = "DeliveryDT";
+    pharos.manager.singleSelect = true;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StateTitle', title: '状态', width: 50 },
+        { field: 'DistributionBatch', title: '配送单号', width: 150 },
+        { field: 'IndentOrderId', title: '采购单号', width: 150 },
+        { field: 'Barcode', title: '条码', width: 150 },
+        { field: 'Title', title: '品名', width: 150 },
+        { field: 'SubUnit', title: '单位', width: 50 },
+        { field: 'DeliveryNum', title: '配送量', width: 100 },
+        { field: 'ReceivedNum', title: '收货量', width: 100 },
+        { field: 'ReturnNum', title: '退换量', width: 100 },
+        { field: 'CreateDT', title: '订货日期', width: 150 },
+        { field: 'ReceivedDT', title: '收货日期', width: 150 }
+    ]];
+    pharos.manager.editItem = function (Id) {
+        openDialog(this.detailText, '@Url.Action("Receive")?Id=' + Id, 800, 450, true);
+    }
+    function setSure() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.each(rows, function (i, r) {
+            if (r.StateTitle != "待收") {
+                $.messager.alert("提示", "请选择待收状态的记录!");
+                rows = null; return false;
+            }
+        });
+        if (!rows) return;
+        openDialog800('收货确认', '@Url.Action("Receive")?Id=' + rows[0].Id);
+    }
+    function setReceive() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.each(rows, function (i, r) {
+            if (r.ReceivedNum <= 0) {
+                $.messager.alert("提示", "请先收货确认!");
+                rows = null; return false;
+            }
+            else if (r.StateTitle != "待收") {
+                $.messager.alert("提示", "请选择待收状态并且是有收货数量的记录!");
+                rows = null; return false;
+            }
+        });
+        if (!rows) return;
+        $.messager.confirm("提示", "是否确定设为已收货?", function (r) {
+            if (!r)  return r;
+            var ids = $.map(rows, function (item) {
+                return item.Id;
+            }).join();
+            $.post("@Url.Action("SetState")", { ids: ids, t: Math.random() }, function (d) {
+                if (d.successed) {
+                    $.messager.alert("提示", "已成功收货并入库！", "info");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "修改失败！" + d.message, "error");
+                }
+            }, "json");
+        })
+    }
+    function tuiHuang() {
+        var rows = pharos.manager.$dg.datagrid("getChecked");
+        if (!rows || rows.length == 0) {
+            $.messager.alert('提示', '请选择要处理的项');
+            return;
+        }
+        $.each(rows, function (i, r) {
+            if (r.ReceivedNum > 0 && r.StateTitle == "待收") {
+                
+            } else {
+                $.messager.alert("提示", "请选择待收状态并且是有收货数量的记录!");
+                rows = null; return false;
+            }
+        });
+        if (!rows) return;
+        openDialog600('预约退换货', '@Url.Action("TuiHuang")?Id='+rows[0].Id+"&barcode="+rows[0].Barcode)
+    }
+</script>

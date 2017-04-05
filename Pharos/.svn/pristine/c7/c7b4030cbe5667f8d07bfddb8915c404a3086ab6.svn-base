@@ -1,0 +1,37 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System;
+using System.Threading.Tasks;
+
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// ZhiFuWanCheng.xaml 的交互逻辑
+    /// </summary>
+    public partial class ZhiFuWanCheng : DialogWindow02
+    {
+        public ZhiFuWanCheng(decimal _amount, decimal receipt, decimal change, string payWays, PayAction payAction)
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+            Task.Factory.StartNew(() =>
+            {
+                var model = new PayComplete(_amount, receipt, change, payWays, payAction);
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    this.ApplyBindings(this, model);
+                }));
+            });
+            this.Closing += _This_Closing;
+        }
+
+        private void _This_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            PosViewModel.Current.ClearOrder.Execute(null);
+        }
+    }
+}

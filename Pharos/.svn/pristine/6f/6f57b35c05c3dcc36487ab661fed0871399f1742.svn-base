@@ -1,0 +1,167 @@
+﻿@{
+    ViewBag.Title = "ProductWeighSet";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <input type="hidden" name="Inserted" id="Inserted" />
+        <input type="hidden" name="Deleteed" id="Deleteed" />
+        <input type="hidden" name="Updateed" id="Updateed" />
+    <table class="easyui-datagrid" id="grid"
+           data-options="url:'@Url.Action("ProductWeighSetList")',onAfterEdit:afterEdit,showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onLoadError:loadError,onLoadSuccess:function(){setTimeout(function(){appendItem();}, 500);},onClickCell:clickCell,idField:'Id'">
+        <thead>
+            <tr>
+                <th data-options="field:'Code',editor:{type:'textbox',options:{required:true,disabled:false}}" width="120">秤号</th>
+                <th data-options="field:'Title',editor:{type:'textbox',options:{required:true}}" width="150">秤名称</th>
+                <th data-options="field:'Type2',editor:{type:'combobox',options:{required:true,data:pharos.dropdown['types']}}" width="100">设备类型</th>
+                <th data-options="field:'Type',hidden:true,editor:{type:'textbox',options:{}}" width="80">设备类型</th>
+                <th data-options="field:'Serie',editor:{type:'textbox',options:{}}" width="80">型号</th>
+                <th data-options="field:'IP',editor:{type:'textbox',options:{validType:'ip',required:true}}" width="100">IP地址</th>
+                <th data-options="field:'Port',editor:{type:'textbox',options:{}}" width="60">端口</th>
+                <th data-options="field:'Editor',formatter:operation" width="80">操作</th>
+            </tr>
+        </thead>
+    </table>
+    }
+</div>
+<script type="text/javascript">
+    pharos.dropdown["types"]=@Html.Raw(ViewBag.weighTypes)
+    ;
+    var $dg;
+    $(function () {
+        $dg = $("#grid");
+    })
+    var opadd = false, clickIndex = undefined, editIndex = undefined;
+    function operation(value, row, index) {
+        if (opadd) {
+            opadd = false;
+            return "<a href='javascript:void(0)' onclick='appendItem()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItem('" + row.Id + "')\">删除</a>";
+        }
+    }
+    function appendItem(value, row, index) {changeValue();
+        if (endEditing()) {
+            opadd = true;
+            $dg.datagrid('appendRow', {});
+            editIndex = $dg.datagrid('getRows').length - 1;
+            $dg.datagrid('selectRow', editIndex)
+                .datagrid('beginEdit', editIndex);
+            changeValue();
+        }
+    }
+    function removeItem(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dg.datagrid("selectRecord", id);
+            var row = $dg.datagrid("getSelected")
+            var index = $dg.datagrid("getRowIndex", row);
+            $dg.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+    function endEditing() {
+        if (editIndex == undefined) { return true }
+        if ($dg.datagrid('validateRow', editIndex)) {
+            if(!checkType(editIndex)) return false;
+            $dg.datagrid('endEdit', editIndex);
+            editIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function clickCell(index, field) {
+        if (field == "Editor") return;
+        if (endClickEditing()) {
+            $dg.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+        }
+    }
+    var typeId=0,typeTitle="";
+    function endClickEditing() {
+        if (!$dg[0]) return;
+        if (clickIndex == undefined) { return true }
+        if ($dg.datagrid('validateRow', clickIndex)) {
+            if(!checkType(clickIndex)) return false;
+            $dg.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            return true;
+        } else {
+            return false;
+        }
+    }
+    function checkType(index){
+        return true;
+        var ed = $dg.datagrid('getEditor', { index: index, field: 'Type2' });
+        var edp = $dg.datagrid('getEditor', { index: index, field: 'Type' });
+        typeId =ed? $(ed.target).combobox('getValue'):0;
+        typeTitle =ed? $(ed.target).combobox('getText'):"";
+        var edip = $dg.datagrid('getEditor', { index: index, field: 'IP' });
+        var ip =edip?$(edip.target).textbox("getValue"):"";
+        var edcode = $dg.datagrid('getEditor', { index: index, field: 'Code' });
+        var code =edcode?$(edcode.target).textbox("getValue"):"";
+        var rows = $dg.datagrid("getRows");
+        var result = true;
+        $.each(rows, function (i, r) {
+            if (code!="" && r.Code == code) {
+                $.messager.alert("提示", "该编号已存在!", "warning", function () {
+                    $(edcode.target).next('span').find('input').focus();
+                });
+                result = false;
+                return false;
+            }
+            if (ip!="" && r.IP == ip) {
+                $.messager.alert("提示", "该IP地址已存在!", "warning", function () {
+                    $(edip.target).next('span').find('input').focus()
+                });
+                result = false;
+                return false;
+            }
+        })
+        if (!result) { return false; }
+        return true;
+    }
+    function afterEdit(index,rowData,changes){
+        if (changes.Type2) {
+            $dg.datagrid('updateRow', { index: index, row: { Type: typeId,Type2:typeTitle } });
+        }
+    }
+    function changeValue() {
+        if (!$dg[0]) return;
+        var priceinserted = $dg.datagrid('getChanges', "inserted");
+        var pricedeleted = $dg.datagrid('getChanges', "deleted");
+        var priceupdated = $dg.datagrid('getChanges', "updated");
+        $("#Inserted").val(JSON.stringify(priceinserted));
+        $("#Deleteed").val(JSON.stringify(pricedeleted));
+        $("#Updateed").val(JSON.stringify(priceupdated));
+        editIndex = $dg.datagrid('getRows').length - 1;
+        if (editIndex < 0) editIndex = undefined;
+    }
+    function disabedGrid() {
+        if(!$dg[0]) return;
+        if (editIndex != undefined) {
+            var ed = $dg.datagrid('getEditor', { index: editIndex, field: 'Title' });
+            if (ed) {
+                $(ed.target).textbox('disableValidation');
+                ed = $dg.datagrid('getEditor', { index: editIndex, field: 'Code' });
+                $(ed.target).textbox('disableValidation');
+                ed = $dg.datagrid('getEditor', { index: editIndex, field: 'Type2' });
+                $(ed.target).combobox('disableValidation');
+                ed = $dg.datagrid('getEditor', { index: editIndex, field: 'IP' });
+                $(ed.target).combobox('disableValidation');
+            }
+        }
+    }
+    function SaveBefore() {
+        if(!endClickEditing()) return false;
+        changeValue();
+        disabedGrid();
+        return true;
+    }
+</script>

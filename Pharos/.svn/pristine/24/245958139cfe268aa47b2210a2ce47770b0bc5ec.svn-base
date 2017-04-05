@@ -1,0 +1,35 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<script type="text/javascript">
+    function Refresh(json) {
+        dispErr(json.message, json.descript);
+    }
+    function dispErr(msg, desc) {
+        msg = decodeURIComponent(msg);
+        desc = decodeURIComponent(desc);
+        var html = msg.replace(/'/g, "").replace(/\+/g, " ");
+        $("#errmsg").html(html);
+        $("#err").dialog({ content: desc });
+    }
+    function viewErr() {
+        $("#err").dialog("open");
+    }
+    function SaveBefore() {
+        var maps = $.map($("[name='ColumnName']"), function (r, i) {
+            var val = $(r).val();
+            if (val) return val;
+        });
+        var ms = maps.sort();
+        for (var i = 0; i < ms.length; i++) {
+            if (ms[i] == ms[i + 1]) {
+                return confirm(ms[i] + "列存在重复,是否继续?");
+            }
+        }
+        return true;
+    }
+</script>
+@RenderBody()
+<div id="errmsg" style="margin-left:10px"></div>
+<div id="err" class="easyui-dialog" style="width:400px;height:200px;padding:10px;overflow-y:auto!important;" data-options="iconCls:'icon-no',closed:true,title:'信息查看'"></div>

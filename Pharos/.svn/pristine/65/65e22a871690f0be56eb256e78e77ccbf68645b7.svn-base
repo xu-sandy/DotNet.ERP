@@ -1,0 +1,148 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Sys.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+
+
+namespace Pharos.Logic.BLL
+{
+    public class MemberLevelService : BaseService<MemberLevel>
+    {
+        /// <summary>
+        /// 新增会员等级
+        /// </summary>
+        /// <param name="level"></param>
+        /// <returns></returns>
+        public OpResult CreateMemberLevel(MemberLevel level)
+        {
+            level.MemberLevelId = CommonRules.GUID;
+            //判断名称不可重复
+            var data = CurrentRepository.Entities.FirstOrDefault(o => o.LevelTitle == level.LevelTitle && o.CompanyId == CommonService.CompanyId);
+            if (data != null)
+            {
+                return OpResult.Fail("会员名称重复！");
+            }
+            return MemberLevelService.Add(level);
+        }
+
+        public object FindMemberLevelByCompanyId(out int count)
+        {
+            var query = (from a in CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId)
+                         join b in BaseService<SysUserInfo>.CurrentRepository.Entities
+                         on a.CreateUID equals b.UID into l
+                         from defarm in l.DefaultIfEmpty()
+                         select new
+                         {
+                             Id = a.Id,
+                             LevelSN = a.LevelSN,
+                             LevelTitle = a.LevelTitle,
+                             CouponType = a.CouponType,
+                             Discount = a.Discount,
+                             //IntegerType = a.IntegerType,
+                             AutoUpdate = a.AutoUpdate,
+                             UpgradeScore = a.UpgradeScore,
+                             Memo = a.Memo,
+                             State = a.State,
+                             CreateDT = a.CreateDT,
+                             CreateUID = defarm.FullName,
+                             ConverRatio = a.ConverRatio,
+                             MemberCount = BaseService<Members>.CurrentRepository.Entities.Where(o => o.MemberLevelId == a.MemberLevelId && CommonService.CompanyId == o.CompanyId).Count(),//统计会员数量
+                         });
+            count = query.Count();
+            if (count > 0)
+            {
+                var result = query.ToPageList();
+                return result;
+
+            }
+            else
+            {
+                return new MemberLevel();
+            }
+        }
+
+        public OpResult UpdateMemberStateByIds(short state, string ids)
+        {
+            try
+            {
+                var levels = CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ",")).ToList();
+                foreach (var item in levels)
+                {
+                    if (item.State != state)
+                    {
+                        item.State = state;
+                    }
+                }
+                var result = CurrentRepository.Update(new MemberLevel());
+                return new OpResult() { Successed = true, Message = "操作成功!" };
+            }
+            catch (Exception e)
+            {
+                Log.WriteError(e);
+                throw;
+            }
+        }
+
+        public IEnumerable<MemberLevel> GetAllMemberLevelInfo()
+        {
+            return CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId).ToList();
+        }
+
+
+        public MemberLevel GetTop1MemberLevelByDTDesc()
+        {
+            return CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId).OrderByDescending(o => o.CreateDT).FirstOrDefault();
+        }
+
+
+        public static List<MemberLevel> GetList()
+        {
+            return CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId && o.State == 0).ToList();
+        }
+
+        public MemberLevel GetMemberLevelById(int id)
+        {
+            return CurrentRepository.QueryEntity.FirstOrDefault(o => o.Id == id);
+        }
+
+        internal OpResult UpdateMemberLevel(MemberLevel level)
+        {
+            var selectLevel = CurrentRepository.QueryEntity.FirstOrDefault(o => o.LevelTitle == level.LevelTitle && CommonService.CompanyId == level.CompanyId);
+            if (selectLevel != null && selectLevel.Id != level.Id)
+            {
+                return OpResult.Fail("会员等级名称重复！");
+            }
+
+            var data = CurrentRepository.QueryEntity.FirstOrDefault(o => o.Id == level.Id);
+            if (data != null)
+            {
+                //data.LevelSN = level.LevelSN;
+                data.LevelTitle = level.LevelTitle;
+                data.CouponType = level.CouponType;
+                data.Discount = level.Discount;
+                //data.IntegerType = level.IntegerType;
+                data.AutoUpdate = level.AutoUpdate;
+                data.UpgradeScore = level.UpgradeScore;
+                data.Memo = level.Memo;
+                //data.State = level.State;
+                var result = CurrentRepository.Update(data);
+                if (result)
+                {
+                    return OpResult.Success("操作成功！");
+                }
+                else
+                {
+                    return OpResult.Fail("请核对提交数据！");
+                }
+            }
+            else
+            {
+                return OpResult.Fail("找不到原数据！");
+            }
+        }
+    }
+}

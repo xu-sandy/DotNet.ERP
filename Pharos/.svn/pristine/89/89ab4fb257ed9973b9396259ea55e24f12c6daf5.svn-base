@@ -1,0 +1,92 @@
+﻿@model TreasuryLocks
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">li{height:32px;line-height:32px;} dl{clear:both} dt{font-size:14px;font-weight:bold;} dd{float:left;margin-right:15px;margin-top:6px; }</style>
+<div class="default-form">
+    @using (Html.BeginForm("Import","Takestock",FormMethod.Post,new{enctype = "multipart/form-data" }))
+    {
+        <input type="hidden" name="over" id="over" value="" />
+        <div class="content">
+            <table class="table-form" width="100%" height="73px">
+                <tr>
+                    <td class="name">盘点门店：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.LockStoreID, ViewBag.shops as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "onSelect:storeSelect,validType:'requiredForCombo'" })</td>
+                    <td class="name">盘点员：</td>
+                    <td class="input"><select id="CheckUID" name="CheckUID" class="easyui-combobox" data-options="width:130,validType:'requiredForCombo'"><option value="" selected>请选择</option></select></td>
+                </tr>
+                <tr>
+                    <td class="name">盘点批次：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.CheckBatch, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" } }, new { @class = "easyui-combobox datacontrol", data_options = "validType:'requiredForCombo',editable:false" })</td>
+                    <td class="name"></td>
+                    <td class="input"></td>
+                </tr>
+            </table>
+            <table style="height:117px;">
+                <tr>
+                    <td align="right">上传盘点文件：</td>
+                    <td colspan="3"><input type="text" class="easyui-filebox" name="file1" data-options="buttonText:'选择文件',prompt:'请选择Excel文件...'" style="width:350px" /></td>
+                </tr>
+                <tr>
+                    <td align="right">选择条码列：</td>
+                    <td>@Html.DropDownList("CodeCol", ViewBag.pos as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false", style = "width:80px" })</td>
+                    <td align="right">选择实盘列：</td>
+                    <td>@Html.DropDownList("CountCol", ViewBag.pos as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false", style = "width:80px" })</td>
+                </tr>
+                <tr>
+                    <td align="right">起始行号：</td>
+                    <td><input type="text" name="MinRow" class="easyui-numberbox" data-options="value:2,width:80,min:0" /></td>
+                    <td align="right">截止行号：</td>
+                    <td><input type="text" name="MaxRow" class="easyui-numberbox" data-options="value:1000,width:80,min:1" /></td>
+                </tr>
+                <tr>
+                    <td colspan="4"><div id="msg"></div></td>
+                </tr>
+            </table>
+            <div id="err" class="easyui-dialog" style="width:400px;height:200px;padding:10px;overflow-y:auto!important;" data-options="iconCls:'icon-no',closed:true,title:'异常查看'"></div>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    $(function () {
+        $("#LockDate").textbox("setValue", "");
+        $("#CodeCol").combobox("setValue", "C");
+        $("#CountCol").combobox("setValue", "G");
+    });
+    function dispErr(msg, desc) {
+        msg = decodeURIComponent(msg);
+        desc = decodeURIComponent(desc);
+        $("#msg").html(msg.replace(/'/g, "").replace("+", " ").replace("+", " "));
+        $("#err").dialog({content:desc});
+    }
+    function viewErr() {
+        $("#err").dialog("open");
+    }
+    var first = true;
+    function storeSelect(record) {
+        if (!record.value) {
+            $("#CheckBatch").combobox("clear");
+            return;
+        }
+        $.post("@Url.Action("StoreSelect")",{storeId:record.value,state:0,t:Math.random()},function(data){
+            $("#CheckBatch").combobox("clear").combobox("loadData",data.batchs);
+            $("#CheckUID").combobox("clear").combobox("loadData",data.users);
+        },"json");
+    }
+    function batchChange(newValue, oldValue) {
+        if (!first) return;
+        first = false;
+        var storeId = $("#LockStoreID").combobox("getValue");
+        storeSelect({ value: storeId, batch: newValue });
+    }
+    function Refresh(json) {
+        dispErr(json.message, json.descript);
+    }
+    function SaveBefore() {
+        if ($("#CountCol").combobox("getValue") == $("#CodeCol").combobox("getValue")) {
+            $.messager.alert("提示", "条码列和实盘列不能一样"); return false;
+        }
+        return true;
+    }
+</script>

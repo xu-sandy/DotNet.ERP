@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:ser="http://schemas.microsoft.com/2003/10/Serialization/" xmlns:tns="http://schemas.datacontract.org/2004/07/Microsoft.Synchronization.Data" elementFormDefault="qualified" targetNamespace="http://schemas.datacontract.org/2004/07/Microsoft.Synchronization.Data" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="http://localhost:4811/ServiceForSync.svc?xsd=xsd1" namespace="http://schemas.microsoft.com/2003/10/Serialization/" />
+  <xs:import schemaLocation="http://localhost:4811/ServiceForSync.svc?xsd=xsd5" namespace="http://schemas.datacontract.org/2004/07/Microsoft.Synchronization" />
+  <xs:complexType name="SyncGroupMetadata">
+    <xs:sequence>
+      <xs:element name="_batchCount" type="xs:int" />
+      <xs:element name="_groupName" nillable="true" type="xs:string" />
+      <xs:element name="_maxAnchor" nillable="true" type="tns:SyncAnchor" />
+      <xs:element name="_newAnchor" nillable="true" type="tns:SyncAnchor" />
+      <xs:element name="_tablesMetadata" nillable="true" type="tns:ArrayOfSyncTableMetadata" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncGroupMetadata" nillable="true" type="tns:SyncGroupMetadata" />
+  <xs:complexType name="SyncAnchor">
+    <xs:sequence>
+      <xs:element name="_anchor" nillable="true" type="xs:base64Binary" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncAnchor" nillable="true" type="tns:SyncAnchor" />
+  <xs:complexType name="ArrayOfSyncTableMetadata">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="SyncTableMetadata" nillable="true" type="tns:SyncTableMetadata" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ArrayOfSyncTableMetadata" nillable="true" type="tns:ArrayOfSyncTableMetadata" />
+  <xs:complexType name="SyncTableMetadata">
+    <xs:sequence>
+      <xs:element name="_receivedAnchor" nillable="true" type="tns:SyncAnchor" />
+      <xs:element name="_sentAnchor" nillable="true" type="tns:SyncAnchor" />
+      <xs:element name="_syncDirection" type="tns:SyncDirection" />
+      <xs:element name="_tableName" nillable="true" type="xs:string" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncTableMetadata" nillable="true" type="tns:SyncTableMetadata" />
+  <xs:simpleType name="SyncDirection">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="DownloadOnly" />
+      <xs:enumeration value="UploadOnly" />
+      <xs:enumeration value="Bidirectional" />
+      <xs:enumeration value="Snapshot" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="SyncDirection" nillable="true" type="tns:SyncDirection" />
+  <xs:complexType name="SyncSession">
+    <xs:sequence>
+      <xs:element name="_clientId" type="ser:guid" />
+      <xs:element name="_originatorId" type="xs:int" />
+      <xs:element name="_sessionId" type="ser:guid" />
+      <xs:element name="_syncParameters" nillable="true" type="tns:ArrayOfSyncParameter" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncSession" nillable="true" type="tns:SyncSession" />
+  <xs:complexType name="ArrayOfSyncParameter">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="SyncParameter" nillable="true" type="tns:SyncParameter" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ArrayOfSyncParameter" nillable="true" type="tns:ArrayOfSyncParameter" />
+  <xs:complexType name="SyncParameter">
+    <xs:sequence>
+      <xs:element name="_name" nillable="true" type="xs:string" />
+      <xs:element name="_value" nillable="true" type="xs:anyType" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncParameter" nillable="true" type="tns:SyncParameter" />
+  <xs:complexType name="SyncContext">
+    <xs:sequence>
+      <xs:element name="_batchCount" type="xs:int" />
+      <xs:element name="_dataSet" nillable="true">
+        <xs:complexType>
+          <xs:annotation>
+            <xs:appinfo>
+              <ActualType Name="DataSet" Namespace="http://schemas.datacontract.org/2004/07/System.Data" xmlns="http://schemas.microsoft.com/2003/10/Serialization/" />
+            </xs:appinfo>
+          </xs:annotation>
+          <xs:sequence>
+            <xs:element ref="xs:schema" />
+            <xs:any />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="_groupProgress" nillable="true" type="tns:SyncGroupProgress" />
+      <xs:element name="_maxAnchor" nillable="true" type="tns:SyncAnchor" />
+      <xs:element name="_newAnchor" nillable="true" type="tns:SyncAnchor" />
+      <xs:element name="_originatorId" type="xs:int" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncContext" nillable="true" type="tns:SyncContext" />
+  <xs:complexType name="SyncGroupProgress">
+    <xs:sequence>
+      <xs:element name="_dataSet" nillable="true">
+        <xs:complexType>
+          <xs:annotation>
+            <xs:appinfo>
+              <ActualType Name="DataSet" Namespace="http://schemas.datacontract.org/2004/07/System.Data" xmlns="http://schemas.microsoft.com/2003/10/Serialization/" />
+            </xs:appinfo>
+          </xs:annotation>
+          <xs:sequence>
+            <xs:element ref="xs:schema" />
+            <xs:any />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="_groupName" nillable="true" type="xs:string" />
+      <xs:element name="_tablesProgress" nillable="true" type="tns:ArrayOfSyncTableProgress" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncGroupProgress" nillable="true" type="tns:SyncGroupProgress" />
+  <xs:complexType name="ArrayOfSyncTableProgress">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="SyncTableProgress" nillable="true" type="tns:SyncTableProgress" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ArrayOfSyncTableProgress" nillable="true" type="tns:ArrayOfSyncTableProgress" />
+  <xs:complexType name="SyncTableProgress">
+    <xs:sequence>
+      <xs:element name="_conflicts" nillable="true" type="tns:ArrayOfSyncConflict" />
+      <xs:element name="_dataTable" nillable="true">
+        <xs:complexType>
+          <xs:annotation>
+            <xs:appinfo>
+              <ActualType Name="DataTable" Namespace="http://schemas.datacontract.org/2004/07/System.Data" xmlns="http://schemas.microsoft.com/2003/10/Serialization/" />
+            </xs:appinfo>
+          </xs:annotation>
+          <xs:sequence>
+            <xs:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+            <xs:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="_deletes" type="xs:int" />
+      <xs:element name="_inserts" type="xs:int" />
+      <xs:element name="_rowIndex" type="xs:int" />
+      <xs:element name="_rowsApplied" type="xs:int" />
+      <xs:element name="_rowsFailed" type="xs:int" />
+      <xs:element name="_tableName" nillable="true" type="xs:string" />
+      <xs:element name="_updates" type="xs:int" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncTableProgress" nillable="true" type="tns:SyncTableProgress" />
+  <xs:complexType name="ArrayOfSyncConflict">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="SyncConflict" nillable="true" type="tns:SyncConflict" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ArrayOfSyncConflict" nillable="true" type="tns:ArrayOfSyncConflict" />
+  <xs:complexType name="SyncConflict">
+    <xs:sequence>
+      <xs:element name="_clientRows" nillable="true">
+        <xs:complexType>
+          <xs:annotation>
+            <xs:appinfo>
+              <ActualType Name="DataTable" Namespace="http://schemas.datacontract.org/2004/07/System.Data" xmlns="http://schemas.microsoft.com/2003/10/Serialization/" />
+            </xs:appinfo>
+          </xs:annotation>
+          <xs:sequence>
+            <xs:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+            <xs:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="_conflictType" type="tns:ConflictType" />
+      <xs:element name="_errorMessage" nillable="true" type="xs:string" />
+      <xs:element name="_serverRows" nillable="true">
+        <xs:complexType>
+          <xs:annotation>
+            <xs:appinfo>
+              <ActualType Name="DataTable" Namespace="http://schemas.datacontract.org/2004/07/System.Data" xmlns="http://schemas.microsoft.com/2003/10/Serialization/" />
+            </xs:appinfo>
+          </xs:annotation>
+          <xs:sequence>
+            <xs:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+            <xs:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element xmlns:q1="http://schemas.datacontract.org/2004/07/Microsoft.Synchronization" name="_stage" type="q1:SyncStage" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncConflict" nillable="true" type="tns:SyncConflict" />
+  <xs:simpleType name="ConflictType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Unknown" />
+      <xs:enumeration value="ErrorsOccurred" />
+      <xs:enumeration value="ClientUpdateServerUpdate" />
+      <xs:enumeration value="ClientUpdateServerDelete" />
+      <xs:enumeration value="ClientDeleteServerUpdate" />
+      <xs:enumeration value="ClientInsertServerInsert" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="ConflictType" nillable="true" type="tns:ConflictType" />
+  <xs:complexType name="SyncSchema">
+    <xs:sequence>
+      <xs:element name="_dataSet" nillable="true">
+        <xs:complexType>
+          <xs:annotation>
+            <xs:appinfo>
+              <ActualType Name="DataSet" Namespace="http://schemas.datacontract.org/2004/07/System.Data" xmlns="http://schemas.microsoft.com/2003/10/Serialization/" />
+            </xs:appinfo>
+          </xs:annotation>
+          <xs:sequence>
+            <xs:element ref="xs:schema" />
+            <xs:any />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncSchema" nillable="true" type="tns:SyncSchema" />
+  <xs:complexType name="SyncServerInfo">
+    <xs:annotation>
+      <xs:appinfo>
+        <IsValueType xmlns="http://schemas.microsoft.com/2003/10/Serialization/">true</IsValueType>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="_tablesInfo" nillable="true" type="tns:ArrayOfSyncTableInfo" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncServerInfo" nillable="true" type="tns:SyncServerInfo" />
+  <xs:complexType name="ArrayOfSyncTableInfo">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="SyncTableInfo" nillable="true" type="tns:SyncTableInfo" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ArrayOfSyncTableInfo" nillable="true" type="tns:ArrayOfSyncTableInfo" />
+  <xs:complexType name="SyncTableInfo">
+    <xs:sequence>
+      <xs:element name="_description" nillable="true" type="xs:string" />
+      <xs:element name="_tableName" nillable="true" type="xs:string" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SyncTableInfo" nillable="true" type="tns:SyncTableInfo" />
+</xs:schema>

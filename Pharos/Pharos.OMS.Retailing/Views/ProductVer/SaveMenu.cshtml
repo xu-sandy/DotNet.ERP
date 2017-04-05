@@ -1,0 +1,65 @@
+﻿@model Pharos.Logic.OMS.Entity.ProductMenu
+@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.ProductId)
+        <div class="content">
+            <table class="table-form" width="100%" height="250px">
+                @if (Model.PMenuId > 0)
+                {
+                    @Html.HiddenFor(o => o.Type)
+                    @Html.HiddenFor(o=>o.Expand)
+                    @Html.HiddenFor(o=>o.PMenuId)
+                <tr>
+                    <td class="name">上级菜单：</td>
+                    <td class="input">@Html.DisplayText("ParentMenu")</td>
+                </tr>
+                }
+                <tr>
+                    <td class="name">菜单名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:'length[1,50]'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">页面地址：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Url, new { @class = "easyui-textbox", data_options = "novalidate:true,validType:'length[1,50]'" })</td>
+                </tr>
+                @if(Model.PMenuId==0)
+                { 
+                <tr>
+                    <td class="name">菜单类别：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.Type, new List<SelectListItem>() { new SelectListItem() { Text = "用户菜单", Value = "1" }, new SelectListItem() { Text = "内部菜单", Value = "2" } })</td>
+                </tr>
+                <tr>
+                    <td class="name">是否展开：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.Expand, new List<SelectListItem>() { new SelectListItem() { Text = "否", Value = "False" }, new SelectListItem() { Text = "是", Value = "True" } })</td>
+                </tr>
+                }
+                <tr>
+                    <td class="name">状态：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.Status, new List<SelectListItem>() { new SelectListItem() { Text = "显示", Value = "True" }, new SelectListItem() { Text = "隐藏", Value = "False" } })</td>
+                </tr>
+            </table>
+        </div>
+        
+    }
+</div>
+<script type="text/javascript">
+    function Refresh() {
+        if ($("#hidadd").val() == "1") {
+            pharos.easyui.dialog.curJquery("formDiv")("#treegrid").treegrid("reload").treegrid("clearSelections").treegrid("clearChecked");
+            var src = window.top.$('.formDiv:last iframe').attr("src");
+            window.location.href = src;
+        } else {
+            pharos.easyui.dialog.curJquery("formDiv")("#treegrid").treegrid("reload").treegrid("clearSelections").treegrid("clearChecked");
+            pharos.easyui.dialog.topClose("formDiv");
+        }
+    }
+    function SaveBefore() {
+        return true;
+    }
+</script>

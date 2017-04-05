@@ -1,0 +1,47 @@
+﻿<Window xmlns:Retailing="clr-namespace:Pharos.POS.Retailing"  x:Class="Pharos.POS.Retailing.ChildPages.GuaDanList"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         WindowState="Normal" WindowStyle="None" Icon="..\Images\price.png"   Style="{DynamicResource SkinWindowStyle}"
+        AllowsTransparency="True"  WindowStartupLocation="CenterScreen"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" 
+        Background="Transparent" BorderBrush="Transparent"
+        Name="mainWindow"
+        Title="挂单列表" Height="600" Width="900">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\ChaKuCunStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="10"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="1">
+            <DataGrid Name="DataGridLocalBill" PreviewKeyDown="DataGridLocalBill_PreviewKeyDown" BorderThickness="1" BorderBrush="#BCB4BB"  VerticalGridLinesBrush="Transparent" HorizontalGridLinesBrush="#D6DBE9" CanUserSortColumns="False" CanUserDeleteRows="True" CanUserAddRows="False" CanUserReorderColumns="False" HeadersVisibility="Column"  AutoGenerateColumns="False"  Height="480" Margin="30,0,30,60">
+                <DataGrid.Columns>
+                    <DataGridTextColumn IsReadOnly="True" Header="挂单号" Width="100" Binding="{Binding Id}"></DataGridTextColumn>
+                    <DataGridTextColumn IsReadOnly="True" Header="挂单时间" Width="200" Binding="{Binding Date,StringFormat='HH:mm'}" ></DataGridTextColumn>
+                    <DataGridTextColumn IsReadOnly="True" Header="预购商品数量" Width="150*" Binding="{Binding Num}"></DataGridTextColumn>
+                    <DataGridTextColumn IsReadOnly="True" Header="预购商品总额" Width="180*" Binding="{Binding Total,StringFormat='{}{0:N}'}"></DataGridTextColumn>
+                    <DataGridTemplateColumn CanUserSort="False" IsReadOnly="True" Width="200" Header="操作">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100*"></ColumnDefinition>
+                                        <ColumnDefinition Width="100*"></ColumnDefinition>
+                                    </Grid.ColumnDefinitions>
+                                    <Button  Margin="5,0,0,0"  Style="{StaticResource BtnBase}" Command="{Binding ReadBill}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}" BorderBrush="#A0B888" Width="50" Foreground="#A0B888" Height="30"  BorderThickness="1" FontSize="12" Background="#FFFFFF" Grid.Column="0">读取</Button>
+                                    <Button  Margin="5,0,0,0" Style="{StaticResource BtnBase}"  Command="{Binding RemoveBill}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}" BorderBrush="#7E7E7E" Width="50" Foreground="#7E7E7E" Height="30"  BorderThickness="1" FontSize="12" Background="#FFFFFF"  Grid.Column="1">撤销</Button>
+                                </Grid>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </StackPanel>
+    </Grid>
+</Window>

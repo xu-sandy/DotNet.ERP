@@ -1,0 +1,89 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Pharos.SyncService.Helpers;
+using System.Text;
+
+namespace Pharos.SyncService.LocalDataServices
+{
+    public class ProductRecordSyncLocalService : ISyncDataService
+    {
+        public IEnumerable<ISyncDataObject> GetSyncObjects(int companyId, string storeId)
+        {
+            try
+            {
+                using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+                {
+                    db.ProductRecords.RemoveRange(db.ProductRecords.Where(o => o.CompanyId != companyId));
+                    db.SaveChanges();
+
+                    var result = db.ProductRecords.Where(o => o.CompanyId == companyId).Select(o => new SyncDataObject() { SyncItemId = o.SyncItemId, SyncItemVersion = o.SyncItemVersion }).ToList();
+                    return result;
+                }
+            }
+            catch
+            {
+                return new List<ISyncDataObject>();
+            }
+        }
+
+        public ISyncDataObject GetItem(Guid guid, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var entity = db.ProductRecords.Where(o => o.SyncItemId == guid && o.CompanyId == companyId).FirstOrDefault();
+                if (entity != null)
+                    return new Pharos.SyncService.SyncEntities.ProductRecord().InitEntity(entity);
+                return null;
+            }
+        }
+
+        public byte[] CreateItem(ISyncDataObject data, Guid guid, int companyId, string storeId)
+        {
+            var temp = data as Pharos.SyncService.SyncEntities.ProductRecord;
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var entity = new Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity.ProductRecord();
+                entity.InitEntity(temp);
+                db.ProductRecords.Add(entity);
+                db.SaveChanges();
+                return entity.SyncItemVersion;
+            }
+        }
+
+        public byte[] UpdateItem(Guid guid, ISyncDataObject mergedData, int companyId, string storeId)
+        {
+            var temp = mergedData as Pharos.SyncService.SyncEntities.ProductRecord;
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var dbEntity = db.ProductRecords.FirstOrDefault(o => o.SyncItemId == guid && o.CompanyId == companyId);
+                dbEntity.InitEntity(temp);
+                db.SaveChanges();
+                var newEntity = db.ProductRecords.FirstOrDefault(o => o.SyncItemId == guid);
+                return newEntity.SyncItemVersion;
+            }
+        }
+
+        public void DeleteItem(Guid syncItemId, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<LocalCeDbContext>())
+            {
+                var dbEntity = db.ProductRecords.FirstOrDefault(o => o.SyncItemId == syncItemId && o.CompanyId == companyId);
+                db.ProductRecords.Remove(dbEntity);
+                db.SaveChanges();
+            }
+        }
+
+        public ISyncDataObject Merge(ISyncDataObject syncDataObject1, ISyncDataObject syncDataObject2, int companyId, string storeId)
+        {
+            return syncDataObject2;
+        }
+
+        public Microsoft.Synchronization.SyncDirectionOrder SyncDirectionOrder
+        {
+            get { return Microsoft.Synchronization.SyncDirectionOrder.Download; }
+        }
+    }
+}

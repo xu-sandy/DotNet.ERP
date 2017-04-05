@@ -1,0 +1,31 @@
+﻿using Pharos.DBFramework;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.DAL
+{
+    internal class MakingCouponCardDAL
+    {
+        DBHelper db = new DBHelper();
+
+        /// <summary>
+        /// 获取品类列表
+        /// </summary>
+        /// <returns>品类列表</returns>
+        public DataTable GetCategoryList()
+        {
+            string sql = @"SELECT Id,CategorySN,
+                        dbo.F_ProductCategoryDescForSN(a.CategorySN,1,1) BigCategoryTitle ,
+                        dbo.F_ProductCategoryDescForSN(a.CategorySN,2,1) MidCategoryTitle ,
+                        dbo.F_ProductCategoryDescForSN(a.CategorySN,3,1) SubCategoryTitle 
+                        from ProductCategory a
+                        where Grade=3 and State=1";
+            var dt = db.DataTableText(sql, null);
+            return dt;
+        }
+
+    } 
+}

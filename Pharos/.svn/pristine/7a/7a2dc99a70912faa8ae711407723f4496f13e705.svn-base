@@ -1,0 +1,111 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Models.SalesPromotionRules.Discount
+{
+    /// <summary>
+    /// 单品折扣
+    /// </summary>
+    public class SingleDiscount : BaseDiscount<CommodityDiscountLocalService, CommodityDiscountDAO>
+    {
+        /// <summary>
+        /// 商品是否有单品折扣，并返回折扣信息
+        /// </summary>
+        /// <param name="product"></param>
+        /// <param name="info"></param>
+        /// <returns></returns>
+        public override bool HasDiscount(string barcode, out IEnumerable<CommodityDiscountDAO> info)
+        {
+            var entity = ProductInfoLocalService.Find(o => o.Barcode == barcode);
+            var ids = ProductCategoryLocalService.FindAllParent(entity.CategorySN);
+            ids.Add(entity.CategorySN);
+            var discounts = CachePool.Where(o => (o.Barcode == barcode || ids.Exists(p => p == o.CategorySN)) && o.EndDate >= DateTime.Now.Date && o.StartDate <= DateTime.Now.Date);
+            info = discounts;
+            return discounts != null && discounts.Count() > 0;
+        }
+
+
+
+        public override bool HasDiscount(string barcode)
+        {
+            IEnumerable<CommodityDiscountDAO> info;
+            return this.HasDiscount(barcode, out info);
+        }
+
+        public override void Discount(Product productInfo)
+        {
+
+            string barcode = productInfo.Code;
+            decimal num = productInfo.Num;
+            decimal sysPrice = productInfo.Price;
+            decimal sale = productInfo.sale;
+            string giftId = productInfo.giftId;
+            List<string> promotionIds = productInfo.promotionIds;
+
+            IEnumerable<CommodityDiscountDAO> infos;
+            if (HasDiscount(barcode, out infos))
+            {
+                List<CommodityDiscountDAO> ValidDiscount = new List<CommodityDiscountDAO>();
+                foreach (var item in infos)
+                {
+                    //处理主表限制
+                    var hasDiscount = DiscountCommon(barcode, num, ref  sale, item);
+                    if (hasDiscount)
+                    {
+                        ValidDiscount.Add(item);
+                    }
+
+                }
+                if (ValidDiscount.Count == 0)
+                {
+                    return;
+                }
+                //起购量
+                ValidDiscount = ValidDiscount.Where(o => o.MinPurchaseNum <= num).ToList();
+                if (ValidDiscount.Count == 0)
+                {
+                    return;
+                }
+                var info = ValidDiscount.FirstOrDefault(o => o.MinPurchaseNum == ValidDiscount.Max(p => p.MinPurchaseNum));
+                if (info.Way == 2)
+                {
+                    sale = info.DiscountPrice ?? (info.DiscountRate * sysPrice / 10);
+                }
+                else if (info.Way == 1)
+                {
+                    var tempNum = num;
+                    var list = ValidDiscount.Where(o => o.Barcode == barcode && o.CommodityPromotionId == info.CommodityPromotionId);
+                    var tempTotal = 0m;
+                    while (tempNum > 0)
+                    {
+                        var maxMinPurchaseNumList = list.Where(o => o.MinPurchaseNum <= tempNum);
+                        if (maxMinPurchaseNumList.Count() > 0)
+                        {
+                            var maxMinPurchaseNum = maxMinPurchaseNumList.Max(o => o.MinPurchaseNum);
+                            var discountInfo = list.FirstOrDefault(o => o.MinPurchaseNum == maxMinPurchaseNum);
+                            if (discountInfo != null)
+                            {
+                                tempNum = tempNum - maxMinPurchaseNum;
+                                tempTotal += (discountInfo.DiscountPrice ?? sysPrice) * maxMinPurchaseNum;
+                            }
+                            else
+                            {
+                                tempTotal += sysPrice * tempNum;
+                                tempNum = 0;
+                            }
+                        }
+                        else
+                        {
+                            tempTotal += sysPrice * tempNum;
+                            tempNum = 0;
+                        }
+                    }
+                    productInfo.sale = tempTotal / num;
+                }
+            }
+        }
+    }
+}

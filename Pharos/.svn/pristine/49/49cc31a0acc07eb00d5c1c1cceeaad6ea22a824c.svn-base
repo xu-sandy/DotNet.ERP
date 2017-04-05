@@ -1,0 +1,239 @@
+﻿using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using System.Data.Entity;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Sys.Entity;
+using Pharos.Logic.DAL;
+namespace Pharos.Logic.BLL
+{
+    public class SupplierService : BaseService<Supplier>
+    {
+        static CommonDAL _dal = new CommonDAL();
+        static Sys.LogEngine log = new Sys.LogEngine();
+
+        /// <summary>
+        /// 用于datagrid列表
+        /// </summary>
+        /// <param name="nvl">传递条件</param>
+        /// <param name="recordCount">返回总行数</param>
+        /// <returns>list</returns>
+        public static object FindPageList(NameValueCollection nvl, out int recordCount)
+        {
+            var query = BaseService<VwSupplier>.CurrentRepository.Entities;
+            var sn = nvl["searchText"].Trim();
+            var state = nvl["state"].IsNullOrEmpty() ? -1 : short.Parse(nvl["state"]);
+            var express = DynamicallyLinqHelper.True<VwSupplier>().And(o => 
+                    (o.Title != null && o.Title.Contains(sn)) ||
+                    (o.FullTitle != null && o.FullTitle.Contains(sn)) ||
+                    (o.MobilePhone != null && o.MobilePhone.Contains(sn)) ||
+                    (o.Linkman!=null && o.Linkman.Contains(sn)) ,sn.IsNullOrEmpty())
+                    .And(o=>o.State==state,state==-1);
+            var p = query.Where(express);
+            var q = p.Where(o => o.BusinessType == 1);
+            recordCount = q.Count();
+            var pages = q.ToPageList(nvl);
+            var list = pages.Select(o => new
+            {
+                o.Id,
+                o.Title,
+                o.MasterAccount,
+                o.Linkman,
+                o.MobilePhone,
+                o.Tel,
+                o.ClassName,
+                o.ContractSN,
+                o.EndDate,
+                State = GetState(o.State),
+                o.OrderNum,
+                o.Designeer,
+                o.BusinessType
+            }).ToList();
+            return list;
+        }
+        public static OpResult SaveOrUpdate(Supplier obj)
+        {
+            var re = new OpResult();
+            var classify = SysDataDictService.GetSupplierTypes();
+            List<SysUserInfo> list = new List<SysUserInfo>();
+            string desig = GetUser(obj.Designee, list);
+            string stateTitle = obj.MasterState == 1 ? "可用" : "关闭";
+
+            if (!obj.MasterAccount.IsNullOrEmpty() && SupplierService.IsExist(o => o.Id != obj.Id && o.MasterAccount == obj.MasterAccount && o.BusinessType == 1))
+                re.Message = "账号已存在";
+            else if (!obj.Title.IsNullOrEmpty() && SupplierService.IsExist(o => o.Id != obj.Id && o.Title == obj.Title && o.BusinessType==1))
+                re.Message = "供应商简称已存在";
+            else if (!obj.FullTitle.IsNullOrEmpty() && SupplierService.IsExist(o => o.Id != obj.Id && o.FullTitle == obj.FullTitle && o.BusinessType == 1))
+                re.Message = "供应商全称已存在";
+            else if (obj.Id.IsNullOrEmpty())
+            {
+                obj.Id = Logic.CommonRules.GUID;
+                obj.BusinessType = 1;
+                re = SupplierService.Add(obj);
+                #region 写入日志
+                string msg = "成功新增供应商！";
+                var module = Pharos.Sys.LogModule.档案管理;
+                if (re.Successed)
+                {                  
+                    string designee = (string.IsNullOrEmpty(obj.Designee) && string.IsNullOrEmpty(desig)) ? "" : "，指派人=" + desig;
+                    string phoneNum = string.IsNullOrEmpty(obj.MobilePhone) ? "" : "，手机=" + obj.MobilePhone;
+                    string telNum = string.IsNullOrEmpty(obj.Tel) ? "" : "，电话=" + obj.Tel;
+                    string email = string.IsNullOrEmpty(obj.Email) ? "" : "，邮箱=" + obj.Email;
+                    string address = string.IsNullOrEmpty(obj.Address) ? "" : "，地址=" + obj.Address;
+                    msg += "<br />Id=" + obj.Id + "，";
+                    msg += "<br />分类=" + GetTitle(classify, obj.ClassifyId) + designee + "，简称=" + obj.Title + "，全称=" + obj.FullTitle + "，联系人=" + obj.Linkman + phoneNum + telNum + email + address + "，账号=" + obj.MasterAccount + "，状态=" + stateTitle + "。";
+                }
+                else
+                {
+                    msg = "新增供应商失败！";
+                }
+                log.WriteInsert(msg, module);
+                #endregion
+            }
+            else
+            {
+                var supp = SupplierService.FindById(obj.Id);
+                var exc = new List<string>();
+                if (obj.MasterPwd.IsNullOrEmpty())
+                    exc.Add("MasterPwd");
+                var isUpdateClassify = obj.ClassifyId != supp.ClassifyId;
+                var isUpdateDesignee = obj.Designee != supp.Designee;
+                var isUpdateLinkman = obj.Linkman != supp.Linkman;
+                var isUpdatePhone = obj.MobilePhone != supp.MobilePhone;
+                var isUpdateTel = obj.Tel != supp.Tel;
+                var isUpdateEmail = obj.Email != supp.Email;
+                var isUpdateAddress = obj.Address != supp.Address;
+                var isUpdateState = obj.MasterState != supp.MasterState;
+                var isUpdatePwd = string.IsNullOrEmpty(obj.MasterPwd) ? false : (obj.MasterPwd != supp.MasterPwd);
+                bool isUpdate = isUpdateClassify || isUpdateDesignee || isUpdateLinkman || isUpdatePhone || isUpdateTel || isUpdateEmail || isUpdateAddress || isUpdatePwd || isUpdateState;
+                
+                obj.ToCopyProperty(supp, exc);
+                re = SupplierService.Update(supp);
+                #region 写入日志
+                string msg = "成功修改供应商！";
+                var module = Pharos.Sys.LogModule.档案管理;
+                if (re.Successed)
+                {
+                    int n = 0;
+                    if (isUpdate) {
+                        msg += "<br />Id=" + obj.Id + "，<br />";
+                        if (isUpdateClassify)
+                        {
+                            var classifyTitle = GetTitle(classify, obj.ClassifyId);
+                            msg += "分类=" + classifyTitle;
+                            n = n + 1;
+                        }
+                        if(isUpdateDesignee)
+                        {
+                            msg += n > 0 ? "，指派人=" + desig : "指派人=" + desig;
+                            n = n + 1;
+                        }
+                        if (isUpdateLinkman)
+                        {
+                            msg += n > 0 ? "，联系人=" + obj.Linkman : "联系人=" + obj.Linkman;
+                            n = n + 1;
+                        }
+                        if (isUpdatePhone)
+                        {
+                            msg += n > 0 ? "，手机=" + obj.MobilePhone : "手机=" + obj.MobilePhone;
+                            n = n + 1;
+                        }
+                        if (isUpdateTel)
+                        {
+                            msg += n > 0 ? "，电话=" + obj.Tel : "电话=" + obj.Tel;
+                            n = n + 1;
+                        }
+                        if (isUpdateEmail)
+                        {
+                            msg += n > 0 ? "，邮箱=" + obj.Email : "邮箱=" + obj.Email;
+                            n = n + 1;
+                        }
+                        if (isUpdateAddress)
+                        {
+                            msg += n > 0 ? "，地址=" + obj.Address : "地址=" + obj.Address;
+                            n = n + 1;
+                        }
+                        if (isUpdateState)
+                        {
+                            msg += n > 0 ? "，状态=" + stateTitle : "状态=" + stateTitle;
+                            n = n + 1;
+                        }
+                        if (isUpdatePwd)
+                        {
+                            msg += n > 0 ? "，并修改了密码" : "修改了密码";
+                        }
+                        msg += "。";
+                        log.WriteUpdate(msg, module);
+                    }
+                }
+                else
+                {
+                    msg = "修改供应商失败！";
+                    log.WriteUpdate(msg, module);
+                }
+                #endregion
+            }
+            return re;
+        }
+
+        /// <summary>
+        /// 供应商
+        /// </summary>
+        /// <returns></returns>
+        public static List<Supplier> GetList()
+        {        
+            return FindList(o=>o.BusinessType==1);
+        }
+        /// <summary>
+        /// 批发商
+        /// </summary>
+        /// <returns></returns>
+        public static List<Supplier> GetWholesalerList()
+        {
+            return FindList(o => o.BusinessType == 2);
+        }
+        public static System.Data.DataTable GetProductsBySupplierId(string supplierId, out int recordCount)
+        {
+            return _dal.GetProductsBySupplierId(supplierId,out recordCount);
+        }
+        static string GetTitle(List<SysDataDictionary> types,int id )
+        {
+            var obj= types.FirstOrDefault(o => o.DicSN == id);
+            if (obj == null) return "";
+            return obj.Title;
+        }
+
+        static string GetState(short? state)
+        {
+            if (state == null) return "";
+            return Enum.GetName(typeof(ContractState), state);
+        }
+        static Contract GetContract(ICollection<Contract> list,string state)
+        {
+            if (list == null) return null;
+            if (state.IsNullOrEmpty()) return list.OrderByDescending(i => i.CreateDT).FirstOrDefault();
+            var st = short.Parse(state);
+            return list.Where(o => o.State == st).OrderByDescending(i => i.CreateDT).FirstOrDefault();
+        }
+        static string GetUser(string uid,List<SysUserInfo> list)
+        {
+            if (uid.IsNullOrEmpty()) return "";
+            list = UserInfoService.GetList();
+            var obj = list.FirstOrDefault(o => o.UID == uid);
+            if (obj == null) return "";
+            return obj.FullName;
+        }
+
+        public static IEnumerable<Supplier> GetAllSupplier()
+        {
+           return  CurrentRepository.FindList(o => true).ToList();
+        }
+
+
+    }
+    
+}

@@ -1,0 +1,147 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.BLL
+{
+    public class MembersService : BaseService<Members>
+    {
+        /// <summary>
+        /// 用于datagrid列表
+        /// </summary>
+        /// <param name="searchText">传递条件</param>
+        /// <param name="recordCount">返回总行数</param>
+        /// <returns>list</returns>
+        public static IEnumerable<dynamic> FindMemberPageList(NameValueCollection nvl, ref int rowCount, ref object footer)
+        {
+            var StoreId = nvl["StoreId"];
+            var MemberGroupId = nvl["MemberGroupId"];
+            var cityInfo = nvl["CurrentCityId_0"];
+            int? currentProvinceID = null;
+            int? currentCityId = null;
+            int? currentcountyId = null;
+            if (cityInfo.Contains(","))
+            {
+                var cityInfoArry = cityInfo.Split(',');
+                currentProvinceID = cityInfoArry[0].ToType<int?>();
+                currentCityId = cityInfoArry[1].ToType<int?>();
+                if (cityInfoArry.Length == 3)
+                {
+                    currentcountyId = cityInfoArry[2].ToType<int?>();
+                }
+            }
+            else
+            {
+                currentProvinceID = cityInfo.ToType<int?>();
+            }
+            //var CurrentCityId = nvl["CurrentCityId"].ToType<int?>();
+            var MemberLevelId = nvl["MemberLevelId"];
+            var date1 = nvl["date1"].ToType<DateTime?>();
+            var date2 = nvl["date2"].ToType<DateTime?>();
+            if (date2.HasValue) date2 = date2.Value.AddDays(1);
+            var searchField = nvl["searchField"];
+            var searchText = nvl["searchText"].Trim();
+
+            var whereMember = DynamicallyLinqHelper.Empty<Members>().And(o => o.CompanyId == CommonService.CompanyId).And(o => o.StoreId == StoreId, StoreId.IsNullOrEmpty())
+                .And(o => o.MemberGroupId == MemberGroupId, MemberGroupId.IsNullOrEmpty())
+                .And(o => o.CurrentProvinceId == currentProvinceID, !currentProvinceID.HasValue)
+                .And(o => o.CurrentCityId == currentCityId, !currentCityId.HasValue)
+                .And(o => o.CurrentCountyId == currentcountyId, !currentcountyId.HasValue)
+                .And(o => o.MemberLevelId == MemberLevelId, MemberLevelId.IsNullOrEmpty())
+                .And(o => o.CreateDT >= date1, !date1.HasValue)
+                .And(o => o.CreateDT < date2, !date2.HasValue)
+                .And(o => o.MemberNo != null && o.MemberNo.Contains(searchText), searchField != "1" || searchText.IsNullOrEmpty())
+                .And(o => o.RealName != null && o.RealName.Contains(searchText), searchField != "2" || searchText.IsNullOrEmpty())
+                .And(o => o.MobilePhone != null && o.MobilePhone.Contains(searchText), searchField != "4" || searchText.IsNullOrEmpty())
+                .And(o => o.Weixin != null && o.Weixin.Contains(searchText), searchField != "5" || searchText.IsNullOrEmpty())
+                .And(o => o.Zhifubao != null && o.Zhifubao.Contains(searchText), searchField != "6" || searchText.IsNullOrEmpty())
+                .And(o => o.Email != null && o.Email.Contains(searchText), searchField != "7" || searchText.IsNullOrEmpty())
+                .And(o => o.QQ != null && o.QQ.Contains(searchText), searchField != "8" || searchText.IsNullOrEmpty())
+                .And(o => o.CompanyId == CommonService.CompanyId);
+            var whereCard = DynamicallyLinqHelper.Empty<MembershipCard>().And(o => o.CardSN != null && o.CardSN.Contains(searchText), searchField != "3" || searchText.IsNullOrEmpty());
+            var query = from x in CurrentRepository.QueryEntity.Where(whereMember)
+                        where searchField != "3" || (searchField == "3" && !(searchText == null || searchText == "") && BaseService<MembershipCard>.CurrentRepository.QueryEntity.Any(o => o.CardSN != null && o.CardSN.Contains(searchText) && o.MemberId == x.MemberId))
+                        select new
+                        {
+                            x.Id,
+                            x.StoreId,
+                            x.MemberNo,
+                            x.RealName,
+                            x.Sex,
+                            x.UsableBalance,
+                            x.UsableIntegral,
+                            x.RechargeTotal,
+                            x.ConsumeTotal,
+                            x.MemberGroupId,
+                            x.MemberLevelId,
+                            x.DefaultPreferentialId,
+                            x.DefaultIntegrationId,
+                            x.IDNumber,
+                            x.Birthday,
+                            x.MobilePhone,
+                            x.Weixin,
+                            x.Zhifubao,
+                            x.Email,
+                            x.Status,
+                            x.CreateUID,
+                            x.CreateDT,
+                            StoreTitle = WarehouseService.CurrentRepository.QueryEntity.Where(o => o.StoreId == x.StoreId && o.CompanyId == x.CompanyId).Select(o => o.Title).FirstOrDefault(),
+                            CurrentCity = BaseService<Area>.CurrentRepository.QueryEntity.Where(o => o.AreaID == x.CurrentCityId).Select(o => o.Title).FirstOrDefault(),
+                            FullName = UserInfoService.CurrentRepository.QueryEntity.Where(o => o.UID == x.CreateUID).Select(o => o.FullName).FirstOrDefault(),
+                            Referrer = UserInfoService.CurrentRepository.QueryEntity.Where(o => o.UID == x.ReferrerUID).Select(o => o.FullName).FirstOrDefault(),
+                            MemberLevel = BaseService<MemberLevel>.CurrentRepository.QueryEntity.Where(o => o.MemberLevelId == x.MemberLevelId).Select(o => o.LevelTitle).FirstOrDefault(),
+                            MemberGroup = BaseService<Grouping>.CurrentRepository.QueryEntity.Where(o => o.GroupId == x.MemberGroupId).Select(o => o.Title).FirstOrDefault(),
+                            MemberCards = BaseService<MembershipCard>.CurrentRepository.QueryEntity.Where(o => o.CompanyId == x.CompanyId && o.MemberId == x.MemberId).Select(o => o.CardSN).FirstOrDefault(),
+                            Coupons = BaseService<CouponCardDetail>.CurrentRepository.QueryEntity.Count(o => o.UsePerson == x.MemberId)
+                        };
+            rowCount = query.Count();
+            return query.ToPageList();
+        }
+        /// <summary>
+        /// 获得新增会员数量
+        /// </summary>
+        /// <param name="beginTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public static int GetNewMemberNumber(DateTime beginTime, DateTime endTime, string storeId = "")
+        {
+            int memberNumber = 0;
+            var query = CurrentRepository.QueryEntity.Where(o => o.CreateDT >= beginTime && o.CreateDT <= endTime && o.CompanyId == CommonService.CompanyId);
+            if (!string.IsNullOrEmpty(storeId))
+                query = query.Where(o => o.StoreId == storeId);
+            var memberList = query.ToList();
+            if (memberList != null)
+                memberNumber = memberList.Count();
+            return memberNumber;
+        }
+        public static bool CheckMsg(Members obj, ref string msg)
+        {
+            return new DAL.MemberDAL().CheckMessage(obj, CommonService.CompanyId, ref msg);
+        }
+        public static List<Members> GetList()
+        {
+            return CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId).ToList();
+        }
+
+        public static IEnumerable<object> GetMembersBySearch(string param)
+        {
+            var query = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && (o.RealName.Contains(param) || o.MobilePhone.Contains(param)))
+                .Select(o => new
+                {
+                    MemberId = o.MemberId,
+                    MemberInfo = o.RealName + "(" + o.MobilePhone + ")",
+                });
+            return query;
+        }
+
+        public static Members GetMember(string id, int companyId)
+        {
+            return CurrentRepository.Entities.FirstOrDefault(o => o.MemberId == id && o.CompanyId == o.CompanyId);
+        }
+    }
+}

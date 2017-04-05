@@ -1,0 +1,35 @@
+﻿using Pharos.Events;
+using Pharos.Logic.MemberDomain.Interfaces;
+using Pharos.Logic.MemberDomain.QuanChengTaoProviders.Events;
+using System.Linq;
+
+namespace Pharos.Logic.MemberDomain.QuanChengTaoProviders
+{
+    public class QuanChengTaoIntegralRuleFlowProvider : IIntegralRuleFlowProvider
+    {
+        private EventAggregator _eventAggregator;
+        public QuanChengTaoIntegralRuleFlowProvider(int companyId, EventAggregator eventAggregator)
+        {
+            CompanyId = companyId;
+            _eventAggregator = eventAggregator;
+        }
+
+        public int CompanyId { get; private set; }
+        public void DoFlow(object channelMessage, IIntegralRuleProvider ruleProvider)
+        {
+            var allRules = ruleProvider.GetRules(CompanyId);
+            var meteringModes = ruleProvider.GetMeteringModes(allRules);
+            var scene = ruleProvider.GetScene(channelMessage, meteringModes);
+            var efficientRules = ruleProvider.VerifyRules(allRules, scene);
+            var integrals = ruleProvider.RunExpression(efficientRules, scene);
+            //todo domain event
+            _eventAggregator.Publish<IntegralRuleFlowCompletedEvent>(
+                new IntegralRuleFlowCompletedEvent()
+                {
+                    ChannelInfo = channelMessage,
+                    RuleIdAndIntegral = integrals.ToDictionary(o => o.Key.Id, o => o.Value)
+                }
+             );
+        }
+    }
+}

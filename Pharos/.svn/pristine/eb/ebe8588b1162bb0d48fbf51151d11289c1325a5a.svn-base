@@ -1,0 +1,34 @@
+﻿@model Pharos.Logic.Entity.ReturnStageRules
+@{
+    ViewBag.Title = "CreateRuleStage";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style>
+    .table-form > tr {
+        height: 40px;
+    }
+
+    .name {
+        width: 20%;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.ReturnRuleId)
+        @Html.HiddenFor(o => o.Project)
+        <div class="content">
+            <table class="table-form" width="100%" height="150px">
+                <tr>
+                    <td colspan="2" style="padding-left:40px;" class="input">每月<input type="number" name="ReturnDT" style="width:60px" class="easyui-textbox" value="@Model.ReturnDT" />号返还<input type="text" name="Average" class="easyui-textbox" value="@Model.Average" style="width:60px" />积分</td>
+                </tr>
+                <tr>
+                    <td class="name">状态：</td>
+                    <td class="input">
+                        @Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "生效", Value = "0", Selected = true }, new SelectListItem() { Text = "失效", Value = "1" } }, "State")
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>

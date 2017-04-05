@@ -1,0 +1,274 @@
+﻿@model Pharos.Logic.OMS.Entity.Plans
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+<style>.date{display:none} .table-form tr{height:34px;} textarea{line-height:20px!important;} .showb{display:block}</style>
+<div class="default-form">
+    @using (Html.BeginForm("SavePlan", "Plan", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <div id="tt1" class="easyui-tabs" data-options="fit:true,border:true,onSelect:function(title,index){}" style="height:340px;">
+                <div title="计 划">
+                    <table class="table-form" width="100%">
+                        <tr>
+                            <td class="name">计划类型：</td>
+                            <td class="input">@Html.RadioButtonListFor(o => o.Type, ViewBag.types as List<SelectListItem>)</td>
+                        </tr>
+                        <tr>
+                            <td class="name">计划日期：</td>
+                            <td class="input">
+                                <span class="date">@Html.TextBoxFor(o => o.StartDate, new { @class = "easyui-validatebox Wdate", data_options = "required:true,width:100",style="width:135px;" })</span>
+                                <span class="date">@Html.TextBoxFor(o => o.StartDate, new { @class = "easyui-validatebox Wdate", data_options = "required:true,width:100", style = "width:135px;" }) - @Html.TextBoxFor(o => o.EndDate, new { @class = "easyui-validatebox Wdate", data_options = "required:true,width:100", style = "width:135px;" })</span>
+                                <span class="date">@Html.TextBoxFor(o => o.StartDate, new { @class = "easyui-validatebox Wdate", data_options = "required:true,width:100", style = "width:135px;" }) - @Html.TextBoxFor(o => o.EndDate, new { @class = "easyui-validatebox Wdate", data_options = "required:true,width:100", style = "width:135px;" })</span>
+                                <span class="date">@Html.TextBoxFor(o => o.StartDate, new { @class = "easyui-validatebox Wdate", data_options = "required:true,width:100", style = "width:135px;", onclick = "WdatePicker({ dateFmt:'yyyy-MM'})" }) - @Html.TextBoxFor(o => o.EndDate, new { @class = "easyui-validatebox Wdate", data_options = "required:true,width:100", style = "width:135px;", onclick = "WdatePicker({ dateFmt:'yyyy-MM'})" })</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="name">执行人：</td>
+                            <td class="input">@Form.Combobox("AssignerUID", ViewBag.users as List<SelectListItem>, multiple: false, dataOptions: "editable:false,value:'" + ViewData.Eval("AssignerUID") + "'")</td>
+                        </tr>
+                        <tr>
+                            <td class="name">详细计划：</td>
+                            <td class="input">@Html.TextAreaFor(o => o.Content, new { @class = "easyui-validatebox", data_options = "required:true", style = "width:440px;height:160px;", maxlength = 2000 })
+                                <div>限长2000个字，还可以输入 <span style="color:#FF0000;" id="s_num">2000</span> 个字</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div title="附 件">
+                    <table width="100%">
+                        <tr>
+                            <td colspan="2">
+                                <table class="easyui-datagrid" id="grid"
+                                       data-options="url:'@Url.Action("LoadFileList")',queryParams:{id:'@Model.Id'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:false,pagination:false,singleSelect:true,onLoadError:loadError,height:260">
+                                    <thead>
+                                        <tr>
+                                            <th data-options="field:'Name',formatter:attachName" width="350">附件名称</th>
+                                            <th data-options="field:'FileSizeTitle'" width="150">大小</th>
+                                            <th data-options="field:'Editor',formatter:operation" width="150">操作</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </td>
+                        </tr>
+                        @if (Request["isdetail"].IsNullOrEmpty())
+                        {
+                        <tr>
+                            <td><input type="text" class="easyui-filebox" name="file1" data-options="buttonText:'选择文件',prompt:'请选择文件...',missingMessage:'请选择文件',onChange:fileChange" style="width:250px;" /></td>
+                            <td>说明：单个文件上限10M，每次最多上传8个文件。</td>
+                        </tr>
+                        }
+                    </table>
+                </div>
+                <div title="总 结">
+                    <table class="table-form" width="100%" style="margin-top:10px;">
+                        <tr>
+                            <td class="name">执行人总结：</td>
+                            <td class="input">
+                                @Html.TextAreaFor(o => o.Summary, new { @class = "easyui-validatebox", data_options = "", style = "width:440px;height:120px;", maxlength = 500 })
+                                <div style="margin-bottom:5px;">限长500个字，还可以输入 <span style="color:#FF0000;" id="s_num2">500</span> 个字</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="name">上级领导：</td>
+                            <td class="input">
+                                @*@Form.Combobox("LeaderUID", ViewBag.users as List<SelectListItem>, multiple: false, dataOptions: "mode:'remote',loader:comboload,editable:true,required:true", controlWidth: 200)*@
+                                <input id="LeaderUID" name="LeaderUID" class="easyui-combobox" placeholder="" data-options="prompt:'请输入姓名或拼音',width:150,editable:true,mode:'remote',valueField:'UserId',textField:'FullName',loader:comboload" />
+                            </td>
+                        </tr>
+                        @if ((Model.Replys != null && Model.Replys.Any()) || !Request["isdetail"].IsNullOrEmpty())
+                        {
+                        <tr>
+                            <td class="name">上级批复：</td>
+                            <td class="input">
+                                @Html.TextArea("Replys[0].Content",Model.Replys==null?"":Model.Replys.Select(o=>o.Content).FirstOrDefault(), new { @class = "easyui-validatebox", style = "width:440px;height:100px;" })
+                            </td>
+                        </tr>
+                        }
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+<div id="win" class="easyui-dialog" data-options="title:'预览',cache:false,modal:true,width:750,height:350,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+<script type="text/javascript">
+    $(function () {
+        dispDate($("[name='Type']:checked").parent().index());
+        $("#Content").keyup(function (e) {
+            var maxlen = $(this).attr("maxlength");
+            var val = $(this).val();
+            var len = val.replace(/\n/g, '11').length;
+            $("#s_num").html(Number(maxlen) - len);
+        })
+        $("#Summary").keyup(function (e) {
+            var maxlen = $(this).attr("maxlength");
+            var val = $(this).val();
+            var len = val.replace(/\n/g, '11').length;
+            $("#s_num2").html(Number(maxlen) - len);
+        })
+        var tab = "@Request["isdetail"]";
+        if (tab)
+            $('#tt1').tabs('select', "总 结");
+
+        @*var luid = '@Model.LeaderUID';
+        $("#LeaderUID_0").combobox("setValues", luid.split(','));*@
+
+        $("#LeaderUID").combobox('setValue', '@Model.LeaderUID');
+        $("#LeaderUID").combobox('setText', '@ViewBag.LeaderFullName');
+        $("#LeaderUID").next().find(".combo-arrow").removeClass("combo-arrow");
+
+
+    });
+    function dispDate(i){
+        $(".date").removeClass("showb").eq(i).addClass("showb");
+    }
+    $("[name='Type']").click(function (e) {
+        var idx= $(this).parent().index();
+        dispDate(idx);
+    });
+    var btns=[{
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+    function attachName(value, row, index) {
+        return "<i class='" + row.FileFontIcon + "'></i> "+value;
+    }
+    function operation(value, row, index) {
+        var title = "";
+        if (row.Id){
+            title += "<a href='@Url.Action("DownLoad")?id=" + row.Id + "&rootid=@Model.Id'>下载</a> &nbsp; &nbsp;" +
+            "<a href='javascript:void(0)' onclick=\"preview('" + row.NewName + "')\">预览</a> &nbsp; &nbsp;";
+        }
+        title += "<a href='javascript:void(0)' onclick=\"removeFile('" + row.NewName + "')\">移除</a>";
+        return title;
+    }
+    function preview(name) {
+        name = name.toLowerCase();
+        if (name.indexOf(".xls") != -1 || name.indexOf(".xlsx") != -1 || name.indexOf(".doc") != -1 || name.indexOf(".docx") != -1
+            || name.indexOf(".pdf") != -1 || name.indexOf(".txt") != -1) {
+            var url = "@Url.Action("Preview")?id=@Model.Id&name=" + name;
+            window.open(url);
+        } else {
+            $.messager.alert("提示", "该文件格式不能预览！");
+        }
+    }
+    function removeFile(name) {
+        $.messager.confirm("提示", "是否确定移除该文件?", function (r) {
+            if (!r) return;
+            $.post("@Url.Action("RemoveFile")", { id: '@Model.Id', name: name, t: Math.random() }, function (json) {
+                if (json.successed) {
+                    $("#grid").datagrid("reload");
+                } else {
+                    var msg = json.descript ? "" : json.message;
+                    $.messager.alert('错误', '移除失败！' + msg, "error", function () {
+                    });
+                }
+            }, "json");
+        })
+    }
+    function SaveBefore() {
+        $(".date:hidden").find("input").each(function (i, r) {
+            $(r).validatebox("disableValidation");
+            $(r).attr("disabled", "disabled");
+        });
+        $(".showb").find("input").each(function (i, r) {
+            $(r).validatebox("enableValidation");
+            $(r).removeAttr("disabled");
+        });
+        var leaderUID = $("#LeaderUID").combobox('getValue');
+        if (leaderUID != "" && leaderUID!=null)
+        {
+            if (isLeaderFullName(leaderUID) == "0") {
+                $.messager.alert("提示", "上级领导不存在,请重新输入!");
+                return false;
+            }
+        }
+
+        return true;
+    }
+    function fileChange(nv, ov) {
+        if (!nv) return;
+        var rows = $("#grid").datagrid("getRows");
+        if (rows.length >= 8) {
+            $.messager.alert("提示", "超过允许文件数！"); return;
+        }
+        var form = new FormData($('form')[0]);
+        $.ajax({
+            url: "@Url.Action("FileUpload")",
+            type: 'post',
+            data: form,//序列化表单
+            processData: false,
+            contentType: false,
+            cache: false,
+            success: function (data) {
+                var json = $.parseJSON(data);
+                if (json.successed) {
+                    $("#grid").datagrid("reload");
+                } else {
+                    var msg = json.descript ? "" : json.message;
+                    $.messager.alert('错误', '操作失败！' + msg, "error", function () {
+                    });
+                }
+            },
+            error: function (e) {
+                alert(e.statusText);
+            }
+        });
+    }
+
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        $.ajax({
+            url: "@Url.Action("getUserWhere", "Plan")",
+            type: "post",
+            data: {
+                //传值，还是JSON数据搜索
+                keyword: q
+            },
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function (item) {
+                    return { UserId: item.UserId, FullName: item.FullName };
+                });
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+
+    //客户汇总是否有数据
+    function isLeaderFullName(leaderUID) {
+        var haveS = "";
+        $.ajax({
+            url: "/Plan/isLeaderFullName?leaderUID=" + leaderUID,
+            type: "post",
+            async: false,
+            dataType: "html",
+            data: {},
+            success: function (data) {
+                haveS = data;
+            }
+        });
+        return haveS;
+    }
+
+</script>

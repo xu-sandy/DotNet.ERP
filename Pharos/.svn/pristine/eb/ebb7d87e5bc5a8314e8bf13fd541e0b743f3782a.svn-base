@@ -1,0 +1,104 @@
+﻿using Pharos.POS.ClientService;
+using Pharos.POS.ClientService.Models;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web.Http;
+
+namespace Pharos.Api.Retailing.Controllers
+{
+    /// <summary>
+    /// 登陆接口
+    /// </summary>
+    [RoutePrefix("api/StoreManager")]
+    public class StoreManagerController : ApiController
+    {
+        /// <summary>
+        /// 获取服务状态
+        /// </summary>
+        /// <returns>服务状态列表</returns>
+        [Route("GetServicesState")]
+        public IEnumerable<ServiceState> GetServicesState()
+        {
+            List<ServiceState> services = new List<ServiceState>();
+            services.Add(new ServiceState() { IsRunning = false || Program.ThreadDict.Any(o => o.Key == Program.WEBSERVER && o.Value != null && o.Value.IsAlive), ServiceName = "Web服务", ServiceId = Program.WEBSERVER });
+            services.Add(new ServiceState() { IsRunning = false || Program.ThreadDict.Any(o => o.Key == Program.SOCKETCLIENT && o.Value != null && o.Value.IsAlive), ServiceName = "通信服务", ServiceId = Program.SOCKETCLIENT });
+            services.Add(new ServiceState() { IsRunning = false || Program.ThreadDict.Any(o => o.Key == Program.SYNCSERVICECLIENT && o.Value != null && o.Value.IsAlive), ServiceName = "同步服务", ServiceId = Program.SYNCSERVICECLIENT });
+            services.Add(new ServiceState() { IsRunning = false || Program.ThreadDict.Any(o => o.Key == Program.MARKETINGMANAGER && o.Value != null && o.Value.IsAlive), ServiceName = "促销管理", ServiceId = Program.MARKETINGMANAGER });
+            return services;
+        }
+        /// <summary>
+        /// 获取服务器状态
+        /// </summary>
+        /// <returns></returns>
+        [Route("GetServerStates")]
+        public IEnumerable<ServerState> GetServerStates()
+        {
+            //memory
+            Int64 phav = PerformanceInfo.GetPhysicalAvailableMemoryInMiB();
+            Int64 tot = PerformanceInfo.GetTotalMemoryInMiB();
+            decimal percentFree = ((decimal)phav / (decimal)tot) * 100;
+            decimal percentOccupied = 100 - percentFree;
+
+            var diskInfo = PerformanceInfo.GetHardDiskInfoByName(AppDomain.CurrentDomain.BaseDirectory.FirstOrDefault().ToString());
+
+
+
+            List<ServerState> result = new List<ServerState>();
+            result.Add(new ServerState() { InUse = (float)percentOccupied, Project = "内存" });
+            result.Add(new ServerState() { InUse = PerformanceCounterFun("Processor", "_Total", "% Processor Time"), Project = "CPU" });
+            result.Add(new ServerState() { InUse = diskInfo.FreeSpace / diskInfo.TotalSpace, Project = "硬盘" });
+            return result;
+        }
+
+        private static float PerformanceCounterFun(string CategoryName, string InstanceName, string CounterName)
+        {
+            PerformanceCounter pc = new PerformanceCounter(CategoryName, CounterName, InstanceName);
+
+            pc.MachineName = ".";
+            pc.NextValue();
+            Thread.Sleep(200);
+            return pc.NextValue();
+        }
+        [HttpPost]
+        [Route("OperateService")]
+        public bool OperateService(ServiceOperate requestParams)
+        {
+            switch (requestParams.ServiceOperateMode)
+            {
+                case ServiceOperateMode.Open:
+                    switch (requestParams.ServiceId)
+                    {
+                        case Program.WEBSERVER:
+                            return Program.Run("w", null);
+                        case Program.SYNCSERVICECLIENT:
+                            return Program.Run("s", null);
+                        case Program.SOCKETCLIENT:
+                            return Program.Run("c", null);
+                        case Program.MARKETINGMANAGER:
+                            return Program.Run("m", null);
+                    }
+                    break;
+                case ServiceOperateMode.Close:
+                    switch (requestParams.ServiceId)
+                    {
+                        case Program.WEBSERVER:
+                            return Program.Close("w", null);
+                        case Program.SYNCSERVICECLIENT:
+                            return Program.Close("s", null);
+                        case Program.SOCKETCLIENT:
+                            return Program.Close("c", null);
+                        case Program.MARKETINGMANAGER:
+                            return Program.Close("m", null);
+                    }
+                    break;
+            }
+            return false;
+        }
+
+    }
+}

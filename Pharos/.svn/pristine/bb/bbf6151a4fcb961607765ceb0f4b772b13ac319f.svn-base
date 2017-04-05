@@ -1,0 +1,216 @@
+﻿@model Pharos.Sys.Entity.SysUserInfo
+@using Newtonsoft.Json;
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+
+    //var lmtStroeRole = CurrentUser.HasPermiss(SysConstLimits.用户管理_门店角色设置);
+    //var lmtDel = CurrentUser.HasPermiss(SysConstLimits.用户管理_物理删除用户);
+    //var lmtAdd = CurrentUser.HasPermiss(SysConstLimits.用户管理_创建用户);
+    var lmtStroeRole = true;
+    var lmtDel = true;
+    var lmtAdd = true;
+
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增用户", editText: "修改用户", hideAdd: !lmtAdd, hideDel: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            @*<td class="label-toolbar">
+                    <span>所在机构：</span>
+                </td>
+                <td class="input-toolbar">
+                    <input id="organizationId" name="organizationId" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text', url:'@Url.Action("GetOrgsEasyuiDropdown", "common")?selecttype=1', panelHeight: 'auto', editable: false,width:100,height:30,onSelect:orgSelect" />
+                </td>*@
+            @* <td class="label-toolbar">
+                    <span>所在部门：</span>
+                </td>
+                <td class="input-toolbar">
+                    <select id="departmentId" name="departmentId" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text', panelHeight: 'auto', editable: false,width:100,height:30"><option value="" selected>全部</option></select>
+                </td>
+                <td class="label-toolbar">
+                        <label>隶属角色组：</label>
+                    </td>
+                    <td class="input-toolbar">
+                        <input id="roleGroupsId" name="roleGroupsId" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text', url:'@Url.Action("GetRolesEasyuiDropdown", "common")?selecttype=1', panelHeight: 'auto', editable: false,width:100,height:30" />
+                    </td>*@
+            <td class="label-toolbar">
+                <span>在职状态：</span>
+            </td>
+            <td class="input-toolbar">
+                <select name="Status" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text', panelHeight: 'auto', editable: false,width:80,height:30">
+                    <option value="" selected>全部</option>
+                    <option value="1">正常</option>
+                    <option value="2">锁定</option>
+                    <option value="3">注销</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="keyword" name="keyword" class="datacontrol easyui-textbox" placeholder="姓名/帐号/工号" data-options="prompt:'姓名/帐号/工号'" />
+            </td>
+        </tr>
+    </table>
+}
+
+<script type="text/javascript">
+    var lmtAdd = '@(lmtAdd ? "1" : "0")';
+    var lmtStroeRole = '@(lmtStroeRole ? "1" : "0")';
+    var lmtDel = '@(lmtDel ? "1" : "0")';
+    var hideSave = (lmtAdd == "1" ? false : true);
+
+    var fmthtml = "<a href='javascript:return false;' onclick='javascript:SettingStoreRole(\"{0}\", \"{1}\")'>[门店角色设置]</a>";
+    var fmthtml1 = "&nbsp;&nbsp;<a href='javascript:return false;' onclick='javascript:delUser(\"{0}\", \"{1}\", \"{2}\")'>[删除]</a>";
+
+    pharos.manager.geturl = "@Url.Action("GetUsers")";
+    pharos.manager.editurl = "@Url.Action("UserSave")";
+    pharos.manager.columns = [[
+        //{ field: 'Id', checkbox: true },
+        { field: 'FullName', title: '员工姓名', width: 80 },
+        //{ field: 'LoginName', title: '登录帐号', width: 120 },
+        { field: 'UserCode', title: '员工编号', width: 80 },
+        {
+            field: 'OperateAuth', title: '门店角色', width: 150
+        },
+        //{ field: 'OrganizationName', title: '所属机构', width: 120 },
+        //{ field: 'DepartmentName', title: '所在部门', width: 120 },
+        //{ field: 'RoleNames', title: '隶属角色组', width: 150 },
+        {
+            field: 'Stroes', title: '隶属门店', width: 150
+        },
+        {
+            field: 'Status', title: '在职状态', width: 80, formatter: function (value, row) {
+                var result = "<span>";
+                switch (value) {
+                    case 1:
+                        result += "正常";
+                        break;
+                    case 2:
+                        result += "锁定";
+                        break;
+                    case 3:
+                        result += "注销";
+                        break;
+                }
+                result += "</span>";
+                return result;
+
+            }
+        },
+        { field: 'LoginDT', title: '最近登录时间', width: 140 },
+        {
+            field: 'Operat', title: '操作', width: 140, formatter: function (value, row) {
+                var html = "";
+                if (lmtStroeRole == "1") {
+                    html += String.format(fmthtml, [row.Id, row.UID]);
+                }
+                if (lmtDel == "1") {
+                    html += String.format(fmthtml1, [row.Id, row.UID, row.Status]);
+                }
+                return html;
+            }
+        }
+    ]];
+    //pharos.manager.frozenColumns = [[
+    //    { field: 'FullName', title: '员工姓名', width: 120 },
+    //    { field: 'LoginName', title: '登录帐号', width: 120 },
+    //    { field: 'UserCode', title: '员工编号', width: 120 },
+    //]]
+    pharos.manager.addItem = function () {
+        //openDialog800(this.addText, this.editurlNocache());
+        openWin({ 'title': this.addText, 'width': 600, 'height': 450, hideSave: hideSave, 'url': this.editurl });
+    }
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        openWin({ 'title': this.editText, 'width': 600, 'height': 450, hideSave: hideSave, 'url': this.editurlNocache() });
+        //openDialog600(this.editText, this.editurlNocache());
+    }
+    function SettingStoreRole(id, uid) {
+        openWin({ 'title': "用户门店角色设置", 'width': 800, 'height': 600, hideSave: hideSave, 'url': '@Url.Action("UserSettingStoreRole")?id=' + id + "&uid=" + uid });
+    }
+    function editBefore(rowData, field, index, value) {
+        if (field == "Operat") {
+            return false;
+        }
+        return true;
+    }
+</script>
+<script src="~/Scripts/Cascade.js"></script>
+<script>
+    function delUser(id, uid, status) {
+        if (status == "1" || status == "2") {
+            var statusTxt = "正常";
+            switch (status) {
+                case "1":
+                    statusTxt = "正常";
+                    break;
+                case "2":
+                    statusTxt = "锁定";
+                    break;
+            }
+            $.messager.alert("提示", "该用户状态为[" + statusTxt + "]不可删除", "info");
+            return false;
+        }
+        $.messager.confirm('提示', "是否确定移除该用户?", function (r) {
+            if (!r) {
+                return r;
+            }
+
+            $.ajax({
+                type: 'post',
+                dataType: "json",
+                url: "@Url.Action("DeleteUser")",
+                data: { id: id, uid: uid },
+                success: function (data) {
+                    if (data.successed) {
+                        pharos.manager.gridReload();
+                    }
+                    else {
+                        $.messager.alert("提示", data.message, "info");
+                    }
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除用户失败。", "info");
+                }
+            });
+        });
+    }
+    cascade.callback = function (key, data) {
+        switch (key) {
+            case "Department":
+                $("#departmentId option").remove();
+                for (var i in data) {
+                    var node = $("<option></option>").val(data[i]["Value"]).text(data[i]["Text"]);
+                    $("#departmentId").append(node);
+
+                }
+                break;
+        }
+        resetSelect();
+    }
+    if ($("#departmentId option").length <= 0) {
+        $("[cascade]").change();
+    }
+    function resetSelect() {
+        $("select").each(function (index, node) {
+            $(node).find("option[value='" + $(node).attr("current") + "']").attr("selected", true);
+        })
+    }
+    resetSelect();
+</script>
+<script type="text/javascript">
+    function orgSelect() {
+        $("#departmentId").combobox("setValue", '');
+        $("#departmentId").combobox("loadData", []);
+        var pDepId = $('#organizationId').combobox('getValue');
+        $.ajax({
+            type: 'post',
+            url: '@Url.Action("GetDepsEasyuiDropdown", "Common")?selecttype=1',
+            data: { pDepId: pDepId },
+            success: function (data) {
+                $("#departmentId").combobox("loadData", data);
+            }
+        })
+    }
+</script>

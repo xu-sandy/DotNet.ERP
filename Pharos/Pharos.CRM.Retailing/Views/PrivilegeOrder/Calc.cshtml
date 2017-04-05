@@ -1,0 +1,94 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.采购返利_创建返利方案);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.采购返利_查看返利) && hideAdd;
+    var hideDelete = !CurrentUser.HasPermiss(SysConstLimits.采购返利_移除返利方案);
+    var hideBack = !CurrentUser.HasPermiss(SysConstLimits.采购返利_状态设定);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增计算", delText: "删除计算", editText: "修改计算", hideAdd: hideAdd, hideDel: hideDelete));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.RadioButtonList(ViewBag.States as List<SelectListItem>,"State")
+            </td>
+            <td class="label-toolbar">
+                <label>创建时间：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="StartDate" class="datacontrol Wdate" />
+            </td>
+            <td style="float:left;padding-left:5px;padding-right:5px;line-height:28px;" valign="middle">-</td>
+            <td class="input-toolbar"><input name="EndDate" class="datacontrol Wdate" /></td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input type="text" class="easyui-textbox" name="SearchText" data-options="prompt:'方案名称/供应商名称'" style="width:250px;" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if(!hideBack)
+    { 
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-rebate'" onclick="setState()">设为已返利</a>
+    }
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("CalcList")";
+    pharos.manager.editurl = "@Url.Action("SaveCalc")";
+    pharos.manager.delurl = "@Url.Action("DeleteCalc")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'PrivilegeSolutionTitle', title: '方案名称', width: 120 },
+        { field: 'PrivilegeModeSNTitle', title: '返利模式', width: 190 },
+        { field: 'BetweenDate', title: '返利期间', width: 180 },
+        { field: 'SupplierTitle', title: '供应商名称', width: 140 },
+        { field: 'TotalMoney', title: '合计<br/>(金额/数量)', width: 70 },
+        { field: 'PrivilegeNum', title: '返 利<br/>(元/数量)', width: 70 },
+        { field: 'StateTitle', title: '状态', width: 60 },
+        { field: 'CreateDT', title: '创建时间', width: 140 },
+        { field: 'FullName', title: '创建者', width: 80 },
+        {
+            title: '操作', field: 'Editor', width: 80, formatter: function (value, row, index) {
+                var html = "<a href='javascript:void(0)' onclick='detail(\"" + row.Id + "\")'>明细</a> <a href='javascript:void(0)' onclick='window.location.href=\"@Url.Action("Export")?id=" + row.Id + "\"'>导出</a>";
+                return html;
+            }
+        }
+    ]];
+    function editBefore(row, field) {
+        if (field == "Editor") return false;
+        return true;
+    }
+    function detail(id) {
+        openDialog("返利计算明细", "@Url.Action("Detail")?id=" + id, 800, 500, true);
+    }
+    function setState() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { ids: ids, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "操作成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    function removeBefore(item) {
+        if (item.StateTitle == "已返利") {
+            $.messager.alert("提示", "已返利不能删除!"); return false;
+        }
+        return true;
+    }
+</script>

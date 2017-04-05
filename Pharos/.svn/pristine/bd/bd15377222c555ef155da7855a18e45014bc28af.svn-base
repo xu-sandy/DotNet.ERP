@@ -1,0 +1,181 @@
+﻿using Pharos.POS.Retailing.ChildPages;
+using Pharos.Logic.BLL.LocalServices;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Windows;
+using System.Linq;
+using Pharos.POS.Retailing.Models.Printer;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    public class RijieModel : BaseObservable
+    {
+        public RijieModel()
+        {
+            CheckTime = DateTime.Now;
+            UsersStatistics = new List<UserRiJieModel>();
+            Statistics = new List<SalesStatistics>();
+            RangeSelectItem = new List<KeyValuePair<int, string>>();
+            RangeSelectItem.Add(new KeyValuePair<int, string>(1, "本机"));
+            RangeSelectItem.Add(new KeyValuePair<int, string>(2, "全店"));
+            Range = 1;
+            ModeSelectItem = new List<KeyValuePair<int, string>>() 
+            {
+                new KeyValuePair<int,string>(1,"日结"),
+                new KeyValuePair<int,string>(2,"月结")
+            };
+            Mode = 1;
+        }
+
+        public DateTime CheckTime { get; set; }
+
+        public List<SalesStatistics> Statistics { get; set; }
+
+        public List<UserRiJieModel> UsersStatistics { get; set; }
+
+        public List<KeyValuePair<int, string>> RangeSelectItem { get; set; }
+
+        public int Range { get; set; }
+
+        public List<KeyValuePair<int, string>> ModeSelectItem { get; set; }
+
+        public int Mode { get; set; }
+
+        public GeneralCommand Print
+        {
+            get
+            {
+                return new GeneralCommand((w) =>
+                {
+                    if (Statistics.Count < 4)
+                    {
+                        Toast.DoShow("请先查询数据！", w as Window);
+                        return;
+                    }
+                    else
+                    {
+                        if (PosMachine.Current.IsRunningPrinter)
+                        {
+                            DayReportModel dayReport = new DayReportModel();
+                            dayReport.TicketWidth = 30;
+                            dayReport.StoreName = PosMachineInfo.Infos.StoreName;
+                            dayReport.Title = (Mode == 1 ? "日结报表" : "月结报表");
+                            dayReport.Title2 = (Range == 1 ? "POS机号：" + PosMachineInfo.Infos.MachineId : "全店");
+                            dayReport.StockDateStr = (Mode == 1 ? "日结时间：" + CheckTime.ToString("yyyy-MM-dd") : "日结时间：" + CheckTime.ToString("yyyy-MM"));
+                            dayReport.PrintDate = DateTime.Now;
+                            List<TransactionItemModel> transactionItemList = new List<TransactionItemModel>();
+                            transactionItemList.Add(new TransactionItemModel("销售合计", Convert.ToInt32(Statistics[0].Count), Statistics[0].Amount));
+                            transactionItemList.Add(new TransactionItemModel("退货合计", Convert.ToInt32(Statistics[1].Count), Statistics[1].Amount));
+                            transactionItemList.Add(new TransactionItemModel("赠送合计", Convert.ToInt32(Statistics[2].Count), Statistics[2].Amount));
+                            transactionItemList.Add(new TransactionItemModel("换货合计", Convert.ToInt32(Statistics[3].Count), Statistics[3].Amount));
+                            dayReport.TransactionItemList = transactionItemList;
+
+                            List<EmployeeModel> employeeList = new List<EmployeeModel>();
+                            foreach (var item in UsersStatistics)
+                            {
+                                EmployeeModel employee1 = new EmployeeModel();
+                                employee1.EmployeeSN = item.Uid;
+                                employee1.Name = item.UserName;
+                                employee1.EmployeeTransactionItems = new List<TransactionItemModel>();
+                                employee1.EmployeeTransactionItems.Add(new TransactionItemModel("销售合计", Convert.ToInt32(item.Sale.Count), item.Sale.Amount, item.Payways.ToDictionary(o => "RMB-" + o.Key, o => o.Value)));
+                                employee1.EmployeeTransactionItems.Add(new TransactionItemModel("赠送合计", Convert.ToInt32(item.Gift.Count), item.Gift.Amount));
+                                employee1.EmployeeTransactionItems.Add(new TransactionItemModel("入款合计", Convert.ToInt32(item.RuKuan.Count), item.RuKuan.Amount));
+                                employee1.EmployeeTransactionItems.Add(new TransactionItemModel("出款合计", Convert.ToInt32(item.ChuKuan.Count), item.ChuKuan.Amount));
+                                employee1.EmployeeTransactionItems.Add(new TransactionItemModel("退货合计", Convert.ToInt32(item.TuiHuo.Count), item.TuiHuo.Amount));
+                                employee1.EmployeeTransactionItems.Add(new TransactionItemModel("换货合计", Convert.ToInt32(item.HuanHuo.Count), item.HuanHuo.Amount));
+                                employee1.EmployeeTransactionItems.Add(new TransactionItemModel("剩余现金", item.ShengYuXianJin.Amount));
+                                employee1.BeginTime = item.Sale.FristSale;
+                                employee1.EndTime = item.Sale.LastSale;
+                                employeeList.Add(employee1);
+                            }
+                            dayReport.EmployeeList = employeeList;
+                            PrintModelHelper helper = new PrintModelHelper();
+                            string printStr = helper.GetDailyReportStr(dayReport);
+                            PrintHelper.Print(printStr, null, true);
+                        }
+                    }
+                });
+            }
+        }
+        public GeneralCommand Search
+        {
+            get
+            {
+                return new GeneralCommand((w) =>
+                {
+                    var date = (Mode == 1 ? CheckTime.Date : new DateTime(CheckTime.Year, CheckTime.Month, 1));
+                    var endDate = (Mode == 1 ? date.AddDays(1) : date.AddMonths(1));
+                    string machineSn = (Range == 1 ? PosMachineInfo.Infos.MachineId : "");
+                    Statistics = new List<SalesStatistics>();
+                    Statistics.Add(SaleOrdersLocalService.GetSalesStatistics(date, Mode, machineSn));
+                    Statistics.Add(SalesReturnsLocalService.GetReturnSales(date, Mode, machineSn));
+                    Statistics.Add(SaleDetailLocalService.GetSalesStatistics(date, Mode, machineSn));
+                    Statistics.Add(SaleOrdersLocalService.GetChangingSalesStatistics(date, Mode, machineSn));
+                    OnPropertyChanged("Statistics");
+                    var users = SaleOrdersLocalService.FindList(o => o.CreateDT >= date && o.CreateDT <= endDate && (o.MachineSN == machineSn || string.IsNullOrEmpty(machineSn))).Select(o => o.CreateUID);
+                    var users2 = SalesReturnsLocalService.FindList(o => o.CreateDT >= date && o.CreateDT <= endDate && (o.MachineSN == machineSn || string.IsNullOrEmpty(machineSn))).Select(o => o.CreateUID);
+                    var users3 = PosIncomePayoutLocalService.FindList(o => o.CreateDT >= date && o.CreateDT <= endDate && (o.MachineSN == machineSn || string.IsNullOrEmpty(machineSn))).Select(o => o.CreateUID);
+                    users = users.Concat(users2).Concat(users3).Distinct();
+                    UsersStatistics = new List<UserRiJieModel>();
+                    if (users.Count() == 0)
+                    {
+                        UsersStatistics.Add(new UserRiJieModel() { HasData = Visibility.Collapsed, UserName = "无数据！" });
+                    }
+                    foreach (var item in users)
+                    {
+                        var user = SysStoreUserInfoLocalService.Find(o => o.UID == item);
+                        var model = new UserRiJieModel();
+                        model.UserName = user.FullName;
+                        model.Uid = user.UserCode;
+                        model.Gift = SaleDetailLocalService.GetSalesStatistics(date, Mode, machineSn, item);
+                        model.Sale = SaleOrdersLocalService.GetSalesStatistics(date, Mode, machineSn, item);
+                        model.Payways = ConsumptionPaymentLocalService.GetOnePayWayAmountForRJ(date, Mode, machineSn, item).ToList();
+                        model.RuKuan = PosIncomePayoutLocalService.GetSalesStatistics(date, Mode, machineSn, 1, item);
+                        model.ChuKuan = PosIncomePayoutLocalService.GetSalesStatistics(date, Mode, machineSn, 0, item);
+                        var zidongmoling = BillDiscountLocalService.GetSalesStatistics(date, Mode, machineSn, item);
+                        model.TuiHuo = SalesReturnsLocalService.GetReturnSales(date, Mode, machineSn, item);
+                        model.HuanHuo = SaleOrdersLocalService.GetChangingSalesStatistics(date, Mode, machineSn, item);
+                        var cash = model.Payways.FirstOrDefault(o => o.Key.Contains("现金"));
+                        model.ShengYuXianJin.Amount = model.RuKuan.Amount - model.ChuKuan.Amount + cash.Value - model.TuiHuo.Amount;
+                        model.Payways.Add(zidongmoling);
+                        UsersStatistics.Add(model);
+                    }
+                    OnPropertyChanged("UsersStatistics");
+
+                });
+            }
+        }
+
+    }
+
+    public class UserRiJieModel
+    {
+        public UserRiJieModel()
+        {
+            Payways = new List<KeyValuePair<string, decimal>>();
+            HasData = Visibility.Visible;
+            ShengYuXianJin = new SalesStatistics();
+        }
+        public Visibility HasData { get; set; }
+        public SalesStatistics Sale { get; set; }
+        public List<KeyValuePair<string, decimal>> Payways { get; set; }
+        public SalesStatistics Gift { get; set; }
+
+        public decimal Total { get; set; }
+
+        public string UserName { get; set; }
+
+        public string Uid { get; set; }
+
+        public SalesStatistics RuKuan { get; set; }
+        public SalesStatistics ChuKuan { get; set; }
+
+        public SalesStatistics TuiHuo { get; set; }
+        public SalesStatistics HuanHuo { get; set; }
+
+        public SalesStatistics ShengYuXianJin { get; set; }
+
+    }
+
+}

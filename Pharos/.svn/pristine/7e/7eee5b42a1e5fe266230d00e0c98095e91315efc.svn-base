@@ -1,0 +1,153 @@
+﻿using Pharos.POS.Retailing.MultipScreen;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Forms;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing
+{
+    public static class MultipScreenManager
+    {
+        #region Property
+
+        internal static Screen[] AllScreens
+        {
+            get
+            {
+                return Screen.AllScreens;
+            }
+        }
+
+        internal static Screen PrimaryScreen
+        {
+            get
+            {
+                return Screen.PrimaryScreen;
+            }
+        }
+
+        internal static IEnumerable<Screen> MinorScreens
+        {
+            get
+            {
+                return Screen.AllScreens.Where(o => o.Primary == false);
+
+            }
+        }
+
+        internal static Screen FirstMinorScreen
+        {
+            get
+            {
+                return MinorScreens.FirstOrDefault();
+            }
+        }
+
+        #endregion Property
+
+        #region Method
+        public static void ShowInScreen(this Window win)
+        {
+            if (SetScreen(win))
+            {
+                win.Loaded += win_Loaded;
+                win.Show();
+            }
+        }
+
+        static void win_Loaded(object sender, RoutedEventArgs e)
+        {
+            var win = sender as Window;
+            if (win != null)
+                win.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+        }
+        public static void ShowDialogInScreen(this Window win)
+        {
+            ShowDialogInScreen(win, System.Windows.Application.Current.MainWindow);
+        }
+        public static void ShowDialogInScreen(this Window win, Window owner)
+        {
+            if (SetScreen(win))
+            {
+                win.Loaded += win_Loaded;
+                win.Owner = owner;
+                win.ShowDialog();
+            }
+        }
+
+        public static void ShowDialogInScreen(this Window win, Window owner, Action<bool?> callback)
+        {
+            if (SetScreen(win))
+            {
+                win.Loaded += win_Loaded;
+                win.Owner = owner;
+                var result = win.ShowDialog();
+                if (callback != null)
+                {
+                    callback(result);
+                }
+            }
+        }
+        private static bool SetScreen(System.Windows.Window win)
+        {
+            var settings = win as IMultipScreen;
+            int index = 0;
+            bool ingoreOperation = false;
+            WindowStartupLocationInScreen inScreen = WindowStartupLocationInScreen.CenterScreen;
+            if (settings != null)
+            {
+                index = settings.Index;
+                inScreen = settings.InScreen;
+                ingoreOperation = settings.IngoreMinorScreenError;
+            }
+            Screen screen = PrimaryScreen;
+            if (index == 1 && FirstMinorScreen != null)
+            {
+                screen = FirstMinorScreen;
+            }
+            else if (index > 1 && index < MinorScreens.Count())
+            {
+                screen = MinorScreens.ElementAt(index);
+            }
+            else if (index > 0 && index >= MinorScreens.Count() && ingoreOperation)
+            {
+                return false;
+            }
+
+            switch (inScreen)
+            {
+                case WindowStartupLocationInScreen.CenterScreen:
+                    SetWindowInScreenCenter(win, screen);
+                    break;
+                case WindowStartupLocationInScreen.Manual:
+                    SetWindowInScreenManual(win, screen);
+                    break;
+                case WindowStartupLocationInScreen.Maximized:
+                    SetWindowMaximized(win, screen);
+                    break;
+            }
+            return true;
+        }
+
+        private static void SetWindowInScreenCenter(Window win, Screen screen)
+        {
+            win.Top = screen.WorkingArea.Y + (screen.WorkingArea.Height - win.Height) / 2;
+            win.Left = screen.WorkingArea.X + (screen.WorkingArea.Width - win.Width) / 2;
+        }
+        private static void SetWindowInScreenManual(Window win, Screen screen)
+        {
+            win.Top = screen.WorkingArea.Y;
+            win.Left = screen.WorkingArea.X;
+        }
+        private static void SetWindowMaximized(Window win, Screen screen)
+        {
+            win.Top = screen.WorkingArea.Y;
+            win.Left = screen.WorkingArea.X;
+            win.Width = screen.WorkingArea.Width;
+            win.Height = screen.WorkingArea.Height;
+        }
+        #endregion Method
+    }
+}

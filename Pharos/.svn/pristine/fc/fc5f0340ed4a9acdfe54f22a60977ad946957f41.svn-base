@@ -1,0 +1,48 @@
+﻿using Pharos.Infrastructure.Data.Cache.Interface;
+using System;
+using ServiceStack.Redis;
+using Pharos.Utility.Helpers;
+namespace Pharos.Infrastructure.Data.Cache
+{
+    public class RedisCacheWrapper2<T> : IRedisCacheWrapper<T>
+    {
+        public RedisCacheWrapper2(string name, TimeSpan slidingExpiration)
+        {
+            Name = name;
+            SlidingExpiration = slidingExpiration;
+        }
+        Lazy<RedisClient> lazy = new Lazy<ServiceStack.Redis.RedisClient>(() => new RedisClient("127.0.0.1", 6379));
+        public string Name
+        {
+            get;private set;
+        }
+
+        public TimeSpan SlidingExpiration
+        {
+            get;set;
+        }
+
+        public bool ContainsKey(string key)
+        {
+            throw new NotImplementedException();
+        }
+
+        public T Get(string key)
+        {
+            var str= lazy.Value.Get<string>(key+Name);
+            if (str.IsNullOrEmpty()) return default(T);
+            return str.ToObject<T>();
+        }
+
+        public void Remove(string key)
+        {
+            lazy.Value.Remove(key + Name);
+        }
+
+        public void Set(string key, T value)
+        {
+            var str = value.ToJson();
+            lazy.Value.Set<string>(key + Name, str, SlidingExpiration);
+        }
+    }
+}

@@ -1,0 +1,145 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Entity;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+namespace Pharos.Logic.DAL
+{
+    public class CommonDAL:BaseDAL
+    {
+        public string StockLockValidMsg(string storeId)
+        {
+            if (!string.IsNullOrWhiteSpace(storeId))
+            {
+                using (EFDbContext db = new EFDbContext())
+                {
+                    var sql = string.Format("SELECT dbo.F_StockLockValidMsg('{0}')", storeId);
+                    return db.Database.SqlQuery<string>(sql).FirstOrDefault();
+                }
+            }
+            return "";
+        }
+        public DataTable FindTakeStockPages(System.Collections.Specialized.NameValueCollection nvl, out int recordCount,bool ispage=true)
+        {
+            var storeId = nvl["storeId"];
+            var userId = nvl["userId"];
+            var date1 = nvl["date1"];
+            var date2 = nvl["date2"];
+            var searchText = (nvl["searchText"] ?? "").Trim();
+            var checkBatch = nvl["checkBatch"];
+            var barcode = nvl["barcode"];
+            var state = nvl["state"];
+            var dispType = nvl["dispType"];
+            var id = nvl["id"];
+            if (!date2.IsNullOrEmpty()) date2 = DateTime.Parse(date2).AddDays(1).ToString("yyyy-MM-dd");
+            string sql = @"select * from Vw_StockTaking where 1=1 ";
+            if (!storeId.IsNullOrEmpty())
+                sql += " and LockStoreID='"+storeId+"'";
+            if (!userId.IsNullOrEmpty())
+                sql += " and CheckUID='" + userId + "'";
+            if (!searchText.IsNullOrEmpty())
+                sql += " and (Barcode like '%" + searchText + "%' or Title like '%" + searchText + "%')";
+            if (!barcode.IsNullOrEmpty())
+                sql += " and Barcode='" + barcode + "'";
+            if (!checkBatch.IsNullOrEmpty())
+                sql += " and CheckBatch ='" + checkBatch + "'";
+            if (!date1.IsNullOrEmpty() && !date2.IsNullOrEmpty())
+                sql += " and LockDate between '" + date1 + "' and '" + date2 + "'";
+            else if (!date1.IsNullOrEmpty())
+                sql += " and LockDate>='" + date1 + "'";
+            else if (!date2.IsNullOrEmpty())
+                sql += " and LockDate<'" + date2 + "'";
+            if (!id.IsNullOrEmpty())
+                sql += " and id='"+id+"'";
+            if(!state.IsNullOrEmpty())
+                sql += " and state=" + state + "";
+            if (dispType == "1")
+                sql += " and SubstractNum is not null";
+            recordCount = 0;
+            return ispage ? base.ExceuteSqlForPage(sql, out recordCount, nvl) : _db.DataTableText(sql, null);
+        }
+        public List<InventoryBalance> GetInventoryBalanceLast(string storeId,string barcodes)
+        {
+            if (!string.IsNullOrWhiteSpace(storeId))
+            {
+                using (EFDbContext db = new EFDbContext())
+                {
+                    var sql = string.Format(@"SELECT * FROM (SELECT *,ROW_NUMBER() OVER(PARTITION BY StoreId,Barcode ORDER BY BalanceDate DESC) row FROM dbo.InventoryBalance)t
+                        WHERE row=1 AND storeId='{0}' and EXISTS(SELECT 1 FROM dbo.SplitString('{1}',',',1) WHERE Value=t.Barcode)", storeId,barcodes);
+                    return db.Database.SqlQuery<InventoryBalance>(sql).ToList();
+                }
+            }
+            return null;
+        }
+        public DataTable GetProductsBySupplierId(string supplierId, out int recordCount)
+        {
+
+            var sql = @"SELECT *,ISNULL((SELECT SUM(acceptnum) FROM dbo.Vw_OrderList 
+                WHERE ((OrderType='采购' AND State=5) OR OrderType='入库') and SupplierId=v.SupplierId AND barcode=v.barcode GROUP BY Barcode),0) AcceptNum FROM dbo.Vw_Product v
+                where SupplierId='" + supplierId+"'";
+            return base.ExceuteSqlForPage(sql, out recordCount);
+        }
+        public void BulkCopy(string tableName, DataTable dt)
+        {
+            SqlTransaction sqlTran = null;
+            try
+            {
+                var connStr= Utility.Config.GetAppSettings("ConnectionString");
+                using (SqlConnection conn = new SqlConnection(connStr))
+                {
+                    conn.Open();
+                    sqlTran= conn.BeginTransaction();
+                    using (SqlBulkCopy bulkCopy = new SqlBulkCopy(conn, SqlBulkCopyOptions.Default, sqlTran))
+                    {
+                        bulkCopy.DestinationTableName = tableName;
+                        bulkCopy.BatchSize = 2000;//缓存大小
+                        foreach (DataColumn dc in dt.Columns)
+                            bulkCopy.ColumnMappings.Add(dc.ColumnName, dc.ColumnName);
+                        bulkCopy.WriteToServer(dt);
+                        sqlTran.Commit();
+                    }
+                    conn.Close();
+                }
+            }
+            catch(Exception ex)
+            {
+                if (sqlTran != null)
+                {
+                    try { sqlTran.Rollback(); }
+                    catch { }
+                }
+                throw ex;
+            }
+        }
+    }
+    public static class DbExtend
+    {
+        public static DataTable SqlQueryForDataTatable(this Database db, string sql, params SqlParameter[] parms)
+        {
+            using (var conn = (SqlConnection)db.Connection)
+            {
+                SqlCommand cmd = new SqlCommand();
+                cmd.Connection = conn;
+                cmd.CommandText = sql;
+                if (parms != null)
+                {
+                    parms.Each(o =>
+                    {
+                        cmd.Parameters.Add(o);
+                    });
+                }
+                SqlDataAdapter adapter = new SqlDataAdapter(cmd);
+                DataTable table = new DataTable();
+                adapter.Fill(table);
+
+                conn.Close();//连接需要关闭
+                conn.Dispose();
+                return table;
+            }
+        }
+    }
+}

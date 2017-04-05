@@ -1,0 +1,120 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link href="css/global.css" rel="stylesheet" />
+    <script src="javascript/jquery-3.1.0.min.js"></script>
+    <title></title>
+</head>
+<body>
+
+    <div class="menu">
+        <div>分店POS控制台</div>
+        <ul>
+            <li><a href="index.html">运行状况</a></li>
+            <li class="active"><a href="reg2.html">服务注册</a></li>
+            <li><a href="pos.html">POS配置</a></li>
+            <li>快捷按键</li>
+            <li>系统日志</li>
+            <li>软件更新</li>
+        </ul>
+    </div>
+    <div>
+        <header>
+            <a>退出登录</a>
+            <a>重启服务</a>
+        </header>
+        <div class="container">
+            <h4>门店信息<span>2/2</span></h4>
+            <div class="item">
+                <div style="margin:80px auto;text-align:center;width:800px;">
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control RegNo" />
+                        <label class="form-label ">注册码</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control CompanyId" style="width:265px;" />
+                        <label class="form-label">CID</label>
+                    </div>
+                    <div class="form-group" style="width:10px;float:left;margin-left:30px;">-</div>
+                    <div class="form-group" style="float:left;margin-left:30px;">
+                        <input required="required" class="form-control StoreId" style="width:265px;" />
+                        <label class="form-label">SID</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control CompanyName" />
+                        <label class="form-label">公司简称</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control StoreName" />
+                        <label class="form-label">分店名称</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control Phone" />
+                        <label class="form-label">小票电话</label>
+                    </div>
+                    <div class="form-group" style="float:left;">
+                        <input required="required" class="form-control DeviceSn" />
+                        <label class="form-label">设备标识</label>
+                    </div>
+                    <div class="form-group" style="margin-left:30px;float:left;">
+                        <input type="button" class="btn-little" value="复制" />
+                    </div>
+
+                </div>
+                <div class="btn-item">
+                    <a href="#" style="display:inline;"><input type="button" class="btn btn-gray" value="上一步" /></a>
+                    <input type="button" class="btn btn-save" value="保存" style="margin-left:30px;" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        var _height = window.screen.height - 255;
+        $('.item').css('height', _height + 'px');
+        jQuery.ajax({
+            type: 'Get',
+            url: 'api/StoreManager/GetServiceSettings',
+            dataType: 'json',
+            cache: false,
+            success: function (datas) {
+                if (datas.Code == "200") {
+                    $(".CompanyId").val(datas.Result.CompanyId);
+                    $(".StoreId").val(datas.Result.StoreId);
+                    $(".RegNo").val(datas.Result.RegNo);
+                    $(".StoreName").val(datas.Result.StoreName);
+                    $(".CompanyName").val(datas.Result.CompanyName);
+                    $(".Phone").val(datas.Result.Phone);
+                    $(".DeviceSn").val(datas.Result.DeviceSn);
+                    } else {
+                    alert(datas.Message);
+                }
+            }
+        });
+        $(".btn-save").click(function () {
+            jQuery.ajax({
+                type: 'POST',
+                url: 'api/StoreManager/NewStoreSettings',
+                data: {
+                    CompanyId: $(".CompanyId").val(),
+                    StoreId: $(".StoreId").val(),
+                    RegNo: $(".RegNo").val(),
+                    StoreName: $(".StoreName").val(),
+                    CompanyName: $(".CompanyName").val(),
+                    Phone: $(".Phone").val(),
+                    DeviceSn: $(".DeviceSn").val()
+                },
+                dataType: 'json',
+                cache: false,
+                success: function (datas) {
+                    if (datas.Code == "200") {
+                        location.href = "reg2.html";
+                    } else {
+                        alert(datas.Message);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

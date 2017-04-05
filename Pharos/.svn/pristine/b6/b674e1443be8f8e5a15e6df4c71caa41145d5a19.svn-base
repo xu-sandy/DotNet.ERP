@@ -1,0 +1,64 @@
+﻿using Newtonsoft.Json;
+using Pharos.Logic.DataSynchronism;
+using Pharos.SocketService.Retailing.Models;
+using Pharos.SocketService.Retailing.Protocol;
+using SuperSocket.SocketBase.Command;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.SocketService.Retailing.Commands.DataAgent
+{
+    public class UploadCommand : BaseDataAgentCommand
+    {
+        public UploadCommand()
+            : base(new byte[] { 0x00, 0x03 })
+        {
+        }
+
+
+        public override void Execute(DataAgentParams _Params, SocketSession session, SocketRequestInfo requestInfo)
+        {
+            try
+            {
+                var json = SocketSession.defaultEncoding.GetString(_Params.Datas);
+                DataSyncContext context = new DataSyncContext();
+                dynamic entity = context.Instance(_Params.EntityName);
+                var datas = JsonDeserialize(entity, json);
+                dynamic provider = context.Instance(context.DataSyncFormat(_Params.EntityName, "UploadProvider"));
+                var result = provider.SaveChanges(datas);
+
+
+                if (result.IsSuccess)
+                {
+                    var jsonResult = JsonConvert.SerializeObject(result.Datas);
+
+                    var dataAgentResult = new DataAgentResult(_Params.StoreId, _Params.EntityName);
+                    dataAgentResult.Add(new DataAgentResultItem() { Mode = LocalDataSyncMode.UpdateLocalUploadStatus, OrderIndex = 1, JsonDatas = jsonResult });
+
+                    WriteDataSyncPackage(session, requestInfo, JsonConvert.SerializeObject(dataAgentResult));
+                    if (result.FailDatas != null)
+                    {
+                        WriteErrorMessage(session, requestInfo, "存在无效的上传数据！", result.FailDatas, MessageType.Info);
+                    }
+                }
+                else
+                {
+                    WriteErrorMessage(session, requestInfo, result.Message, result.FailDatas, MessageType.Error);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                WriteErrorMessage(session, requestInfo, string.Format("数据同步上传失败！服务器异常【{0}】", ex.Message), requestInfo.Body, MessageType.Exception);
+
+            }
+        }
+
+        public IEnumerable<TDto> JsonDeserialize<TDto>(TDto entity, string json)
+        {
+            return JsonConvert.DeserializeObject<IEnumerable<TDto>>(json);
+        }
+    }
+}

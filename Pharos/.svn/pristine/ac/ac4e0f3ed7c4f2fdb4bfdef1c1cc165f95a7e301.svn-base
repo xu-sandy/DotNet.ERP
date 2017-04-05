@@ -1,0 +1,252 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Models.SalesPromotionRules.Discount
+{
+    /// <summary>
+    /// 组合促销
+    /// </summary>
+    public class MixDiscount : BaseDiscount<PromotionBlendLocalService, PromotionBlendDAO>
+    {
+        public const string DISCOUNTTITLE = "组合促销";
+        public override void SetRestrictionBuyNum()
+        {
+            foreach (var item in CachePool)
+            {
+                if (item.RestrictionBuyNum > 0)
+                {
+                    var date = DateTime.Now.ToString("yyyyMMdd");
+                    if (!SalesRecordLocalService.IsExist(o => o.StoreId == PosMachineInfo.Infos.StoreId && o.CommodityId == item.CommodityPromotionId && o.CreateDT == date))
+                    {
+                        var record = new SalesRecord()
+                            {
+                                CommodityId = item.CommodityPromotionId,
+                                CreateDT = date,
+                                StoreId = PosMachineInfo.Infos.StoreId,
+                                Number = item.RestrictionBuyNum
+                            };
+                        SalesRecordLocalService.Add(record);
+                    }
+                }
+            }
+        }
+        /// <summary>
+        /// 商品是否有组合促销，并返回折扣信息
+        /// </summary>
+        /// <param name="product"></param>
+        /// <param name="info"></param>
+        /// <returns></returns>
+        public override bool HasDiscount(string barcode, out IEnumerable<PromotionBlendDAO> infos)
+        {
+            infos = CachePool.Where(o => o.EndDate >= DateTime.Now.Date && o.StartDate <= DateTime.Now.Date);
+            return infos != null && infos.Count() > 0;
+        }
+
+        public override bool HasDiscount(string barcode)
+        {
+            IEnumerable<PromotionBlendDAO> info;
+            return HasDiscount(barcode, out info);
+        }
+
+        public override void Discount(string barcode, decimal num, decimal sysPrice, ref decimal sale, ref string giftId, ref List<string> promotionIds)
+        {
+            IEnumerable<PromotionBlendDAO> infos;
+            if (HasDiscount(barcode, out infos))
+            {
+                List<PromotionBlendDAO> ValidDiscount = new List<PromotionBlendDAO>();
+                foreach (var item in infos)
+                {
+                    //处理主表限制
+                    var hasDiscount = DiscountCommon(barcode, num, ref  sale, item);
+                    if (hasDiscount)
+                    {
+                        ValidDiscount.Add(item);
+                    }
+
+                }
+                var result1 = ValidDiscount.Where(o => o.RestrictionBuyNum == 0);
+                var record = SalesRecordLocalService.FindList(o => o.StoreId == PosMachine.Current.Infos.StoreId).ToList();
+                //Todo:每天限购次数（0:不限） 【暂未实现】
+                var result2 = (from a in ValidDiscount.Where(o => o.RestrictionBuyNum > 0)
+                               from b in record
+                               where a.CommodityPromotionId == b.CommodityId && (a.RestrictionBuyNum > 0 && b.Number > 0)
+                               select a).ToList();
+                ValidDiscount = result1.Concat(result2).ToList();
+                if (ValidDiscount.Count == 0)
+                {
+                    return;
+                }
+                var tempValidDiscount = new List<PromotionBlendDAO>();
+                var ValidNumDict = new Dictionary<string, decimal>();
+                Dictionary<string, IEnumerable<Product>> discountCollections = new Dictionary<string, IEnumerable<Product>>();
+                foreach (var item in ValidDiscount)
+                {
+                    var collections = PosMachine.Current.BillList.Where(o => VerifyBarCodeInActivity(o.Code, item) && o.Status == ProductStatus.Normal);
+                    var totalNum = collections.Sum(o => o.Num);
+                    if (item.FullNumber <= totalNum)
+                    {
+                        tempValidDiscount.Add(item);
+                        if (!ValidNumDict.Keys.Contains(item.CommodityPromotionId))
+                        {
+                            ValidNumDict.Add(item.CommodityPromotionId, totalNum);
+                        }
+                        discountCollections.Add(item.CommodityPromotionId, collections);
+                    }
+                }
+                if (tempValidDiscount.Count == 0)
+                {
+                    return;
+                }
+                ValidDiscount = tempValidDiscount;
+
+                //优先取单品 按最新创建时间
+                for (var i = 0; i < ValidDiscount.Count; i++)
+                {
+                    PromotionBlendDAO info = ValidDiscount.ElementAt(i);
+
+                    switch ((short)info.PromotionType)
+                    {
+                        case 1://现金返还
+                            var oldSales = discountCollections[info.CommodityPromotionId].Sum(o => o.Sale * o.Num);
+                            if (info.AllowedAccumulate == 1)
+                            {
+                                //PosMachine.Current.BillList.DiscountPreferential.Remove(info.CommodityPromotionId);
+                                var _num = Convert.ToInt32(Math.Truncate(ValidNumDict[info.CommodityPromotionId] / info.FullNumber));
+                                //PosMachine.Current.BillList.DiscountPreferential.Add(info.CommodityPromotionId, info.DiscountOrPrice * _num);
+                                var fullDiscount = info.DiscountOrPrice * _num;
+                                sale = sale - (fullDiscount * sale / oldSales);
+
+                            }
+                            else
+                            {
+                                //PosMachine.Current.BillList.DiscountPreferential.Remove(info.CommodityPromotionId);
+                                //PosMachine.Current.BillList.DiscountPreferential.Add(info.CommodityPromotionId, info.DiscountOrPrice);
+                                sale = sale - (info.DiscountOrPrice * sale / oldSales);
+
+                            }
+                            break;
+                        case 2:
+                            if (info.AllowedAccumulate == 1)
+                            {
+                                //Todo:累加赠送
+                            }
+                            else
+                            {
+                                //TODO:非累加赠送
+                            }
+                            //Todo:赠送代金卷
+                            break;
+                        case 3:
+                            //if (PosMachine.Current.BillList.DiscountPreferential.Keys.Contains(info.CommodityPromotionId))
+                            //    PosMachine.Current.BillList.DiscountPreferential.Remove(info.CommodityPromotionId);
+
+                            //PosMachine.Current.BillList.DiscountPreferential.Add(info.CommodityPromotionId, discountCollections[info.CommodityPromotionId].Sum(o => o.Total) * (1 - (info.DiscountOrPrice / 10)));
+                            sale = sale * (1 - (info.DiscountOrPrice / 10));
+
+                            break;
+                        case 4: //加购按具体商品赠送
+                            var gifts = PromotionBlendListLocalService.GetGiftList(info.CommodityPromotionId);
+                            if (info.AllowedAccumulate == 1)
+                            {
+
+                                if (!PendingGift.Exists(o => o.Id == info.CommodityPromotionId))
+                                {
+                                    var tempGifts = new List<Gift>();
+                                    gifts.ForEach(o =>
+                                    {
+                                        o.AddMoney = info.DiscountOrPrice;
+                                        o.CommodityId = info.CommodityPromotionId;
+                                        tempGifts.Add(new Gift(o, DISCOUNTTITLE));
+                                    });
+                                    PendingGift = PendingGift.Concat(tempGifts).ToList();
+                                }
+                                else
+                                {
+                                    PendingGift.RemoveAll(o => o.Id == info.CommodityPromotionId);
+                                    List<Gift> currentGifts = new List<Gift>();
+                                    foreach (var item in gifts)
+                                    {
+                                        item.AddMoney = info.DiscountOrPrice;
+                                        item.Number = Convert.ToInt32(Math.Truncate(ValidNumDict[info.CommodityPromotionId] / info.FullNumber));
+                                        item.CommodityId = info.CommodityPromotionId;
+                                        currentGifts.Add(new Gift(item, DISCOUNTTITLE));
+                                    }
+                                    PendingGift = PendingGift.Concat(currentGifts).ToList();
+
+                                }
+                            }
+                            else
+                            {
+
+                                if (!PendingGift.Exists(o => o.Id == info.CommodityPromotionId))
+                                {
+                                    var tempGifts = new List<Gift>();
+                                    gifts.ForEach(o =>
+                                    {
+                                        o.AddMoney = info.DiscountOrPrice;
+                                        o.CommodityId = info.CommodityPromotionId;
+                                        tempGifts.Add(new Gift(o, DISCOUNTTITLE));
+                                    });
+                                    PendingGift = PendingGift.Concat(tempGifts).ToList();
+                                }
+                            }
+                            break;
+                        case 5: //加购按单价范围赠送
+                            var range = (decimal)info.PriceRange;
+                            var products = ProductInfoLocalService.FindList(o => o.SysPrice < range || range == 0).Select(o => new Gift()
+                            {
+                                AddMoney = info.DiscountOrPrice,
+                                Barcode = o.Barcode,
+                                GiftNumber = 1,
+                                Id = info.CommodityPromotionId,
+                                SysPrice = o.SysPrice,
+                                Title = o.Title,
+                                DiscountTitle = DISCOUNTTITLE,
+                                CommodityId = info.CommodityPromotionId
+                            });
+                            if (info.AllowedAccumulate == 1)
+                            {
+                                PendingGift.RemoveAll(o => o.Id == info.CommodityPromotionId);
+                                List<Gift> currentGifts = new List<Gift>();
+                                foreach (var item in products)
+                                {
+                                    item.GiftNumber = Convert.ToInt32(Math.Truncate(ValidNumDict[info.CommodityPromotionId] / info.FullNumber));
+                                    currentGifts.Add(item);
+                                }
+                                PendingGift = PendingGift.Concat(currentGifts).ToList();
+                            }
+                            else
+                            {
+
+                                if (!PendingGift.Exists(o => o.Id == info.CommodityPromotionId))
+                                    PendingGift = PendingGift.Concat(products).ToList();
+                            }
+                            break;
+                    }
+                    foreach (var item in discountCollections[info.CommodityPromotionId])
+                    {
+                        if (!item.PromotionIds.Exists(o => o == info.CommodityPromotionId))
+                        {
+                            item.PromotionIds.Add(info.CommodityPromotionId);
+                        }
+                    }
+                }
+            }
+        }
+
+        private bool VerifyBarCodeInActivity(string code, PromotionBlendDAO info)
+        {
+            var commodityId = info.CommodityPromotionId;
+            var entity = ProductInfoLocalService.Find(o => o.Barcode == code);
+            var ids = ProductCategoryLocalService.FindAllParent(entity.CategorySN).Select(o => o.ToString()).ToList();
+            ids.Add(entity.CategorySN.ToString());
+            var list = PromotionBlendListLocalService.FindList(o => o.CommodityId == commodityId);
+
+            return list.Exists(o => (o.BarcodeOrCategorySN == code && o.BlendType == 1)) || list.Exists(o => o.BlendType == 2 && ids.Exists(p => p ==
+                o.BarcodeOrCategorySN && (o.BrandSN == entity.BrandSN || o.BrandSN == 0)));
+        }
+    }
+}

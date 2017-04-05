@@ -1,0 +1,29 @@
+﻿using Pharos.Wpf.Controls;
+using System;
+using Pharos.POS.Retailing.Extensions;
+using System.Threading.Tasks;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Extensions;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// Rijie.xaml 的交互逻辑
+    /// </summary>
+    public partial class RiJie : DialogWindow02
+    {
+        public RiJie()
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+            Task.Factory.StartNew(() =>
+            {
+                var model = new DayReportViewModel();
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    this.ApplyBindings(this, model);
+                }));
+            });
+        }
+    }
+}

@@ -1,0 +1,71 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: false, hideDel: true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" value="@DateTime.Now.ToString("yyyy-MM-dd")" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd'})" />
+            </td>
+            <td>-</td>
+            <td class="input-toolbar">
+                <input name="date2" value="@DateTime.Now.ToString("yyyy-MM-dd")" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd'})" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @*@Html.DropDownList("store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datecontrol", data_options = (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelHeight:'auto',panelMaxHeight:200" })*@
+                @Form.Combobox("store", ViewBag.stores as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>收银员：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("cashier", ViewBag.cashiers as List<SelectListItem>, dataOptions: "editable:false,panelHeight:'auto',panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>导购员：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("saler", ViewBag.salers as List<SelectListItem>, dataOptions: "editable:false,panelHeight:'auto',panelMaxHeight:200")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = '@Url.Action("QueryOrderSaleDetailDayPageList")';
+    pharos.manager.pagination = true;
+    pharos.manager.showFooter = true;
+    pharos.manager.columns = [[
+        { field: 'CreateDT', title: '销售时间', width: 150 },
+        { field: 'Cashier', title: '收银员', width: 100 },
+        { field: 'Saler', title: '导购员', width: 100 },
+        { field: 'PaySN', title: '流水号', width: 150 },
+        { field: 'Quantity', title: '件数', width: 80 },
+        { field: 'Weigh', title: '称重', width: 80 },
+        { field: 'TotalAmount', title: '金额小计', width: 100 },
+        { field: 'PreferentialPrice', title: '优惠小计', width: 100 },
+        { field: 'ApiTitle', title: '结算方式', width: 150 }
+    ]];
+    pharos.manager.editItem = function (id,row) {
+        openDialog("销售明细", "@Url.Action("SaleOrderDetail")?paysn=" + row.PaySN + "&" + $('#frmsearch').serialize(), 1000, 560, true);
+    }
+    function Export() {
+        var date=$("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        window.location.href = '@Url.Action("SaleExport")?type=6&' + $('#frmsearch').serialize();
+    }
+</script>

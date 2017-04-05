@@ -1,0 +1,163 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Barcodes
+{
+    /// <summary>
+    /// 捆绑条码
+    /// </summary>
+    public class BundlingBarcode : IBarcode
+    {
+        #region 初始化器
+        public BundlingBarcode(string storeId, string machineSn, int token, string barcodeString, SaleStatus saleStatus = SaleStatus.Normal, string giftId = "", string giftPromotionId = "")
+        {
+            //处理条码字符串的空格及移除所有前导空白字符和尾部空白字符
+            if (string.IsNullOrWhiteSpace(barcodeString))
+            {
+                throw new BarcodeException("条码不能为空！");
+            }
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            CurrentString = barcodeString;
+            MainBarcode = barcodeString;
+            Count = CurrentString.Length;
+            if (Count != 12)
+            {
+                throw new BarcodeException("条码缺失，或者条码长度异常！");
+            }
+            if (dataAdapter == null)
+            {
+                throw new Exception("数据适配器不能为null,请实现IDataAdapter，并实例化！");
+            }
+            var productInfo = dataAdapter.GetProductInfoFromBundlingByBarcode(CurrentString);
+            if (productInfo == null)
+            {
+                throw new SaleException("602", "未找到商品信息，请确认该捆绑商品是否正在销售！");
+            }
+            ProductType = ProductType.Bundling;
+            SaleNumber = 1;
+            ProductCode = productInfo.ProductCode;
+            SalePrice = productInfo.SystemPrice;
+            Details = new ProductDetails()
+            {
+                Brand = productInfo.Brand,
+                Category = productInfo.Category,
+                EnableEditNum = productInfo.EnableEditNum,
+                EnableEditPrice = productInfo.EnableEditPrice,
+                GiftId = giftId,
+                GiftPromotionId = giftPromotionId,
+                SaleStatus = SaleStatus.Promotion,
+                Size = productInfo.Size,
+                SystemPrice = productInfo.SystemPrice,
+                Title = productInfo.Title,
+                Unit = productInfo.Unit,
+                Total = SalePrice * SaleNumber,
+                BuyPrice = productInfo.BuyPrice
+            };
+        }
+
+        public BundlingBarcode(IBarcode barcode)
+        {
+            Count = barcode.Count;
+            MainBarcode = barcode.MainBarcode;
+            CurrentString = barcode.CurrentString;
+            ProductType = barcode.ProductType;
+            SalePrice = barcode.SalePrice;
+            SaleNumber = barcode.SaleNumber;
+            ProductCode = barcode.ProductCode;
+            Details = barcode.Details;
+        }
+        #endregion 初始化器
+        public int Count { get; set; }
+        /// <summary>
+        /// 主条码
+        /// </summary>
+        public string MainBarcode { get; set; }
+
+        public string CurrentString { get; set; }
+
+        public ProductType ProductType { get; set; }
+
+        public decimal SalePrice { get; set; }
+        public decimal AveragePrice { get; set; }
+
+        public decimal SaleNumber { get; set; }
+
+        public string ProductCode { get; set; }
+
+        public ProductDetails Details { get; set; }
+        public bool EnableMarketing { get; set; }
+        public List<Marketings.MarketingRule> MarketingMarks { get; set; }
+
+
+        #region 方法
+        public override bool Equals(object obj)
+        {
+            var barcode = obj as BundlingBarcode;
+            if (barcode == null || this == null)
+            {
+                return false;
+            }
+            if (CurrentString != barcode.CurrentString || string.IsNullOrEmpty(CurrentString) || string.IsNullOrEmpty(barcode.CurrentString))
+            {
+                return false;
+            }
+            if (barcode.Details == null || Details == null || Details.SaleStatus != barcode.Details.SaleStatus || Details.GiftId != barcode.Details.GiftId || Details.GiftPromotionId != barcode.Details.GiftPromotionId)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            StringBuilder str = new StringBuilder(CurrentString);
+            if (Details != null)
+                str.Append((int)Details.SaleStatus);
+            return str.ToString().GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return CurrentString;
+        }
+
+        public bool VerfyEnableCombine(string barcode, SaleStatus status, string giftId, string giftPromotionId)
+        {
+            if (this == null)
+            {
+                return false;
+            }
+            if (string.IsNullOrEmpty(CurrentString) || string.IsNullOrEmpty(barcode) || Details == null)
+            {
+                return false;
+            }
+            if (CurrentString == barcode && Details.SaleStatus == status && Details.GiftId == giftId && Details.GiftPromotionId == giftPromotionId)
+                return true;
+            return false;
+        }
+
+        public bool VerfyEnableCombine(IBarcode barcode)
+        {
+            return this.Equals(barcode);
+        }
+
+
+        #endregion 方法
+
+
+
+
+
+
+        public decimal MarketingPrice { get; set; }
+
+        public bool IsMarketingSplit { get; set; }
+
+        public Dictionary<decimal, decimal> MarketingSplitRule { get; set; }
+    }
+}

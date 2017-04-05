@@ -1,0 +1,78 @@
+﻿using System.Windows;
+using Pharos.POS.Retailing.Models.ChildPagesModels;
+using System.Windows.Input;
+using System.Linq;
+using Pharos.POS.Retailing.Models.DTOs;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// ChaKuCun.xaml 的交互逻辑
+    /// </summary>
+    public partial class ChaKuCun : Window,IDataGridOperat
+    {
+        CheckInventory currentEntity;
+        public ChaKuCun()
+        {
+            InitializeComponent();
+            this.InitPublicSettings();
+            currentEntity = new CheckInventory();
+            this.DataContext = currentEntity;
+        }
+
+        public void SetDataGridSelectLastItem()
+        {
+            try
+            {
+                DataView.SelectedItem = currentEntity.Commodities.FirstOrDefault();
+                DataView.ScrollIntoView(DataView.SelectedItem);
+                Keyboard.Focus(DataView);
+            }
+            catch { }
+        }
+
+        public object GetDataGridSelectItem()
+        {
+            return DataView.SelectedItem;
+        }
+
+        public void SetPreviousSelectItem()
+        {
+            if (DataView.SelectedIndex > 0)
+            {
+                DataView.SelectedIndex--;
+                DataView.ScrollIntoView(DataView.SelectedItem);
+
+            }
+        }
+
+        public void SetNextSelectItem()
+        {
+            try
+            {
+                if (currentEntity.Commodities.Count() - 1 > DataView.SelectedIndex)
+                {
+                    DataView.SelectedIndex++;
+                    DataView.ScrollIntoView(DataView.SelectedItem);
+
+                }
+            }
+            catch { }
+        }
+        private void DataView_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.Enter:
+                    var obj = this.GetDataGridSelectItem();
+                    if (obj != null)
+                    {
+                        var result = obj as CheckInventoryDto;
+                        result.AddCommand.Execute(this);
+                        e.Handled = true;
+                    }
+                    break;
+            }
+        }
+    }
+}

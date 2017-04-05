@@ -1,0 +1,78 @@
+﻿using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.ObjectModels.DTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Category
+{
+    /// <summary>
+    /// 产品分类
+    /// </summary>
+    public class Category
+    {
+        /// <summary>
+        /// 子分类
+        /// </summary>
+        public IEnumerable<Category> Childrens { get; set; }
+        /// <summary>
+        /// 分类名称
+        /// </summary>
+        public string Title { get; set; }
+        /// <summary>
+        /// 父编号
+        /// </summary>
+        public int CategoryPSN { get; set; }
+        /// <summary>
+        /// 编号
+        /// </summary>
+        public int CategorySN { get; set; }
+
+
+        //public int OrderNum { get; set; }
+
+        /// <summary>
+        /// 顶级Root向下生成
+        /// </summary>
+        /// <param name="sources"></param>
+        public static Category CategoryTreeFactory(IEnumerable<CategoryDAO> sources, bool enableEditRootTitle = false, string rootTitle = "")
+        {
+            var root = new Category()
+            {
+                Title = enableEditRootTitle ? rootTitle : "Root",
+                // OrderNum = 0,
+                CategorySN = 0,
+                CategoryPSN = -1,
+            };
+            root.Childrens = CreateChildNode(sources, root, 1);
+            return root;
+        }
+        /// <summary>
+        /// 创建节点
+        /// </summary>
+        /// <param name="sources"></param>
+        /// <param name="parent"></param>
+        /// <param name="grade"></param>
+        /// <returns></returns>
+        private static IEnumerable<Category> CreateChildNode(IEnumerable<CategoryDAO> sources, Category parent, int grade)
+        {
+            var daos = sources.Where(o => o.Grade == grade && o.CategoryPSN == parent.CategorySN).OrderBy(o => o.OrderNum).ToList();
+            grade++;
+            List<Category> childrens = new List<Category>();
+            foreach (var item in daos)
+            {
+                var node = new Category()
+                {
+                    CategoryPSN = parent.CategorySN,
+                    CategorySN = item.CategorySN,
+                    //OrderNum = item.OrderNum,
+                    Title = item.Title,
+                };
+                node.Childrens = CreateChildNode(sources, node, grade);
+                childrens.Add(node);
+            }
+            return childrens;
+        }
+    }
+}

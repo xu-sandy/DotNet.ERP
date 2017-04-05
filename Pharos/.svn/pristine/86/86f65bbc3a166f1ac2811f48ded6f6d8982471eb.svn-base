@@ -1,0 +1,255 @@
+﻿using Pharos.POS.Retailing.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+using System.Xml.Linq;
+
+namespace Pharos.POS.Retailing
+{
+    public class KeyboardShortcuts
+    {
+        private const string COFINGFILE = "PharosKeyboardShortcutsRules.Config";
+        private List<Window> queue = new List<Window>();
+        private bool isRunning = false;
+        private bool configLoaded = false;
+        public KeyboardShortcuts()
+        {
+            Rules = new List<KeyboardShortcutsRule>();
+            new TaskFactory().StartNew(() =>
+            {
+                LoadConfig();
+            });
+        }
+
+        public List<KeyboardShortcutsRule> Rules { get; set; }
+
+        public void ActiveKeysBindings(Window window)
+        {
+            queue.Add(window);
+            if (!isRunning)
+            {
+                StartThreadPool();
+            }
+
+        }
+        private void StartThreadPool()
+        {
+            ThreadPool.QueueUserWorkItem(new WaitCallback((_params) =>
+            {
+                isRunning = true;
+                while (true)
+                {
+                    if (!configLoaded)
+                    {
+                        Thread.Sleep(10);
+                    }
+                    else
+                    {
+                        break;
+                    }
+
+                }
+                while (queue.Count > 0)
+                {
+                    var win = queue.ElementAt(0);
+                    queue.Remove(win);
+                    foreach (var item in Rules)
+                    {
+                        if (!item.IgnoreWindow.Contains(win.GetType()))
+                        {
+                            if (item.Effectivity.Count == 0 || item.Effectivity.Contains(win.GetType()) && item.Command != null)
+                            {
+                                Action<Window> method = (o) =>
+                                {
+                                    try
+                                    {
+                                        o.InputBindings.Add(new InputBinding(item.Command.GetCommand(), new KeyGestureConverter().ConvertFromString(item.Keys) as KeyGesture)
+                                        {
+                                            CommandParameter = o
+                                        });
+                                    }
+                                    catch 
+                                    {
+                                    
+                                    }
+                                };
+                                if (!win.Dispatcher.CheckAccess())
+                                {
+                                    win.Dispatcher.Invoke(method, win);
+                                }
+                                else
+                                {
+                                    method(win);
+                                }
+
+                            }
+                        }
+                    }
+                }
+                isRunning = false;
+            }));
+        }
+
+        private static KeyboardShortcuts current = null;
+        public static KeyboardShortcuts Current
+        {
+            get
+            {
+                if (current == null)
+                {
+                    current = new KeyboardShortcuts();
+                }
+                return current;
+            }
+
+        }
+
+        public void LoadConfig()
+        {
+            try
+            {
+                XDocument doc = XDocument.Load(COFINGFILE);
+                this.Rules = doc.Element("Settings").Elements("KeyboardShortcuts")
+                    .Select(o =>
+                        new KeyboardShortcutsRule()
+                        {
+                            Name = o.Attribute("Name").Value,
+
+                            IsShowInHelp = o.Attribute("IsShowInHelp") != null ? Convert.ToBoolean(o.Attribute("IsShowInHelp").Value) : true,
+
+                            IsShowInMainWindow = o.Attribute("IsShowInMainWindow") != null ? Convert.ToBoolean(o.Attribute("IsShowInMainWindow").Value) : false,
+
+                            Keys = o.Attribute("Keys").Value,
+
+                            IgnoreWindow = new List<Type>().InitListType(o.Elements("Ignore")),
+
+                            Effectivity = new List<Type>().InitListType(o.Elements("Effect"))
+
+                        }
+                        ).ToList();
+
+            }
+            catch { }
+            configLoaded = true;
+        }
+
+        public void SaveConfig()
+        {
+            try
+            {
+                XDocument doc = new XDocument();
+                var element = new XElement("Settings");
+                foreach (var item in Rules)
+                {
+                    var cmdType = item.Command.GetType();
+                    XElement node = new XElement(
+                        "KeyboardShortcuts",
+                        new XAttribute("Name", item.Name),
+                        new XAttribute("Keys", item.Keys),
+                        new XAttribute("IsShowInHelp", item.IsShowInHelp),
+                        new XAttribute("IsShowInMainWindow", item.IsShowInMainWindow)
+                        );
+
+                    foreach (var childItem in item.IgnoreWindow)
+                    {
+                        XElement ignoreList = new XElement("Ignore", childItem);
+                        node.Add(ignoreList);
+                    }
+                    foreach (var childItem in item.Effectivity)
+                    {
+                        XElement effectList = new XElement("Effect", childItem);
+                        node.Add(effectList);
+                    }
+                    element.Add(node);
+                }
+                doc.Add(element);
+                doc.Save(COFINGFILE);
+                PosMachine.Current.SetPropertyChanged("ShowInMainWindowKeyboardShortcuts");
+                ResetKeyboardShortcutsForWindow();
+            }
+            catch { }
+        }
+
+        public void ResetKeyboardShortcutsForWindow()
+        {
+            foreach (Window item in Application.Current.Windows)
+            {
+                item.InputBindings.Clear();
+                ActiveKeysBindings(item);
+            }
+        }
+    }
+
+    public class KeyboardShortcutsRule
+    {
+        public KeyboardShortcutsRule()
+        {
+            IsShowInHelp = true;
+            IsShowInMainWindow = false;
+        }
+
+        public string Name { get; set; }
+
+        public string Keys { get; set; }
+
+        public bool IsShowInHelp { get; set; }
+
+        public bool IsShowInMainWindow { get; set; }
+
+        public List<Type> IgnoreWindow { get; set; }
+
+        public List<Type> Effectivity { get; set; }
+
+        private IKeyboardShortcutsCommand tmpCommand;
+        public IKeyboardShortcutsCommand Command
+        {
+            get
+            {
+                if (tmpCommand == null)
+                {
+                    string typeName = Name + "Command";
+                    var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+                    foreach (var item in assemblies)
+                    {
+                        var type = item.GetTypes().FirstOrDefault(o => o.ToString().EndsWith(typeName));
+                        if (type != null && type.GetInterfaces().Contains(typeof(IKeyboardShortcutsCommand)))
+                        {
+                            tmpCommand = item.CreateInstance(type.ToString()) as IKeyboardShortcutsCommand;
+                            return tmpCommand;
+                        }
+                    }
+                }
+                return tmpCommand;
+            }
+        }
+    }
+
+
+    public static class LinqExtensions
+    {
+        public static List<Type> InitListType(this List<Type> _this, IEnumerable<XElement> ignoreNodes)
+        {
+            if (_this == null)
+                _this = new List<Type>();
+            foreach (var item in ignoreNodes)
+            {
+                var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+                foreach (var ass in assemblies)
+                {
+                    var type = ass.GetTypes().FirstOrDefault(o => o.ToString() == item.Value.Trim());
+                    if (type != null)
+                    {
+                        _this.Add(type);
+                        break;
+                    }
+                }
+            }
+            return _this;
+        }
+
+    }
+}

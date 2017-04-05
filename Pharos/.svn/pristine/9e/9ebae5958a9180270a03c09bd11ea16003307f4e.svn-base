@@ -1,0 +1,197 @@
+﻿using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Web.Http.Filters;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.BLL;
+using QCT.Pay.Common.Models;
+
+using Newtonsoft.Json;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using System.Web;
+using System.Web.Http.Filters;
+using System.Web.Http.Controllers;
+using System.Threading;
+using System.Web.Http;
+using System.Web.Http.Metadata;
+using Newtonsoft.Json.Linq;
+using System.IO;
+
+namespace QCT.Api.Pay.Utils
+{
+    /// <summary>
+    /// 验证签名
+    /// </summary>
+    public class VerifySignAttribute : ActionFilterAttribute
+    {
+        /// <summary>
+        /// 验证签名
+        /// </summary>
+        /// <param name="actionContext"></param>
+        public override void OnActionExecuting(System.Web.Http.Controllers.HttpActionContext actionContext)
+        {
+            try
+            {
+                var form = System.Web.HttpContext.Current.Request.Form;
+                var dic = new Dictionary<string, object>();
+                foreach (String s in form.AllKeys)
+                {
+                    dic.Add(s, form[s]);
+                }
+
+                var signSvc = new PaySignService();
+                if (!signSvc.VerifySign(dic))
+                {
+                    var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(QctPayReturn.Fail(msg: "签名失败").ToJson())
+                    };
+                    actionContext.Response = response;
+                }
+            }
+            catch (Exception ex)
+            {
+                var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent(QctPayReturn.Fail(msg: "参数格式错误").ToJson())
+                };
+                actionContext.Response = response;
+            }
+
+            base.OnActionExecuting(actionContext);
+        }
+        /// <summary>
+        /// 获取参数内容
+        /// </summary>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        //async private Task<string> PostRaw(HttpContent content)
+        //{
+        //    return await content.ReadAsStringAsync();
+        //}
+        async private Task<Stream> PostRaw(HttpContent content)
+        {
+            return await content.ReadAsStreamAsync();
+        }
+    }
+
+    //public class VerifySignAttribute : ActionFilterAttribute
+    //{
+    //    /// <summary>
+    //    /// 验证签名
+    //    /// </summary>
+    //    /// <param name="actionContext"></param>
+    //    public override void OnActionExecuting(System.Web.Http.Controllers.HttpActionContext actionContext)
+    //    {
+    //        string postRaw = (PostRaw(actionContext.Request.Content)).Result;
+
+    //        if (!string.IsNullOrWhiteSpace(postRaw))
+    //        {
+    //            var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+    //            {
+    //                Content = new StringContent("签名:" + postRaw)
+    //            };
+    //            actionContext.Response = response;
+    //        }
+
+    //        base.OnActionExecuting(actionContext);
+    //    }
+    //    /// <summary>
+    //    /// 获取参数内容
+    //    /// </summary>
+    //    /// <param name="content"></param>
+    //    /// <returns></returns>
+    //    async private Task<string> PostRaw(HttpContent content)
+    //    {
+    //        return await content.ReadAsStringAsync();
+    //    }
+    //    //private string PostRaw(HttpContent content)
+    //    //{
+    //    //    try
+    //    //    {
+    //    //        return content.ReadAsStringAsync().Result;
+    //    //    }
+    //    //    catch(Exception ex) { return ""; }
+    //    //}
+    //}
+    public class CustomParameterBinding : HttpParameterBinding
+    {
+        public CustomParameterBinding(HttpParameterDescriptor descriptor)
+            : base(descriptor)
+        {
+
+        }
+
+
+        public override Task ExecuteBindingAsync(ModelMetadataProvider metadataProvider,
+                                                    HttpActionContext actionContext,
+                                                    CancellationToken cancellationToken)
+        {
+            var binding = actionContext
+                .ActionDescriptor
+                .ActionBinding;
+
+            if (binding.ParameterBindings.Length > 1 ||
+                actionContext.Request.Method == HttpMethod.Get)
+                return EmptyTask.Start();
+
+            var type = binding
+                        .ParameterBindings[0]
+                        .Descriptor.ParameterType;
+
+            if (type == typeof(string) || type.IsClass)
+            {
+                return actionContext.Request.Content
+                        .ReadAsStringAsync()
+                        .ContinueWith((task) =>
+                        {
+                            var stringResult = task.Result;
+                            SetValue(actionContext, stringResult);
+                        });
+            }
+            else if (type == typeof(byte[]))
+            {
+                return actionContext.Request.Content
+                    .ReadAsByteArrayAsync()
+                    .ContinueWith((task) =>
+                    {
+                        byte[] result = task.Result;
+                        SetValue(actionContext, result);
+                    });
+            }
+
+            throw new InvalidOperationException("Only string and byte[] are supported for [CustomParameterBinding] parameters");
+        }
+    }
+    public class EmptyTask
+    {
+        public static Task Start()
+        {
+            var taskSource = new TaskCompletionSource<AsyncVoid>();
+            taskSource.SetResult(default(AsyncVoid));
+            return taskSource.Task as Task;
+        }
+
+        private struct AsyncVoid
+        {
+        }
+    }
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Parameter, AllowMultiple = false, Inherited = true)]
+    public sealed class CustomBodyAttribute : ParameterBindingAttribute
+    {
+        public override HttpParameterBinding GetBinding(HttpParameterDescriptor parameter)
+        {
+            if (parameter == null)
+                throw new ArgumentException("Invalid parameter");
+
+            return new CustomParameterBinding(parameter);
+        }
+    }
+}

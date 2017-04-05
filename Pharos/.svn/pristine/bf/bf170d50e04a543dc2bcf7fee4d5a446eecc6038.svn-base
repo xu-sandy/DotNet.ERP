@@ -1,0 +1,360 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Data.Entity;
+namespace Pharos.Logic.OMS.BLL
+{
+    public class SysRoleService
+    {
+        [Ninject.Inject]
+        IBaseRepository<SysRoles> RoleRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<SysLimits> LimitRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<SysMenus> MenuRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<SysRoleData> RoleDataRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysDepartments> DepartRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysUser> UserRepository { get; set; }
+        [Ninject.Inject]
+        DepartMentService DeptService { get; set; }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var type = nvl["Type"];
+            var status = nvl["Status"];
+            var queryRole = RoleRepository.GetQuery();
+            var queryUser = UserRepository.GetQuery();
+            var query = from x in queryRole
+                        select new { 
+                            x.Id,
+                            x.RoleId,
+                            x.Title,
+                            x.UpdateDT,
+                            x.UpdateUID,
+                            x.CreateDT,
+                            x.Status,
+                            x.DeptId,
+                            UserCount = queryUser.Count(o => (","+o.RoleIds+",").Contains(","+ x.RoleId+",")),
+                            StatusTitle=x.Status?"可用":"停用",
+                            x.Type,
+                            TypeTitle = x.Type == 0 ? "默认" : "自定义",
+                            x.Memo
+                        };
+            if (!type.IsNullOrEmpty())
+            {
+                var st = type.Split(',').Select(o => short.Parse(o)).ToList();
+                query = query.Where(o =>st.Contains( o.Type));
+            }
+            if (!status.IsNullOrEmpty())
+            {
+                var st = status.Split(',').Select(o => bool.Parse(o)).ToList();
+                query = query.Where(o => st.Contains(o.Status));
+            }
+            var list= query.ToList();
+            var depts= DeptService.GetFullTitle(true);
+            return list.Select(x => new
+            {
+                x.Id,
+                x.RoleId,
+                x.Title,
+                x.UpdateDT,
+                x.UpdateUID,
+                x.Status,
+                x.StatusTitle,
+                x.CreateDT,
+                x.UserCount,
+                x.TypeTitle,
+                x.Type,
+                Memo=x.Memo.TrimMore(100),
+                DepartMent = GetDepartment(x.DeptId,depts)
+            });
+        }
+        string GetDepartment(string deptId,Dictionary<int,string> depts)
+        {
+            if (deptId.IsNullOrEmpty()) return "";
+            var ids= deptId.Split(',').Select(o=>int.Parse(o));
+            return string.Join("<br>", depts.Where(o => ids.Contains(o.Key)).Select(o=>o.Value));
+        }
+        public OpResult SaveOrUpdate(SysRoles obj, string menuIds, string limitIds)
+        {
+            if (RoleRepository.IsExists(o => o.Title == obj.Title && o.Id != obj.Id))
+                return OpResult.Fail("角色名称已存在!");
+            var mids = menuIds.ToIntArray();
+            if (obj.Id == 0)
+            {
+                obj.RoleId = RoleRepository.GetMaxInt(o => (int?)o.RoleId,100);
+                obj.UpdateDT=obj.CreateDT = DateTime.Now;
+                obj.UpdateUID= obj.CreateUID = CurrentUser.UID;
+                obj.Status = true;
+                var menus= MenuRepository.GetQuery(o =>o.Status).ToList();
+                obj.SysRoleDatas=new List<SysRoleData>();
+                menus.Each(o =>
+                {
+                    var data= new SysRoleData() { 
+                        Limitids=limitIds,
+                        MenuId=o.MenuId,
+                        PMenuId =o.PMenuId,
+                        SortOrder=o.SortOrder,
+                    };
+                    data.HasSelected = mids.Any(i => i == o.MenuId);
+                    obj.SysRoleDatas.Add(data);
+                });
+                RoleRepository.Add(obj, false);
+            }
+            else
+            {
+                var menu = Get(obj.Id);
+                obj.ToCopyProperty(menu, new List<string>() { "CreateDT", "CreateUID", "Status", "RoleId" });
+                menu.UpdateDT = DateTime.Now;
+                menu.UpdateUID = CurrentUser.UID;
+                menu.SysRoleDatas.Each(o =>
+                {
+                    o.HasSelected = mids.Any(i => i == o.MenuId);
+                    o.Limitids = limitIds;
+                });
+            }
+            RoleRepository.SaveChanges();
+            return OpResult.Success(data: new { id=obj.Id, roleId= obj.RoleId });
+        }
+        public List<Models.ProductRoleMenuModel> FindMenuList(int? roleId)
+        {
+            var queryMenu = MenuRepository.GetQuery(o=>o.Status);
+            var ms = new List<Models.ProductRoleMenuModel>();
+            if (roleId>0)
+            {
+                var queryRoleData = RoleDataRepository.GetQuery(o=>o.RoleId==roleId);
+                var q = from x in queryMenu
+                        join y in queryRoleData on x.MenuId equals y.MenuId into tmp
+                        from z in tmp.DefaultIfEmpty()
+                        orderby z.SortOrder
+                        select new Models.ProductRoleMenuModel()
+                        {
+                            Id = x.MenuId,
+                            MenuId = x.MenuId,
+                            PMenuId = x.PMenuId,
+                            Title = x.Title,
+                            LimitSelects = z.Limitids,
+                            ParentId = z.HasSelected ? 1 : 0
+                        };
+                ms = q.ToList();
+            }
+            else
+            {
+                ms = queryMenu.OrderBy(o=>o.SortOrder).Select(x => new Models.ProductRoleMenuModel()
+                {
+                    Id = x.MenuId,
+                    MenuId = x.MenuId,
+                    PMenuId = x.PMenuId,
+                    Title = x.Title
+                }).ToList();
+            }
+            var limits = LimitRepository.GetQuery(o => o.Status).OrderBy(o=>o.SortOrder).ToList();
+            ms.Each(o =>
+            {
+                o.Limitids = string.Join(",", limits.Where(i => i.PLimitId == o.MenuId).Select(i => i.Title + ":" + i.LimitId));
+                o.MenuIdSelects = string.Join(",", ms.Where(i => i.ParentId == 1).Select(i => i.MenuId));
+            });
+            ms.Each(o =>
+            {
+                o.ParentId = 0;
+            });
+            var list = new List<Models.ProductRoleMenuModel>();
+            foreach (var menu in ms.Where(o => o.PMenuId <= 0))
+            {
+                SetChilds(menu, ms);
+                menu.Index = list.Count;
+                list.Add(menu);
+            }
+            return list;
+        }
+        public void MoveMenuItem(short mode, int menuId, int roleId)
+        {
+            var role = RoleRepository.GetQuery(o => o.RoleId == roleId).Include(o => o.SysRoleDatas).FirstOrDefault();
+            var obj=role.SysRoleDatas.FirstOrDefault(o=>o.MenuId==menuId);
+            var list = role.SysRoleDatas.Where(o => o.PMenuId == obj.PMenuId).OrderBy(o => o.SortOrder).ToList();
+            switch (mode)
+            {
+                case 2://下移
+                    var obj1 = list.LastOrDefault();
+                    if (obj.Id != obj1.Id)
+                    {
+                        Entity.SysRoleData next = null;
+                        for (var i = 0; i < list.Count; i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                next = list[i + 1]; break;
+                            }
+                        }
+                        if (next != null)
+                        {
+                            var sort = obj.SortOrder;
+                            obj.SortOrder = next.SortOrder;
+                            next.SortOrder = sort;
+                            RoleRepository.SaveChanges();
+                        }
+                    }
+                    break;
+                default://上移
+                    var obj2 = list.FirstOrDefault();
+                    if (obj.Id != obj2.Id)
+                    {
+                        Entity.SysRoleData prev = null;
+                        for (var i = 0; i < list.Count; i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                prev = list[i - 1]; break;
+                            }
+                        }
+                        if (prev != null)
+                        {
+                            var sort = obj.SortOrder;
+                            obj.SortOrder = prev.SortOrder;
+                            prev.SortOrder = sort;
+                            RoleRepository.SaveChanges();
+                        }
+                    }
+                    break;
+            }
+        }
+        public void MoveMenuItems(short mode, int menuId, string roleId)
+        {
+            var ids= roleId.Split(',').Select(o => int.Parse(o)).ToArray();
+            var roleDatas = RoleDataRepository.GetQuery(o => ids.Contains(o.RoleId)).ToList();
+            var obj = roleDatas.FirstOrDefault(o => o.RoleId == ids[0] && o.MenuId == menuId);
+            var list = roleDatas.Where(o => o.RoleId == ids[0] && o.PMenuId == obj.PMenuId).OrderBy(o=>o.SortOrder).ToList();
+            switch (mode)
+            {
+                case 2://下移
+                    var obj1 = list.LastOrDefault();
+                    if (obj.Id != obj1.Id)
+                    {
+                        Entity.SysRoleData next = null;
+                        for (var i = 0; i < list.Count; i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                next = list[i + 1]; break;
+                            }
+                        }
+                        if (next != null)
+                        {
+                            var sort = obj.SortOrder;
+                            roleDatas.Where(o => o.MenuId == obj.MenuId).Each(o => o.SortOrder = next.SortOrder);
+                            roleDatas.Where(o => o.MenuId == next.MenuId).Each(o => o.SortOrder = sort);
+                            RoleRepository.SaveChanges();
+                        }
+                    }
+                    break;
+                default://上移
+                    var obj2 = list.FirstOrDefault();
+                    if (obj.Id != obj2.Id)
+                    {
+                        Entity.SysRoleData prev = null;
+                        for (var i = 0; i < list.Count; i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                prev = list[i - 1]; break;
+                            }
+                        }
+                        if (prev != null)
+                        {
+                            var sort = obj.SortOrder;
+                            roleDatas.Where(o => o.MenuId == obj.MenuId).Each(o => o.SortOrder = prev.SortOrder);
+                            roleDatas.Where(o => o.MenuId == prev.MenuId).Each(o => o.SortOrder = sort);
+                            RoleRepository.SaveChanges();
+                        }
+                    }
+                    break;
+            }
+            
+        }
+        public OpResult Deletes(int[] ids)
+        {
+            var list = RoleRepository.GetQuery(o => ids.Contains(o.Id)).Include(o=>o.SysRoleDatas).ToList();
+            RoleDataRepository.RemoveRange(list.SelectMany(o => o.SysRoleDatas).ToList(), false);
+            RoleRepository.RemoveRange(list);
+            return OpResult.Success();
+        }
+        public SysRoles Get(int id)
+        {
+            return RoleRepository.GetQuery(o => o.Id == id).Include(o => o.SysRoleDatas).FirstOrDefault();
+        }
+        public List<SysRoles> GetListByRoleId(params int[] roleIds)
+        {
+            var q = RoleRepository.GetQuery();
+            if (roleIds != null && roleIds.Any())
+                q = q.Where(o => roleIds.Contains(o.RoleId));
+            return q.ToList();
+        }
+        public List<SysRoles> GetRolesByDept(int deptId,bool all=true)
+        {
+            if(!all)
+                return RoleRepository.GetQuery(o => o.Status && (("," + o.DeptId + ",").Contains("," + deptId + ",") || o.DeptId==null || o.DeptId=="")).ToList();
+            else
+                return RoleRepository.GetQuery(o => ("," + o.DeptId + ",").Contains("," + deptId + ",") || o.DeptId == null || o.DeptId == "").ToList();
+        }
+        public void SetState(short state, string id)
+        {
+            var ids = id.Split(',').Select(o => int.Parse(o)).ToList();
+            var list= RoleRepository.GetQuery(o => ids.Contains(o.Id)).ToList();
+            list.Each(o => {
+                o.Status = Convert.ToBoolean(state);
+            });
+            RoleRepository.SaveChanges();
+        }
+        public OpResult SaveDept(string roleIds, string inserted, string deleted)
+        {
+            if (roleIds.IsNullOrEmpty()) return OpResult.Fail("请选择角色!");
+            
+            var insertList = new List<int>();
+            var deleteList = new List<int>();
+            if (!inserted.IsNullOrEmpty())
+            {
+                insertList.AddRange(inserted.ToObject<List<SysDepartments>>().Where(o => o.DeptId > 0).Select(o=>o.DeptId));
+            }
+            if (!deleted.IsNullOrEmpty())
+            {
+                deleteList.AddRange(deleted.ToObject<List<SysDepartments>>().Where(o => o.DeptId > 0).Select(o => o.DeptId));
+            }
+            if (!insertList.Any() && !deleteList.Any())
+                return OpResult.Fail("没有修改记录！");
+
+            var roleId= roleIds.Split(',').Select(o => int.Parse(o)).ToArray();
+            var roles = GetListByRoleId(roleId);
+            foreach(var obj in roles)
+            {
+                var source = new List<int>();
+                if (!obj.DeptId.IsNullOrEmpty())
+                {
+                    source = obj.DeptId.Split(',').Select(o => int.Parse(o)).ToList();
+                }
+                source.AddRange(insertList);
+                source.RemoveAll(o => deleteList.Contains(o));
+                obj.DeptId = string.Join(",", source.Distinct());
+            }
+            RoleRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        void SetChilds(Models.ProductRoleMenuModel menu, List<Models.ProductRoleMenuModel> alls)
+        {
+            menu.Childrens = alls.Where(o => o.PMenuId == menu.MenuId).ToList();
+            int i = 0;
+            foreach (var child in menu.Childrens)
+            {
+                child.Index = i++;
+                child.ParentId = menu.Id;
+                SetChilds(child, alls);
+            }
+        }
+    }
+}

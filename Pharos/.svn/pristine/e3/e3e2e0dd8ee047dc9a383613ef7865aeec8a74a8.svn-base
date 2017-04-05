@@ -1,0 +1,62 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.BLL
+{
+    public class DeviceRegInfoService : BaseService<DeviceRegInfo>
+    {
+        public static object FindPageList(out int recordCount)
+        {
+            var query = (from d in CurrentRepository.QueryEntity
+                         join w in WarehouseService.CurrentRepository.QueryEntity on d.StoreId equals w.StoreId into storeTemp
+                         from wt in storeTemp.DefaultIfEmpty()
+                         join u in UserInfoService.CurrentRepository.QueryEntity on d.AuditorUID equals u.UID into userTemp
+                         from ut in userTemp.DefaultIfEmpty()
+                         select new
+                         {
+                             d.Id,
+                             d.Type,
+                             d.DeviceSN,
+                             d.MachineSN,
+                             Store = wt == null ? "" : wt.Title,
+                             d.CreateDT,
+                             d.State,
+                             Auditor = ut == null ? "" : ut.FullName,
+                             d.Memo
+                         }).ToList();
+            recordCount = query.Count;
+            return query.OrderBy(a => a.CreateDT);
+        }
+
+        public static OpResult SetDevState(string ids, short state)
+        {
+            var sid = ids.Split(',').Select(o => int.Parse(o));
+            var list = FindList(o => sid.Contains(o.Id));
+            list.ForEach(o =>
+            {
+                o.State = state;
+                o.AuditorUID = Sys.CurrentUser.UID;
+            });
+            return Update(list);
+        }
+
+        /// <summary>
+        /// 修改备注
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        public static OpResult SetMemo(int id, string memo)
+        {
+            var list = CurrentRepository.Find(o => o.Id == id);
+            list.Memo = memo;
+            return Update(list);
+        }
+
+
+    }
+}

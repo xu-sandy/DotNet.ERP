@@ -1,0 +1,34 @@
+GO
+/****** Object:  UserDefinedFunction [dbo].[F_GetIsRelationship]    Script Date: 01/12/2016 16:01:56 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		陈雅宾
+-- Create date: 2016-01-12
+-- Description:	根据条码查询该产品是否存在业务关系
+-- =============================================
+CREATE FUNCTION [dbo].[F_GetIsRelationship]
+(
+	@barcode VARCHAR(30)
+)
+RETURNS INT
+AS
+BEGIN	
+	DECLARE @count INT=0;
+	SELECT @count= COUNT(*) FROM dbo.IndentOrderList a,dbo.IndentOrder b WHERE a.IndentOrderId=b.IndentOrderId AND a.State>0 and a.Barcode=@barcode
+	IF(@count=0)
+	BEGIN
+		SELECT @count= COUNT(*) FROM InboundList a,dbo.InboundGoods b WHERE a.InboundGoodsId=b.InboundGoodsId AND a.State=1 AND a.Barcode=@barcode
+	end	
+	IF(@count=0)
+	BEGIN
+		SELECT @count=COUNT(*) FROM dbo.OutboundList a,dbo.OutboundGoods b WHERE a.OutboundId=b.OutboundId AND b.State=1 AND a.Barcode=@barcode
+	END
+	IF(@count=0)
+	BEGIN
+		SELECT @count=COUNT(*) FROM dbo.HouseMoveList a,dbo.HouseMove b WHERE a.MoveId=b.MoveId AND a.State>1 AND a.Barcode=@barcode
+	END
+	RETURN @count;
+END

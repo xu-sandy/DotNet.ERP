@@ -1,0 +1,97 @@
+﻿using Pharos.AutoUpdateTools;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Reflection;
+using System.Xml.Serialization;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class DevicesSettingsConfiguration : BaseViewModel, ISettingsItem
+    {
+        string headerXamlPath = "Templates/DefaultTabControlHeaderTemplate.xaml";
+        [XmlIgnore]
+        public string HeaderXamlPath
+        {
+            get
+            {
+                return headerXamlPath;
+            }
+            set
+            {
+                headerXamlPath = value;
+                this.OnPropertyChanged(o => o.HeaderXamlPath);
+            }
+        }
+
+        string xamlPath = "Templates/DevicesSettingsConfigurationTemplate.xaml";
+        [XmlIgnore]
+        public string XamlPath
+        {
+            get
+            {
+                return xamlPath;
+            }
+            set
+            {
+                xamlPath = value;
+                this.OnPropertyChanged(o => o.XamlPath);
+            }
+        }
+
+        string header = "外部设备";
+        [XmlIgnore]
+        public string Header
+        {
+            get
+            {
+                return header;
+            }
+            set
+            {
+                header = value;
+                this.OnPropertyChanged(o => o.Header);
+            }
+        }
+
+
+        string _ScanDeviceId;
+        public string ScanDeviceId
+        {
+            get
+            {
+                return _ScanDeviceId;
+            }
+            set
+            {
+                _ScanDeviceId = value;
+                this.OnPropertyChanged(o => o.ScanDeviceId);
+            }
+        }
+      
+        [XmlIgnore]
+        public GeneralCommand<object> SaveCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    try
+                    {
+                        Global.MachineSettings.Save();
+                        Toast.ShowMessage("保存成功！", CurrentWindow);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw ex;
+                    }
+                });
+            }
+        }
+
+
+        internal void Reload(DevicesSettingsConfiguration devicesSettingsConfiguration)
+        {
+            ScanDeviceId = devicesSettingsConfiguration.ScanDeviceId;
+        }
+    }
+}

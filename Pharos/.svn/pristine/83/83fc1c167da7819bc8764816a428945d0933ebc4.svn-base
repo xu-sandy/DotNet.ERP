@@ -1,0 +1,82 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.返利管理_新增采购返利方案);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.返利管理_查看采购返利方案) && hideAdd;
+    var hideDelete = !CurrentUser.HasPermiss(SysConstLimits.返利管理_删除采购返利方案);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增方案", delText: "删除方案", editText: "修改方案",hideAdd:hideAdd,hideDel:hideDelete));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>返利模式：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("mode", ViewBag.Modes as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,width:220" })
+            </td>
+            <td class="label-toolbar">
+                <label>供应商：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("Supplier", ViewBag.Suppliers as List<SelectListItem>, new { @class = "datacontrol easyui-combobox" })
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input type="text" class="easyui-textbox" name="searchText" data-options="prompt:'方案名称'" style="width:250px;" />
+            </td>
+        </tr>
+    </table>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("SolutionList")";
+    pharos.manager.editurl = "@Url.Action("SaveSolution")";
+    pharos.manager.delurl = "@Url.Action("DeleteSolution")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Title', title: '方案名称', width: 150 },
+        { field: 'Mode', title: '返利模式', width: 190 },
+        { field: 'Suppliers', title: '参与返利供应商', width: 250 },
+        { field: 'Detail', title: '设定商品范围', width: 230 },
+        { field: 'CreateDT', title: '创建时间', width: 150 },
+        { field: 'FullName', title: '创建者', width: 80 },
+        {
+            title: '操作', field: 'Editor', width: 80, formatter: function (value, row, index) {
+                var html = "";
+                @if(!hideAdd)
+                {
+                    @:html = "<a href='javascript:void(0)' onclick='setProduct(\"" + row.Id + "\")'>设定商品</a>";
+                }
+                return html;
+            }
+        }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog(this.addText, this.editurlNocache(), 800, 500);
+        //openDialog800(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        @if(showDetail)
+        { 
+            @:openDialog(this.editText, this.editurlNocache(), 800, 500,true);
+        }
+        else if(!hideAdd)
+        {
+            @:openDialog(this.editText, this.editurlNocache(), 800, 500);
+        }
+    }
+    function editBefore(rowData, field, index, value) {
+        if (field == "Editor") {
+            return false;
+        }
+        return true;
+    }
+    function setProduct(id) {
+        openDialogMax("设定商品", "@Url.Action("SetProduct")?id=" + id);
+    }
+</script>

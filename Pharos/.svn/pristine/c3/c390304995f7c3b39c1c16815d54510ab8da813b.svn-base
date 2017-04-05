@@ -1,0 +1,43 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.DataSync;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// DataSync.xaml 的交互逻辑
+    /// </summary>
+    public partial class DataSync : Window
+    {
+        public DataSync()
+        {
+            ManualSynchronization.Current.EnableManual = UserModel.Current.VerifyCurrentOperateAuth(UserAuth.DataManager);
+            InitializeComponent();
+            this.InitPublicSettings();
+            AutoDataSync.DataContext = DataSyncConfigManage.Current;
+            manualDataSync1.DataContext = ManualSynchronization.Current;
+            manualDataSync2.DataContext = ManualSynchronization.Current;
+            if (!ManualSynchronization.Current.EnableManual)
+            {
+                contentPanel.IsEnabled = false;
+            }
+        }
+        public DataSync(bool enableManual)
+        {
+            ManualSynchronization.Current.EnableManual = enableManual;
+            InitializeComponent();
+            AutoDataSync.DataContext = DataSyncConfigManage.Current;
+            manualDataSync1.DataContext = ManualSynchronization.Current;
+            manualDataSync2.DataContext = ManualSynchronization.Current;
+            if (!UserModel.Current.VerifyCurrentOperateAuth(UserAuth.DataManager))
+            {
+                contentPanel.IsEnabled = false;
+            }
+        }
+
+        private void CheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+
+        }
+    }
+}

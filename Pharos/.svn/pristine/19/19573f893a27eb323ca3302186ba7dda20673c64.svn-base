@@ -1,0 +1,47 @@
+﻿using Pharos.Logic.MemberDomain.QuanChengTaoProviders.Extensions;
+using System.Collections.Generic;
+using System.Linq;
+using Pharos.Logic.MemberDomain.Interfaces;
+using Pharos.Logic.MemberDomain.Extensions;
+using System;
+using System.Reflection;
+
+namespace Pharos.Logic.MemberDomain.QuanChengTaoProviders
+{
+    public class QuanChengTaoIntegralRuleContext
+    {
+        public static IDictionary<int, string> GetRuleProvidersIdAndTitle()
+        {
+            return EnumExtensions.GetIntegralProviderTypeTitleAndValue();
+        }
+        public static IDictionary<int, string> GetMeteringModesTitleAndValue(int integralProviderType)
+        {
+            return EnumExtensions.GetMeteringModeDescriptionAttributeTitleAndValue((IntegralProviderType)integralProviderType);
+        }
+        public static void SubscribeIntegralEvents()
+        {
+            var eventHandlerAssemblies = new List<Assembly>();
+            List<IEventHandler> eventHandlers = new List<IEventHandler>();
+            if (!eventHandlerAssemblies.Any())
+            {
+                eventHandlerAssemblies.Add(typeof(QuanChengTaoIntegralRuleContext).Assembly);
+            }
+            foreach (var assembly in eventHandlerAssemblies)
+            {
+                try
+                {
+                    eventHandlers.AddRange(assembly.GetImplementedObjectsByInterface<IEventHandler>());
+                }
+                catch (Exception exc)
+                {
+                    //throw new IntegralRuleProviderLoadException(string.Format("加载积分规则提供程序集失败，程序集： {0}!", assembly.FullName), exc);
+                }
+            }
+            foreach (var item in eventHandlers) //事后要是改成 sub/pub 模式这里做订阅即可
+            {
+                item.Handler();
+            }
+        }
+
+    }
+}

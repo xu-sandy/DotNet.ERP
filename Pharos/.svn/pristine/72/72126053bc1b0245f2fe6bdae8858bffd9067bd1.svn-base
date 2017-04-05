@@ -1,0 +1,35 @@
+﻿using System;
+using System.Windows.Data;
+
+namespace Pharos.POS.Retailing
+{
+    public class DecimalStringFormatConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            try
+            {
+                var _value = System.Convert.ToDecimal(value);
+                return _value.ToString("N");
+            }
+            catch
+            {
+                return value;
+            }
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            try
+            {
+                System.Convert.ToDecimal(value);
+            }
+            catch
+            {
+                return 0;
+
+            }
+            return value;
+        }
+    }
+}

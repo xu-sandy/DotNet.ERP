@@ -1,0 +1,227 @@
+﻿@{
+    Layout = "~/Views/Shared/_TreeTwoManagerLayout.cshtml";
+    var verId = Request["verId"] ?? Guid.NewGuid().ToString("n");
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增主菜单", delText: "删除产品", editText: "修改主菜单", hideDel: true, hideSearch: true, hideAdd: true, hideEdit: true));
+}
+@section toolbar
+{
+    <div class="role">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("RoleVerId", Request["verId"])
+        <table class="table-form">
+            <tr>
+                <td class="name">所属系统：</td>
+                <td class="input">@Html.DropDownList("ProductId", ViewBag.products as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo',width:200,editable:false" + (Request["isadd"].IsNullOrEmpty() ? ",readonly:true" : "") })</td>
+                <td style="padding-left:10px">版本：</td>
+                <td class="input">@Html.DisplayText("status")</td>
+                <td style="padding-left:10px">状态版本：</td>
+                <td class="input">@Html.DisplayText("state")</td>
+                <td width="10px"></td>
+                @if (Request["detail"] == null)
+                {
+                <td>@Html.TextBox("Title", "", new { @class = "easyui-textbox", data_options = "validType:'length[1,50]',novalidate:true,required:true,width:120,prompt:'输入角色名称'" })</td>
+                <td>
+                    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="$('.role form').submit()">添加</a>
+                </td>
+                }
+            </tr>
+        </table>
+    }
+</div>
+<div class="default-form">
+    <form action="@Url.Action("SaveLimits")" method="post">
+        @Html.Hidden("RoleId")
+        @Html.Hidden("VerId")
+        @Html.Hidden("MenuIds")
+        @Html.Hidden("LimitIds")
+    </form>
+</div>
+}
+
+<script type="text/javascript">
+    pharos.managertree.geturl = "";
+    pharos.managertree.editurl = "@Url.Action("SaveMenu")";
+    pharos.managertree.sortName = "Id";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "Title";
+    pharos.managertree.pagination = false;
+    pharos.managertree.checkOnSelect = true;
+    pharos.managertree.columns = [[
+        { field: 'Id', checkbox: true, hidden: true },
+        { field: 'MenuId', title: '编号', width: 60 },
+        {
+            field: 'Title', title: '菜单名称', width: 200, formatter: function (value, row) {
+                var html = String.format("<input type=\"checkbox\" name=\"menus\" id=\"menu_{0}\"  menuid='{0}' pmenuid='{2}' style='vertical-align:middle;' onclick='checkMenu(this)'/><label style='vertical-align:middle;' for=\"menu_{0}\">{1}</label>", [row.MenuId, row.Title, row.PMenuId]);
+                return html;
+            }
+        },
+        {
+            field: 'Editor', title: '菜单顺序', width: 120, formatter: function (value, row, index) {
+                var operat = "";
+                if (row.Index == 0)
+                    operat += "<a style='color:#555'>[上移]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveMenuItem(1,\"" + row.MenuId + "\")'>[上移]</a>&nbsp;&nbsp;";
+                var childcount = 0;
+                if (row.ParentId > 0) {
+                    var po = pharos.managertree.$dg.treegrid("find", row.ParentId);
+                    childcount = po.children.length - 1;
+                } else {
+                    childcount = pharos.managertree.$dg.treegrid("getData").length - 1;
+                }
+                if (row.Index == childcount)
+                    operat += "<a style='color:#555'>[下移]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveMenuItem(2,\"" + row.MenuId + "\")'>[下移]</a>&nbsp;&nbsp;";
+                return operat;
+            }
+        },
+        {
+            field: 'Limitids', title: '子功能权限', width: 250, formatter: function (value, row) {
+                var operat = "";
+                if (value) {
+                    var html = "<input type=\"checkbox\" name=\"limits\" id=\"limit_{0}\" style='vertical-align:middle;'  menuid='{0}' pmenuid='{2}' /><label style='vertical-align:middle;padding-left:3px;' for=\"limit_{0}\">{1}</label>";
+                    var count = 0;
+                    $.each(value.split(','), function (i, r) {
+                        count++;
+                        var ts= r.split(':');
+                        operat += "<span style=\"display:inline-block;width:150px;\">" + String.format(html, [ts[1], ts[0], row.MenuId]) + "</span>";
+                        if (count == 2) {
+                            operat += "<br>";
+                            count = 0;
+                        }
+                    })
+                }
+                return operat;
+            }
+        },
+    ]];
+    var datas = [], limitSelects = "";
+    pharos.managertree.loadSuccess = function (row, data) {
+        datas = data;
+        limitSelects = "";
+        if (data && data.length > 0) {
+            var rd = data[0];
+            var lids = [];
+            if (rd.LimitSelects) {
+                $.each(rd.LimitSelects.split(','), function (i, r) {
+                    $(":checkbox[menuid=" + r + "]").attr("checked", true);
+                    lids.add(r);
+                });
+            }
+            if (rd.MenuIdSelects) {
+                $.each(rd.MenuIdSelects.split(','), function (i, r) {
+                    $(":checkbox[menuid=" + r + "]").attr("checked", true);
+                    lids.add(r);
+                });
+            }
+            limitSelects = lids.join();
+        }
+    }
+    function treeBeforeSelect(node) {
+        var productId= $("#ProductId").combobox("getValue");
+        if (!productId || !node.id) return false;
+        $("#RoleId").val(node.id);
+        $("#VerId").val($("#RoleVerId").val());
+        pharos.managertree.geturl = "@Url.Action("FindMenuList")?productId=" + productId + "&roleId=" + node.id + "&verId=" + $("#RoleVerId").val();
+        return checkClose();
+    }
+    function treeSuccess(node, data) {
+        var n = $("#tree").tree("find", roleId);
+        if(n)
+            $("#tree").tree("select", n.target);
+    }
+    var roleId = "";
+    $('.role form').form({
+        //url: saveUrl,
+        ajax: true,
+        onSubmit: function () {
+            $("#Title").textbox("enableValidation");
+            return $(this).form('validate');
+        },
+        success: function (data) {
+            var json = $.parseJSON(data);
+            if (json.successed) {
+                $("#tree").tree({ url: '@Url.Action("FindTreeList")?verId=' + json.data.verId }).tree("reload");
+                roleId=json.data.roleId;
+                $("#RoleVerId").val(json.data.verId);
+                var productId= $("#ProductId").combobox("getValue");
+                $("#ProductId").combobox({ readonly: true }).combobox("select", productId);
+            } else {
+                $.messager.alert('错误', '添加失败！' + json.message, "error", function () {});
+            }
+        }
+    });
+    $('.default-form form').form({
+        //url: saveUrl,
+        ajax: true,
+        onSubmit: function () {
+            var menuids= $.map($("input[name='menus']:checked"), function (r, i) {
+                return $(r).attr("menuid");
+            });
+            $("#MenuIds").val(menuids.join());
+            var limitids = $.map($("input[name='limits']:checked"), function (r, i) {
+                return $(r).attr("menuid");
+            });
+            $("#LimitIds").val(limitids.join());
+            if (!$("#RoleId").val()) {
+                $.messager.alert("提示", "请选择角色", "info");
+                return false;
+            }
+            if (datas.length <= 0) {
+                $.messager.alert("提示", "请先发布初始功能", "info");
+                return false;
+            }
+            limitids.addRange(menuids);
+            limitSelects = limitids.join();
+            return true;
+        },
+        success: function (data) {
+            var json = $.parseJSON(data);
+            if (json.successed) {
+                $.messager.alert("提示", "保存成功","info");
+            } else {
+                $.messager.alert('错误', '保存失败！' + json.message, "error", function () { });
+            }
+        }
+    });
+    function checkMenu(obj) {
+        //debugger;
+        var menuid = $(obj).attr("menuid");
+        var cbs = $(":checkbox[pmenuid=" + menuid + "]")
+        //cbs.attr("checked", obj.checked);
+        cbs.each(function (i, r) {
+            r.checked = obj.checked;
+            menuid = $(r).attr("menuid");
+            $(":checkbox[pmenuid=" + menuid + "]").each(function (j, k) {
+                k.checked = obj.checked;
+            })
+        });
+    }
+    function moveMenuItem(mode, menuId) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, menuId: menuId, roleId: $("#RoleId").val(), verId: $("#VerId").val(), t: Math.random() },
+            url: "@Url.Action("MoveMenuItem")",
+            success: function (data) {
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "菜单移动失败！", "info");
+            }
+        });
+    }
+    function checkClose() {
+        var limitids = $.map($("input[name='limits']:checked"), function (r, i) {
+            return $(r).attr("menuid");
+        });
+        var menuids = $.map($("input[name='menus']:checked"), function (r, i) {
+            return $(r).attr("menuid");
+        });
+        limitids.addRange(menuids);
+        if (limitids.join() == limitSelects) {
+            return true;
+        }
+        return confirm("未保存操作，是否继续?");
+    }
+</script>

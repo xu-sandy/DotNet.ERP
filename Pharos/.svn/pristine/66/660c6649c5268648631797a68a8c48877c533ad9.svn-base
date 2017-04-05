@@ -1,0 +1,67 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// 支付接口Service接口类
+    /// </summary>
+    interface IPayTradeService
+    {
+        /// <summary>
+        /// 根据商户CID获得该商户的可以通道
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <returns></returns>
+        object GetChannels(int cid);
+
+        /// <summary>
+        /// 创建主扫动态商户支付订单
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <returns></returns>
+        TradeOrder CreateBuyerScanDynaOrder(PayBuyerScanDynaRequest reqParams, out string secretKey, out string secretKey3);
+        /// <summary>
+        /// 创建被扫商户支付订单
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <param name="secretKey"></param>
+        /// <param name="secretKey3"></param>
+        /// <returns></returns>
+        TradeOrder CreateBuyerScanDynaOrder(PayMerchScanRequest reqParams, out string secretKey, out string secretKey3);
+        /// <summary>
+        /// 创建商户退款订单
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <param name="secretKey"></param>
+        /// <param name="secretKey3"></param>
+        /// <returns></returns>
+        TradeOrder CreateRefundApplyOrder(RefundApplyRequest reqParams, out string secretKey, out string secretKey3);
+
+        /// <summary>
+        /// 保存支付结果通知
+        /// </summary>
+        /// <param name="tradeResult"></param>
+        /// <returns></returns>
+        bool SaveMchTradeResult(TradeResult tradeResult,out TradeOrder tradeOrder);
+
+        /// <summary>
+        /// 根据第三方商户号，商户订单号获得唯一订单
+        /// </summary>
+        /// <param name="mchId"></param>
+        /// <param name="outTradeNo"></param>
+        /// <returns></returns>
+        TradeOrder GetTradeOrder(string mchId3, string outTradeNo);
+
+        /// <summary>
+        /// 获取最大支付交易流水号
+        /// </summary>
+        /// <param name="prefix"></param>
+        /// <returns></returns>
+        string GetMaxTradeNo(string prefix);
+    }
+}

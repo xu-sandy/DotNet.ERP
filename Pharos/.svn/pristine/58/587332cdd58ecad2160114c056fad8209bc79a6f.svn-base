@@ -1,0 +1,91 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "创建系统", delText: "系统删除", editText: "修改系统"));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "未生效", Value = "0", Selected = true }, new SelectListItem() { Text = "已生效", Value = "1", Selected = true }, new SelectListItem() { Text = "已失效", Value = "2" } }, "state")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(1)">设为已生效</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(2)">设为已失效</a>
+    
+}
+<script type="text/javascript">
+    $(function () {
+        //$("#copy").insertBefore($("#copy").prev());
+    });
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+    pharos.manager.singleSelect = true;
+    pharos.manager.pagination = false;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StatusTitle', title: '状态', width: 70 },
+        { field: 'ProductId', title: '系统编号', width: 80 },
+        { field: 'SysName', title: '管理系统名称', width: 130 },
+        { field: 'HasUse', title: '是否应用', width: 70 },
+        { field: 'Memo', title: '描述', width: 150 },
+        { field: 'CreateDT', title: '创建时间', width: 130 },
+        { field: 'Creater', title: '创建人', width: 100 },
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog600(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (id) {
+        this.Id = id;
+        openDialog600(this.editText, this.editurlNocache());
+    }
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var pass = true;
+        var ids = [];
+        $.each(rows, function (i,item) {
+            if (state == 1 && item.Status == 1) {
+                $.messager.alert("提示", "该记录已生效！", "error");
+                rows = null;
+                return false;
+            }
+            if (state == 2 && item.HasUse == "√") {
+                $.messager.alert("提示", "该系统已被应用！", "error");
+                rows = null;
+                return false;
+            }
+            ids.add(item.Id);
+        })
+        if (!rows) return;
+
+        $.post("@Url.Action("setState")", { id: ids.join(), t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    function removeBefore(row) {
+        if (row.Status > 0) {
+            $.messager.alert("提示", "该状态不允许删除！", "error");
+            return false;
+        }
+        if (row.HasUse == "√") {
+            $.messager.alert("提示", "该系统已被应用，无法删除！", "error");
+            return false;
+        }
+        return true;
+    }
+</script>

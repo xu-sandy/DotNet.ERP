@@ -1,0 +1,60 @@
+﻿@model ImportSet
+@{
+    ViewBag.Title = "Import";
+    Layout = "~/Views/Shared/_ImportLayout.cshtml";
+    var cols = Form.GetExcelCol();
+    var datas = Model.FieldCols;
+}
+<div class="default-form" style="width:400px">
+    @using (Html.BeginForm("ImportCard", "Members", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div style="display:none"><input type="checkbox" name="RefCreate" value="true"></div>
+        <table style="margin:5px;">
+            <tr>
+                <th>导入文件：</th>
+                <td><input type="text" class="easyui-filebox" name="file1" data-options="buttonText:'选择文件',prompt:'请选择Excel文件...',required:true,missingMessage:'请选择导入文件'" style="width:300px;" /></td>
+            </tr>
+        </table>
+        <fieldset>
+            <legend>导入基本配置</legend>
+            <table style="margin:5px 20px 0px 5px;height:150px;width:100%">
+                <tr>
+                    <th>@Html.Hidden("FieldName", "CardSN")卡号：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", id = "CardSN", data_options = "validType:'requiredForCombo',editable:false" + (datas == null ? "" : ",value:'" + datas.GetValue("CardSN") + "'") })</td>
+                    <th>@Html.Hidden("FieldName", "Balance")余额：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", id = "Balance", data_options = "validType:'requiredForCombo',editable:false" + (datas == null ? "" : ",value:'" + datas.GetValue("Balance") + "'") })</td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "MemberId")姓名：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false" + (datas == null ? "" : ",value:'" + datas.GetValue("MemberId") + "'") })</td>
+                    <th>@Html.Hidden("FieldName", "MobilePhone")手机号：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false" + (datas == null ? "" : ",value:'" + datas.GetValue("MobilePhone") + "'") })</td>
+                </tr>
+                <tr>
+                    <th>卡类型：</th>
+                    <td>@Html.DropDownList("CardTypeId", ViewBag.CardType as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,validType:'requiredForCombo'" })</td>
+                    <th>新建会员：</th>
+                    <td><input type="checkbox" checked="checked" disabled="disabled" /></td>
+                </tr>
+                <tr>
+                    <th>@Html.Hidden("FieldName", "ExpiryStart")起始有效期：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false" + (datas == null ? "" : ",value:'" + datas.GetValue("ExpiryStart") + "'") })</td>
+                    <th>@Html.Hidden("FieldName", "ExpiryEnd")截止有效期：</th>
+                    <td>@Html.DropDownList("ColumnName", cols, new { @class = "easyui-combobox", data_options = "editable:false" + (datas == null ? "" : ",value:'" + datas.GetValue("ExpiryEnd") + "'") })</td>
+                </tr>
+                <tr>
+                    <th>会员来源：</th>
+                    <td colspan="2">@Html.DropDownList("StoreId", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,validType:'requiredForCombo'" })</td>
+                </tr>
+                <tr>
+                    <th>起始行：</th>
+                    <td>@Html.TextBoxFor(o => o.MinRow, new { @class = "easyui-numberbox", style = "width:85px" })</td>
+                    <th>终止行：</th>
+                    <td>@Html.TextBoxFor(o => o.MaxRow, new { @class = "easyui-numberbox", style = "width:85px" })</td>
+                </tr>
+            </table>
+        </fieldset>
+        <input type="checkbox" id="u" name="updateBalance" /><label for="u">勾选后，对已存在的卡号采用更新余额操作</label>
+    }
+</div>

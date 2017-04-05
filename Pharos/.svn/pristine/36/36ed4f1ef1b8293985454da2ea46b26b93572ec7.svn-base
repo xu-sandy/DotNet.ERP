@@ -1,0 +1,628 @@
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Web;
+
+namespace Pharos.Logic.OMS.Models
+{
+    #region Qct PayBase
+    /// <summary>
+    /// Qct 商户支付交易公共请求参数
+    /// </summary>
+    [Serializable]
+    public class BaseTradeRequest
+    {
+        /// <summary>
+        /// 请求使用的编码格式，如utf-8,gbk,gb2312等 默认utf-8
+        /// </summary>
+        [JsonProperty("charset")]
+        public string Charset { get; set; }
+        /// <summary>
+        /// 接口名称
+        /// </summary>
+        [JsonProperty("method")]
+        public string Method { get; set; }
+        /// <summary>
+        /// 商户编号，无卡支付平台给接入方分配的唯一标识
+        /// </summary>
+        [JsonProperty("mch_id")]
+        public int CID { get; set; }
+        /// <summary>
+        /// 门店编号
+        /// </summary>
+        [JsonProperty("store_id")]
+        public int SID { get; set; }
+        /// <summary>
+        /// 终端编号
+        /// </summary>
+        [JsonProperty("device_id")]
+        public int DeviceId { get; set; }
+        /// <summary>
+        /// 签名方式，MD5
+        /// </summary>
+        [JsonProperty("sign_type")]
+        public string SignType { get; set; }
+        /// <summary>
+        /// 版本号
+        /// </summary>
+        [JsonProperty("version")]
+        public string Version { get; set; }
+        /// <summary>
+        /// 签名数据
+        /// </summary>
+        [JsonProperty("sign")]
+        public string Sign { get; set; }
+    }
+
+    /// <summary>
+    /// Qct 商户支付交易公共响应参数
+    /// </summary>
+    [Serializable]
+    public class BaseTradeResponse
+    {
+        /// <summary>
+        /// 返回码，00000表示成功，其他均为错误
+        /// </summary>
+        [JsonProperty("return_code")]
+        public string ReturnCode { get; set; }
+        /// <summary>
+        /// 返回信息，SUCCESS表示成功，其他均为错误信息
+        /// </summary>
+        [JsonProperty("return_msg")]
+        public string ReturnMsg { get; set; }
+        /// <summary>
+        /// 商户编号
+        /// </summary>
+        [JsonProperty("mch_id")]
+        public int CID { get; set; }
+        /// <summary>
+        /// 门店编号
+        /// </summary>
+        [JsonProperty("store_id")]
+        public int SID { get; set; }
+        /// <summary>
+        /// 终端编号
+        /// </summary>
+        [JsonProperty("device_id")]
+        public int DeviceId { get; set; }
+        /// <summary>
+        /// 签名方式
+        /// </summary>
+        [JsonProperty("sign_type")]
+        public string SignType { get; set; }
+        /// <summary>
+        /// 版本号
+        /// </summary>
+        [JsonProperty("version")]
+        public string Version { get; set; }
+        /// <summary>
+        /// 签名数据
+        /// </summary>
+        [JsonProperty("sign")]
+        public string Sign { get; set; }
+    }
+
+    /// <summary>
+    /// Qct 商户支付交易付款公共请求参数
+    /// </summary>
+    [Serializable]
+    public class PayTradeRequest : BaseTradeRequest
+    {
+        #region Methods
+        /// <summary>
+        /// 重置PayNotifyUrl
+        /// </summary>
+        public void ResetPayNotifyUrl(string url)
+        {
+            if (string.IsNullOrEmpty(this.PayNotifyUrl))
+            {
+                this.PayNotifyUrl = url;
+            }
+        }
+        #endregion
+
+        #region Properties
+        /// <summary>
+        /// 商户支付订单号，每笔支付订单的唯一标识，商户需保持该字段在系统内唯一
+        /// 建议生成规则：时 间 (yyyyMMddHHmmss)+4位序号
+        /// </summary>
+        [JsonProperty("out_trade_no")]
+        public string OutTradeNo { get; set; }
+        /// <summary>
+        /// 订单类型，1：普通订单 2：当面收款订单
+        /// </summary>
+        [JsonProperty("trade_type")]
+        public string TradeType3 { get; set; }
+        /// <summary>
+        /// 订单日期，格式： YYYYMMDD
+        /// </summary>
+        [JsonProperty("create_date")]
+        public DateTime CreateDate { get; set; }
+        /// <summary>
+        /// 交易金额，以分为单位
+        /// </summary>
+        [JsonProperty("total_amount")]
+        public decimal TotalAmount { get; set; }
+        /// <summary>
+        /// 支付结果通知地址，支付结果的后台通知地址，如果该值为空，则使用商户开户时默认设置的支付结果通知地址
+        /// </summary>
+        [JsonProperty("pay_notify_url")]
+        public string PayNotifyUrl { get; set; }
+        /// <summary>
+        /// 用户手机号，支付用户的手机号，订单类型为 2:当面收款订单，则该值必输
+        /// </summary>
+        [JsonProperty("buyer_mobile")]
+        public string BuyerMobile { get; set; }
+        /// <summary>
+        /// 商品名称，不输，则默认为“超时购物”
+        /// fishtodo：超市购物吧？
+        /// </summary>
+        [JsonProperty("goods_name")]
+        public string GoodsName { get; set; }
+        /// <summary>
+        /// 商品描述
+        /// </summary>
+        [JsonProperty("goods_desc")]
+        public string GoodsDesc { get; set; }
+        #endregion
+    }
+    /// <summary>
+    /// Qct 商户支付交易付款公共响应参数
+    /// </summary>
+    [Serializable]
+    public class PayTradeResponse : BaseTradeResponse
+    {
+        /// <summary>
+        /// 商户支付订单号，与请参数中数据一致，原样返回
+        /// </summary>
+        [JsonProperty("out_trade_no")]
+        public string OutTradeNo { get; set; }
+    }
+    #endregion
+
+    #region Qct PayBuyerScanDyna
+    /// <summary>
+    /// 主扫支付动态二维码生成请求Model
+    /// </summary>
+    [Serializable]
+    public class PayBuyerScanDynaRequest : PayTradeRequest
+    {
+
+    }
+
+    /// <summary>
+    /// 主扫支付动态支付二维码信息返回Model
+    /// </summary>
+    [Serializable]
+    public class PayBuyerScanDynaResponse : PayTradeResponse
+    {
+        /// <summary>
+        /// 动态二维码数据，一串支付的 url，请商家自行将该结果生成二维码
+        /// </summary>
+        [JsonProperty("pay_token")]
+        public string PayToken { get; set; }
+        /// <summary>
+        /// 动态二维码的 httpurl
+        /// </summary>
+        [JsonProperty("qrcode_url")]
+        public string QRCodeUrl { get; set; }
+
+    }
+    #endregion
+
+    #region Qct PayMerchScan
+    /// <summary>
+    /// 被扫支付请求参数
+    /// </summary>
+    [Serializable]
+    public class PayMerchScanRequest : PayTradeRequest
+    {
+        /// <summary>
+        /// 购买者的支付二维码字符串
+        /// </summary>
+        [JsonProperty("buyer_pay_token")]
+        public string BuyerPayToken { get; set; }
+    }
+    /// <summary>
+    /// 被扫支付响应参数
+    /// </summary>
+    [Serializable]
+    public class PayMerchScanResponse : PayTradeResponse
+    {
+        /// <summary>
+        /// 交易金额，以分为单位
+        /// </summary>
+        [JsonProperty("receipt_amount")]
+        public int ReceiptAmount { get; set; }
+        /// <summary>
+        /// 支付结果，1：支付成功 2：支付失败
+        /// </summary>
+        [JsonProperty("pay_result")]
+        public short PayResult { get; set; }
+        /// <summary>
+        /// 支付渠道，WX：微信支付，ALIPAY：支付宝支付
+        /// </summary>
+        [JsonProperty("pay_channel")]
+        public string PayChannel { get; set; }
+    }
+    #endregion
+
+    #region Qct RefundApply
+    /// <summary>
+    /// 退款申请请求
+    /// </summary>
+    [Serializable]
+    public class RefundApplyRequest : BaseTradeRequest
+    {
+        #region Methods
+        /// <summary>
+        /// 重置RfdNotifyUrl
+        /// </summary>
+        /// <param name="url"></param>
+        public void ResetRfdNotifyUrl(string url)
+        {
+            if (string.IsNullOrEmpty(this.RfdNotifyUrl))
+            {
+                this.RfdNotifyUrl = url;
+            }
+        }
+        #endregion
+
+        #region Properties
+        /// <summary>
+        /// 商户退款订单号，每笔退款订单的唯一标识，商户需保持该字段在系统内唯一
+        /// </summary>
+        [JsonProperty("out_refund_no")]
+        public string OutTradeNo { get; set; }
+        /// <summary>
+        /// 原商户支付订单号
+        /// </summary>
+        [JsonProperty("out_trade_no")]
+        public string OldOutTradeNo { get; set; }
+
+        /// <summary>
+        /// 退款金额，以元为单位
+        /// </summary>
+        [JsonProperty("refund_amount")]
+        public decimal RefundAmount { get; set; }
+        /// <summary>
+        /// 退款结果通知地址，如果该值为空，则使用商户开户时默认设置的退款结果通知地址
+        /// </summary>
+        [JsonProperty("refund_notify_url")]
+        public string RfdNotifyUrl { get; set; }
+        /// <summary>
+        /// 退款原由
+        /// </summary>
+        [JsonProperty("rfdReason")]
+        public string RefundReason { get; set; }
+        #endregion
+    }
+    /// <summary>
+    /// 退款申请返回
+    /// </summary>
+    [Serializable]
+    public class RefundApplyResponse : BaseTradeResponse
+    {
+        /// <summary>
+        /// 商户退款订单号，每笔退款订单的唯一标识，商户需保持该字段在系统内唯一
+        /// </summary>
+        [JsonProperty("out_refund_no")]
+        public string OutTradeNo { get; set; }
+        /// <summary>
+        /// 原商户支付订单号
+        /// </summary>
+        [JsonProperty("out_trade_no")]
+        public string OldOutTradeNo { get; set; }
+
+        /// <summary>
+        /// 退款金额，以元为单位
+        /// </summary>
+        [JsonProperty("refund_amount")]
+        public decimal RefundAmount { get; set; }
+        /// <summary>
+        /// 退款结果，商家如果收到此字段值为"0"，说明该退款订单还处于退款中，请等待退款结果后台通知，以确认是否退款成功
+        /// 0：退款中;1：退款成功;2：退款失败
+        /// </summary>
+        [JsonProperty("refund_result")]
+        public string RefundResult { get; set; }
+    }
+    #endregion
+
+    #region Qct Notify
+    /// <summary>
+    /// 支付结果后台通知请求参数Model
+    /// </summary>
+    [Serializable]
+    public class PayNotifyRequest : BaseTradeRequest
+    {
+        /// <summary>
+        /// 商户支付订单号
+        /// </summary>
+        [JsonProperty("out_trade_no")]
+        public string OutTradeNo { get; set; }
+        /// <summary>
+        /// 交易金额，以元为单位
+        /// </summary>
+        [JsonProperty("receipt_amount")]
+        public decimal ReceiptAmount { get; set; }
+        /// <summary>
+        /// 支付结果，1：支付成功 2：支付失败
+        /// </summary>
+        [JsonProperty("pay_result")]
+        public short PayResult { get; set; }
+        /// <summary>
+        /// 支付渠道，WX：微信支付，ALIPAY：支付宝支付
+        /// </summary>
+        [JsonProperty("pay_channel")]
+        public string PayChannel { get; set; }
+        /// <summary>
+        /// 支付日期，支付完成日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("trade_date")]
+        public string TradeDate { get; set; }
+        /// <summary>
+        /// 支付时间,支付完成时间，格式 HHmmss
+        /// </summary>
+        [JsonProperty("trade_time")]
+        public string TradeTime { get; set; }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    [Serializable]
+    public class RefundNotifyRequest : BaseTradeRequest
+    {
+        /// <summary>
+        /// 商户退款订单号
+        /// </summary>
+        [JsonProperty("out_refund_no")]
+        public string OutTradeNo { get; set; }
+        /// <summary>
+        /// 退款金额，以元为单位
+        /// </summary>
+        [JsonProperty("refund_amount")]
+        public decimal RefundAmount { get; set; }
+        /// <summary>
+        /// 支付结果，1：支付成功 2：支付失败
+        /// </summary>
+        [JsonProperty("refund_result")]
+        public short RefundResult { get; set; }
+        /// <summary>
+        /// 支付渠道，WX：微信支付，ALIPAY：支付宝支付
+        /// </summary>
+        [JsonProperty("pay_channel")]
+        public string PayChannel { get; set; }
+        /// <summary>
+        /// 退款日期，支付完成日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("refund_date")]
+        public string RefundDate { get; set; }
+        /// <summary>
+        /// 退款时间,支付完成时间，格式 HHmmss
+        /// </summary>
+        [JsonProperty("refund_time")]
+        public string RefundTime { get; set; }
+    }
+    #endregion
+
+    #region Qct Query
+    /// <summary>
+    /// 单笔支付订单查询请求参数
+    /// </summary>
+    [Serializable]
+    public class PayQueryRequest : BaseTradeRequest
+    {
+        /// <summary>
+        /// 商户支付订单号，与请参数中数据一致，原样返回
+        /// </summary>
+        [JsonProperty("out_trade_no")]
+        public string OutTradeNo { get; set; }
+    }
+    /// <summary>
+    /// 单笔支付订单查询响应参数
+    /// </summary>
+    [Serializable]
+    public class PayQueryResponse : BaseTradeResponse
+    {
+        /// <summary>
+        /// 商户支付订单号
+        /// </summary>
+        [JsonProperty("out_trade_no")]
+        public string OutTradeNo { get; set; }
+        /// <summary>
+        /// 订单类型
+        /// </summary>
+        [JsonProperty("order_type")]
+        public string OrderType { get; set; }
+        /// <summary>
+        /// 用户手机号
+        /// </summary>
+        [JsonProperty("buyer_mobile")]
+        public string BuyerMobile { get; set; }
+        /// <summary>
+        /// 交易金额
+        /// </summary>
+        [JsonProperty("total_amount")]
+        public decimal TotalAmount { get; set; }
+        /// <summary>
+        /// 支付订单状态，支付订单状态：U：未支付； S：支付成功；F：支付失败； C：已撤销；T：支付超时
+        /// </summary>
+        [JsonProperty("pay_status")]
+        public string PayStatus { get; set; }
+        /// <summary>
+        /// 支付渠道，WX：微信支付，ALIPAY：支付宝支付
+        /// </summary>
+        [JsonProperty("pay_channel")]
+        public string PayChannel { get; set; }
+        /// <summary>
+        /// 支付日期，支付完成日期，格式yyyy-MM-dd:HH mm ss
+        /// </summary>
+        [JsonProperty("pay_date")]
+        public string PayDate { get; set; }
+    }
+    /// <summary>
+    /// 支付订单分页查询请求参数
+    /// </summary>
+    [Serializable]
+    public class PayBatchQueryRequest : BaseTradeRequest
+    {
+        /// <summary>
+        /// 查询起始日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("start_date")]
+        public string StartDate { get; set; }
+        /// <summary>
+        /// 截止日期，格式yyyyMMdd
+        /// </summary>
+        [JsonProperty("end_date")]
+        public string EndDate { get; set; }
+        /// <summary>
+        /// 订单类型
+        /// </summary>
+        [JsonProperty("order_type")]
+        public string OrderType { get; set; }
+        /// <summary>
+        /// 用户手机号
+        /// </summary>
+        [JsonProperty("buyer_mobile")]
+        public string BuyerMobile { get; set; }
+        /// <summary>
+        /// 页序号
+        /// </summary>
+        [JsonProperty("page_num")]
+        public int PageNum { get; set; }
+        /// <summary>
+        /// 每页记录数
+        /// </summary>
+        [JsonProperty("page_size")]
+        public int PageSize { get; set; }
+    }
+    /// <summary>
+    /// 单笔支付订单查询响应参数
+    /// </summary>
+    [Serializable]
+    public class PayBatchQueryResponse : BaseTradeResponse
+    {
+        /// <summary>
+        /// 查询起始日期
+        /// </summary>
+        [JsonProperty("start_date")]
+        public string StartDate { get; set; }
+        /// <summary>
+        /// 截止日期
+        /// </summary>
+        [JsonProperty("end_date")]
+        public string EndDate { get; set; }
+        /// <summary>
+        /// 订单类型
+        /// </summary>
+        [JsonProperty("order_type")]
+        public string OrderType { get; set; }
+        /// <summary>
+        /// 用户手机号(what? 批量为何要userMobile)
+        /// </summary>
+        [JsonProperty("buyer_mobile")]
+        public string BuyerMobile { get; set; }
+        /// <summary>
+        /// 页序号
+        /// </summary>
+        [JsonProperty("page_num")]
+        public int PageNum { get; set; }
+        /// <summary>
+        /// 每页记录数
+        /// </summary>
+        [JsonProperty("page_size")]
+        public int PageSize { get; set; }
+        /// <summary>
+        /// 商户批量查询订单List
+        /// </summary>
+        [JsonProperty("order_list")]
+        public List<BasePayQueryResponse> OrderList { get; set; }
+    }
+    /// <summary>
+    /// 
+    /// </summary>
+    [Serializable]
+    public class BasePayQueryResponse
+    {
+        /// <summary>
+        /// 商户支付订单号
+        /// </summary>
+        [JsonProperty("out_trade_no")]
+        public string OutTradeNo { get; set; }
+        /// <summary>
+        /// 订单类型
+        /// </summary>
+        [JsonProperty("order_type")]
+        public string OrderType { get; set; }
+        /// <summary>
+        /// 用户手机号
+        /// </summary>
+        [JsonProperty("buyer_mobile")]
+        public string BuyerMobile { get; set; }
+        /// <summary>
+        /// 交易金额
+        /// </summary>
+        [JsonProperty("total_amount")]
+        public decimal TotalAmount { get; set; }
+        /// <summary>
+        /// 支付订单状态，支付订单状态：U：未支付； S：支付成功；F：支付失败； C：已撤销；T：支付超时
+        /// </summary>
+        [JsonProperty("pay_status")]
+        public string PayStatus { get; set; }
+        /// <summary>
+        /// 支付渠道，WX：微信支付，ALIPAY：支付宝支付
+        /// </summary>
+        [JsonProperty("pay_channel")]
+        public string PayChannel { get; set; }
+        /// <summary>
+        /// 支付日期，支付完成日期，格式yyyy-MM-dd:HH mm ss
+        /// </summary>
+        [JsonProperty("pay_date")]
+        public string PayDate { get; set; }
+    }
+
+    /// <summary>
+    /// 单笔退款订单查询请求参数
+    /// </summary>
+    [Serializable]
+    public class RefundQueryRequest : BaseTradeRequest
+    {
+        /// <summary>
+        /// 商户支付订单号
+        /// </summary>
+        [JsonProperty("refund_trade_no")]
+        public string RefundTradeNo { get; set; }
+    }
+    /// <summary>
+    /// 单笔退款订单查询响应参数
+    /// </summary>
+    [Serializable]
+    public class RefundQueryResponse : BaseTradeResponse
+    {
+        /// <summary>
+        /// 商户支付订单号
+        /// </summary>
+        [JsonProperty("refund_trade_no")]
+        public string RefundTradeNo { get; set; }
+        /// <summary>
+        /// 交易金额
+        /// </summary>
+        [JsonProperty("refund_amount")]
+        public decimal RefundAmount { get; set; }
+        /// <summary>
+        /// 支付订单状态，支付订单状态：U：未支付； S：支付成功；F：支付失败； C：已撤销；T：支付超时
+        /// </summary>
+        [JsonProperty("refund_status")]
+        public string RefundStatus { get; set; }
+        /// <summary>
+        /// 退款日期，支付完成日期，格式yyyy-MM-dd:HH mm ss
+        /// </summary>
+        [JsonProperty("refund_date")]
+        public string RefundDate { get; set; }
+    }
+    #endregion
+}

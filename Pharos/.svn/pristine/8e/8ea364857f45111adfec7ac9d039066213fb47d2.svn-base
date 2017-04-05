@@ -1,0 +1,41 @@
+﻿using Pharos.Logic.ApiData.Pos.Sale;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class BundlingService : BaseGeneralService<Pharos.Logic.Entity.Bundling, EFDbContext>
+    {
+        public static ProductInfo GetProductInfoFromBundlingByBarcode(string storeId, string barcode)
+        {
+            try
+            {
+                var query = (from a in CurrentRepository.Entities
+                             where a.NewBarcode == barcode
+                             select new ProductInfo()
+                             {
+                                 Brand = "",
+                                 Category = "",
+                                 EnableEditNum = true,
+                                 EnableEditPrice = false,
+                                 ProductCode = "",
+                                 ProductType = ProductType.Bundling,
+                                 Size = "",
+                                 SystemPrice = a.BundledPrice,
+                                 Title = a.Title,
+                                 Unit = "件"
+                             });
+                return query.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+    }
+}

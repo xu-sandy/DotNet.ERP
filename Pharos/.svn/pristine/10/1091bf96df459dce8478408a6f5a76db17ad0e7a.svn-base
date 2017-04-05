@@ -1,0 +1,90 @@
+﻿@{
+    ViewBag.Title = "TakeCouponIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "派发申领", hideDel: true, hideAdd: false, hideEdit: true, searchHeight: 80));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类别：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("couponType", ViewBag.types as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })
+            </td>
+            <td class="label-toolbar">
+                <label>形式：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("couponFrom", ViewBag.forms as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox" name="state" data-options="editable:false">
+                    <option value="-1">全部</option>
+                    <option value="0">已生成</option>
+                    <option value="1" selected>未使用</option>
+                    <option value="2">已使用</option>
+                    <option value="3">已过期</option>
+                    <option value="4">已作废</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>来源：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("storeIds", ViewBag.shops as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>派发员：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("recipients", ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })
+            </td>
+        </tr>
+        <tr>
+            <td class="label-toolbar">
+                <label>有效期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input class="datacontrol Wdate" name="expiryStart" />
+            </td>
+            <td class="label-toolbar">
+                <label>-</label>
+            </td>
+            <td class="input-toolbar">
+                <input class="datacontrol Wdate" name="expiryEnd" />
+            </td>
+        </tr>
+    </table>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindTakeCouponPageList")";
+    pharos.manager.editurl = "@Url.Action("TakeCoupon")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StateTitle', title: '状态', width: 80 },
+        { field: 'BatchSN', title: '批次', width: 80 },
+        { field: 'StateTitle', title: '券号', width: 80 },
+        { field: 'StateTitle2', title: '类别', width: 80 },
+        { field: 'StateTitle3', title: '形式', width: 80 },
+        { field: 'StateTitle4', title: '来源', width: 80 },
+        { field: 'StateTitle5', title: '适用商品', width: 80 },
+        { field: 'StateTitle7', title: '领用时间', width: 80 },
+        { field: 'StateTitle8', title: '使用人', width: 80 },
+        { field: 'StateTitle9', title: '有效期起始', width: 80 },
+        { field: 'StateTitle11', title: '有效期截止', width: 80 },
+        { field: 'StateTitle10', title: '派发人', width: 80 },
+    ]];
+
+    //打开派发申领窗口
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog600(this.addText, this.editurlNocache(), false);
+    }
+
+
+</script>

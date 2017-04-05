@@ -1,0 +1,222 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Sys.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+
+namespace Pharos.Logic.BLL
+{
+    public class ReturnRulesService : BaseService<ReturnRules>
+    {
+        public static IEnumerable<int> GetIntegralRuleProviderIds(int companyId)
+        {
+            return CurrentRepository.Entities.Where(o => o.CompanyId == companyId).Select(o => o.Mode).Distinct().ToList();
+        }
+
+        public static IEnumerable<ReturnRules> GetProviderRules(int companyId, int providerId)
+        {
+            return CurrentRepository.Entities.Where(o =>
+                o.CompanyId == companyId
+                && o.Adapters == providerId
+                && o.ExpiryStart <= DateTime.Now
+                && o.ExpiryEnd >= DateTime.Now
+                && o.State != 2
+                ).ToList();
+        }
+        /// <summary>
+        /// 全部数据
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public object FindReturnRulesList(out int count)
+        {
+            try
+            {
+                var query = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId);
+                count = query.Count();
+                if (count > 0)
+                {
+                    var result = (from r in query //返赠方案
+                                  join s in BaseService<SysStoreUserInfo>.CurrentRepository.Entities//后台管理员
+                                  on r.CreateUID equals s.UID
+                                  join m in BaseService<MemberLevel>.CurrentRepository.Entities //会员等级
+                                  on r.MemberLevelId equals m.MemberLevelId into rm
+                                  from rms in rm.DefaultIfEmpty()
+                                  join a in BaseService<SysDataDictionary>.CurrentRepository.Entities //管理适配器
+                                  on r.Adapters equals a.DicSN
+                                  join ssl in BaseService<SysDataDictionary>.CurrentRepository.Entities //左运算符
+                                  on r.LeftSign equals ssl.DicSN
+                                  join ssr in BaseService<SysDataDictionary>.CurrentRepository.Entities //右运算符
+                                  on r.RightSign equals ssr.DicSN
+                                  join mode in BaseService<SysDataDictionary>.CurrentRepository.Entities //右运算符
+                                  on r.Mode equals mode.DicSN
+                                  join type in BaseService<SysDataDictionary>.CurrentRepository.Entities //操作类型
+                                  on r.OperationType equals type.DicSN
+                                  select new ReturnRulesDao
+                                  {
+                                      Id = r.Id,
+                                      AdapterKey = r.Adapters,
+                                      Adapters = a.Title,
+                                      Number1 = r.Number1,
+                                      LeftSign = ssl.Title,
+                                      RightSign = ssr.Title,
+                                      Number2 = r.Number2,
+                                      Mode = mode.Title,
+                                      LimitItems = r.LimitItems,
+                                      OperationType = type.Title,
+                                      Expression = r.Expression,
+                                      GivenType = r.GivenType,
+                                      ExpiryStart = r.ExpiryStart,
+                                      ExpiryEnd = r.ExpiryEnd,
+                                      State = r.State,
+                                      CreateDT = r.CreateDT,
+                                      CreateUID = s.FullName,
+                                      MemberLevelId = rms.LevelTitle
+                                  }).ToPageList();
+
+                    foreach (var item in result)
+                    {
+                        switch (item.AdapterKey)
+                        {
+                            case 218:
+                                var apiPay = BaseService<ApiLibrary>.CurrentRepository.Entities.Where(o => ("," + item.LimitItems + ",").Contains("," + o.ApiCode + ",")).ToList();
+                                if (apiPay != null)
+                                {
+                                    item.LimitItems = "";
+                                    foreach (var itm in apiPay)
+                                    {
+                                        item.LimitItems += ("," + itm.Title);
+                                    }
+                                }
+                                break;
+                            case 219:
+                                if (item.LimitItems.Contains("/"))
+                                {
+                                    item.LimitItems = item.LimitItems.Replace("/", ",");
+                                }
+                                if (item.LimitItems.StartsWith(","))
+                                {
+                                    item.LimitItems = item.LimitItems.TrimStart(',');
+                                }
+                                var category = BaseService<ProductCategory>.CurrentRepository.Entities.Where(o => ("," + item.LimitItems + ",").Contains("," + o.CategorySN + ",")).ToList();
+                                if (category != null)
+                                {
+                                    item.LimitItems = "";
+                                    foreach (var itm in category)
+                                    {
+                                        item.LimitItems += ("," + itm.Title);
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                    return result;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+        }
+        /// <summary>
+        /// 更改返赠信息状态
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="ids"></param>
+        /// <returns></returns>
+        public OpResult UpdateReturnRulesState(int state, string ids)
+        {
+            try
+            {
+                var datas = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ",")).ToList();
+                if (datas != null)
+                {
+                    datas.ForEach(o => o.State = state);
+                    CurrentRepository.Update(new ReturnRules());
+                    return OpResult.Success("操作成功");
+                }
+                else
+                {
+                    return OpResult.Fail("找不到原始数据！");
+                }
+            }
+            catch (Exception e)
+            {
+                return OpResult.Fail(e.Message);
+            }
+        }
+        /// <summary>
+        /// 返赠方案修改
+        /// </summary>
+        /// <param name="_rule"></param>
+        /// <returns></returns>
+        public OpResult UpdateReturnRule(ReturnRules _rule)
+        {
+            var data = CurrentRepository.Entities.Where(o => o.Id == _rule.Id && o.CompanyId == CommonService.CompanyId).FirstOrDefault();
+            if (data != null)
+            {
+                data.Adapters = _rule.Adapters;
+                data.Number1 = _rule.Number1;
+                data.LeftSign = _rule.LeftSign;
+                data.RightSign = _rule.RightSign;
+                data.Number2 = _rule.Number2;
+                data.Mode = _rule.Mode;
+                data.LimitItems = _rule.LimitItems;
+                data.OperationType = _rule.OperationType;
+                data.Expression = _rule.Expression;
+                data.GivenType = _rule.GivenType;
+                data.ExpiryStart = _rule.ExpiryStart;
+                data.ExpiryEnd = _rule.ExpiryEnd;
+                data.State = _rule.State;
+                data.StartTime1 = _rule.StartTime1;
+                data.EndTime1 = _rule.EndTime1;
+                data.StartTime2 = _rule.StartTime2;
+                data.EndTime2 = _rule.EndTime2;
+                data.StartTime3 = _rule.StartTime3;
+                data.EndTime3 = _rule.EndTime3;
+                data.LimitNum = _rule.LimitNum;
+                data.MemberLevelId = _rule.MemberLevelId;
+
+                var result = CurrentRepository.Update(data);
+                if (result)
+                    return OpResult.Success("操作成功！");
+                else
+                    return OpResult.Fail("请核对提交数据");
+            }
+            else
+            {
+                return OpResult.Fail("未找到原始数据！");
+            }
+        }
+
+
+    }
+    public class ReturnRulesDao
+    {
+        public int Id { get; set; }
+        public int AdapterKey { get; set; }
+        public string Adapters { get; set; }
+        public decimal Number1 { get; set; }
+        public string LeftSign { get; set; }
+        public string RightSign { get; set; }
+        public decimal? Number2 { get; set; }
+        public string Mode { get; set; }
+        public string LimitItems { get; set; }
+        public string OperationType { get; set; }
+        public string Expression { get; set; }
+        public int GivenType { get; set; }
+        public DateTime ExpiryStart { get; set; }
+        public DateTime? ExpiryEnd { get; set; }
+        public int State { get; set; }
+        public DateTime CreateDT { get; set; }
+        public string CreateUID { get; set; }
+        public string MemberLevelId { get; set; }
+    }
+}

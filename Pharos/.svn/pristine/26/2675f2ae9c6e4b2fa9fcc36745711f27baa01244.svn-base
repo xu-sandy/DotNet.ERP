@@ -1,0 +1,47 @@
+﻿using Ninject;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Logic.OMS.DAL;
+
+
+namespace Pharos.Logic.OMS
+{
+    public class NinjectData
+    {
+        /// <summary>
+        /// 添加绑定
+        /// </summary>
+        /// <param name="kernel"></param>
+        public static void AddBindings(IKernel kernel)
+        {
+            kernel.Bind(typeof(IBaseRepository<>)).To(typeof(BaseRepository<>));
+            kernel.Bind<IProductRepository>().To<ProductRepository>();
+            kernel.Bind<IDictRepository>().To<DictionaryRepository>();
+            kernel.Bind<ITradersRepository>().To<TradersRepository>();
+
+            kernel.Bind<DevicesService>().ToSelf();
+            kernel.Bind<AreaService>().ToSelf();
+            kernel.Bind<UserService>().ToSelf();
+            kernel.Bind<CompAuthorService>().ToSelf();
+            kernel.Bind<MenuService>().ToSelf();
+            kernel.Bind<BrandService>().ToSelf();
+            kernel.Bind<BusinessService>().ToSelf();
+            kernel.Bind<ImportSetService>().ToSelf();
+            kernel.Bind<ProductService>().ToSelf();
+            kernel.Bind<ProductCategoryService>().ToSelf();
+            kernel.Bind<LogService>().ToSelf();
+            kernel.Bind<LogEngine>().ToSelf();
+            kernel.Bind<SysMenuBLL>().ToSelf();
+            kernel.Bind<PlanService>().ToSelf();
+
+            var assby= System.Reflection.Assembly.GetExecutingAssembly();
+            foreach(var type in assby.GetTypes())
+            {
+                if (!(type.Namespace!=null && type.Namespace.EndsWith("BLL",System.StringComparison.CurrentCultureIgnoreCase))) continue;
+                if (kernel.TryGet(type) != null) continue;
+                kernel.Bind(type).ToSelf();
+            }
+
+        }
+    }
+}

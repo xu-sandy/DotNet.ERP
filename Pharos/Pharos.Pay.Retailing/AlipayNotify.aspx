@@ -1,0 +1,1 @@
+﻿<%@ Page Language="C#" AutoEventWireup="true" ValidateRequest="false" CodeBehind="AlipayNotify.aspx.cs" Inherits="Pharos.Pay.PayResult.AlipayNotify" %>

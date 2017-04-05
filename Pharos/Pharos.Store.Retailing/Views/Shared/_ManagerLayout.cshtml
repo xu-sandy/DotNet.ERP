@@ -1,0 +1,78 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    bool hideAdd = ViewBag.hideAdd == true;
+    bool hideDel = ViewBag.hideDel == true;
+    bool hideEdit = ViewBag.hideEdit == true;
+    bool hideSearch = ViewBag.hideSearch == true;
+    var addText = ViewBag.addText ?? "新增";
+    var editText = ViewBag.editText ?? "修改";
+    var delText = ViewBag.delText ?? "删除";
+    var btnInfo = ViewData.OpBtnInfo();
+    var height = 43;
+    if (btnInfo != null)
+    {
+        hideAdd = btnInfo.HideAdd;
+        hideDel = btnInfo.HideDel;
+        hideEdit = btnInfo.HideEdit;
+        addText = btnInfo.AddText;
+        editText = btnInfo.EditText;
+        delText = btnInfo.DelText;
+        hideSearch = btnInfo.HideSearch;
+        height = btnInfo.SearchHeight;
+    }
+}
+<div class="easyui-layout" data-options="fit:true,border:false">
+@if(!hideSearch)
+{
+    <div data-options="region:'north',split:false,border:false" style="min-height:@(height)px;">
+        <form id="frmsearch" style="margin: 5px 0px; clear: both;">
+            <ul>
+                <li style="float:left">@RenderSection("search", false)</li>
+                <li style="float:left;margin-left:7px;">
+                    
+                <a href="#" id="searchBtn" class="easyui-linkbutton cus4 linkbtn" data-options="iconCls:'icon-search'" onclick="if ($('#frmsearch').form('validate')) { pharos.manager.gridReload() }">查询</a>
+                    
+                </li>
+            </ul>
+        </form>
+    </div>
+}
+else
+{
+    @RenderSection("search", false)
+}
+    <div data-options="region:'center',split:false,border:false">
+        <table id="grid"></table>
+        <div id="toolbar">
+            @if (!hideAdd)
+            {
+                <a class="easyui-linkbutton  cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="pharos.manager.addItem(); return false;">@addText</a>
+            }
+            @if (!hideDel)
+            {
+                <a class="easyui-linkbutton  cus1 linkbtn" data-options="iconCls:'icon-delete'" onclick="pharos.manager.removeItem(); return false;">@delText</a>
+            }
+            @RenderSection("toolbar", false)
+        </div>
+    </div>
+</div>
+<script src="~/Scripts/managerlist.js"></script>
+<script type="text/javascript">
+    pharos.manager.addText = "@addText";
+    pharos.manager.editText = "@editText";
+    pharos.manager.delText = "@delText";
+    pharos.manager.geturl = "@Url.Action("FindPageList")";
+    pharos.manager.editurl = "@Url.Action("Save")";
+    pharos.manager.delurl = "@Url.Action("Delete")";
+    pharos.manager.detailurl = "@Url.Action("Detail", new { isdetail="1"})";
+    @if (hideEdit)
+    {
+    @:function editBefore(row) { return false;}
+    }
+    @if (!btnInfo.FirstLoadData)
+    {
+    @:pharos.manager.getUrlAndParm = function () { }
+    }
+</script>
+@RenderBody()

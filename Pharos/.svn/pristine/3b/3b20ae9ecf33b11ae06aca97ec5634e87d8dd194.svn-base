@@ -1,0 +1,251 @@
+﻿@model ProductChangePrice
+@{
+    ViewBag.Title = "ChangePrice";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <input type="hidden" name="Id" value="@Model.Id" id="Id" />
+        @Html.Hidden("Inserted")
+        @Html.Hidden("Deleted")
+        @Html.Hidden("Updated")
+    <div class="content">
+        <div class="formbox" style="margin-bottom:10px;">
+            <table class="table-form">
+                <tr>
+                    <td colspan="2">
+                        <table>
+                            <tr>
+                                <td class="name">供应商：</td>
+                                <td>@Form.SupplierCombobox("SupplierId", ViewData.Eval("SupplierId"), controlWidth: 180, dataOptions: "validType:'requiredForCombo',onChange:supplierSelect,readonly:" + (Model.SupplierId.IsNullOrEmpty() ? "false" : "true"))</td>
+                                <td class="name">&nbsp;&nbsp;录入人：</td>
+                                <td>@Html.DropDownListFor(o => o.CreateUID, ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "readonly:true" })</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">适用门店：</td>
+                    <td class="input choose">@Html.CheckBoxListFor(o => o.StoreId, ViewBag.stores as List<SelectListItem>, new { data_options = "required:true,novalidate:true,missingMessage:'必勾选一项'", @class = "easyui-validatebox", id = "store" }, 9)</td>
+                </tr>
+            </table>
+        </div>
+        @if(Request["isdetail"]==null)
+        {
+        <a href="#" class="easyui-linkbutton" onclick="selectProduct()" style="margin-bottom: 10px;">添加变价产品</a>
+        }
+        <div id="win" class="easyui-dialog" data-options="title:'选择商品',buttons:btns,cache:false,modal:true,width:800,height:450,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+        <table class="easyui-datagrid" id="grid2"
+               data-options="url:'@Url.Action("LoadChangeDetailList")',queryParams:{mId:'@Model.Id'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect:true,onClickCell:clickCell,onAfterEdit:afterEdit,onLoadError:loadError,idField:'Id'">
+            <thead>
+                <tr>
+                    <th data-options="field:'Barcode'" width="150">条码</th>
+                    <th data-options="field:'Title'" width="150">品名</th>
+                    <th data-options="field:'Size'" width="80">规格</th>
+                    <th data-options="field:'OldBuyPrice'" width="70">现进价</th>
+                    <th data-options="field:'CurBuyPrice',editor:{type:'numberbox',options:{min:0,precision:2,required:true}}" width="70">新进价</th>
+                    <th data-options="field:'OldSysPrice'" width="70">现售价</th>
+                    <th data-options="field:'CurSysPrice',editor:{type:'numberbox',options:{min:0,precision:2,required:true}}" width="70">新售价</th>
+                    <th data-options="field:'OldGrossprofitRate'" width="70">现毛利率%</th>
+                    <th data-options="field:'CurGrossprofitRate',editor:{type:'numberbox',options:{min:1,max:100,precision:2}}" width="70">新毛利率%</th>
+                    <th data-options="field:'StartDate',editor:{type:'datebox',options:{required:true,validType:'date'}}" width="100">开始日期</th>
+                    <th data-options="field:'EndDate',editor:{type:'datebox',options:{required:false,validType:'date'}}" width="100">结束日期</th>
+                    <th data-options="field:'Memo',editor:{type:'textbox',options:{required:false}}" width="120">备注(调价原因)</th>
+                    <th data-options="field:'State',hidden:true,formatter:function (value, row, index) {return value == 0 ? '未开始':value==1?'活动中':value==2?'已过期':'';}" width="120">活动状态</th>
+                    @if(Request["isdetail"]==null)
+                    { 
+                    <th data-options="field:'Editor',formatter:operation" width="60">操作</th>
+                    }
+                </tr>
+            </thead>
+        </table>
+    </div>
+    }
+</div>
+
+<script type="text/javascript">
+    var $dg = null;
+    $(function () {
+        $dg = $("#grid2");
+        $("[name='StoreId']").click(function () {
+            if ($(this).val() == "") {
+                var chk = this.checked;
+                $("[name='StoreId']:not(:first)").each(function (i, r) {
+                    r.checked = chk;
+                })
+            } else {
+                $("[name='StoreId']:first")[0].checked = $("[name='StoreId']:not(:first):checked").size() == $("[name='StoreId']:not(:first)").size();
+            }
+            storeRequired();
+        });
+        @if(Request["isdetail"]==null)
+        {
+            @:storeRequired();
+        }
+        else
+        {
+            @:$("#store").validatebox("disableValidation");
+        }
+        if ($("[name='StoreId']:first").attr("checked"))
+            $("[name='StoreId']:not(:first)").attr("checked", true);
+    });
+    function storeRequired() {
+        if ($("[name='StoreId']:checked").size() <= 0)
+            $("#store").validatebox("enableValidation");
+        else
+            $("#store").validatebox("disableValidation");
+    }
+    var isChange = false;
+    function supplierSelect(newValue, oldValue) {
+        if (isChange) { isChange = false; return; }
+        var rows = $dg.datagrid("getRows");
+        if (!rows || rows.length <= 0) return;
+        $.messager.confirm("提示", "重选择将会清空已选商品,是否继续?", function (r) {
+            if (!r) { isChange = true; $("#SupplierId").combobox("setValue", oldValue); return; }
+            for (var i = rows.length - 1; i >= 0; i--) {
+                $dg.datagrid("deleteRow", i);
+            }
+        })
+    }
+    function selectProduct() {
+        var url = "@Url.Action("SelectProduct", "Product")?t=" + Math.random();
+        var rows = $dg.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Barcode;
+        }).join(",");
+        url += "&cds=" + ids;
+        var supplierId = $("#SupplierId").combobox("getValue");
+        if (supplierId) url += "&supplierId=" + supplierId;
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("#win").dialog({ content: cont, buttons: btns }).dialog("open");
+    }
+    var btns = [{
+        text: '添加所选产品',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            var data = $dg.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            $.each(chks, function (idx, row) {
+                if (!isExists(data.rows, row.Barcode)) {
+                    $dg.datagrid('appendRow',
+                    {
+                        Barcode: row.Barcode, Title: row.Title, Size: row.Size, OldBuyPrice: row.BuyPrice, CurBuyPrice: row.BuyPrice, CurSysPrice: row.SysPrice, OldSysPrice: row.SysPrice,
+                        OldGrossprofitRate: ((row.SysPrice - row.BuyPrice) / row.SysPrice * 100).toFixed(3) + '', CurGrossprofitRate: ((row.SysPrice - row.BuyPrice) / row.SysPrice * 100).toFixed(2) + '', Id: guidGenerator()
+                    });
+                }
+                lastIndex++;
+            });
+            changeValue();
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+    function isExists(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.Barcode == cd) {
+                result = true; return false;
+            }
+        });
+        return result;
+    }
+    function removeItem(id) {
+        $.messager.confirm("提示", "是否确定删除该项信息?", function (r) {
+            if (!r) return r;
+            $dg.datagrid("selectRecord", id);
+            var row = $dg.datagrid("getSelected")
+            var index = $dg.datagrid("getRowIndex", row);
+            $dg.datagrid('deleteRow', index);
+            changeValue();
+        })
+    }
+    function operation(value, row, index) {
+        return "<a href='javascript:void(0)' onclick=\"removeItem(" + row.Id + ")\">删除</a>";
+    }
+    var clickIndex = undefined, endDateClickIndex = undefined;
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dg.datagrid('validateRow', clickIndex)) {
+            $dg.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            changeValue();
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function afterEdit(rowIndex, rowData, changes) {
+        if (changes.CurBuyPrice && rowData.CurSysPrice) {
+            var val = ((rowData.CurSysPrice - rowData.CurBuyPrice) / rowData.CurSysPrice * 100).toFixed(2) + '';
+            $dg.datagrid('updateRow', { index: rowIndex, row: { CurGrossprofitRate: val } });
+        }
+        if (changes.CurSysPrice && rowData.CurBuyPrice) {
+            var val = ((rowData.CurSysPrice - rowData.CurBuyPrice) / rowData.CurSysPrice * 100).toFixed(2) + '';
+            $dg.datagrid('updateRow', { index: rowIndex, row: { CurGrossprofitRate: val } });
+        }
+        if (changes.CurGrossprofitRate && rowData.CurBuyPrice) {
+            var val = (rowData.CurBuyPrice / (100 - parseFloat(rowData.CurGrossprofitRate)) * 100).toFixed(2);
+            $dg.datagrid('updateRow', { index: rowIndex, row: { CurSysPrice: val } });
+        }
+        if (rowData.EndDate) {
+            var start = new Date(rowData.StartDate.replace(/-/g, "/"));
+            var end = new Date(rowData.EndDate.replace(/-/g, "/"));
+            if (start > end) {
+                $.messager.alert("提示", "日期范围不正确!", "info");
+                rowData.EndDate = "";
+                $dg.datagrid("editCell", { index: endDateClickIndex, field: "EndDate" });
+            }
+        }
+    }
+    function clickCell(index, field) {
+        if (endClickEditing() && (field == "CurBuyPrice" || field == "CurSysPrice" || field == "StartDate" || field == "EndDate" || field == "Memo" || field == "CurGrossprofitRate")) {
+            var row = $dg.datagrid('selectRow', index).datagrid("getSelected");
+            if (row.State == 2) return;
+            $dg.datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+            if (field == "EndDate") endDateClickIndex = index;
+        }
+    }
+    function changeValue() {
+        var inserted = $dg.datagrid('getChanges', "inserted");
+        var deleted = $dg.datagrid('getChanges', "deleted");
+        var updated = $dg.datagrid('getChanges', "updated");
+        $("#Inserted").val(JSON.stringify(inserted));
+        $("#Deleted").val(JSON.stringify(deleted));
+        $("#Updated").val(JSON.stringify(updated));
+    }
+    function SaveBefore() {
+        var result = endClickEditing();
+        var rows = $dg.datagrid("getRows");
+        var pass = true;
+        $.each(rows, function (i, r) {
+            if (r.StartDate) {
+            } else {
+                pass = false;
+            }
+        });
+        if (!pass) {
+            $.messager.alert("提示", "请输入开始日期和结束日期!", "info");
+            result = false;
+        }
+        return result;
+    }
+    function guidGenerator() {
+        var rows = $dg.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? row.Id : 0;
+        });
+        var maxId = Math.max.apply(null, ids);
+        if (maxId == -Infinity) maxId = 0;
+        return maxId + 1;
+    }
+</script>

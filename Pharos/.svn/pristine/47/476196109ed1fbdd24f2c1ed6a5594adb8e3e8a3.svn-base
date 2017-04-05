@@ -1,0 +1,38 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ObjectModels
+{
+    internal static class Global
+    {
+        internal const string PosMachineConfigPath = "PosMachine.Config";
+        static Global()
+        {
+            MachineSettings = new Settings();
+        }
+        public static Settings MachineSettings { get; set; }
+
+        static LoginUserInfo currentSaleMen;
+        public static LoginUserInfo CurrentSaleMen
+        {
+            get
+            {
+                if (currentSaleMen == null)
+                {
+                    throw new Exception("未登录");
+                }
+                else
+                {
+                    return currentSaleMen;
+                }
+            }
+            set
+            {
+                currentSaleMen = value;
+            }
+        }
+    }
+}

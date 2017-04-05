@@ -1,0 +1,77 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Barcodes
+{
+    public class BarcodeFactory
+    {
+        public static IBarcode Factory(string storeId, string machineSn, int token, string barcodeString, SaleStatus saleStatus = SaleStatus.Normal, string giftId = "", string giftPromotionId = "")
+        {
+            IBarcode barcodeObj = null;
+            if (string.IsNullOrWhiteSpace(barcodeString))
+            {
+                throw new BarcodeException("条码不能为空！");
+            }
+            switch (barcodeString.Length)
+            {
+                case 10:
+                    barcodeObj = new CustomBarcode(storeId, machineSn, token, barcodeString, saleStatus, giftId, giftPromotionId);
+                    break;
+                case 12:
+                    barcodeObj = new BundlingBarcode(storeId, machineSn, token, barcodeString, saleStatus, giftId, giftPromotionId);
+                    break;
+                case 13:
+                    barcodeObj = new StandardBarcode(storeId, machineSn, token, barcodeString, saleStatus, giftId, giftPromotionId);
+                    break;
+                case 18:
+                    barcodeObj = new WeighBarcode(storeId, machineSn, token, barcodeString, saleStatus, giftId, giftPromotionId);
+                    break;
+
+                default:
+                    throw new BarcodeException("未能解析该条码，请确认是否正确！");
+            }
+            switch (barcodeObj.Details.SaleStatus) 
+            {
+                case SaleStatus.ActivityGifts:
+                case SaleStatus.POSGift:
+                case SaleStatus.ActivityAddMoneyGifts:
+                    barcodeObj.EnableMarketing = false;
+                    barcodeObj.Details.EnableEditPrice = false;
+                    break;
+                    
+                default :
+                    barcodeObj.EnableMarketing = true;
+                    break;
+            }
+            return barcodeObj;
+        }
+
+        public static IBarcode Factory(IBarcode barcode)
+        {
+            IBarcode barcodeObj = null;
+
+            switch (barcode.Count)
+            {
+                case 10:
+                    barcodeObj = new CustomBarcode(barcode);
+                    break;
+                case 12:
+                    barcodeObj = new BundlingBarcode(barcode);
+                    break;
+                case 13:
+                    barcodeObj = new StandardBarcode(barcode);
+                    break;
+                case 18:
+                    barcodeObj = new WeighBarcode(barcode);
+                    break;
+            }
+            return barcodeObj;
+        }
+
+    }
+}

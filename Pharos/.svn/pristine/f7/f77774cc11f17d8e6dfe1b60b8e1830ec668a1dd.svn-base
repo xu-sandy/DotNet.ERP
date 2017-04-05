@@ -1,0 +1,100 @@
+﻿@model Pharos.Logic.Entity.ApiLibrary
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">
+    .combo { min-width: 0px; }
+    .table-form .input { height: 32px; }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-form" style="width:100%;">
+                <tr>
+                    <td class="name">
+                        <span>接口名称：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>接口类型：</span>
+                    </td>
+                    <td class="input">
+                        @Html.DropDownListFor(o => o.ApiType, ViewBag.apiTypes as IList<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo'" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>接口地址：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.ApiUrl, new { @class = "easyui-textbox", data_options = "required:true" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>支付图标：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.ApiIcon, new { @class = "easyui-filebox", data_options = "buttonText:'选择文件',prompt:'请选择图片文件...',width:220,onChange:apiIconChange" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>支付关闭图标：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.ApiCloseIcon, new { @class = "easyui-filebox", data_options = "buttonText:'选择文件',prompt:'请选择图片文件...',width:220,onChange:apiCloseIconChange" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>请求方式：</span>
+                    </td>
+                    <td class="input">
+                        @Html.RadioButtonListFor(o => o.ReqMode, new List<SelectListItem>() { new SelectListItem() { Text = "POST", Value = "1" }, new SelectListItem() { Text = "GET", Value = "2" } })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>状 态：</span>
+                    </td>
+                    <td>
+                        @Html.RadioButtonListFor(o => o.State, new List<SelectListItem>() { new SelectListItem() { Text = "启用", Value = "1" }, new SelectListItem() { Text = "禁用", Value = "0" } })
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    function apiIconChange() {
+        debugger;
+        pharos.previewFile($(this).get(0));
+    }
+    function apiCloseIconChange() {
+        pharos.previewFile($(this).get(0));
+    }
+    function SaveBefore() {
+        var $pwd = $("#LoginPwd");
+        var $id = $("#Id");
+        if ($id.val() == 0) {
+            if ($pwd.val() == "" || $pwd.val().length < 4) {
+                $.messager.alert('提示', '密码长度至少为4位。');
+                return false;
+            }
+        } else {
+            if ($pwd.val().length > 1 && $pwd.val().length < 4) {
+                $.messager.alert('提示', '新密码长度至少为4位。');
+                return false;
+            }
+        }
+        return true;
+    }
+</script>

@@ -1,0 +1,119 @@
+﻿using Pharos.POS.Retailing.Models.Scanner;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing
+{
+    public static class WindowExtensions
+    {
+        public static void InitPublicSettings(this Window _this)
+        {
+            //激活快捷键
+            Task.Factory.StartNew(() =>
+            {
+                KeyboardShortcuts.Current.ActiveKeysBindings(_this);
+            });
+
+
+            //设置页面是否置顶
+            List<Type> IgnoreTopmost = new List<Type>() { typeof(MainWindow), typeof(Login) };
+            if (IgnoreTopmost.Exists(o => o == _this.GetType()))
+            {
+                _this.Topmost = false;
+            }
+            else
+            {
+                _this.Topmost = true;
+            }
+        }
+
+        public static void CannelHandler(this Window _this)
+        {
+            _this.Close();
+        }
+        internal static void SetDataGridSelectLastItem(this Window _this)
+        {
+
+        }
+        public static void ConfirmHandler(this Window _this)
+        {
+            if (KeyboardScanner.CurrentEnter)
+            {
+                KeyboardScanner.CurrentEnter = false;
+                return;
+            }
+            var element = Keyboard.FocusedElement as UIElement;
+            element.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+            if (Keyboard.FocusedElement is TextBox)
+            {
+                var input = Keyboard.FocusedElement as TextBox;
+                input.PreviewGotKeyboardFocus += input_PreviewGotKeyboardFocus;
+            }
+            else if (Keyboard.FocusedElement is Button)
+            {
+                var button = Keyboard.FocusedElement as Button;
+                button.Focus();
+               
+                if (button.Command != null && button.Command.CanExecute(button.CommandParameter))
+                    button.Command.Execute(button.CommandParameter);
+
+            }
+        }
+
+        static void input_PreviewGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            var txt = sender as TextBox;
+            if (txt != null)
+            {
+                txt.SelectAll();
+            }
+        }
+
+        public static void CloseImage_MouseDown(this Window _this, object sender, MouseButtonEventArgs e)
+        {
+            if (_this != null)
+            {
+                _this.Close();
+            }
+        }
+
+
+        public static void Title_MouseLeftButtonDown(this Window _this, object sender, MouseButtonEventArgs e)
+        {
+            if (e.ButtonState == MouseButtonState.Pressed)
+            {
+                if (_this != null)
+                {
+                    _this.DragMove();
+                }
+            }
+        }
+        public static void TextBox_PreviewGotKeyboardFocus(this Window _this, object sender, KeyboardFocusChangedEventArgs e)
+        {
+            var element = (sender as TextBox);
+            if (element != null)
+                element.SelectAll();
+        }
+
+        public static void ShowChildDialog(this Window _this, Window child)
+        {
+            _this.Hide();
+            child.Focus();
+            var result = child.ShowDialog();
+            if (result ?? false)
+            {
+                _this.ShowDialog();
+                _this.Focus();
+            }
+            else
+            {
+                _this.Close();
+            }
+        }
+
+    }
+}

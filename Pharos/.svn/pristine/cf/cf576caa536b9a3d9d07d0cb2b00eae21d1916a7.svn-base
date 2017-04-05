@@ -1,0 +1,209 @@
+// --------------------------------------------------
+// Copyright (C) 2016 版权所有
+// 创 建 人：蔡少发
+// 创建时间：2016-09-03
+// 描述信息：
+// --------------------------------------------------
+
+using System;
+
+namespace Pharos.Store.Retailing.Models
+{
+	/// <summary>
+	/// 商户注册
+	/// </summary>
+	[Serializable]
+	public class Traders
+	{
+        public int CID { get; set; }
+		/// <summary>
+		/// 分类 GUID
+		/// [长度：40]
+		/// [不允许为空]
+		/// </summary>
+		public string TraderTypeId { get; set; }
+
+		/// <summary>
+		/// 简称
+		/// [长度：50]
+		/// [不允许为空]
+		/// </summary>
+		public string Title { get; set; }
+
+		/// <summary>
+		/// 全称
+		/// [长度：100]
+		/// [不允许为空]
+		/// </summary>
+		public string FullTitle { get; set; }
+
+		/// <summary>
+		/// 省份 ID
+		/// [长度：5]
+		/// [不允许为空]
+		/// </summary>
+		public short CurrentProvinceId { get; set; }
+
+		/// <summary>
+		/// 城市 ID
+		/// [长度：5]
+		/// [不允许为空]
+		/// </summary>
+		public short CurrentCityId { get; set; }
+
+        /// <summary>
+        /// 区县 ID
+        /// [长度：5]
+        /// [不允许为空]
+        /// </summary>
+        public short CurrentCounty { get; set; }
+
+		/// <summary>
+		/// 详细地址
+		/// [长度：200]
+		/// </summary>
+		public string Address { get; set; }
+
+		/// <summary>
+		/// 联系人
+		/// [长度：50]
+		/// [不允许为空]
+		/// </summary>
+		public string LinkMan { get; set; }
+
+		/// <summary>
+		/// 手机号码
+		/// [长度：11]
+		/// [不允许为空]
+		/// </summary>
+		public string MobilePhone { get; set; }
+
+		/// <summary>
+		/// 经营模式(取字典表)
+		/// [长度：5]
+		/// </summary>
+		public short BusinessModeId { get; set; }
+
+		/// <summary>
+		/// 经营类目(取行业类别 ID，多个以逗号隔开)
+		/// [长度：200]
+		/// </summary>
+		public string BusinessScopeId { get; set; }
+
+		/// <summary>
+		/// 货品盘点情况
+		/// [长度：200]
+		/// </summary>
+		public string TakeStockDates { get; set; }
+
+		/// <summary>
+		/// 现有系统名称
+		/// [长度：50]
+		/// </summary>
+		public string ExistsystemName { get; set; }
+
+		/// <summary>
+		/// 现在设备名称
+		/// [长度：50]
+		/// </summary>
+		public string ExistDeviceName { get; set; }
+
+		/// <summary>
+		/// 现有门店数量
+		/// [长度：5]
+		/// </summary>
+		public short ExistStoreNum { get; set; }
+
+		/// <summary>
+		/// 每个门店机数
+		/// [长度：5]
+		/// </summary>
+		public short EachStorePosNum { get; set; }
+
+		/// <summary>
+		/// 每个门店人均数
+		/// [长度：5]
+		/// </summary>
+		public short EachStorePersonNum { get; set; }
+
+		/// <summary>
+		/// 计划扩张门店数量
+		/// [长度：5]
+		/// </summary>
+		public short PlanExpandStoreNum { get; set; }
+
+		/// <summary>
+		/// 跟踪状态 ID（来自
+		/// [长度：5]
+		/// </summary>
+		public short TrackStautsId { get; set; }
+
+		/// <summary>
+		/// 备注
+		/// [长度：1000]
+		/// </summary>
+		public string Memo { get; set; }
+
+
+
+        /// <summary>
+        /// 分店专属后台(Y/N)
+        /// [长度：1]
+        /// [不允许为空]
+        /// [默认值：('N')]
+        /// </summary>
+        public string StoreProper { get; set; }
+
+        /// <summary>
+        /// APP手机端(Y/N)
+        /// [长度：1]
+        /// [不允许为空]
+        /// [默认值：('N')]
+        /// </summary>
+        public string AppProper { get; set; }
+
+        /// <summary>
+        /// POS次屏显示(Y/N)
+        /// [长度：1]
+        /// [不允许为空]
+        /// [默认值：('N')]
+        /// </summary>
+        public string PosMinorDisp { get; set; }
+        /// <summary>
+        /// 开通版本ID(1：零售版、2：餐饮版、3：鞋服版)
+        /// [长度：5]
+        /// [不允许为空]
+        /// </summary>
+        public short OpenVersionId { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public short Way { get; set; }
+	}
+
+    /// <summary>
+    /// 采购意向清单
+    /// </summary>
+    public class ViewOrderList
+    {
+        /// <summary>
+        /// 设备Id
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        /// 0是未选中，大于0是选中
+        /// </summary>
+        public int IsCheck { get; set; }
+
+        /// <summary>
+        /// 设备名称
+        /// </summary>
+        public string Title { get; set; }
+
+        /// <summary>
+        /// 预购数量
+        /// </summary>
+        public int OrderNum { get; set; }
+    }
+}

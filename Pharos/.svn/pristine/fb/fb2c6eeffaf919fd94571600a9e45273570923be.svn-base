@@ -1,0 +1,135 @@
+﻿@{
+    ViewBag.Title = "ProductWeight";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新品建档", delText: "删除折扣", editText: "修改商品", hideAdd: true, hideDel: true,hideEdit:true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>品类：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.CategoryCombobox("parentType", showThird: true, showAll: false, panelWidth: 350, controlWidth: 180,i:2)
+            </td>
+            <td class="label-toolbar">
+                <label>品牌：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("brandsn", ViewBag.brands as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", style = "width:120px;" })
+            </td>
+            <td class="label-toolbar">
+                <label>供应商：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.SupplierCombobox("supplierId",emptyTitle:"全部",controlWidth:180)
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="datacontrol easyui-combobox" name="state" style="width:70px;" data-options="editable: false">
+                    <option selected value="">全部</option>
+                    <option value="1">已上架</option>
+                    <option value="0">已下架</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="searchText" class="datacontrol easyui-textbox font-12" placeholder="货号/品名/条码" data-options="prompt:'货号/品名/条码',width:120" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="weighNext()">下发到电子秤</a>
+@*<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出所选</a>*@
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="weighType()">电子秤设置配置</a>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindPageList")?ValuationType=2&";
+    pharos.manager.pageList = [112, 224];
+    pharos.manager.pageSize = 112;
+    pharos.manager.$dg.datagrid({
+        onCheck: function (index, row) {
+            getSelectCount();
+        },
+        onUncheck: function (index, row) {
+            getSelectCount();
+        },
+        onCheckAll: function (rows) {
+            getSelectCount();
+        },
+        onUncheckAll: function (rows) {
+            getSelectCount();
+        }
+    });
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ProductCode', title: '货号', editor: { type: 'text', required: true }, width: 60 },
+        {
+            field: 'Barcode', title: '条码', editor: { type: 'text', required: true }, width: 110,
+            formatter: function (value, row, index) {
+                if (row.Barcodes)
+                    return "<font color='blue' title='一品多码:" + row.Barcodes + "'>" + value + "</font>";
+                return value;
+            }
+        },
+        { field: 'CategoryTitle', title: '品类', width: 120 },
+        { field: 'Title', title: '品名', width: 120 },
+        { field: 'Size', title: '规格', width: 100 },
+        { field: 'BrandTitle', title: '品牌', width: 80 },
+        { field: 'SupplierTitle', title: '供应商', width: 120 },
+        { field: 'SubUnit', title: '单位', width: 40 },
+        { field: 'ValuationTypeTitle', title: '计价方式', width: 60 },
+        { field: 'StockNums', title: '库存量', width: 50 },
+        { field: 'BuyPrice', title: '进价', width: 60 },
+        {
+            field: 'SysPrice', title: '系统售价', width: 60, formatter: function (value, row, index) {
+                if (row.BuyPrice >= value)
+                    return "<font color='red' title='小于进价'>" + value + "</font>";
+                return value;
+            }
+        },
+        { field: 'FavorTitle', title: '前台优惠', width: 60 },
+        { field: 'ReturnTitle', title: '退货状态', width: 60 },
+        { field: 'AcceptTitle', title: '订货状态', width: 60 },
+        { field: 'StateTitle', title: '产品状态', width: 60 },
+        {
+            field: 'Nature', title: ' 产品性质', width: 60, formatter: function (value, row, index) {
+                return value == 2 ? "拆分" : value == 1 ? "组合" : "单品";
+            }
+        }
+    ]];
+
+    function Export() {
+        var rows = pharos.manager.$dg.datagrid("getChecked");
+        if (!rows || rows.length <= 0) {
+            $.messager.alert("提示", "请先选择记录!"); return;
+        }
+        var bars = $.map(rows, function (r, i) { return r.Barcode; });
+        $("#selectBarcodes").val(bars.join());
+        var pager = pharos.manager.$dg.datagrid("getPager");
+        $("#maxRecord").val(pager.pagination("options").pageSize);
+        $('#frm').submit();
+        setTimeout(function () {
+            pharos.manager.$dg.datagrid("clearChecked");
+            $("#selectBarcodes").val("");
+        }, 2000);
+    }
+    function getSelectCount() {
+        var rows = pharos.manager.$dg.datagrid("getChecked");
+        $("#selcount").html(rows.length);
+    }
+    function weighType() {
+        openDialog1000("电子秤设备配置", "@Url.Action("ProductWeighSet")");
+    }
+    function weighNext() {
+        openDialog1000('下发到电子秤', '@Url.Action("ExportOption")',true);
+        window.top.$('#lbsave .l-btn-text').width(100).html('下一步');
+        window.top.$('#lbadd .l-btn-text').width(100).html('上一步');
+    }
+</script>

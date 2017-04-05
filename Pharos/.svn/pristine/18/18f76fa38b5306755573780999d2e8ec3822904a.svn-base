@@ -1,0 +1,54 @@
+﻿using System;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+
+
+namespace Pharos.Logic.ApiData.Pos.DataAdapter
+{
+    public class DataAdapterFactory
+    {
+        /// <summary>
+        /// 默认数据适配器初始化参数（适用于不需要区分门店及设备的数据交互情况）
+        /// </summary>
+        public static string DEFUALT = ("DEFUALT" + Guid.NewGuid().ToString("N"));
+
+        /// <summary>
+        /// 默认数据适配器（使用默认数据适配器初始化参数初始化的数据适配器对象，适用于不需要区分门店及设备的数据交互情况）
+        /// </summary>
+        public static IDataAdapter DefualtDataAdapter
+        {
+            get
+            {
+                return Factory(MachinesSettings.Mode, DEFUALT, DEFUALT);
+            }
+        }
+
+        /// <summary>
+        /// 数据适配器工厂
+        /// </summary>
+        /// <param name="mode">数据源模式（1：SQLITE、2：SQL SERVER）</param>
+        /// <param name="storeId">门店Id</param>
+        /// <param name="machineSn">设备编号</param>
+        /// <returns>数据适配器对象</returns>
+        public static IDataAdapter Factory(DataAdapterMode mode, string storeId, string machineSn)
+        {
+            IDataAdapter dataAdapter = null;
+            switch (mode)
+            {
+                case DataAdapterMode.SQLITE:
+                    //dataAdapter = new SqliteDataAdapter() { MachineSN = machineSn, StoreId = storeId };
+                    break;
+                case DataAdapterMode.SQLSERVER:
+                    dataAdapter = new SqlServerDataAdapter() { MachineSN = machineSn, StoreId = storeId };
+                    break;
+                default:
+                    throw new PosException("未知数据源！");
+
+            }
+            if (dataAdapter == null)
+            {
+                throw new PosException("数据源不可用！");
+            }
+            return dataAdapter;
+        }
+    }
+}

@@ -1,0 +1,68 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增职位", delText: "删除职位", editText: "修改职位"));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "全部", Value = "",Selected=true }, new SelectListItem() { Text = "正常", Value = "True" }, new SelectListItem() { Text = "停用", Value = "False" } }, "Status")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(1)">设为可用</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(0)">设为停用</a>
+}
+<script type="text/javascript">
+    pharos.manager.singleSelect = true;
+    pharos.manager.pagination = false;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Code', title: '职位代码', width: 80 },
+        { field: 'Title', title: '职位名称', width: 100 },
+        { field: 'UserCount', title: '成员数', width: 70 },
+        { field: 'PDepartMent', title: '适用机构部门', width: 200, formatter: function (value, row, index) { return value; } },
+        { field: 'UpdateDT', title: '编辑时间', width: 130 },
+        { field: 'Updater', title: '编辑人', width: 100 },
+        { field: 'Status', title: '状态', width: 60, formatter: function (value, row, index) { return value==1?"正常":"停用"; } }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog600(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (id) {
+        this.Id = id;
+        openDialog600(this.editText, this.editurlNocache());
+    }
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.ajax({
+            type: 'post',
+            data: { id: ids, t: Math.random(), mode: state },
+            url: "@Url.Action("SetState")",
+            success: function (data) {
+                pharos.manager.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "修改状态失败！", "info");
+            }
+        });
+    }
+    
+    function removeBefore(row) {
+        if (row.UserCount > 0) {
+            $.messager.alert("提示", "已存在人员关联不能删除！", "error");
+            return false;
+        }
+        return true;
+    }
+</script>

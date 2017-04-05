@@ -1,0 +1,200 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Xml.Linq;
+
+namespace Pharos.Wpf.HotKeyHelper
+{
+    public static class HotKey
+    {
+        #region Win32
+        /// <summary>
+        /// 如果函数执行成功，返回值不为0。
+        /// 如果函数执行失败，返回值为0。要得到扩展错误信息，调用GetLastError。.NET方法:Marshal.GetLastWin32Error()
+        /// </summary>
+        /// <param name="hWnd">要定义热键的窗口的句柄</param>
+        /// <param name="id">定义热键ID（不能与其它ID重复）  </param>
+        /// <param name="fsModifiers">标识热键是否在按Alt、Ctrl、Shift、Windows等键时才会生效</param>
+        /// <param name="vk">定义热键的内容,WinForm中可以使用Keys枚举转换，
+        /// WPF中Key枚举是不正确的,应该使用System.Windows.Forms.Keys枚举，或者自定义正确的枚举或int常量</param>
+        /// <returns></returns>
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool RegisterHotKey(
+            IntPtr hWnd,
+            int id,
+            KeyModifiers fsModifiers,
+            int vk
+            );
+
+        /// <summary>
+        /// 取消注册热键
+        /// </summary>
+        /// <param name="hWnd">要取消热键的窗口的句柄</param>
+        /// <param name="id">要取消热键的ID</param>
+        /// <returns></returns>
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool UnregisterHotKey(
+            IntPtr hWnd,
+            int id
+            );
+
+        private const int WM_HOTKEY = 0x312;
+        #endregion Win32
+
+        private const string COFINGFILE = "PharosHotKeyRules.Config";
+        private const string IDENTIFIERFORMAT = "{0}*-*{1}";
+
+        static HotKey()
+        {
+            Rules = new List<HotKeyRule>();
+            HotKeyHandlers = new Dictionary<string, string>();
+        }
+
+        /// <summary>
+        /// 快捷键全部设置
+        /// </summary>
+        public static List<HotKeyRule> Rules { get; private set; }
+
+        /// <summary>
+        /// 热键命令集合<KEY,TYPE>
+        /// </summary>
+        private static IDictionary<string, string> HotKeyHandlers { get; set; }
+
+        /// <summary>
+        /// 保存快捷键设置
+        /// </summary>
+        public static void SaveConfig()
+        {
+            XDocument doc = new XDocument();
+            var element = new XElement("Settings");
+            foreach (var item in Rules)
+            {
+                XElement node = new XElement(
+                    "HotKey",
+                    new XAttribute("Id", item.Id),
+                    new XAttribute("Title", item.Title),
+                    new XAttribute("Keys", item.Keys)
+                    );
+                element.Add(node);
+            }
+            doc.Add(element);
+            doc.Save(COFINGFILE);
+        }
+        /// <summary>
+        /// 加载快捷键设置
+        /// </summary>
+        public static void LoadConfig()
+        {
+            XDocument doc = XDocument.Load(COFINGFILE);
+            HotKey.Rules = doc.Element("Settings").Elements("HotKey").Select(o =>
+                new HotKeyRule()
+                {
+
+                    Id = Convert.ToInt32(o.Attribute("Id").Value),
+                    Title = o.Attribute("Title").Value,
+                    Keys = o.Attribute("Keys").Value
+                }
+           ).ToList();
+        }
+        public static void AddHotKeyHandler<TWindow,IHotKeyCommand>(int id)
+            where TWindow : Window
+        {
+            var key = string.Format(IDENTIFIERFORMAT, typeof(TWindow), id);
+            HotKeyHandlers.Add(key, typeof(IHotKeyCommand).ToString());
+        }
+
+        public static void AddHotKeyHandler<TWindow, IHotKeyCommand>(this TWindow WIN, int id)
+            where TWindow : Window
+        {
+            AddHotKeyHandler<TWindow, IHotKeyCommand>(id);
+        }
+        /// <summary>
+        /// 从窗体绑定热键
+        /// </summary>
+        /// <param name="win"></param>
+        public static void ApplyHotKeyBindings(this Window win)
+        {
+            var hotKeyHandlers = HotKeyHandlers.Where(o => o.Key.Contains(win.GetType().ToString()));
+            HwndSource hWndSource;
+            WindowInteropHelper wih = new WindowInteropHelper(win);
+            hWndSource = HwndSource.FromHwnd(wih.Handle);
+            //添加处理程序
+            hWndSource.AddHook(HotKeyProc);
+            var splitString = new string[] { "*-*" };
+            foreach (var item in hotKeyHandlers)
+            {
+                var keyInfo = item.Key.Split(splitString, StringSplitOptions.None);
+                var id = Convert.ToInt32(keyInfo[1]);
+                var rule = Rules.FirstOrDefault(o => o.Id == id);
+                if (rule != null)
+                {
+                    var keys = rule.Keys.Split(",".ToArray(), StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var key in keys)
+                    {
+                        var hotKeyInfo = key.Split("+".ToArray(), StringSplitOptions.RemoveEmptyEntries);
+                        if (hotKeyInfo.Length == 2)
+                        {
+                            var firstKey = (KeyModifiers)Enum.Parse(typeof(KeyModifiers), hotKeyInfo[0]);
+                            var secondKey = (System.Windows.Forms.Keys)Enum.Parse(typeof(System.Windows.Forms.Keys), hotKeyInfo[1]);
+                            HotKey.RegisterHotKey(wih.Handle, id, firstKey, (int)secondKey);
+                        }
+                        else
+                        {
+                            var firstKey = (System.Windows.Forms.Keys)Enum.Parse(typeof(System.Windows.Forms.Keys), hotKeyInfo[0]);
+                            HotKey.RegisterHotKey(wih.Handle, id, KeyModifiers.None, (int)firstKey);
+                        }
+
+                    }
+                }
+            }
+        }
+        /// <summary>
+        /// 热键激发处理
+        /// </summary>
+        /// <param name="hwnd"></param>
+        /// <param name="msg"></param>
+        /// <param name="wParam"></param>
+        /// <param name="lParam"></param>
+        /// <param name="handled"></param>
+        /// <returns></returns>
+        private static IntPtr HotKeyProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+
+            switch (msg)
+            {
+                case HotKey.WM_HOTKEY:
+                    {
+                        int sid = wParam.ToInt32();
+                        var hotKeyHandler = HotKeyHandlers.FirstOrDefault(o => o.Key.EndsWith("*-*" + sid)).Value;
+                        if (!string.IsNullOrEmpty(hotKeyHandler))
+                        {
+                            var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+                            foreach (var item in assemblies)
+                            {
+                                var type = item.GetTypes().FirstOrDefault(o => o.ToString().EndsWith(hotKeyHandler));
+                                if (type != null && type.GetInterfaces().Contains(typeof(IHotKeyCommand)))
+                                {
+                                  var  tmpCommand = item.CreateInstance(type.ToString()) as IHotKeyCommand;
+                                  tmpCommand.Handler.Execute(null);
+                                    handled=true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        break;
+                    }
+            }
+            return IntPtr.Zero;
+
+
+        }
+    }
+
+}

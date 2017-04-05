@@ -1,0 +1,84 @@
+﻿using Pharos.SocketService.Retailing.Models;
+using Pharos.SocketService.Retailing.Protocol;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+
+namespace Pharos.SocketService.Retailing.Commands.DataAgent
+{
+    public abstract class BaseDataAgentCommand : BaseCommand
+    {
+        public BaseDataAgentCommand(byte[] cmdCode)
+            : base(0x01, cmdCode)
+        {
+
+        }
+        public abstract void Execute(DataAgentParams _Params, SocketSession session, SocketRequestInfo requestInfo);
+
+
+        public override void ExecuteCommand(SocketSession session, SocketRequestInfo requestInfo)
+        {
+            var json = SocketSession.defaultEncoding.GetString(requestInfo.Body);
+            var _Params = JsonConvert.DeserializeObject<DataAgentParams>(json);
+            if (_Params == null)
+            {
+                WriteErrorMessage(session, requestInfo, "数据同步，请求参数不能为Null！");
+                return;
+            }
+            if (string.IsNullOrEmpty(_Params.StoreId))
+            {
+                WriteErrorMessage(session, requestInfo, "数据同步，门店标识（StoreId） 不能为空！");
+                return;
+            }
+            if (string.IsNullOrEmpty(_Params.EntityName))
+            {
+                WriteErrorMessage(session, requestInfo, "数据同步，表名（TableName）不能为空！");
+                return;
+            }
+            Execute(_Params, session, requestInfo);
+        }
+
+        public void WriteErrorMessage(SocketSession session, SocketRequestInfo requestInfo, string errorMessage)
+        {
+            WriteDataSyncMessage(session, requestInfo, errorMessage, (requestInfo.CommandRuleProvider as CommandRuleProvider).ErrorCode);
+        }
+
+        public void WriteDataSyncDeleteAction(SocketSession session, SocketRequestInfo requestInfo, string content)
+        {
+            WriteDataSyncMessage(session, requestInfo, content, (requestInfo.CommandRuleProvider as CommandRuleProvider).DeleteActionCode);
+        }
+        public void WriteDataSyncDownloadAction(SocketSession session, SocketRequestInfo requestInfo, string content)
+        {
+            WriteDataSyncMessage(session, requestInfo, content, (requestInfo.CommandRuleProvider as CommandRuleProvider).DownloadActionCode);
+        }
+
+        public void WriteDataSyncUpdateUploadStates(SocketSession session, SocketRequestInfo requestInfo, string content)
+        {
+            WriteDataSyncMessage(session, requestInfo, content, (requestInfo.CommandRuleProvider as CommandRuleProvider).UpdateUploadStatesCode);
+        }
+        public void WriteDataSyncErrorDatas(SocketSession session, SocketRequestInfo requestInfo, string content)
+        {
+            WriteDataSyncMessage(session, requestInfo, content, (requestInfo.CommandRuleProvider as CommandRuleProvider).ErrorDatasCode);
+        }
+        public void WriteDataSyncUpdateUpdateStates(SocketSession session, SocketRequestInfo requestInfo, string content)
+        {
+            WriteDataSyncMessage(session, requestInfo, content, (requestInfo.CommandRuleProvider as CommandRuleProvider).UpdateUpdateStatesCode);
+        }
+        public void WriteDataSyncMessage(SocketSession session, SocketRequestInfo requestInfo, string content, byte[] actionRoute)
+        {
+            if (actionRoute.Length != requestInfo.CommandRuleProvider.BytesLength)
+            {
+                throw new StackOverflowException("动作路由错误！");
+            }
+            var info = SocketSession.defaultEncoding.GetBytes(content);
+            var body = new byte[info.Length + requestInfo.CommandRuleProvider.BytesLength];
+            Array.Copy(info, 0, body, requestInfo.CommandRuleProvider.BytesLength, info.Length);
+            Array.Copy(actionRoute, 0, body, 0, requestInfo.CommandRuleProvider.BytesLength);
+
+            var result = session.Format(body);
+            session.Send(result, 0, result.Length);
+        }
+    }
+}

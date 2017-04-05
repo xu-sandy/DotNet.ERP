@@ -1,0 +1,50 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("Id")
+        @Html.Hidden("Barcode")
+        @Html.Hidden("LockStoreID")
+        @Html.Hidden("CheckBatch")
+        <div class="content">
+            <table class="table-form" width="100%" height="150px">
+                <tr>
+                    <td class="name">盘点门店：</td>
+                    <td class="input">@Html.DisplayText("StoreTitle")</td>
+                    <td class="name">盘点批次：</td>
+                    <td class="input" id="batch">@Html.DisplayText("CheckBatch")</td>
+                </tr>
+                <tr>
+                    <td class="name formbox">复盘日期：</td>
+                    <td class="input formbox">
+                        <input id="date" class="Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',maxDate:'#F{$dp.$D(\'date2\')}'})" style="width:100px;display:none" />
+                        <input name="ActualDate" id="date2" class="Wdate easyui-validatebox" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',minDate:'#F{$dp.$D(\'date\')}'})" value="@Html.DisplayText("LockDate")" style="width:100px" data-options="required:true" />
+                    </td>
+                    <td class="name formbox">盘点员：</td>
+                    <td class="input formbox">@Html.DropDownList("CheckUID", ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "width:100" })</td>
+                </tr>
+                <tr>
+                    <td class="name">商品条码：</td>
+                    <td class="input">@Html.DisplayText("Barcode")</td>
+                    <td class="name">品 名：</td>
+                    <td class="input">@Html.DisplayText("Title")</td>
+                </tr>
+                <tr>
+                    <td class="name">复盘前数量：</td>
+                    <td class="input">@Html.DisplayText("InitNumber")</td>
+                    <td class="name">实盘数量：</td>
+                    <td class="input">@Html.TextBox("ActualNumber", Request["ActualNumber"]=="null" ? "" : Request["ActualNumber"], new { @class = "easyui-validatebox", data_options = "required:true,validType:'intOrFloat'", style = "width:90px" })</td>
+                </tr>
+        </table>
+    </div>
+    }
+</div>
+<script type="text/javascript">
+    $(function () {
+        var date = $("#batch").html().substr(2, 6);
+        $("#date").val("20" + date.substr(0, 2) + "-" + date.substr(2, 2) + "-" + date.substr(4, 2));
+    });
+</script>

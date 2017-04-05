@@ -1,0 +1,42 @@
+﻿using Pharos.SyncService;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.ClientService
+{
+    class SyncServiceClientStartup
+    {
+        public static void RunSync(CancellationToken token)
+        {
+            try
+            {
+                SyncController controller = new SyncController();
+                var storeId = System.Configuration.ConfigurationManager.AppSettings["StoreId"];
+                var companyToken = Convert.ToInt32(System.Configuration.ConfigurationManager.AppSettings["CompanyId"]);
+                var endPointConfigurationName = System.Configuration.ConfigurationManager.AppSettings["EndPointConfigurationName"];
+                controller.DoSynchronize(companyToken, storeId, endPointConfigurationName, new LocalSyncContext(),token);
+            }
+            catch (Exception ex)
+            {
+                Console.Write(ex);
+            }
+        }
+
+        internal static Task AutoSync(CancellationToken token)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                while (true)
+                {
+                    RunSync(token);
+                    token.ThrowIfCancellationRequested();
+                    Thread.Sleep(30);
+                }
+            }, token);
+        }
+    }
+}

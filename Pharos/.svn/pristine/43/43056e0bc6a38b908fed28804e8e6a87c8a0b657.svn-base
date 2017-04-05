@@ -1,0 +1,28 @@
+﻿using Pharos.Logic.BLL;
+using Pharos.Service.Retailing.Marketing;
+using Pharos.Service.Retailing.RefreshCache;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Service.Retailing.RechargeGiftsCache;
+using Pharos.Logic.MemberDomain.QuanChengTaoProviders;
+
+namespace Pharos.Service.Retailing
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            MarketingManager.InitStoreMarketing();
+            Console.WriteLine("促销启动！");
+            ProductCacheManager.Subscribe();
+            Console.WriteLine("产品缓存变更订阅已启动！");
+            RechargeGiftsManager.Start();
+            Console.WriteLine("充值赠送已启动！");
+            QuanChengTaoIntegralRuleContext.SubscribeIntegralEvents();
+            Console.WriteLine("积分规则运算已启动！");
+            Console.ReadLine();
+        }
+    }
+}

@@ -1,0 +1,326 @@
+﻿using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class AddMember : BaseViewModel
+    {
+        public AddMember()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                var _machineInfo = Global.MachineSettings.MachineInformations;
+                AreaInfoParams _params = new AreaInfoParams()
+                {
+                    PID = 1,
+                    StoreId = _machineInfo.StoreId,
+                    MachineSn = _machineInfo.MachineSn,
+                    CID = _machineInfo.CompanyId
+                };
+                var result = ApiManager.Post<AreaInfoParams, ApiRetrunResult<IEnumerable<AreaInfo>>>(@"api/GetAreas", _params);
+                Application.Current.Dispatcher.Invoke(new Action(() =>
+                {
+                    if (result.Code == "200")
+                    {
+                        Provinces = new AreaInfo[] { new AreaInfo() { Title = "请选择省份", AreaID = -1 } }.Concat(result.Result.OrderBy(o => o.OrderNum));
+                    }
+                    else
+                    {
+                        Provinces = new AreaInfo[] { new AreaInfo() { Title = "请选择省份" } };
+                    }
+                }));
+            });
+
+        }
+
+        private string memberId;
+
+        public string MemberId
+        {
+            get { return memberId; }
+            set
+            {
+                memberId = value;
+                this.OnPropertyChanged(o => o.MemberId);
+            }
+        }
+
+        private string name;
+
+        public string Name
+        {
+            get { return name; }
+            set
+            {
+                name = value;
+                this.OnPropertyChanged(o => o.Name);
+            }
+        }
+
+
+        private bool sex = true;
+
+        public bool Sex
+        {
+            get { return sex; }
+            set
+            {
+                sex = value;
+                this.OnPropertyChanged(o => o.Sex);
+            }
+        }
+
+        private string phone;
+
+        public string Phone
+        {
+            get { return phone; }
+            set
+            {
+                phone = value;
+                this.OnPropertyChanged(o => o.Phone);
+            }
+        }
+
+        private string zhifubao;
+
+        public string ZhiFuBao
+        {
+            get { return zhifubao; }
+            set
+            {
+                zhifubao = value;
+                this.OnPropertyChanged(o => o.ZhiFuBao);
+            }
+        }
+
+        private string weixin;
+
+        public string WeiXin
+        {
+            get { return weixin; }
+            set
+            {
+                weixin = value;
+                this.OnPropertyChanged(o => o.WeiXin);
+            }
+        }
+
+        private string email;
+
+        public string Email
+        {
+            get { return email; }
+            set
+            {
+                email = value;
+                this.OnPropertyChanged(o => o.Email);
+
+            }
+        }
+
+
+        private DateTime birthday=DateTime.Now;
+
+        public DateTime Birthday
+        {
+            get { return birthday; }
+            set
+            {
+                birthday = value;
+                this.OnPropertyChanged(o => o.Birthday);
+            }
+        }
+
+        private string partialAddress;
+
+        public string PartialAddress
+        {
+            get { return partialAddress; }
+            set
+            {
+                partialAddress = value;
+                this.OnPropertyChanged(o => o.PartialAddress);
+            }
+        }
+        IEnumerable<AreaInfo> provinces;
+        public IEnumerable<AreaInfo> Provinces
+        {
+            get
+            {
+                return provinces;
+            }
+            set
+            {
+                provinces = value;
+                this.OnPropertyChanged(o => o.Provinces);
+                if (provinces.Count() > 0)
+                    ProvinceID = provinces.FirstOrDefault().AreaID;
+
+            }
+        }
+        private int provinceId;
+        public int ProvinceID
+        {
+            get { return provinceId; }
+            set
+            {
+
+                provinceId = value;
+                Task.Factory.StartNew(() =>
+                {
+
+                    var _machineInfo = Global.MachineSettings.MachineInformations;
+                    AreaInfoParams _params = new AreaInfoParams()
+                    {
+                        PID = value,
+                        StoreId = _machineInfo.StoreId,
+                        MachineSn = _machineInfo.MachineSn,
+                        CID = _machineInfo.CompanyId
+                    };
+                    var result = ApiManager.Post<AreaInfoParams, ApiRetrunResult<IEnumerable<AreaInfo>>>(@"api/GetAreas", _params);
+                    Application.Current.Dispatcher.Invoke(new Action(() =>
+                    {
+
+                        if (result.Code == "200")
+                        {
+                            Cities = new AreaInfo[] { new AreaInfo() { Title = "请选择城市", AreaID = -1 } }.Concat(result.Result.OrderBy(o => o.OrderNum));
+                        }
+                        else
+                        {
+                            Cities = new AreaInfo[] { new AreaInfo() { Title = "请选择城市", AreaID = -1 } };
+                        }
+                    }));
+                });
+                this.OnPropertyChanged(o => o.ProvinceID);
+            }
+        }
+        private int cityId;
+        public int CityID
+        {
+            get { return cityId; }
+            set
+            {
+                cityId = value;
+                Task.Factory.StartNew(() =>
+                {
+
+                    var _machineInfo = Global.MachineSettings.MachineInformations;
+                    AreaInfoParams _params = new AreaInfoParams()
+                    {
+                        PID = value,
+                        StoreId = _machineInfo.StoreId,
+                        MachineSn = _machineInfo.MachineSn,
+                        CID = _machineInfo.CompanyId
+                    };
+                    var result = ApiManager.Post<AreaInfoParams, ApiRetrunResult<IEnumerable<AreaInfo>>>(@"api/GetAreas", _params);
+                    Application.Current.Dispatcher.Invoke(new Action(() =>
+                    {
+
+                        if (result.Code == "200")
+                        {
+                            Areas = new AreaInfo[] { new AreaInfo() { Title = "请选择区县", AreaID = -1 } }.Concat(result.Result.OrderBy(o => o.OrderNum));
+                        }
+                        else
+                        {
+                            Areas = new AreaInfo[] { new AreaInfo() { Title = "请选择区县", AreaID = -1 } };
+                        }
+                    }));
+                });
+                this.OnPropertyChanged(o => o.CityID);
+            }
+        }
+        private int areaId;
+        public int AreaID
+        {
+            get { return areaId; }
+            set
+            {
+
+                areaId = value;
+                this.OnPropertyChanged(o => o.AreaID);
+            }
+        }
+
+        IEnumerable<AreaInfo> cities;
+        public IEnumerable<AreaInfo> Cities
+        {
+            get { return cities; }
+            set
+            {
+                cities = value;
+                this.OnPropertyChanged(o => o.Cities);
+                if (cities.Count() > 0)
+                {
+                    CityID = cities.FirstOrDefault().AreaID;
+                }
+            }
+        }
+
+        IEnumerable<AreaInfo> areas;
+        public IEnumerable<AreaInfo> Areas
+        {
+            get { return areas; }
+            set
+            {
+                areas = value;
+                this.OnPropertyChanged(o => o.Areas);
+                if (areas.Count() > 0)
+                    AreaID = areas.FirstOrDefault().AreaID;
+            }
+        }
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        AddMemberParams _params = new AddMemberParams()
+                        {
+                            Address = this.PartialAddress,
+                            Birthday = this.Birthday.ToString("yyyy-MM-dd"),
+                            CurrentCityId = this.CityID,
+                            Email = this.Email,
+                            MemberNo = this.MemberId,
+                            MobilePhone = this.Phone,
+                            ProvinceID = this.ProvinceID,
+                            CurrentCountyId = this.AreaID,
+                            RealName = this.Name,
+                            Sex = this.Sex,
+                            Weixin = this.WeiXin,
+                            Zhifubao = this.ZhiFuBao,
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CID = _machinesInfo.CompanyId
+                        };
+                        var result = ApiManager.Post<AddMemberParams, ApiRetrunResult<object>>(@"api/AddMember", _params);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            if (result.Code == "200")
+                            {
+                                Toast.ShowMessage("保存成功！", CurrentWindow);
+                                CurrentWindow.Close();
+
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }
+                        }));
+                    });
+                });
+            }
+        }
+    }
+}

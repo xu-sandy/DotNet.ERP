@@ -1,0 +1,285 @@
+﻿@{
+    ViewBag.Title = "Menus";
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+    var verId = Request["verId"] ?? Guid.NewGuid().ToString("n");
+    var hide = Request["detail"] == "1";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增主菜单", delText: "删除产品", editText: "修改主菜单", hideDel: true, hideSearch: true, hideAdd: true, hideEdit: true));
+    var status = new List<SelectListItem>()
+    {
+        new SelectListItem(){Text="显示",Value="1"},
+        new SelectListItem(){Text="隐藏",Value="0"}
+    }.ToJson();
+}
+@section toolbar
+{
+    <span id="movebtn" style="margin-right:400px">
+        所属系统：@Html.DropDownList("ProductId", ViewBag.products as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "validType:'requiredForCombo',width:200,editable:false" + (Request["isadd"].IsNullOrEmpty() ? ",readonly:true" : "") })
+        &nbsp;&nbsp; &nbsp;&nbsp; 版本：@Html.DisplayText("status")
+        &nbsp;&nbsp; &nbsp;&nbsp; 状态版本：@Html.DisplayText("state")
+    </span> 
+}
+<style type="text/css">.tree-title{white-space:normal}</style>
+<script type="text/javascript">
+    var detail=@hide.ToString().ToLower();
+    $(function(){
+        $("#movebtn").prev().insertAfter($("#movebtn"));
+        $dg=pharos.managertree.$dg;
+    });
+    pharos.dropdown['status']=@Html.Raw(status);
+    pharos.managertree.geturl = "@Url.Action("DataList", new { verId = verId })";
+    pharos.managertree.editurl = "@Url.Action("SaveData")";
+    pharos.managertree.sortName = "Id";
+    pharos.managertree.idField="id";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "Title";
+    pharos.managertree.pagination = false;
+    pharos.managertree.columns = [[
+        { field: 'Id',hidden:true },
+        { field: 'DicSN', title: '编号', width: 60 },
+        { field: 'Title', title: '分类', width: 200,editor:{type:'textbox',options:{disabled:false}} },
+        { field: 'ChildTitle', title: '子项', width: 300 },
+        { field: 'Status', title: '状态', width: 60,editor:{type:'combobox',options:{data:pharos.dropdown['status'],valueField:'Value',textField:'Text',editable:false}}, formatter: function (value, row, index) { return value == 1 ? "显示" : "隐藏"; } },
+        {
+            field: 'Editor', title: '操作', width: 200,hidden:detail, formatter: function (value, row, index) {
+                var operat = "";
+                if (opadd) {
+                    opadd = false;
+                    @if(CurrentUser.HasPermiss(183))
+                    { 
+                    @:operat= "<a href='javascript:void(0)' onclick='appendRow()'>添加</a>";
+                    }
+                } else{
+                    operat +=String.format( "<div style='display:none' savesn='{0}'>",[row.id]);
+                    operat += "<a href='javascript:saveData(\"" + row.id + "\",\"" + row.DicSN + "\")'>[保存]</a>&nbsp;&nbsp;&nbsp;";
+                    operat += "<a href='javascript:cancelData(\"" + row.id + "\")'>[取消]</a>&nbsp;</div>";
+                    operat +=String.format( "<div editsn='{0}'>",[row.id]);
+                    @if(CurrentUser.HasPermiss(194))
+                    { 
+                        <text>
+                    if (row._parentId || row.HasChild)
+                        operat += "<a style='color:#555'>[移除]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a href='javascript:removeData(\"" + row.DicSN + "\")'>[移除]</a>&nbsp;";
+                        </text>
+                    }
+                    if (row.Status==1)
+                        operat += "<a href='javascript:setState(\"" + row.DicSN + "\",0)'>[关闭]</a>&nbsp;";
+                    else
+                        operat += "<a href='javascript:setState(\"" + row.DicSN + "\",1)'>[显示]</a>&nbsp;";
+
+                    operat += "<a href='javascript:editMenu(\"" + row.DicSN + "\",\"" + row.Title + "\")'>[编辑子项]</a>&nbsp;</div>";
+                }
+                return operat;
+            }
+        }
+    ]];
+
+    pharos.managertree.loadSuccess=function(row,data){
+        if(firstLoad && detail==false){
+            setTimeout(function(){
+                opadd = true;
+                firstLoad=false;
+                $dg.treegrid('append', { parent:'',data:[{ id:mId, Title:'',Status: 1}]});
+                editIndex = data.length - 1;
+                $dg.treegrid('beginEdit',mId);
+            }, 500);
+        }
+    }
+    var firstLoad = true,editIndex = undefined,opadd = false,$dg=undefined;
+    function endEditing() {
+        if (editIndex == undefined) { return true }
+        if ($dg.treegrid('validateRow', editIndex)) {
+            var ed = $dg.treegrid('getEditor', { id: mId, field: 'Title' });
+            if (ed) {
+                var vl =$.trim( $(ed.target).textbox('getValue'));
+                if(!vl){
+                    $.messager.alert("提示", "请输入分类名称", "info");
+                    return false;
+                }
+                if(vl.length>15){
+                    $.messager.alert("提示", "分类名称不能大于15个字", "info");
+                    return;
+                }
+                var data = $dg.treegrid("getData");
+                if (isExists(data, vl)) {
+                    $.messager.alert("提示", "该分类名称已存在", "warning", function () {
+
+                    });
+                    return false;
+                }
+                var productId= $("#ProductId").combobox("getValue");
+                if(!productId){
+                    $.messager.alert("提示", "请先选择系统！", "info");
+                    return false;
+                }
+                ed = $dg.treegrid('getEditor', { id: mId, field: 'Status' });
+
+                var result=true;
+                $.ajax({
+                    type: 'post',
+                    async:false,
+                    data: { title: vl,verId:"@verId",productId:productId,status:$(ed.target).combobox('getValue'),t:Math.random() },
+                    url: "@Url.Action("AppendData")",
+                    dataType:"json",
+                    success: function (data) {
+                        if(data.successed){
+                            firstLoad=true;
+                            pharos.managertree.gridReload();
+                            $("#ProductId").combobox({readonly:true}).combobox("select",productId);
+                        }else{
+                            $.messager.alert("提示", "添加失败！"+data.message, "info");
+                            result= false;
+                        }
+                    }, error: function (data) {
+                        $.messager.alert("提示", "添加失败！", "info");
+                        result= false;
+                    }
+                });
+                if(!result) return false;
+            }
+            $dg.treegrid('endEdit', mId);
+            editIndex = undefined;
+            return true;
+        }
+        return false;
+    }
+    var mId="";
+    function appendRow() {
+        if (endEditing()) {
+            //opadd = true;
+            //mId=guidGenerator()+"";
+            //try
+            //{
+            //    $dg.treegrid('append', { parent:'',data:[{ id:mId, Title:'',Status: 1}]});
+            //}catch(e){}
+            //editIndex = $dg.treegrid('getData').length - 1;
+            //$dg.treegrid('beginEdit',mId);
+        }
+    }
+    function saveData(id,sn){
+        var ed = $dg.treegrid('getEditor', { id: id, field: 'Title' });
+        if (ed) {
+            var vl =$.trim( $(ed.target).textbox('getValue'));
+            if(!vl){
+                $.messager.alert("提示", "请输入分类名称", "info");
+                return;
+            }
+            if(vl.length>15){
+                $.messager.alert("提示", "分类名称不能大于15个字", "info");
+                return;
+            }
+            var data = $dg.treegrid("getData");
+            if (isExists(data, vl)) {
+                $.messager.alert("提示", "该分类名称已存在", "warning", function () {
+
+                });
+                return false;
+            }
+            $.ajax({
+                type: 'post',
+                async:false,
+                data: { title: vl,id:id,t:Math.random() },
+                url: "@Url.Action("SaveData")",
+                dataType:"json",
+                success: function (data) {
+                    if(data.successed){
+                        firstLoad=true;
+                        pharos.managertree.gridReload();
+                    }else{
+                        $.messager.alert("提示", "保存失败！"+data.message, "error");
+                    }
+                }, error: function (data) {
+                    $.messager.alert("提示", "保存失败！", "error");
+                }
+            });
+        }
+    }
+    function cancelData(id){
+        $dg.treegrid('cancelEdit', id);
+    }
+    function editBefore(row, field){
+        if(field=="Title" && detail==false){
+            @if(CurrentUser.HasPermiss(183))
+            {
+                <text>
+            $dg.treegrid('select', row.id)
+                        .treegrid('editCell', { id: row.id, field: field });
+            $("div[editsn="+row.id+"]").hide();
+            $("div[savesn="+row.id+"]").show("slow");
+                </text>
+            }
+        }
+        return false;
+    }
+    function guidGenerator() {
+        //debugger;
+        var rows = $dg.treegrid("getData");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? Number(row.Id) : 0;
+        });
+        var maxId = Math.max.apply(null, ids);
+        if (maxId == -Infinity) maxId = 0;
+        return maxId + 1;
+    }
+    function isExists(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.Title == cd) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+    function moveMenuItem(mode, menuId) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, sn: menuId,verId:"@verId",t:Math.random() },
+            url: "@Url.Action("MoveItem")",
+            success: function (data) {
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "菜单移动失败！", "info");
+            }
+        });
+    }
+    function editMenu(pid,ptitle) {
+        var url= pharos.managertree.editurlNocache() + "&product="+$("#ProductId").combobox("getText")+"&productId="+$("#ProductId").combobox("getValue")+  "&psn=" +pid +"&verId=@verId"+"&state=@Html.DisplayText("state")"+"&parentTitle="+ptitle;
+        openDialogNew("编辑子项", url, 800, 450, true,true);
+    }
+    function removeData(id) {
+        $.messager.confirm('提示', "移除后将无法恢复,是否继续?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { sn: id,verId:"@verId",t:Math.random() },
+                url: "@Url.Action("RemoveData")",
+                success: function (data) {
+                    firstLoad=true;
+                    pharos.managertree.gridReload();
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除字典失败！", "info");
+                }
+            });
+        });
+    }
+    function setState(id,state) {
+        $.ajax({
+            type: 'post',
+            data: { sn: id,verId:"@verId",state:state,t:Math.random() },
+            url: "@Url.Action("SetState")",
+            success: function (data) {
+                firstLoad=true;
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "状态修改失败！", "info");
+            }
+        });
+    }
+
+    function closeDialog() {
+        firstLoad=true;
+        pharos.managertree.gridReload();
+    }
+</script>

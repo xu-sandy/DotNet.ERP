@@ -1,0 +1,167 @@
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Models;
+using QCT.Pay.Common;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Web.Http;
+using System.Web.Http.Results;
+
+namespace QCT.Api.Pay.Controllers
+{
+    public class BasePayController : ApiController
+    {
+        /// <summary>
+        /// 日志记录引擎
+        /// </summary>
+        [Ninject.Inject]
+        protected LogEngine LogEngine { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="result"></param>
+        /// <param name="secretKey"></param>
+        /// <param name="signField"></param>
+        /// <returns></returns>
+        internal JsonResult<Dictionary<string, object>> ToSignJson<T>(T result, string secretKey, string signField)
+        {
+            var rstRsp = ToDicAndSign(result, secretKey, signField);
+            return Json(rstRsp);
+        }
+        /// <summary>
+        /// 转换为排序字典并添加签名
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="reqModel"></param>
+        /// <param name="secretKey"></param>
+        /// <returns></returns>
+        internal Dictionary<string, object> ToDicAndSign<T>(T reqModel, string secretKey, string signField)
+        {
+            var dicMap = ToASCIIDictionary(reqModel);
+            return SetSign(dicMap, secretKey, signField);
+        }
+        /// <summary>
+        /// 数据字典对象添加签名属性
+        /// </summary>
+        /// <param name="dicMap"></param>
+        /// <param name="secretKey"></param>
+        /// <param name="signField"></param>
+        /// <returns></returns>
+        internal Dictionary<string, object> SetSign(Dictionary<string, object> dicMap, string secretKey, string signField)
+        {
+            dicMap.Remove(signField);
+            var sign = PayRules.Sign(dicMap, secretKey);
+            dicMap.Add(signField, sign);
+            return dicMap;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal Dictionary<string, object> ToASCIIDictionary<T>(T model)
+        {
+            var dicMap = new Dictionary<string, object>();
+            var type = typeof(T);
+            foreach (var item in type.GetProperties())
+            {
+                var attrs = item.GetCustomAttributes(typeof(JsonPropertyAttribute), false);
+                var value = item.GetValue(model);
+                if (!item.PropertyType.IsGenericType)
+                {
+                    if (attrs.Length > 0)
+                    {
+                        var key = ((JsonPropertyAttribute)attrs[0]).PropertyName;
+                        value = value == null ? "" : value;
+                        dicMap.Add(key, value);
+                    }
+                }
+            }
+            dicMap = dicMap.OrderBy(s => s.Key, StringComparer.Ordinal).ToDictionary(k => k.Key, v => v.Value);
+            return dicMap;
+        }
+        /// <summary>
+        /// 组装请求参数为签名字符串
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        internal string ToParamsStr(Dictionary<string, object> obj)
+        {
+            StringBuilder signdatasb = new StringBuilder();
+            foreach (var item in obj)
+            {
+                String key = item.Key;
+                var objVal = obj[key];
+                if (!(objVal is IEnumerable && objVal.GetType().IsGenericType))
+                {
+                    String value = objVal == null ? "" : objVal.ToString();
+                    signdatasb.Append("&").Append(key).Append("=").Append(value);
+                }
+            }
+            return signdatasb.ToString().Substring(1);
+        }
+        /// <summary>
+        /// 创建请求
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        internal string PostUrl(string url, Dictionary<string, object> reqParams)
+        {
+            var paramsStr = ToParamsStr(reqParams);
+            var result = PostPayApi(url, paramsStr);
+            return result;
+        }
+        /// <summary>
+        /// Post提交支付接口
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="paramsStr"></param>
+        /// <returns></returns>
+        private string PostPayApi(string url, string paramsStr)
+        {
+            var httpRequest = (HttpWebRequest)WebRequest.Create(url);
+            httpRequest.Method = "POST";
+            httpRequest.ContentType = "application/x-www-form-urlencoded";
+            httpRequest.Timeout = 40000;
+            byte[] byteRequest = System.Text.Encoding.UTF8.GetBytes(paramsStr);
+            httpRequest.ContentLength = byteRequest.Length;
+            Stream requestStream = httpRequest.GetRequestStream();
+            requestStream.Write(byteRequest, 0, byteRequest.Length);
+            requestStream.Close();
+
+            //获取服务端返回
+            var response = (HttpWebResponse)httpRequest.GetResponse();
+            //获取服务端返回数据
+            StreamReader sr = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+            var result = sr.ReadToEnd().Trim();
+            sr.Close();
+            return result;
+        }
+        /// <summary>
+        /// JSON转请求对象并验证输入数据的有效性
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="reqParams"></param>
+        /// <param name="errMsg"></param>
+        /// <returns></returns>
+        internal T ToRequestObject<T>(JObject reqParams, out string errMsg) where T : BaseTradeRequest
+        {
+            var reqObj = reqParams.ToObject<T>();
+            //参数验证有效性
+            errMsg = reqObj.TryValidateObject(reqObj);
+            //fishtodo：验签
+            return reqObj;
+        }
+    }
+}

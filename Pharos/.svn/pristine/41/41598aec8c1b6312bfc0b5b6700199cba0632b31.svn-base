@@ -1,0 +1,141 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models
+{
+    public class MembershipCard : BaseObservable, IDisposable
+    {
+        private bool isDisposable = false;
+        public MembershipCard()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                while (!isDisposable)
+                {
+                    OperatedTime = DateTime.Now;
+                    Thread.Sleep(1000);
+                }
+            });
+            Operator = UserModel.Current.FullName;
+            UserCode = UserModel.Current.UserCode;
+
+        }
+
+        private string id;
+        private string weixin;
+        private string name;
+        private decimal integral;
+        private string _operator;
+        private DateTime operatedTime;
+
+        public string Id
+        {
+            get { return id; }
+            set
+            {
+                id = value;
+                Operator = UserModel.Current.FullName;
+                UserCode = UserModel.Current.UserCode;
+                OperatedTime = DateTime.Now;
+                OnPropertyChanged("Id");
+            }
+        }
+
+
+        public string Weixin
+        {
+            get { return weixin; }
+            set
+            {
+                weixin = value;
+                Operator = UserModel.Current.FullName;
+                UserCode = UserModel.Current.UserCode;
+                OperatedTime = DateTime.Now;
+                OnPropertyChanged("Weixin");
+            }
+        }
+
+
+
+        public string Name
+        {
+            get { return name; }
+            set
+            {
+                name = value;
+                OnPropertyChanged("Name");
+
+            }
+        }
+
+        public decimal Integral
+        {
+            get { return integral; }
+            set
+            {
+                integral = value;
+                OnPropertyChanged("Integral");
+            }
+        }
+
+        public string Operator
+        {
+            get { return _operator; }
+            set
+            {
+                _operator = value;
+                OnPropertyChanged("Operator");
+            }
+        }
+        private string userCode;
+
+        public string UserCode {
+            get { return userCode; }
+
+            set {
+
+                userCode = value;
+                OnPropertyChanged("UserCode");
+
+            }
+        
+        }
+
+        public DateTime OperatedTime
+        {
+            get { return operatedTime; }
+            set
+            {
+                operatedTime = value;
+                OnPropertyChanged("OperatedTime");
+            }
+        }
+
+
+        public void ReSet()
+        {
+            this.Id = string.Empty;
+            this.Weixin = string.Empty;
+            this.Integral = 0;
+            this.Name = string.Empty;
+            Operator = UserModel.Current.FullName;
+            UserCode = UserModel.Current.UserCode;
+            OperatedTime = DateTime.Now;
+        }
+        public bool HasRequestMember
+        {
+            get
+            {
+                return !string.IsNullOrEmpty(Id) || !string.IsNullOrEmpty(Weixin);
+            }
+        }
+
+        public void Dispose()
+        {
+            isDisposable = true;
+        }
+    }
+}

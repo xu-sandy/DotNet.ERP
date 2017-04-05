@@ -1,0 +1,55 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Marketings
+{
+    /// <summary>
+    /// 促销活动限制规则
+    /// </summary>
+    public class MarketingRule
+    {
+
+        /// <summary>
+        /// 促销活动规则计量模式
+        /// </summary>
+        public MeteringMode MeteringMode { get; set; }
+        /// <summary>
+        /// 条码范围
+        /// </summary>
+        IEnumerable<string> BarcodeRange { get; set; }
+        /// <summary>
+        /// 规则数量
+        /// </summary>
+        public decimal RuleNumber { get; set; }
+
+        /// <summary>
+        /// 促销活动
+        /// </summary>
+        public MarketingAction MarketingAction { get; set; }
+
+        public MarketingContext Match(ShoppingCart shoppingCart)
+        {
+            var matchRanges = shoppingCart.OrderList.Where(barcode => barcode.EnableMarketing  && BarcodeRange.Contains(barcode.CurrentString));
+            MarketingContext result = new MarketingContext();
+            switch (MeteringMode)
+            {
+                case Marketings.MeteringMode.GuDingLiang:
+                    break;
+                case Marketings.MeteringMode.QiGouLiang:
+
+                    break;
+                case Marketings.MeteringMode.ManYuan:
+                    var amount = matchRanges.Sum(o => o.SaleNumber * o.SalePrice);
+                    if (RuleNumber <= amount)
+                    {
+                        result.MarketingRule = this;
+                        result.MatchRanges = matchRanges;
+                    }
+                    break;
+            }
+            return null;
+        }
+    }
+}

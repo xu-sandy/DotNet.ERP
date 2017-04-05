@@ -1,0 +1,176 @@
+﻿@{
+    ViewBag.Title = "交易流水数据";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, searchHeight: 75));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 6px;
+    }
+
+    .label-toolbar2 {
+        margin: 0 6px 0 25px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <select class="datacontrol easyui-combobox" name="state" style="width:70px;" data-options="editable: false">
+                    <option selected value="1">商户订单号</option>
+                    <option value="2">交易流水号</option>
+                </select>
+            </td>
+            <td class="input-toolbar">
+                <input id="ValueNo" name="ValueNo" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'',width:140" />
+            </td>
+            <td class="label-toolbar">
+                <select class="datacontrol easyui-combobox" name="state" style="width:70px;" data-options="editable: false">
+                    <option selected value="1">商户号</option>
+                    <option value="2">门店号</option>
+                    <option value="3">设备号</option>
+                    <option value="4">第三方商户号</option>
+                    <option value="5">第三方门店号</option>
+                </select>
+            </td>
+            <td class="input-toolbar">
+                <input id="ValueMerch" name="ValueMerch" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'',width:140" />
+            </td>
+            <td class="label-toolbar">
+                <label>所属体系：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="SourceType" name="SourceType" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text', data:window.drpdata['sourceType'], panelHeight: 'auto', editable: false,width:80" />
+            </td>
+            <td class="label-toolbar">
+                <label>支付渠道：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="PayChannel" name="PayChannel" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text', data:window.drpdata['payChannel'], panelHeight: 'auto', editable: false,width:80" />
+            </td>
+            <td class="label-toolbar">
+                <label>商户号：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="CID" name="CID" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'',width:80" />
+            </td>
+            @*<td class="label-toolbar">
+                <label>流水号：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="TradeNo" name="TradeNo" class="datacontrol easyui-textbox font-12" placeholder="交易流水号" data-options="prompt:'交易流水号',width:130" />
+            </td>*@
+            <td class="label-toolbar">
+                <label>交易时间：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="TradeDate" id="TradeDate" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+        </tr>
+        <tr class="s_tr">
+            @*<td class="label-toolbar">
+                <label>订单号：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="OutTradeNo" name="OutTradeNo" class="datacontrol easyui-textbox font-12" placeholder="商家订单号" data-options="prompt:'商家订单号',width:130" />
+            </td>*@
+            @*<td class="label-toolbar">
+                <label>商户号：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="MchId3" name="MchId3" class="datacontrol easyui-textbox font-12" placeholder="第三方商户号" data-options="prompt:'第三方商户号',width:130" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店号：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="StoreId3" name="StoreId3" class="datacontrol easyui-textbox font-12" placeholder="第三方门店号" data-options="prompt:'第三方门店号',width:130" />
+            </td>
+            <td class="label-toolbar">
+                <label>设备号：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="DeviceId3" name="DeviceId3" class="datacontrol easyui-textbox font-12" placeholder="第三方设备号" data-options="prompt:'第三方设备号',width:80" />
+            </td>*@
+        </tr>
+    </table>
+}
+@section toolbar {
+
+    }
+
+<script type="text/javascript">
+    window.drpdata = window.drpdata || {};
+    window.drpdata['feeType'] = @Html.Raw(ViewBag.FeeTypeList);
+    window.drpdata['payChannel'] = @Html.Raw(ViewBag.PayChannelList);
+    window.drpdata['sourceType'] = @Html.Raw(ViewBag.SourceTypeList);
+    window.drpdata['tradeType'] = @Html.Raw(ViewBag.TradeTypeList);
+    window.drpdata['status'] = @Html.Raw(ViewBag.StatusList);
+    window.drpdata['refundStatus'] = @Html.Raw(ViewBag.RefundStatusList);
+
+    pharos.manager.geturl = "@Url.Action("GetTradeDataPaging")";
+    pharos.manager.editurl = "@Url.Action("Edit")";
+    pharos.manager.delurl = "@Url.Action("Delete")";
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true,rowspan:2 },
+        { field: 'TradeNo', title: '交易流水号', width: 140, rowspan: 2},
+        { field: 'OutTradeNo', title: '商家订单号', width: 140, rowspan: 2 },
+        { field: 'Merchant', title: '商户交易信息', width: 100, colspan: 3 },
+        { field: 'Merchant3', title: '第三方商户交易信息', width: 100, colspan: 3 },
+        { field: 'FeeType', title: '币种', width: 60, rowspan: 2, formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['feeType']);
+        }
+        },
+        { field: 'PayChannel', title: '支付通道', width: 80, rowspan: 2, formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['payChannel']);
+        } },
+        { field: 'SourceType', title: '所属体系', width: 60, rowspan: 2 , formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['sourceType']);
+        }},
+        { field: 'TradeType', title: '交易类型', width: 60, rowspan: 2, formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['tradeType']);
+        } },
+        { field: 'TotalAmount', title: '交易金额', width: 60, rowspan: 2 },
+        { field: 'TradeDate', title: '交易时间', width: 100, rowspan: 2 },
+        {
+            field: 'Status', title: '状态', width: 60, rowspan: 2, formatter: function (value, row) {
+                if(row.TradeType==0){
+                    return formatColumn(value, window.drpdata['status']);
+                }
+                else{
+                    return formatColumn(value, window.drpdata['refundStatus']);
+                }
+            }
+        }
+    ], [
+        { field: 'CID', title: '商户号', width: 60, rowspan: 1 },
+        { field: 'SID', title: '门店号', width: 60, rowspan: 1 },
+        { field: 'DeviceId', title: '设备号', width: 60, rowspan: 1 },
+        { field: 'MchId3', title: '商户号', width: 140, rowspan: 1 },
+        { field: 'StoreId3', title: '门店号', width: 140, rowspan: 1 },
+        { field: 'DeviceId3', title: '设备号', width: 60, rowspan: 1 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache(), true);
+    };
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        openDialog800(this.editText, this.editurlNocache());
+    }
+
+    //取枚举对应值
+    function formatColumn(value, list) {
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].value == value) {
+                if (list[i].value != "")
+                    return list[i].text;
+            }
+        }
+        return value;
+    }
+</script>

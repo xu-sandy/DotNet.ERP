@@ -1,0 +1,751 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Data.SqlClient;
+using Pharos.Utility.Helpers;
+using System.Collections.Specialized;
+namespace Pharos.Logic.DAL
+{
+    public class ReportDAL : BaseDAL
+    {
+        public DataTable QueryCashierSaleOrderDay(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var cashier = nvl["cashier"];
+            var saler = nvl["saler"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var ispage = nvl["ispage"].IsNullOrEmpty() ? 1 : int.Parse(nvl["ispage"]);
+            var pageIndex = 1;
+            var pageSize = 30;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@companyid",Sys.SysCommonRules.CompanyId),
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@chshier",cashier),
+                new SqlParameter("@saler",saler),
+                new SqlParameter("@sortField","Date desc"),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize),
+                new SqlParameter("@ispage",ispage)
+            };
+            return _db.DataTable("Rpt_CashierSaleOrderDay", pmrs);
+        }
+        public DataTable QueryCashierSaleOrderMonth(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var cashier = nvl["cashier"];
+            var saler = nvl["saler"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var ispage = nvl["ispage"].IsNullOrEmpty() ? 1 : int.Parse(nvl["ispage"]);
+            var pageIndex = 1;
+            var pageSize = 30;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@chshier",cashier),
+                new SqlParameter("@saler",saler),
+                new SqlParameter("@sortField","Month desc"),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize),
+                new SqlParameter("@ispage",ispage)
+            };
+            return _db.DataTable("Rpt_CashierSaleOrderMonth", pmrs);
+        }
+        public DataTable QueryStoreSaleOrderDay(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var ispage = nvl["ispage"].IsNullOrEmpty() ? 1 : int.Parse(nvl["ispage"]);
+            var pageIndex = 1;
+            var pageSize = 30;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@companyId",Sys.SysCommonRules.CompanyId),
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@sortField","Date desc"),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize),
+                new SqlParameter("@ispage",ispage)
+            };
+            return _db.DataTable("Rpt_StoreSaleOrderDay", pmrs);
+        }
+        public DataTable QueryStoreSaleOrderMonth(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var ispage = nvl["ispage"].IsNullOrEmpty() ? 1 : int.Parse(nvl["ispage"]);
+            var pageIndex = 1;
+            var pageSize = 30;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@sortField","Month desc"),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize),
+                new SqlParameter("@ispage",ispage)
+            };
+            return _db.DataTable("Rpt_StoreSaleOrderMonth", pmrs);
+        }
+        public DataTable QueryInvoicingSummary(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var store = nvl["store"];
+            var ispage = nvl["ispage"].IsNullOrEmpty() ? 1 : int.Parse(nvl["ispage"]);
+            var pageIndex = 1;
+            var pageSize = 30;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@companyId",Sys.SysCommonRules.CompanyId),
+                new SqlParameter("@title",nvl["searchText"].Trim()),
+                new SqlParameter("@categorySn",nvl["categorySn"]),
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@supplierId",nvl["supplierId"]??""),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize),
+                new SqlParameter("@ispage",ispage)
+            };
+            return _db.DataTable("Rpt_InvoicingSummary", pmrs);
+        }
+        public DataTable QuerySupplierSaleDetail(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            string startDate = "", endDate = "";
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                var date1 = DateTime.Parse(nvl["date"]);
+                startDate = date1.ToShortDateString();
+                endDate = date1.AddMonths(1).ToShortDateString();
+            }
+            var supplierId = nvl["supplierId"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@supplierId",supplierId),
+                new SqlParameter("@sortField",sort)
+            };
+            return _db.DataTable("Rpt_SupplierSaleDetail", pmrs);
+        }
+        public DataTable QueryBrandSaleDetail(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            string startDate = "", endDate = "";
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                var date1 = DateTime.Parse(nvl["date"]);
+                startDate = date1.ToShortDateString();
+                endDate = date1.AddMonths(1).ToShortDateString();
+            }
+            var brandsn = nvl["brandsn"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@brandSN",brandsn),
+                new SqlParameter("@sortField",sort)
+            };
+            return _db.DataTable("Rpt_BrandSaleDetail", pmrs);
+        }
+        public DataTable QueryProductSaleDetails(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var parentType = nvl["parentType"];
+            var supplierId = nvl["supplierId"]??"";
+            var brandsn = nvl["brandsn"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var ispage = nvl["ispage"].IsNullOrEmpty() ? 1 : int.Parse(nvl["ispage"]);
+            var pageIndex = 1;
+            var pageSize = 30;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@companyId",Sys.SysCommonRules.CompanyId),
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@title",nvl["searchText"]??""),
+                new SqlParameter("@bigCategorySN",parentType),
+                new SqlParameter("@supplierId",supplierId),
+                new SqlParameter("@brandSN",brandsn),
+                new SqlParameter("@sortField",sort),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize),
+                new SqlParameter("@ispage",ispage)
+            };
+            return _db.DataTable("Rpt_ProductSaleDetails", pmrs);
+        }
+        public DataTable ProductOrderDetails(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var parentType = nvl["parentType"];
+            var supplierId = nvl["supplierId"]??"";
+            var brandsn = nvl["brandsn"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var ispage = nvl["ispage"].IsNullOrEmpty() ? 1 : int.Parse(nvl["ispage"]);
+            var pageIndex = 1;
+            var pageSize = 30;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@companyId",Sys.SysCommonRules.CompanyId),
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@bigCategorySN",parentType),
+                new SqlParameter("@supplierId",supplierId),
+                new SqlParameter("@brandSN",brandsn),
+                new SqlParameter("@sortField",sort),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize),
+                new SqlParameter("@ispage",ispage)
+            };
+            return _db.DataTable("Rpt_ProductOrderDetail", pmrs);
+        }
+        public DataTable ProductOrderDetailList(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var parentType = nvl["parentType"];
+            var supplierId = nvl["supplierId"];
+            var brandsn = nvl["brandsn"];
+            var store = nvl["store"];
+            var barcode = nvl["barcode"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@bigCategorySN",parentType),
+                new SqlParameter("@supplierId",supplierId),
+                new SqlParameter("@brandSN",brandsn),
+                new SqlParameter("@barcode",barcode)
+            };
+            return _db.DataTable("Rpt_ProductOrderDetaillist", pmrs);
+        }
+        public DataTable QueryProductSaleDetailDay(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var parentType = nvl["parentType"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@bigCategorySN",parentType),
+                new SqlParameter("@sortField",sort)
+            };
+            return _db.DataTable("Rpt_ProductSaleDetailDay", pmrs);
+        }
+        public DataTable QueryProductSaleDetail(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            string startDate = "", endDate = "";
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                var date1 = DateTime.Parse(nvl["date"]);
+                startDate = date1.ToShortDateString();
+                endDate = date1.AddMonths(1).ToShortDateString();
+            }
+            var parentType = nvl["parentType"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@bigCategorySN",parentType),
+                new SqlParameter("@sortField",sort)
+            };
+            return _db.DataTable("Rpt_ProductSaleDetail", pmrs);
+        }
+
+        /// <summary>
+        /// 供应商销售汇总月报数据
+        /// </summary>
+        /// <param name="nvl">查询条件名值对</param>
+        /// <returns></returns>
+        public DataTable QuerySupplierStatistics(NameValueCollection nvl)
+        {
+            string startDate = "", endDate = "";
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                var date1 = DateTime.Parse(nvl["date"]);
+                startDate = date1.ToShortDateString();
+                endDate = date1.AddMonths(1).ToShortDateString();
+            }
+            var store = nvl["store"];
+            var supplierName = nvl["supplierName"];
+            var topCount = Convert.ToInt32(nvl["topCount"]);
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@supplierName",supplierName),
+                new SqlParameter("@topCount",topCount)
+            };
+            return _db.DataTable("Rpt_SupplierStatistics", pmrs);
+        }
+        /// <summary>
+        /// 大类销售汇总月报数据
+        /// </summary>
+        /// <param name="nvl">查询条件名值对</param>
+        /// <returns></returns>
+        public DataTable QueryBigCategoryStatistics(NameValueCollection nvl)
+        {
+            string startDate = "", endDate = "";
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                var date1 = DateTime.Parse(nvl["date"]);
+                startDate = date1.ToShortDateString();
+                endDate = date1.AddMonths(1).ToShortDateString();
+            }
+            var parentType = nvl["parentType"];
+            var store = nvl["store"];
+            var sort = nvl["sortField"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@bigCategorySN",parentType),
+                new SqlParameter("@sortField",sort)
+            };
+            return _db.DataTable("Rpt_BigCategoryStatistics", pmrs);
+        }
+        /// <summary>
+        /// 特价商品销售明细数据
+        /// </summary>
+        /// <param name="nvl">查询条件名值对</param>
+        /// <returns></returns>
+        public DataTable QueryCommodityPromotionSaleDetailPageList(NameValueCollection nvl)
+        {
+            string startDate = "", endDate = "";
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                var date1 = DateTime.Parse(nvl["date"]);
+                startDate = date1.ToShortDateString();
+                endDate = date1.AddMonths(1).ToShortDateString();
+            }
+            var parentType = nvl["parentType"];
+            var store = nvl["storeId"];
+            var supplierId = nvl["supplierId"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@categorySn",parentType),
+                new SqlParameter("@supplierId",supplierId)
+            };
+            return _db.DataTable("Rpt_PromotionSaleDetail", pmrs);
+        }
+        /// <summary>
+        /// 首页报表
+        /// </summary>
+        /// <param name="date"></param>
+        /// <param name="type"></param>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public DataTable QueryIndexSaleDayList(string date, string type, string storeId)
+        {
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@date",date),
+                new SqlParameter("@type",type),
+                new SqlParameter("@storeId",storeId)
+            };
+            return _db.DataTable("Rpt_IndexSaleDay", pmrs);
+        }
+
+        internal object QueryGiftAnnualStatisticalPageList(NameValueCollection nvl)
+        {
+            string startDate = DateTime.Parse(DateTime.Now.Year.ToString() + "-01-01").ToShortDateString();
+            string endDate = DateTime.Now.ToShortDateString();
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                var date1 = DateTime.Parse(nvl["date"] + "-01-01");
+                startDate = date1.ToShortDateString();
+                endDate = date1.AddYears(1).ToShortDateString();
+            }
+            var supplier = nvl["supplier"];
+            var category = nvl["category"];
+            var store = nvl["store"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+
+                new SqlParameter("@supplier",supplier),
+                new SqlParameter("@category",category),
+                new SqlParameter("@store",store)
+            };
+            return _db.DataTable("Rpt_GiftAnnualStatistical", pmrs);
+        }
+
+        internal object QueryGiftMonthlyStatisticalPageList(NameValueCollection nvl)
+        {
+            var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                startDate = DateTime.Parse(nvl["date"] + "-01");
+            }
+            var endDate = startDate.AddMonths(1);
+            var supplier = nvl["supplier"];
+            var store = nvl["store"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate.ToShortDateString()),
+                new SqlParameter("@endDate",endDate.ToShortDateString()),
+                new SqlParameter("@supplier",supplier),
+                new SqlParameter("@category",nvl["category"]),
+                new SqlParameter("@store",store)
+            };
+            return _db.DataTable("Rpt_GiftMonthlyStatistical", pmrs);
+        }
+
+        #region 销售同比汇总报表
+        public DataTable QuerySalesSummary(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var typeField = nvl["typeField"];
+            string startDate, endDate, SameStartDate, SameEndDate;
+            if (typeField == "AverageAnnual")
+            {
+                startDate = DateTime.Parse(nvl["date"] + "-01-01").ToString("yyyy-MM-dd");
+                endDate = DateTime.Parse(startDate).AddYears(1).ToShortDateString();
+                SameStartDate = DateTime.Parse(startDate).AddYears(-1).ToShortDateString();
+                SameEndDate = DateTime.Parse(endDate).AddYears(-1).ToShortDateString();
+            }
+            else if (typeField == "AverageMonthly")
+            {
+                startDate = DateTime.Parse(nvl["date"] + "-01").ToString("yyyy-MM-dd");
+                endDate = DateTime.Parse(startDate).AddMonths(1).ToShortDateString();
+                SameStartDate = DateTime.Parse(startDate).AddYears(-1).ToShortDateString();
+                SameEndDate = DateTime.Parse(endDate).AddYears(-1).ToShortDateString();
+            }
+            else
+            {
+                startDate = DateTime.Parse(nvl["date"]).ToString("yyyy-MM-dd");
+                endDate = DateTime.Parse(startDate).AddDays(1).ToShortDateString();
+                SameStartDate = DateTime.Parse(startDate).AddYears(-1).ToShortDateString();
+                SameEndDate = DateTime.Parse(endDate).AddYears(-1).ToShortDateString();
+            }
+            var store = nvl["store"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate), 
+                new SqlParameter("@SameStartDate",SameStartDate),
+                new SqlParameter("@SameEndDate",SameEndDate),
+                new SqlParameter("@storeId",store),
+
+            };
+
+            DataTable dtSource = _db.DataTable("Rpt_SalesSummary", pmrs);
+
+            DataTable dtResult = new DataTable();
+            dtResult.Columns.Add("StoreId", typeof(string));
+            dtResult.Columns.Add("StoreTitle", typeof(string));
+            dtResult.Columns.Add("Type", typeof(string));
+            dtResult.Columns.Add("CurrentMonth", typeof(string));
+            dtResult.Columns.Add("SameMonth", typeof(string));
+            dtResult.Columns.Add("YOY", typeof(string));
+
+            decimal CountCurrentMonthSaleTotal = 0;
+            decimal CountSameMonthSaleTotal = 0;
+            decimal CountCurrentCustomerPrice = 0;
+            decimal CountSameCustomerPrice = 0;
+            decimal CountCurrentOrderQuantity = 0;
+            decimal CountSameOrderQuantity = 0;
+
+            for (var i = 0; i < dtSource.Rows.Count; i++)
+            {
+                decimal CurrentMonthSaleTotal = decimal.Parse(string.IsNullOrEmpty(dtSource.Rows[i][0].ToString()) ? "0" : dtSource.Rows[i][0].ToString());
+                decimal CurrentOrderQuantity = decimal.Parse(string.IsNullOrEmpty(dtSource.Rows[i][1].ToString()) ? "0" : dtSource.Rows[i][1].ToString());
+                decimal SameMonthSaleTotal = decimal.Parse(string.IsNullOrEmpty(dtSource.Rows[i][2].ToString()) ? "0" : dtSource.Rows[i][2].ToString());
+                decimal SameOrderQuantity = decimal.Parse(string.IsNullOrEmpty(dtSource.Rows[i][3].ToString()) ? "0" : dtSource.Rows[i][3].ToString());
+                string StoreId = string.IsNullOrEmpty(dtSource.Rows[i][4].ToString()) ? "" : dtSource.Rows[i][4].ToString();
+                string StoreTitle = string.IsNullOrEmpty(dtSource.Rows[i][5].ToString()) ? "" : dtSource.Rows[i][5].ToString();
+
+
+                //if (typeField == "AverageDaily")
+                //{
+                //    TimeSpan ts1 = DateTime.Parse(endDate) - DateTime.Parse(startDate);
+                //    int day1 = ts1.Days;
+                //    CurrentMonthSaleTotal = CurrentMonthSaleTotal / day1;
+                //    CurrentOrderQuantity = CurrentOrderQuantity / day1;
+                //    TimeSpan ts2 = DateTime.Parse(SameEndDate) - DateTime.Parse(SameStartDate);
+                //    int day2 = ts2.Days;
+                //    SameMonthSaleTotal = SameMonthSaleTotal / day2;
+                //    SameOrderQuantity = SameOrderQuantity / day2;
+                //}
+                DataRow newRow1 = dtResult.NewRow();
+                newRow1["StoreId"] = StoreId;
+                newRow1["StoreTitle"] = StoreTitle;
+                newRow1["Type"] = "销售额";
+                newRow1["CurrentMonth"] = Math.Round(CurrentMonthSaleTotal, 2, MidpointRounding.AwayFromZero);
+                CountCurrentMonthSaleTotal += Math.Round(CurrentMonthSaleTotal, 2, MidpointRounding.AwayFromZero);
+                newRow1["SameMonth"] = Math.Round(SameMonthSaleTotal, 2, MidpointRounding.AwayFromZero);
+                CountSameMonthSaleTotal += Math.Round(SameMonthSaleTotal, 2, MidpointRounding.AwayFromZero);
+                newRow1["YOY"] = SameMonthSaleTotal == 0 ? "-" : Math.Round(((CurrentMonthSaleTotal - SameMonthSaleTotal) / SameMonthSaleTotal) * 100, 2, MidpointRounding.AwayFromZero) + "%";
+
+                DataRow newRow2 = dtResult.NewRow();
+                newRow2["StoreId"] = StoreId;
+                newRow2["StoreTitle"] = StoreTitle;
+                newRow2["Type"] = "客单价";
+                newRow2["CurrentMonth"] = Math.Round(CurrentOrderQuantity == 0 ? CurrentMonthSaleTotal : CurrentMonthSaleTotal / CurrentOrderQuantity, 2, MidpointRounding.AwayFromZero);
+                CountCurrentCustomerPrice += Math.Round(CurrentOrderQuantity == 0 ? CurrentMonthSaleTotal : CurrentMonthSaleTotal / CurrentOrderQuantity, 2, MidpointRounding.AwayFromZero);
+                newRow2["SameMonth"] = Math.Round(SameOrderQuantity == 0 ? SameMonthSaleTotal : SameMonthSaleTotal / SameMonthSaleTotal, 2, MidpointRounding.AwayFromZero);
+                CountSameCustomerPrice += Math.Round(SameOrderQuantity == 0 ? SameMonthSaleTotal : SameMonthSaleTotal / SameMonthSaleTotal, 2, MidpointRounding.AwayFromZero);
+                decimal curPerPrice = decimal.Parse(newRow2["CurrentMonth"].ToString());
+                decimal samePerPrice = decimal.Parse(newRow2["SameMonth"].ToString());
+                newRow2["YOY"] = samePerPrice == 0 ? "-" : Math.Round(((curPerPrice - samePerPrice) / samePerPrice) * 100, 2, MidpointRounding.AwayFromZero) + "%";
+
+                DataRow newRow3 = dtResult.NewRow();
+                newRow3["StoreId"] = StoreId;
+                newRow3["StoreTitle"] = StoreTitle;
+                newRow3["Type"] = "成交笔";
+                newRow3["CurrentMonth"] = Math.Round(CurrentOrderQuantity, 2, MidpointRounding.AwayFromZero);
+                CountCurrentOrderQuantity += Math.Round(CurrentOrderQuantity, 2, MidpointRounding.AwayFromZero);
+                newRow3["SameMonth"] = Math.Round(SameOrderQuantity, 2, MidpointRounding.AwayFromZero);
+                CountSameOrderQuantity += Math.Round(SameOrderQuantity, 2, MidpointRounding.AwayFromZero);
+                newRow3["YOY"] = SameOrderQuantity == 0 ? "-" : Math.Round(((CurrentOrderQuantity - SameOrderQuantity) / SameOrderQuantity) * 100, 2, MidpointRounding.AwayFromZero) + "%";
+
+                dtResult.Rows.Add(newRow1);
+                dtResult.Rows.Add(newRow2);
+                dtResult.Rows.Add(newRow3);
+            }
+            if (dtResult.Rows.Count > 3)
+            {
+                DataRow newRow1 = dtResult.NewRow();
+                newRow1["StoreId"] = "countRow";
+                newRow1["StoreTitle"] = "合计";
+                newRow1["Type"] = "销售额";
+                newRow1["CurrentMonth"] = Math.Round(CountCurrentMonthSaleTotal, 2, MidpointRounding.AwayFromZero); ;
+                newRow1["SameMonth"] = Math.Round(CountSameMonthSaleTotal, 2, MidpointRounding.AwayFromZero);
+                newRow1["YOY"] = CountSameMonthSaleTotal == 0 ? "-" : Math.Round(((CountCurrentMonthSaleTotal - CountSameMonthSaleTotal) / CountSameMonthSaleTotal) * 100, 2, MidpointRounding.AwayFromZero) + "%";
+
+                DataRow newRow2 = dtResult.NewRow();
+                newRow2["StoreId"] = "countRow";
+                newRow2["StoreTitle"] = "合计";
+                newRow2["Type"] = "客单价";
+                newRow2["CurrentMonth"] = Math.Round(CountCurrentCustomerPrice, 2, MidpointRounding.AwayFromZero);
+                newRow2["SameMonth"] = Math.Round(CountSameCustomerPrice, 2, MidpointRounding.AwayFromZero);
+                newRow2["YOY"] = CountSameCustomerPrice == 0 ? "-" : Math.Round(((CountCurrentCustomerPrice - CountSameCustomerPrice) / CountSameCustomerPrice) * 100, 2, MidpointRounding.AwayFromZero) + "%";
+
+                DataRow newRow3 = dtResult.NewRow();
+                newRow3["StoreId"] = "countRow";
+                newRow3["StoreTitle"] = "合计";
+                newRow3["Type"] = "成交笔";
+                newRow3["CurrentMonth"] = Math.Round(CountCurrentOrderQuantity, 2, MidpointRounding.AwayFromZero);
+                newRow3["SameMonth"] = Math.Round(CountSameOrderQuantity, 2, MidpointRounding.AwayFromZero);
+                newRow3["YOY"] = CountSameOrderQuantity == 0 ? "-" : Math.Round(((CountCurrentOrderQuantity - CountSameOrderQuantity) / CountSameOrderQuantity) * 100, 2, MidpointRounding.AwayFromZero) + "%";
+
+                dtResult.Rows.Add(newRow1);
+                dtResult.Rows.Add(newRow2);
+                dtResult.Rows.Add(newRow3);
+            }
+
+            return dtResult;
+        }
+        #endregion
+
+        #region 大类同比汇总月报
+        /// <summary>
+        /// 大类同比汇总月报
+        /// </summary>
+        /// <param name="nvl">查询条件名值对</param>
+        /// <returns></returns>
+        public DataTable QueryBigCategorySummary(NameValueCollection nvl)
+        {
+            string startDate = string.Empty, endDate = string.Empty, SameStartDate = string.Empty, SameEndDate = string.Empty;
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                var date1 = DateTime.Parse(nvl["date"]);
+                startDate = date1.ToShortDateString();
+                endDate = date1.AddMonths(1).ToShortDateString();
+                SameStartDate = date1.AddYears(-1).ToShortDateString();
+                SameEndDate = date1.AddYears(-1).AddMonths(1).ToShortDateString();
+            }
+            var store = nvl["store"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@SameStartDate",SameStartDate),
+                new SqlParameter("@SameEndDate",SameEndDate),
+
+                new SqlParameter("@storeId",store),
+            };
+            return _db.DataTable("Rpt_BigCategorySummary", pmrs);
+        }
+        #endregion
+
+        #region 供应商同比汇总月报
+        /// <summary>
+        /// 供应商同比汇总月报
+        /// </summary>
+        /// <param name="nvl">查询条件名值对</param>
+        /// <returns></returns>
+        public DataTable QuerySupplierSummary(NameValueCollection nvl)
+        {
+            string startDate = string.Empty, endDate = string.Empty, SameStartDate = string.Empty, SameEndDate = string.Empty;
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                var date1 = DateTime.Parse(nvl["date"]);
+                startDate = date1.ToShortDateString();
+                endDate = date1.AddMonths(1).ToShortDateString();
+                SameStartDate = date1.AddYears(-1).ToShortDateString();
+                SameEndDate = date1.AddYears(-1).AddMonths(1).ToShortDateString();
+            }
+            var store = nvl["store"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@SameStartDate",SameStartDate),
+                new SqlParameter("@SameEndDate",SameEndDate),
+                new SqlParameter("@storeId",store)
+            };
+            return _db.DataTable("Rpt_SupplierSummary", pmrs);
+        }
+        #endregion
+
+        #region 同比明细月报
+        /// <summary>
+        /// 同比明细月报
+        /// </summary>
+        /// <param name="nvl">查询条件名值对</param>
+        /// <returns></returns>
+        public DataTable QueryProductSaleSummary(NameValueCollection nvl)
+        {
+            string startDate = string.Empty, endDate = string.Empty, SameStartDate = string.Empty, SameEndDate = string.Empty, ChainStartDate = string.Empty, ChainEndDate = string.Empty;
+            if (!string.IsNullOrWhiteSpace(nvl["date"]))
+            {
+                var date1 = DateTime.Parse(nvl["date"]);
+                startDate = date1.ToShortDateString();
+                endDate = date1.AddMonths(1).ToShortDateString();
+                SameStartDate = date1.AddYears(-1).ToShortDateString();
+                SameEndDate = date1.AddYears(-1).AddMonths(1).ToShortDateString();
+                ChainStartDate = date1.AddMonths(-1).ToShortDateString();
+                ChainEndDate = date1.AddMonths(-1).AddMonths(1).ToShortDateString();
+            }
+            var store = nvl["store"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@SameStartDate",SameStartDate),
+                new SqlParameter("@SameEndDate",SameEndDate),
+                new SqlParameter("@ChainStartDate",ChainStartDate),
+                new SqlParameter("@ChainEndDate",ChainEndDate),
+                new SqlParameter("@storeId",store)
+            };
+            return _db.DataTable("Rpt_ProductSaleSummary", pmrs);
+        }
+        #endregion
+
+        #region 会员销售明细日报表
+        public DataTable QueryMembersSaleDetailDay(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var memberKeyword = nvl["memberKeyword"];
+            var store = nvl["store"];
+            var ispage = nvl["ispage"].IsNullOrEmpty() ? 1 : int.Parse(nvl["ispage"]);
+            var pageIndex = 1;
+            var pageSize = 30;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@memberKeyword",memberKeyword),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize),
+                new SqlParameter("@ispage",ispage)
+            };
+            return _db.DataTable("Rpt_MembersSaleDetailDay", pmrs);
+        }
+        #endregion
+
+        #region 导购销售明细日报表
+        public DataTable QueryShoppingGuideSaleDetailDay(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var memberKeyword = nvl["memberKeyword"];
+            var store = nvl["store"];
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeId",store),
+                new SqlParameter("@memberKeyword",memberKeyword),
+            };
+            return _db.DataTable("Rpt_ShoppingGuideSaleDetailDay", pmrs);
+        }
+        #endregion
+
+        #region 首页销售数据
+        /// <summary>
+        /// 获得首页销售数据
+        /// </summary>
+        /// <param name="type">1：销售量</param>
+        /// <param name="beginTime"></param>
+        /// <param name="endtime"></param>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public DataTable QueryIndexSalesData(string type, DateTime beginTime,DateTime endtime, string storeId = "")
+        {
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@startDate",beginTime.ToShortDateString()),
+                new SqlParameter("@endDate",endtime.ToShortDateString()),
+                new SqlParameter("@storeId",storeId),
+                new SqlParameter("@type",type),
+            };
+            return _db.DataTable("Rpt_IndexSalesData", pmrs);
+        }
+        #endregion
+    }
+}

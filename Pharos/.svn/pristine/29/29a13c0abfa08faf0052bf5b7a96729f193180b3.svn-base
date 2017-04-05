@@ -1,0 +1,115 @@
+﻿using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class SysUserController : BaseController
+    {
+        [Ninject.Inject]
+        SysUserService UserService { get; set; }
+        [Ninject.Inject]
+        DepartMentService DeptService { get; set; }
+        [Ninject.Inject]
+        SysRoleService RoleService { get; set; }
+        [Ninject.Inject]
+        PositionService PositService { get; set; }
+        //
+        // GET: /SysUser/
+
+        public ActionResult Index()
+        {
+            ViewBag.roles =ListToSelect( RoleService.GetListByRoleId().Select(o=>new SelectListItem(){Text=o.Title,Value=o.RoleId.ToString()}),"全部");
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindPageList()
+        {
+            int count = 0;
+            var list = UserService.GetPageList(Request.Params,out count);
+            return ToDataGrid(list, count);
+        }
+        [HttpPost]
+        public ActionResult FindTreeList()
+        {
+            var list = DeptService.GetPageList(false);
+            var trees = new List<DepartMentExt>(){
+                new DepartMentExt(){
+                DeptId = 0,
+                Title = "组织机构",
+                Childrens = new List<DepartMentExt>()
+                }
+            };
+            trees[0].Childrens.AddRange(list);
+            return new JsonNetResult(trees);
+        }
+        public ActionResult Save(int? id, int? deptId, string deptName)
+        {
+            var obj = new SysUser() { DeptId=deptId.GetValueOrDefault(),Sex=-1};
+            if (id.HasValue)
+            {
+                obj = UserService.Get(id.Value);
+                if (obj.DeptId>0)
+                {
+                    deptName = DeptService.GetFullTitle().GetValue(obj.DeptId);
+                    deptId = obj.DeptId;
+                }
+            }
+            ViewBag.DeptName = deptName;
+            ViewBag.Roles = RoleService.GetRolesByDept(deptId.GetValueOrDefault()).Select(o => new SelectListItem() { Text = o.Title, Value = o.RoleId.ToString() }).ToList();
+            ViewBag.Posits = ListToSelect(PositService.GetPositByDept(deptId.GetValueOrDefault()).Select(o => new SelectListItem() { Text = o.Title, Value = o.PositId }), "请选择");
+            return View(obj);
+        }
+        [HttpPost]
+        public ActionResult Save(SysUser obj)
+        {
+            obj.RoleIds = Request["RoleIds"];
+            var re = UserService.SaveOrUpdate(obj);
+            return new OpActionResult(re);
+        }
+        public ActionResult SaveDept()
+        {
+            int count = 0;
+            ViewBag.depts = ListToSelect(DeptService.GetFullTitle().Select(o => new SelectListItem() { Text = o.Value, Value = o.Key.ToString() }), emptyTitle: "请选择");
+            ViewBag.grids = UserService.GetPageList(Request.Params,out count).ToJson();
+            return View();
+        }
+        [HttpPost]
+        public ActionResult SaveDept(string ids,int deptId)
+        {
+            var re = UserService.SaveDept(ids,deptId);
+            return new OpActionResult(re);
+        }
+        public ActionResult SaveAdmin()
+        {
+            var super = UserService.GetSuper();
+            string adminname = "", adminaccount = "";
+            if (super != null)
+            {
+                adminname = super.FullName;
+                adminaccount = super.LoginName;
+            }
+            ViewBag.adminname = adminname;
+            ViewBag.adminaccount = adminaccount;
+            ViewBag.users = ListToSelect(UserService.GetList().Where(o=>!o.IsSuper).Select(o => new SelectListItem() { Text = o.FullName, Value = o.LoginName }), "请选择");
+            return View();
+        }
+        [HttpPost]
+        public ActionResult SaveAdmin(string adminname)
+        {
+            var re = UserService.SaveAdmin(adminname);
+            return new OpActionResult(re);
+        }
+        [HttpPost]
+        public void SetState(short mode, int id)
+        {
+            UserService.SetState(mode, id);
+        }
+    }
+}

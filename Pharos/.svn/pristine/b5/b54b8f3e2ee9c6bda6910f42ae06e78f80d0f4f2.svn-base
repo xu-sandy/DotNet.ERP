@@ -1,0 +1,28 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Printers.Domain.Models
+{
+    public class PrintJob
+    {
+        public int WhatToPrint { get; set; }
+        public bool UseForPaidTickets { get; set; }
+        public bool ExcludeTax { get; set; }
+
+        private IList<PrinterMap> _printerMaps;
+        public virtual IList<PrinterMap> PrinterMaps
+        {
+            get { return _printerMaps; }
+            set { _printerMaps = value; }
+        }
+
+        public PrintJob()
+        {
+            _printerMaps = new List<PrinterMap>();
+        }
+
+        public WhatToPrintTypes WhatToPrintType { get { return (WhatToPrintTypes)WhatToPrint; } }
+    }
+}

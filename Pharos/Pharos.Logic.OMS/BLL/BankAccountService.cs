@@ -1,0 +1,271 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+using System.Transactions;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL商家结算账户
+    /// </summary>
+    public class BankAccountService : BaseService<BankAccount>
+    {
+        // 代理商档案
+        [Ninject.Inject]
+        IBankAccountRepository bRepository { get; set; }
+
+        public List<ViewBankAccount> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            //指派人
+            var AssignUid = (nvl["AssignUid"] ?? "").Trim();
+            //创建日期（开始）
+            var CreateDT_begin = (nvl["CreateDT_begin"] ?? "").Trim();
+            //创建日期（结束）
+            var CreateDT_end = (nvl["CreateDT_end"] ?? "").Trim();
+            //关键字类型
+            var keywordType = (nvl["keywordType"] ?? "").Trim();
+            //关键字
+            var keyword = (nvl["keyword"] ?? "").Trim();
+            //状态
+            var State = (nvl["State"] ?? "").Trim();
+
+            var pageIndex = 1;
+            var pageSize = 20;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+
+            string strw = "";
+
+            if (!AssignUid.IsNullOrEmpty())
+            {
+                string[] aUID = AssignUid.Split(',');
+                string newAUID = "";
+                if (aUID.Length > 0)
+                {
+                    for (int i = 0; i < aUID.Length; i++)
+                    {
+                        if (newAUID == "")
+                        {
+                            newAUID = "'" + aUID[i] + "'";
+                        }
+                        else
+                        {
+                            newAUID = newAUID + ",'" + aUID[i] + "'";
+                        }
+                    }
+                    strw = strw + " and p.DesigneeId in (" + newAUID + ")";
+                }
+
+            }
+
+            if (!CreateDT_begin.IsNullOrEmpty())
+            {
+                string c = CreateDT_begin + " " + "00:00:00";
+                strw = strw + " and b.CreateDT >='" + c + "'";
+            }
+            if (!CreateDT_end.IsNullOrEmpty())
+            {
+                var c = CreateDT_end + " " + "23:59:59";
+                strw = strw + " and b.CreateDT <='" + c + "'";
+            }
+
+            if (State!="-1")
+            {
+                strw = strw + " and b.State=" + State;
+            }
+
+            if (!keywordType.IsNullOrEmpty() && !keyword.IsNullOrEmpty())
+            {
+                if (keywordType == "1")
+                {
+                    if (!Tool.IsNumber(keyword) || keyword.Length > 7)
+                    {
+                        keyword = "0";
+                    }
+                    strw = strw + " and b.CID=" + keyword;
+                }
+                if (keywordType == "2")
+                {
+                    strw = strw + " and t.FullTitle like '%" + keyword + "%'";
+                }
+                if (keywordType == "3")
+                {
+                    strw = strw + " and b.AccountNumber like '%" + keyword + "%'";
+                }
+                if (keywordType == "4")
+                {
+                    strw = strw + " and b.LinkMan like '%" + keyword + "%'";
+                }
+            }
+            List<ViewBankAccount> list = bRepository.getPageList(pageIndex, pageSize, strw, out recordCount);
+            return list;
+        }
+
+        [Ninject.Inject]
+        //BLL审批日志
+        ApproveLogService approveLogService { get; set; }
+
+        //BLL商家支付许可档案
+        PayLicenseService payLicenseService
+        {
+            get
+            {
+               return new PayLicenseService();
+            }
+            
+        }
+
+        /// <summary>
+        /// 状态
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="state">2是可用，3是被驳回，4是暂停，5是注销，6是无效</param>
+        /// <returns></returns>
+        public OpResult UpState(string ids, short state, string specific)
+        {
+            OpResult opr = ExistState(ids,state);
+            if (!opr.Successed)
+            {
+                return opr;
+            }
+            else
+            {
+                try
+                {
+                    using (EFDbContext context = new EFDbContext())
+                    {
+                        using (TransactionScope transaction = new TransactionScope())
+                        {
+                            var idss = ids.Split(',').Select(o => int.Parse(o));
+                            DateTime dt = DateTime.Now;
+                            string UID = CurrentUser.UID;
+                            UpListByWhere(o => idss.Contains(o.Id), o => {
+                                o.State = state;
+                                o.AuditDT = dt;
+                                o.AuditUID = UID;
+                                o.ModifyDT = dt;
+                                o.ModifyUID = UID;
+                            });
+
+                            if (state == (short)TraderBalanceAccountState.Enabled)
+                            {
+                                var CIDS = GetListByWhere(o => idss.Contains(o.Id)).Select(o=>o.CID);
+                                payLicenseService.UpAdmin(CIDS,1);
+                                SaveChanges();
+                            }
+      
+                            var listLog = GetListByWhere(o => idss.Contains(o.Id));
+                            foreach (var v in listLog)
+                            {
+                                ApproveLog approveLog = new ApproveLog();
+                                approveLog.ModuleNum = Convert.ToInt16(ApproveLogNum.支付许可);
+                                approveLog.ItemId = v.LicenseId;
+                                approveLog.CreateTime = dt;
+                                if (state == 3)
+                                {
+                                    approveLog.OperationType = Convert.ToInt16(ApproveLogType.驳回);
+                                }
+                                else
+                                {
+                                    approveLog.OperationType = Convert.ToInt16(ApproveLogType.审批);
+                                }
+                                approveLog.OperatorUID = UID;
+                                if (state == 2)
+                                {
+                                    approveLog.Description = "结算账户已被设为可用" + (specific == "" ? "" : "：" + specific);
+                                }
+                                else if (state == 3)
+                                {
+                                    approveLog.Description = "结算账户被驳回" + (specific == "" ? "" : "：" + specific);
+                                }
+                                else if (state == 4)
+                                {
+                                    approveLog.Description = "结算账户被暂停" + (specific == "" ? "" : "：" + specific);
+                                }
+                                else if (state == 5)
+                                {
+                                    approveLog.Description = "结算账户被注销" + (specific == "" ? "" : "：" + specific);
+                                }
+                                else if (state == 6)
+                                {
+                                    approveLog.Description = "结算账户被设为无效" + (specific == "" ? "" : "：" + specific);
+                                }
+                                //审核日志
+                                approveLogService.InsertUpdate(approveLog, 0);
+                            }
+                            //提交事务
+                            transaction.Complete();
+                            return OpResult.Success();
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    LogEngine.WriteError(e);
+                    return OpResult.Fail(e.InnerException.InnerException.Message);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 是否能设置状态
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="state">2是可用，3是驳回，4是暂停，5是注销，6是无效</param>
+        /// <returns></returns>
+        public OpResult ExistState(string ids, short state)
+        {
+            string msg = "";
+            string msg2 = "";
+            if (state == 2)
+            {
+                msg = "选择项存在可用账户，无法重复设为可用！";
+                msg2 = "无法设为可用，因为存在状态无效的！";
+            }
+            else if (state == 3)
+            {
+                msg = "选择项存在驳回账户，无法重复驳回！";
+                msg2 = "无法驳回状态为无效的！";
+            }
+            else if (state == 4)
+            {
+                msg = "选择项存在暂停账户，无法重复暂停！";
+                msg2 = "无法暂停状态为无效的！";
+            }
+            else if (state == 5)
+            {
+                msg = "选择项存在注销账户，无法重复注销！";
+                msg2 = "无法注销状态为无效的！";
+            }
+            else if (state == 6)
+            {
+                msg = "选择项存在无效账户，无法重复设置无效！";
+            }
+            var idss = ids.Split(',').Select(o => int.Parse(o));
+            var list = GetListByWhere(o => idss.Contains(o.Id) && o.State == state);
+            if (list.Any())
+            {
+                return OpResult.Fail(msg);
+            }
+
+            var list2 = GetListByWhere(o => idss.Contains(o.Id) && o.State == (int)TraderBalanceAccountState.Invalid);
+            if (list2.Any())
+            {
+                return OpResult.Fail(msg2);
+            }
+
+            return OpResult.Success();
+        }
+    }
+}

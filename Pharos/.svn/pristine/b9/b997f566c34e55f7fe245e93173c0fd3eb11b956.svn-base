@@ -1,0 +1,124 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: true, hideDel: true, firstLoadData: false));
+    var columns = ViewBag.columns as Dictionary<string, string>;
+    var xscols = columns.Where(o => o.Key.EndsWith("_xs_dy"));
+    var tuicols = columns.Where(o => o.Key.EndsWith("_tui_dy"));
+    var huangcols = columns.Where(o => o.Key.EndsWith("_huang_dy"));
+    var tuihuangcols = columns.Where(o => o.Key.EndsWith("_tuihuang_dy"));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" id="date" value="@DateTime.Now.ToString("yyyy-MM-dd")" class="datacontrol Wdate" style="width:100px" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd', maxDate: '#F{$dp.$D(\'date2\')}' })" />
+            </td>
+            <td>-</td>
+            <td class="input-toolbar">
+                <input name="date2" id="date2" value="@DateTime.Now.ToString("yyyy-MM-dd")" class="datacontrol Wdate" style="width:100px" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd', minDate: '#F{$dp.$D(\'date\')}' })" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("store", ViewBag.stores as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelMaxHeight:200")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = '@Url.Action("QueryStoreSaleOrderDayPageList")';
+    pharos.manager.pagination = true;
+    pharos.manager.showFooter = true;
+    pharos.manager.pageSize = 50;
+    pharos.manager.pageList = [50, 100, 200];
+    pharos.manager.columns = [[
+            { field: 'Date', title: '日结时间', width: 90, align: 'center', rowspan: 2  },
+            { field: 'Store', title: '门店', width: 150, rowspan: 2 },
+            { field: 'FirstTime', title: '首笔时间', width: 130, align: 'center', rowspan: 2 },
+            { field: 'LastTime', title: '末笔时间', width: 130, align: 'center', rowspan: 2 },
+            { field: 'SaleOrderAverage', title: '客单均价', width: 80, align: 'center', formatter:numberToFixed, rowspan: 2 },
+            { field: 'SSCount', title: '合计笔数', width: 60, align: 'center', rowspan: 2 },
+            { field: 'SSMoney', title: '合计金额', width: 80, align: 'center', formatter: numberToFixed, rowspan: 2 },
+            { field: 'XSCount', title: '销售笔数', width: 60, align: 'center', rowspan: 2 },
+            { field: 'XSMoney', title: '销售金额', width: 80, align: 'center', formatter: numberToFixed, rowspan: 2 },
+            { field: '', title: '其中', align: 'center', colspan: @xscols.Count(),rowspan:@(xscols.Count()== 0 ? 2 : 0) },
+            { field: 'HUANCount', title: '换货入款笔数', width: 90, align: 'center', rowspan: 2 },
+            { field: 'HUANMoney', title: '换货入款', width: 80, align: 'center', formatter: numberToFixed, rowspan: 2 },
+            { field: '', title: '其中', align: 'center', colspan: @huangcols.Count(),rowspan:@(huangcols.Count() == 0 ? 2 : 0) },
+            { field: 'TUIHuanCount', title: '退换出款笔数', width: 90, align: 'center', rowspan: 2 },
+            { field: 'TUIHuanMoney', title: '退换出款', width: 80, align: 'center', formatter: numberToFixed, rowspan: 2 },
+            { field: '', title: '其中', align: 'center', colspan: @tuihuangcols.Count(),rowspan:@(tuihuangcols.Count() == 0 ? 2 : 0) },
+            { field: 'TUICount', title: '退单笔数', width: 60, align: 'center', rowspan: 2 },
+            { field: 'TUIMoney', title: '退单金额', width: 80, align: 'center', formatter: numberToFixed, rowspan: 2 },
+            { field: '', title: '其中', align: 'center', colspan: @tuicols.Count(),rowspan:@(tuicols.Count() == 0 ? 2 : 0) },
+            { field: 'ZSCount', title: '赠送笔数', width: 60, align: 'center', rowspan: 2 },
+            { field: 'ZSMoney', title: '赠送金额', width: 80, align: 'center', formatter: numberToFixed, rowspan: 2 },
+            { field: 'RLCount', title: '整单让利笔数', width: 80, align: 'center' , rowspan: 2 },
+            { field: 'RLMoney', title: '整单让利金额', width: 80, formatter: numberToFixed , rowspan: 2 },
+            { field: 'MLCount', title: '抹零笔数', width: 60, align: 'center', rowspan: 2 },
+            { field: 'MLMoney', title: '抹零金额', width: 80, align: 'center', formatter: numberToFixed, rowspan: 2 }
+    ],[
+        @foreach (KeyValuePair<string, string> col in xscols)
+        {
+        @:{ field: '@col.Key', title: '@col.Value', width: 80,  align: 'center',formatter: numberToFixed },
+        }
+        
+        @foreach (KeyValuePair<string, string> col in huangcols)
+        {
+        @:{ field: '@col.Key', title: '@col.Value', width: 80,  align: 'center',formatter: numberToFixed },
+        }
+        @foreach (KeyValuePair<string, string> col in tuihuangcols)
+        {
+        @:{ field: '@col.Key', title: '@col.Value', width: 80,  align: 'center',formatter: numberToFixed },
+        }
+        @foreach (KeyValuePair<string, string> col in tuicols)
+        {
+        @:{ field: '@col.Key', title: '@col.Value', width: 80,  align: 'center',formatter: numberToFixed },
+        }
+    ]];
+    pharos.manager.frozenColumns = [[
+
+    ]]
+    function Export() {
+        var date = $("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        window.location.href = '@Url.Action("SaleExport")?type=9&' + $('#frmsearch').serialize();
+    }
+    pharos.manager.loadSuccess=function(data){
+        //    var panel = $(this).datagrid("getPanel");
+        //    var ls=[];
+        //    panel.find('.datagrid-body td[field$="_dy"]').each(function(i,r){
+        //        var obj={};
+        //        obj.text=$(r).attr("field");
+        //        obj.value=Number($(r).find("div").html());
+        //        var o= getObj(ls,obj.text);
+        //        if(o==null)
+        //            ls.add(obj);
+        //        else
+        //            o.value+=obj.value;
+        //    });
+        //    $.each(ls,function(i,r){
+        //        panel.find('.datagrid-footer td[field="'+r.text+'"]').find("div").html(numberToFixed(r.value));
+        //    });
+    }
+    function getObj(list, field) {
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].text == field)
+                return list[i];
+        }
+        return null;
+    };
+
+</script>

@@ -1,0 +1,63 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Marketings
+{
+    /// <summary>
+    /// 促销活动管理器
+    /// </summary>
+    public class MarketingManager
+    {
+        public MarketingManager(string storeId)
+        {
+            AutoRefresh();
+            AutoRefreshInterval = 30;
+        }
+        /// <summary>
+        /// 自动刷新间隔
+        /// </summary>
+        public int AutoRefreshInterval { get; set; }
+
+        /// <summary>
+        /// 促销规则
+        /// </summary>
+        public IEnumerable<MarketingRule> Rules { get; private set; }
+        /// <summary>
+        /// 门店Id
+        /// </summary>
+        public string StoreId { get; set; }
+        /// <summary>
+        /// 加载促销信息
+        /// </summary>
+        /// <returns></returns>
+        private IEnumerable<MarketingRule> Load()
+        {
+            return null;
+        }
+        /// <summary>
+        ///自动重载促销信息
+        /// </summary>
+        private void AutoRefresh()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                Rules = Load();
+                Thread.Sleep(new TimeSpan(0, AutoRefreshInterval, 0));
+            });
+        }
+        /// <summary>
+        /// 匹配促销信息
+        /// </summary>
+        /// <param name="shoppingCart">购物车</param>
+        /// <returns>促销匹配上下文</returns>
+        public IEnumerable<MarketingContext> Match(ShoppingCart shoppingCart)
+        {
+            var tempRules = Rules;//防止自动更新促销信息时月，匹配促销活动方式资源争抢，造成死锁
+            return tempRules.Select(o => o.Match(shoppingCart));
+        }
+    }
+}

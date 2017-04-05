@@ -1,0 +1,91 @@
+﻿@{
+    ViewBag.Title = "CreateRecharge";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td></td>
+                    <td><button type="button">读卡</button></td>
+                </tr>
+                <tr>
+                    <td class="name">类型：</td>
+                    <td class="input"><select class="easyui-combobox"><option>请选择</option></select></td>
+                    <td class="name">卡号：</td>
+                    <td class="input"><input id="cardID" name="CardID" /></td>
+                </tr>
+                <tr>
+                    <td class="name">持卡人：</td>
+                    <td class="input"><input type="text" id="member" name="Member" disabled="disabled" class="easyui-textbox" /></td>
+                    <td class="name">可用余额：</td>
+                    <td class="input"><input type="text" id="balance" name="Balance" disabled="disabled" class="easyui-textbox" /></td>
+                </tr>
+                <tr>
+                    <td class="name">可用积分：</td>
+                    <td class="input"><input type="text" id="afterIntegral" disabled="disabled" name="AfterIntegral" class="easyui-textbox" /></td>
+                    <td class="name">充值金额：</td>
+                    <td class="input"><input type="text" id="rechargeAmount" name="RechargeAmount" class="easyui-textbox" /></td>
+                </tr>
+                <tr>
+                    <td class="name">赠送金额：</td>
+                    <td class="input"><input type="text" id="givenAmount" name="GivenAmount" class="easyui-textbox" /></td>
+                    <td class="name">备注：</td>
+                    <td class="input"><input type="text" id="memo" name="Memo" class="easyui-validatebox" /></td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+        //query recharge info by CardSN
+        $("#cardID").combobox({
+            mode: "remote",
+            valueField: 'CardSN',
+            textField: 'CardSN',
+            onSelect: function (rec) {
+                //select member card info by card
+                $.ajax({
+                    url: '@Url.Action("GetMembersCardByCardSn")',
+                    type: 'POST',
+                    data: { cardSN: rec.CardSN },
+                    dataType: "json",
+                    success: function (data) {
+                        if (data != "" && data != undefined) {
+                            $("#member").textbox("setValue", data.RealName);
+                            if (data.Balance == 0) {
+                                data.Balance = "0";
+                            }
+                            $("#balance").textbox("setValue", data.Balance);
+                            if (data.Integer == 0) {
+                                data.Integer = "0";
+                            }
+                            $("#afterIntegral").textbox("setValue", data.Integer);
+                        }
+                    }
+                })
+            },
+            loader: function (param, success, error) {
+                var q = param.q || "";
+                if (q.length >= 0) {
+                    $.ajax({
+                        url: '@Url.Action("GetMembershipCardInfoByCardSN")',
+                        type: "POST",
+                        data: { param: q },
+                        dataType: "json",
+                        success: function (data) {
+                            var items = $.each(data, function (value) {
+                                return value;
+                            });
+                            success(items);
+                        }
+                    })
+                }
+            }
+        });
+    })
+</script>

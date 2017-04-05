@@ -1,0 +1,64 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Web.Http;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.BLL;
+
+namespace Pharos.Api.Retailing.Controllers.Mobile
+{
+    [RoutePrefix("api/mobile")]
+    public class NoticeController : ApiController
+    {
+        /// <summary>
+        /// 获取门店公告列表
+        /// </summary>
+        /// <param name="json"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetStoreNoticeList")]
+        public object GetStoreNoticeList([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            return NoticeService.GetNoticeList(storeId,0);
+        }
+        /// <summary>
+        /// 获取门店未读公告条数
+        /// </summary>
+        /// <param name="json"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetStoreNoticeNum")]
+        public object GetStoreNoticeNum([FromBody]JObject json)
+        {
+            string storeId = json.Property("storeId", true);
+            return NoticeService.GetNoticeNum(storeId, 0);
+        }
+        /// <summary>
+        /// 获取供应商公告列表
+        /// </summary>
+        /// <param name="json"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetSupplierNoticeList")]
+        public object GetSupplierNoticeList([FromBody]JObject json)
+        {
+            string supplierId = json.Property("supplierId", true);
+            return NoticeService.GetNoticeList(supplierId, 1);
+        }
+        /// <summary>
+        /// 获取供应商未读公告条数
+        /// </summary>
+        /// <param name="json"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetSupplierNoticeNum")]
+        public object GetSupplierNoticeNum([FromBody]JObject json)
+        {
+            string supplierId = json.Property("supplierId", true);
+            return NoticeService.GetNoticeNum(supplierId, 1);
+        }
+    }
+}

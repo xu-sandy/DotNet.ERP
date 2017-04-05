@@ -1,0 +1,92 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.POS.Retailing.RawInput;
+using Pharos.Wpf.Controls;
+using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Interop;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// MachineSettings.xaml 的交互逻辑
+    /// </summary>
+    public partial class MachineSettings : DialogWindow
+    {
+        public MachineSettings()
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+
+            var collections = new ObservableCollection<ISettingsItem>();
+            var machineInformations = Global.MachineSettings.MachineInformations;
+            machineInformations.CurrentWindow = this;
+            machineInformations.CurrentBindingElement = tabControl;
+
+            var servicesConfiguration = Global.MachineSettings.ServicesConfiguration;
+            servicesConfiguration.CurrentWindow = this;
+            servicesConfiguration.CurrentBindingElement = tabControl;
+
+
+            var devicesSettingsConfiguration = Global.MachineSettings.DevicesSettingsConfiguration;
+            servicesConfiguration.CurrentWindow = this;
+            servicesConfiguration.CurrentBindingElement = tabControl;
+
+
+            collections.Add(servicesConfiguration);
+            collections.Add(machineInformations);
+            collections.Add(devicesSettingsConfiguration);
+
+            tabControl.ItemsSource = collections;
+            this.Closing += MachineSettings_Closing;
+            this.Loaded += MachineSettings_Loaded;
+        }
+        private static RawKeyboard _keyboardDriver;
+
+        void MachineSettings_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (this.Owner == null)
+                Application.Current.MainWindow = this;
+            //获取本窗体的句柄
+            WindowInteropHelper wndHelper = new WindowInteropHelper(this);
+            var _wpfHwnd = wndHelper.Handle;
+
+            _keyboardDriver = new RawKeyboard(_wpfHwnd);
+            _keyboardDriver.CaptureOnlyIfTopMostWindow = false;
+            _keyboardDriver.EnumerateDevices();
+
+            //之所以不在 WndProc 进行消息的拦截，是因为···在 WPF 中，消息到 WndProc 的时候，都已经显示在界面上了
+            //当然，在 WinForm 程序上还是有效的，所以在这里，就 在这个消息中截取
+            System.Windows.Interop.ComponentDispatcher.ThreadFilterMessage +=
+                    new System.Windows.Interop.ThreadMessageEventHandler(ComponentDispatcher_ThreadFilterMessage);
+        }
+        void ComponentDispatcher_ThreadFilterMessage(ref System.Windows.Interop.MSG msg, ref bool handled)
+        {
+            switch (msg.message)
+            {
+                //这里只能以 INPUT 来截取，不支持 KEYDOWN 来截取，不然后面的 RawInput 获取值的时候无效
+                case Win32.WM_INPUT:
+                    {
+                        if (tabControl.SelectedItem != Global.MachineSettings.DevicesSettingsConfiguration) { return; }
+
+                        // Should never get here if you are using PreMessageFiltering
+                        KeyPressEvent keyPressEvent;
+                        _keyboardDriver.ProcessRawInput(msg.lParam, out keyPressEvent);
+                        Global.MachineSettings.DevicesSettingsConfiguration.ScanDeviceId = keyPressEvent.DeviceName;
+                    }
+                    break;
+
+            }
+            return;
+        }
+        void MachineSettings_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (Global.MachineSettings.Enable && this.Owner == null)
+            {
+                Login win = new Login();
+                win.Show();
+            }
+        }
+    }
+}

@@ -1,0 +1,89 @@
+﻿using System.Windows;
+using Pharos.POS.Retailing.Models.ChildPagesModels;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Linq;
+using Pharos.Logic.BLL.LocalServices;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// ChaJiaGe.xaml 的交互逻辑
+    /// </summary>
+    public partial class ChaJiaGe : Window,IDataGridOperat
+    {
+        private CheckPrices currentEntity;
+        public ChaJiaGe()
+        {
+            InitializeComponent();
+            currentEntity = new CheckPrices();
+            this.InitPublicSettings();
+            this.DataContext = currentEntity;
+            this.Loaded += ChaJiaGe_Loaded;
+        }
+
+        void ChaJiaGe_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+            
+        }
+
+        private void TextBox_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            var txt = sender as TextBox;
+            if (txt != null)
+            {
+              //  txt.Text = "";
+            }
+        }
+
+
+        public void SetDataGridSelectLastItem()
+        {
+            DataView.SelectedItem = currentEntity.Products.FirstOrDefault();
+            DataView.ScrollIntoView(DataView.SelectedItem);
+            Keyboard.Focus(DataView);
+        }
+
+        public object GetDataGridSelectItem()
+        {
+            return DataView.SelectedItem;
+        }
+
+        public void SetPreviousSelectItem()
+        {
+            if (DataView.SelectedIndex > 0)
+            {
+                DataView.SelectedIndex--;
+                DataView.ScrollIntoView(DataView.SelectedItem);
+
+            }
+        }
+
+        public void SetNextSelectItem()
+        {
+            if (currentEntity.Products.Count - 1 > DataView.SelectedIndex)
+            {
+                DataView.SelectedIndex++;
+                DataView.ScrollIntoView(DataView.SelectedItem);
+
+            }
+        }
+
+        private void DataView_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.Enter:
+                    var obj =this.GetDataGridSelectItem();
+                    if ( obj != null)
+                    {
+                        var result = obj as CheckPricesDTO;
+                        result.AddCommand.Execute(this);
+                        e.Handled = true;
+                    }
+                    break;
+            }
+        }
+    }
+}

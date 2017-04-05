@@ -1,0 +1,103 @@
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.BLL;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
+using System.Web;
+using Pharos.Utility.Helpers;
+
+namespace QCT.Api.Pay.Utils
+{
+    /// <summary>
+    /// 商户支付帮助类
+    /// </summary>
+    public class PayManager
+    {
+        /// <summary>
+        /// 返回接收通知的结果
+        /// </summary>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static string ResultResponse(string code, string msg="参数格式错误")
+        {
+            var sb = new StringBuilder();
+            var rstCode = PayConst.FailCode;
+            if (code==PayConst.SxfSuccessCode)
+            {
+                rstCode = PayConst.SuccessCode;
+            }
+            sb.Append("{\"return_code\":\"" + rstCode + "\",");
+            sb.Append("{\"return_msg\":\"" + msg + "\",");
+            return sb.ToString();
+        }
+        /// <summary>
+        /// 给Sxf返回接收通知的结果
+        /// </summary>
+        /// <param name="isSuccess"></param>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static string SxfNotifyReturn(string result, string msg)
+        {
+            if (result == PayConst.SxfSuccessReturn)
+            {
+                return "{\"result\":\"" + PayConst.SxfSuccessReturn + "\",\"message\":\"" + msg + "\"}";
+            }
+            else
+            {
+                return "{\"result\":\"" + PayConst.FailCode + "\",\"message\":\"" + msg + "\"}";
+            }
+        }
+        /// <summary>
+        /// 验证签名的有效性
+        /// </summary>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        public static bool VerifySign(string content)
+        {
+            var signObj = JsonConvert.DeserializeObject<SortedDictionary<string, object>>(content);
+            var sign = signObj["sign"];
+            signObj.Remove("sign");
+            var mchObj = (new PayTradeService()).GetMchPay(signObj["mch_id"].ToType<int>());
+            var result = VerifySign(signObj, mchObj.SecretKey,sign.ToString());
+            return result;
+        }
+        /// <summary>
+        /// 验证签名的有效性
+        /// </summary>
+        /// <param name="queryStr"></param>
+        /// <returns></returns>
+        private static bool VerifySign(SortedDictionary<string, object> signObj, string md5Key, string sign)
+        {
+            var thisSign = Sign(signObj, md5Key);
+            if (thisSign.Equals(sign))
+                return true;
+            else
+                return false;
+        }
+        /// <summary>
+        /// 对数据进行数字签名
+        /// </summary>
+        /// <param name="signObj"></param>
+        /// <param name="md5Key"></param>
+        /// <returns></returns>
+        public static string Sign(SortedDictionary<String, Object> signObj, String md5Key)
+        {
+            StringBuilder signdatasb = new StringBuilder();
+            foreach (var item in signObj)
+            {
+                String key = item.Key;
+                String value = signObj[key] == null ? "" : signObj[key].ToString();
+                signdatasb.Append("&").Append(key).Append("=").Append(value);
+            }
+
+            String signdata = signdatasb.ToString().Substring(1) + "&key=" + md5Key;
+            return PayHelper.GetMD5(signdata);
+        }
+    }
+}

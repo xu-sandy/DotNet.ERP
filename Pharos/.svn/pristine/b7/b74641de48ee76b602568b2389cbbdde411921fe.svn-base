@@ -1,0 +1,343 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  TradersStore
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+
+    List<TradersStore> list = ViewBag.listStore as List<TradersStore>;
+}
+
+<style type="text/css">
+    .formbox td {
+        padding: 5px 0px;
+    }
+
+    #StoreList #div_1 {
+        width:100%;
+        height:32px;
+        overflow:hidden;
+    }
+    #StoreList #div_1 ul {
+        width:110%;
+        overflow:hidden;
+        border-left:1px solid #ccc;
+    }
+    #StoreList #div_1 ul li {
+        height:30px;
+        line-height:30px;
+        text-align:center;
+        width:15%;
+        overflow:hidden;
+        float:left;
+        background-color:#eff4fb;
+        border:1px solid #ccc;
+        margin-left:-1px;
+    }
+    #StoreList #div_2 {
+        width:100%;
+        overflow:hidden;
+    }
+    #StoreList #div_2 #ul_2 {
+        width:110%;
+        overflow:hidden;
+    }
+    #StoreList #div_2 #ul_2 .li_2 {
+        width:374px;
+        float:left;
+    }
+    #StoreList #div_2 #ul_2 .li_2 ul {
+        border-left:1px solid #ccc;
+        width:100%;
+        overflow:hidden;
+    }
+    #StoreList #div_2 #ul_2 .li_2  ul li {
+        height:50px;
+        line-height:50px;
+        text-align:center;
+        width:15%;
+        overflow:hidden;
+        float:left;
+        border:1px solid #ccc;
+        border-top:0px;
+        margin-left:-1px;
+    }
+    #StoreList div ul .xh {
+        width:42px !important;
+    }
+    #StoreList div ul .md {
+        width:202px !important;
+    }
+    #StoreList div ul .md3 {
+        width:127px !important;
+    }
+    #StoreList div ul .xh_2 {
+        width:42px !important;
+    }
+    #StoreList div ul .md_2 {
+        width:182px !important;
+        text-align:left !important;
+        padding-left:20px;
+    }
+    #StoreList div ul .md3_2 {
+        width:127px !important;
+    }
+    #StoreList #div_2 #ul_2 .li_2:nth-of-type(odd) ul .md3_2{
+        border-right:0px;
+    }
+</style>
+
+
+
+<script type="text/javascript">
+
+    //商户号
+    var CID = "@Model.CID";
+    if (CID == "0") {
+        CID = "";
+    }
+
+    //获取url的参数
+    function getUrlParam(name) {
+
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+
+        var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+
+        if (r != null) return unescape(r[2]); return null; //返回参数值
+
+    }
+
+    $(function () {
+
+        oddLi();
+
+        //代理商编号
+        $("#AgentsId").next().find(".combo-arrow").removeClass("combo-arrow");
+        //商户号
+        $("#CID").next().find(".combo-arrow").removeClass("combo-arrow");
+
+        loadMainUser(CID);
+        var Id = getUrlParam('Id');
+        if (Id != null) {
+            $("#MainUser").combobox("setValue", "@Model.MainAccount");
+        }
+        radioClick();
+        txtStoreNum();
+
+    });
+
+    function oddLi() {
+        var l = $("#StoreList #div_2 #ul_2 .li_2").length;
+        if (l % 2 != 0) {
+            $("#StoreList #div_2 #ul_2 .li_2:last").find("ul .md3_2").attr("style", "border-right:1px solid #ccc;");
+        }
+    }
+
+    function SaveBefore() {
+        return true;
+    }
+
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        var id = getUrlParam('id');
+        if (id == null) {
+            id = 0;
+        }
+        $.ajax({
+            url: "@Url.Action("GetCidWhere", "Store")",
+            type: "post",
+        data: {
+            //传值，还是JSON数据搜索
+            keyword: q,
+            id:id
+        },
+        dataType: "json",
+        success: function (data) {
+            comboRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function (item) {
+                return { CID: item.CID, CID: item.CID };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+
+    function tradersOnChange(newValue, oldValue) {
+        loadMainUser(encodeURIComponent(newValue));
+        loadStoreNum3();
+    }
+
+    //加载门店主账号
+    function loadMainUser(CID) {
+        if (CID == "") {
+            CID = 0;
+        }
+        $('#MainUser').combobox({
+            url: '/Store/GetTradersUser?CID=' + CID,
+            valueField: 'TUserId',
+            textField: 'LoginName',
+            editable: true,
+            width: 100,
+            required: true,
+            novalidate: false,
+            validType: 'requiredForCombo'
+        });
+    }
+
+    //加载第三方历史门店号
+    function loadStoreNum3()
+    {
+        var cid = $("#CID").combobox("getValue");
+        var Id = getUrlParam('Id');
+        if (Id == null)
+        {
+            Id = 0;
+        }
+        $.ajax({
+            type: 'post',
+            url: "/Store/getListStore",
+            data: { CID:cid,Id:Id },
+            dataType: 'json',
+            success: function (data) {
+                var v = "";
+                $.each(data, function (i, item) {
+                    var idx = i + 1;
+                    alert(item.id + "," + item.name);
+                    v = v + '<li class="li_2">';
+                    v = v + '<ul>';
+                    v = v + '<li class="xh_2">' + idx + '</li>';
+                    v = v + '<li class="md_2"><input type="radio" name="TStoreInfoId3" value="' + item.TStoreInfoId + '" />&nbsp;&nbsp;[<span>' + item.StoreNum + '</span>]&nbsp;&nbsp;' + item.StoreName + '</li>';
+                    v = v + '<li class="md3_2">' + item.StoreNum3 + '</li>';
+                    v = v + '</ul>';
+                    v = v + '</li>';
+                });
+                $("#ul_2").html(v);
+                radioClick();
+            }
+        });
+
+    }
+
+    //点击第三方历史门店号
+    function radioClick()
+    {
+        $("#ul_2 .li_2 input[type=radio]").click(function () {
+            var StoreNum3 = $(this).parent().next().html();
+            $("#StoreNum").textbox("setValue", StoreNum3);
+        });
+    }
+
+    //第三方门店号
+    function txtStoreNum()
+    {
+        var txt = $("#StoreNum").next().find("input[type=text]");
+        txt.keyup(function () {
+            $("#ul_2 .li_2 input[type=radio]").attr("checked", false);
+        });   
+    }
+
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+
+            <div class="formbox" >
+
+                <table class="table-form" width="100%">
+
+                    <tr>
+
+                        <td class="name" style="width:10%;">商户号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.CID, new { @class = "easyui-combobox", data_options = "required:true,prompt:'请输入',width:120,editable:true,mode:'remote',valueField:'CID',textField:'CID',loader:comboload,onChange:tradersOnChange,value:CID" })</td>
+                        <td class="name">门店主账号：</td>
+                        <td class="input">
+                            <input id="MainUser" name="MainUser" class="easyui-combobox datacontrol" />
+                        </td>
+                        <td class="name">指派人：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AssignUID, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:125" })</td>
+
+                    </tr>
+
+                    <tr>
+                        <td class="name">门店状态：</td>
+                        <td class="input">
+                            @Html.DropDownListFor(o => o.State, new List<SelectListItem>() { new SelectListItem() { Text = "未审核", Value = "0" }, new SelectListItem() { Text = "可用", Value = "1" }, new SelectListItem() { Text = "暂停", Value = "2" }, new SelectListItem() { Text = "注销", Value = "3" } }, new { @class = "easyui-combobox datacontrol", data_options = "validType:'requiredForCombo',editable: false,width:125,disabled:true" })
+                        </td>
+                        <td class="name">门店编号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.StoreNum, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'',validType: 'integer',width:125" })</td>
+                        <td class="name">门店名名称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.StoreName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'',validType: 'length[1,100]',width:190" })</td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox" style="border-bottom:0px; padding-top:10px;">
+
+                <table class="table-form" width="100%">
+
+                    <tr>
+                        <td class="name" style="width:12%;">第三方门店号：</td>
+                        <td class="input" style=" width:18%;">@Html.TextBoxFor(o => o.StoreNum, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'',validType: 'length[2,20]',width:125" })</td>
+                        <td class="name" colspan="3" style=" text-align:left;">说明：如须与其他门店共用第三方门店号，则从下方直接选择。</td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox" style="border-bottom:0px; height:300px; overflow-y:auto;" id="StoreList">
+                <div id="div_1" class="bg">
+                    <ul>
+                        <li class="xh">序号</li>
+                        <li class="md">系统门店</li>
+                        <li class="md3">第三方历史门店号</li>
+                        <li class="xh">序号</li>
+                        <li class="md">系统门店</li>
+                        <li class="md3">第三方历史门店号</li>
+                    </ul>
+                </div>
+                <div id="div_2" >
+
+                    <ul id="ul_2" class="ul_2">
+
+                        @foreach (var v in list)
+                        {
+                            int i = list.IndexOf(v)+1;
+                            <li class="li_2">
+
+                                <ul>
+                                    <li class="xh_2">@i</li>
+                                    <li class="md_2">
+                                        <input type="radio" name="TStoreInfoId3" value="@v.TStoreInfoId" @Html.Raw(Model.TStoreInfoId3 == v.TStoreInfoId3 ? "checked=\"checked\"" : "") />&nbsp;&nbsp;[<span>@v.StoreNum</span>]&nbsp;&nbsp;@v.StoreName
+                                    </li>
+                                    <li class="md3_2">@v.StoreNum3</li>
+                                </ul>
+
+                            </li>
+                        }
+
+                    </ul>
+
+                </div>
+            </div>
+
+        </div>
+    }
+</div>
+
+

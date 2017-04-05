@@ -1,0 +1,66 @@
+﻿using Pharos.POS.Retailing.Printers.Domain.Models;
+using Pharos.POS.Retailing.Printers.Services.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Printers.Services
+{
+    public class PrinterService : IPrinterService
+    {
+        private readonly FunctionRegistry _functionRegistry;
+        private readonly TicketFormatter _ticketFormatter;
+
+        public IEnumerable<IDocumentFormatter> DocumentFormatters { get; set; }
+
+        public IEnumerable<string> GetPrinterNames()
+        {
+            return PrinterInfo.GetPrinterNames();
+        }
+
+        public void PrintObject(object item, Domain.Models.Printer printer, Domain.Models.PrinterTemplate printerTemplate)
+        {
+            var formatter = DocumentFormatters.FirstOrDefault(x => x.ObjectType == item.GetType());
+            if (formatter != null)
+            {
+                var lines = formatter.GetFormattedDocument(item, printerTemplate);
+                if (lines != null)
+                {
+                    AsyncPrintTask.Exec(false, () => PrintJobFactory.CreatePrintJob(printer, this).DoPrint(lines));
+                }
+            }
+        }
+
+        public void ExecutePrintJob(PrintJob printJob, bool highPriority)
+        {
+            PrintJobExecutor.For(printJob)
+                .WithPrinterService(this)
+                .IsHighPriority(highPriority)
+                .Execute();
+        }
+
+        public IDictionary<string, string> GetTagDescriptions()
+        {
+            return _functionRegistry.Descriptions;
+        }
+
+        public void ResetCache()
+        {
+            PrinterInfo.ResetCache();
+        }
+
+        public string GetPrintingContent(Ticket ticket, string format, int width)
+        {
+            var lines = _ticketFormatter.GetFormattedTicket(ticket, ticket.Orders, new PrinterTemplate { Template = format });
+            var result = new FormattedDocument(lines, width).GetFormattedText();
+            return result;
+        }
+
+        public string ExecuteFunctions<T>(string printerTemplate, T model)
+        {
+            return _functionRegistry.ExecuteFunctions(printerTemplate, model, new PrinterTemplate { Template = printerTemplate });
+        }
+
+    }
+}

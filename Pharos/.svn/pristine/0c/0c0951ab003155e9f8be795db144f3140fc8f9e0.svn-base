@@ -1,0 +1,525 @@
+﻿using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.Printer;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Documents;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class RefundOrChanging : BaseViewModel
+    {
+        MachineInformations _machinesInfo = Global.MachineSettings.MachineInformations;
+        public RefundOrChanging(ChangeStatus changeStatus)
+        {
+            IsOperatEnabled = true;
+            this.OnPropertyChanged(o => o.IsOperatEnabled);
+            this.Status = changeStatus;
+
+
+            #region 换货理由暂时注释
+            //Task.Factory.StartNew(() =>
+            //{
+            //    //取退换货理由
+            //    ReasonParams _params = new ReasonParams()
+            //    {
+            //        StoreId = _machinesInfo.StoreId,
+            //        MachineSn = _machinesInfo.MachineSn,
+            //        CID = _machinesInfo.CompanyToken,
+            //        Type = (int)Status
+            //    };
+            //    var result = ApiManager.Post<ReasonParams, ApiRetrunResult<IEnumerable<ApiReasonResult>>>(@"api/GetReason", _params);
+            //    if (result.Code == "200")
+            //    {
+            //        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+            //        {
+            //            ReasonItem = result.Result;
+            //            var first = ReasonItem.FirstOrDefault();
+            //            if (first != null)
+            //                Reason = first.DicSN;
+            //        }));
+            //    }
+            //    else
+            //    {
+            //        Toast.ShowMessage(result.Message, CurrentWindow);
+            //    }
+
+            //}); 
+            #endregion
+        }
+        string password = string.Empty;
+        /// <summary>
+        /// 授权密码
+        /// </summary>
+        public string Password
+        {
+            get { return password; }
+            set
+            {
+                password = value;
+                this.OnPropertyChanged(o => o.Password);
+            }
+        }
+
+
+        /// <summary>
+        /// 条码
+        /// </summary>
+        private string barcode;
+
+        public string Barcode
+        {
+            get { return barcode; }
+            set
+            {
+                //条码变动时加载数据
+                barcode = value.Trim().ToUpper();
+                if (!string.IsNullOrEmpty(barcode))
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        ChangingParams _params = new ChangingParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CID = _machinesInfo.CompanyToken,
+                            Barcode = barcode,
+                            Status = (int)Mode,
+                            Mode = (int)Status
+                        };
+                        var result = ApiManager.Post<ChangingParams, ApiRetrunResult<ChangingResult>>(@"api/AddRefundOrChangeInfo", _params);
+                        if (result.Code == "200")
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                ChangeList = result.Result.ChangingList;
+                                Difference = result.Result.Difference;
+                                PaySn = result.Result.PaySn;
+                            }));
+                        }
+                        else
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }));
+                        }
+                        barcode = string.Empty;
+                        this.OnPropertyChanged(o => o.Barcode);
+                    });
+                }
+                else
+                {
+                    barcode = string.Empty;
+                    this.OnPropertyChanged(o => o.Barcode);
+                }
+            }
+        }
+        /// <summary>
+        /// 旧条码、新条码
+        /// </summary>
+        private ChangeInputMode mode;
+
+        public ChangeInputMode Mode
+        {
+            get { return mode; }
+            set
+            {
+                mode = value;
+                this.OnPropertyChanged(o => o.Mode);
+            }
+        }
+        /// <summary>
+        /// 支付流水号
+        /// </summary>
+        public string PaySn { get; set; }
+
+        /// <summary>
+        /// 退换货状态
+        /// </summary>
+        private ChangeStatus status;
+
+        public ChangeStatus Status
+        {
+            get { return status; }
+            set
+            {
+                status = value;
+                this.OnPropertyChanged(o => o.Status);
+            }
+        }
+        /// <summary>
+        /// 变更列表
+        /// </summary>
+        private IEnumerable<ChangingList> changeList;
+
+
+        public IEnumerable<ChangingList> ChangeList
+        {
+            get { return changeList; }
+            set
+            {
+                changeList = value;
+                foreach (var item in changeList)
+                {
+                    item.CurrentWindow = CurrentWindow;
+                    item.ChangeStatus = Status;
+                }
+                this.OnPropertyChanged(o => o.ChangeList);
+            }
+        }
+        /// <summary>
+        /// 理由列表
+        /// </summary>
+        private IEnumerable<ApiReasonResult> reasonItem;
+
+        public IEnumerable<ApiReasonResult> ReasonItem
+        {
+            get { return reasonItem; }
+            set { reasonItem = value; this.OnPropertyChanged(o => o.ReasonItem); }
+        }
+        int _Reason;
+        /// <summary>
+        /// 选中的退换货理由
+        /// </summary>
+        public int Reason
+        {
+            get { return _Reason; }
+            set
+            {
+                _Reason = value;
+                this.OnPropertyChanged(o => o.Reason);
+            }
+        }
+
+        /// <summary>
+        /// 差价
+        /// </summary>
+        private decimal difference;
+
+        public decimal Difference
+        {
+            get { return difference; }
+            set { difference = value; this.OnPropertyChanged(o => o.Difference); }
+        }
+
+        private string oldOrderSN;
+        /// <summary>
+        /// 原流水号
+        /// </summary>
+        public string OldOrderSN
+        {
+            get { return oldOrderSN; }
+            set { oldOrderSN = value; this.OnPropertyChanged(o => o.OldOrderSN); }
+        }
+
+        private string oldSaleMan;
+        /// <summary>
+        /// 原导购员
+        /// </summary>
+        public string OldSaleMan
+        {
+            get { return oldSaleMan; }
+            set { oldSaleMan = value; this.OnPropertyChanged(o => o.OldSaleMan); }
+        }
+
+
+
+        /// <summary>
+        /// 确认事件
+        /// </summary>
+        public GeneralCommand<object> ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    IsOperatEnabled = false;
+                    this.OnPropertyChanged(o => o.IsOperatEnabled);
+                    if (ChangeList == null || ChangeList.Count() == 0)
+                    {
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            Toast.ShowMessage("请录入商品条码！", CurrentWindow);
+                        }));
+                        return;
+                    }
+
+                    switch (Status)
+                    {
+                        case ChangeStatus.Change:
+                            if (!ChangeList.Any(o => o.ChangeNumber > 0) || !ChangeList.Any(o => o.ChangeNumber < 0))
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    Toast.ShowMessage("请录入要换的 新条码商品！", CurrentWindow);
+                                    txtChangeBarcode
+                                }));
+                                return;
+                            }
+                            break;
+                        case ChangeStatus.Refund:
+                            if (ChangeList.Any(o => o.ChangeNumber > 0))
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    Toast.ShowMessage("退货，不允许兑换商品！", CurrentWindow);
+                                }));
+                                return;
+                            }
+                            if (!ChangeList.Any(o => o.ChangeNumber < 0))
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    Toast.ShowMessage("退货，必须填写退还商品！", CurrentWindow);
+                                }));
+                                return;
+                            }
+                            break;
+                    }
+
+
+                    //调确认的接口
+                    Task.Factory.StartNew(() =>
+                    {
+                        if (string.IsNullOrEmpty(Password))
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage("请输入授权密码！", CurrentWindow);
+                            }));
+                            return;
+                        }
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        AuthorizationParams _paramsAuth = new AuthorizationParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CID = _machinesInfo.CompanyToken,
+                            Password = Password
+                        };
+                        var resultAuth = ApiManager.Post<AuthorizationParams, ApiRetrunResult<object>>(@"api/Authorization", _paramsAuth);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            if (resultAuth.Code == "200")
+                            {
+                                //判断订单号存不存在
+                                //设置订单号
+                                if (!string.IsNullOrEmpty(OldOrderSN))
+                                {
+                                    SetOldCustomerOrderSnRequset _paramSetOldSn = new SetOldCustomerOrderSnRequset()
+                                    {
+                                        StoreId = _machinesInfo.StoreId,
+                                        MachineSn = _machinesInfo.MachineSn,
+                                        CID = _machinesInfo.CompanyToken,
+                                        OldCustomerOrderSN = OldOrderSN,
+                                        Mode = (int)Status
+                                    };
+                                    var hasOrder = ApiManager.Post<SetOldCustomerOrderSnRequset, ApiRetrunResult<bool>>(@"api/SetOldCustomerOrderSn", _paramSetOldSn);
+                                    if (hasOrder.Code == "200")
+                                    {
+                                        if (!hasOrder.Result)
+                                        {
+                                            Toast.ShowMessage("原流水号不存在！", CurrentWindow);
+                                            return;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Toast.ShowMessage(hasOrder.Message, CurrentWindow);
+                                        return;
+                                    }
+                                }
+
+                                //设置导购员
+                                if (!string.IsNullOrEmpty(OldSaleMan))
+                                {
+                                    SetSaleManParams _params = new SetSaleManParams()
+                                    {
+                                        StoreId = _machinesInfo.StoreId,
+                                        MachineSn = _machinesInfo.MachineSn,
+                                        CID = _machinesInfo.CompanyToken,
+                                        SaleMan = OldSaleMan,
+                                        Source = (int)Status,
+                                        Mode = (int)Status
+                                    };
+                                    var result = ApiManager.Post<SetSaleManParams, ApiRetrunResult<SaleManInfo>>(@"api/SetSaleMan", _params);
+                                    if (result.Code == "200")
+                                    {
+                                        //成功
+                                    }
+                                    else
+                                    {
+                                        Toast.ShowMessage(result.Message, CurrentWindow);
+                                        OldSaleMan = string.Empty;
+                                        return;
+                                    }
+                                }
+
+                                //客户补差价><0时调支付接口
+                                //if (Difference != 0)
+                                //{
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    //打开支付界面
+                                    ZhiFuFangShi page = new ZhiFuFangShi(Difference, (Status == ChangeStatus.Change ? PosModels.PayAction.Change : PayAction.Refund), Reason);
+                                    page.Owner = Application.Current.MainWindow;
+
+                                    CurrentWindow.Hide();
+                                    page.ShowDialog();
+                                    CurrentWindow.Close();
+                                }));
+                                #region  old api
+                                //}
+                                //else
+                                //{
+                                //    NoNeedPaySaveParams _params = new NoNeedPaySaveParams()
+                                //    {
+                                //        Amount = Difference,
+                                //        Reason = Reason,
+                                //        StoreId = _machinesInfo.StoreId,
+                                //        MachineSn = _machinesInfo.MachineSn,
+                                //        CompanyToken = _machinesInfo.CompanyToken,
+                                //        Mode = Status
+                                //    };
+                                //    var result = ApiManager.Post<NoNeedPaySaveParams, ApiRetrunResult<object>>(@"api/NoNeedPaySave", _params);
+                                //    if (result.Code == "200")
+                                //    {
+                                //        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                //        {
+                                //            Toast.ShowMessage("操作成功！", CurrentWindow);
+                                //            //print
+                                //            try
+                                //            {
+                                //                #region 打印
+                                //                if (PosViewModel.Current.PrintStatus == PrintStatus.Open)
+                                //                {
+                                //                    int printWidth = 40;
+                                //                    PrintModelHelper printer = new PrintModelHelper();
+                                //                    TicketModel ticketModel = new TicketModel();
+                                //                    ticketModel.TicketWidth = printWidth;//发票宽度，按字符数计算，根据打印机型号有所区别(通常在30-70之间),建议系统提供配置入口
+                                //                    ticketModel.StoreName = _machinesInfo.StoreName;
+                                //                    ticketModel.DeviceNumber = _machinesInfo.MachineSn;
+                                //                    ticketModel.SN = PaySn;
+                                //                    ticketModel.Cashier = Global.CurrentSaleMen.UserCode;
+                                //                    List<ProductModel> productList = new List<ProductModel>();
+                                //                    foreach (var item in ChangeList)
+                                //                    {
+                                //                        ProductModel productModel = new ProductModel();
+                                //                        productModel.Code = item.Barcode;
+                                //                        productModel.Name = item.Title;
+                                //                        productModel.Num = item.ChangeNumber;
+                                //                        productModel.Price = item.ChangePrice;
+                                //                        productModel.SubTotal = item.Total;
+                                //                        productList.Add(productModel);
+                                //                    }
+                                //                    ticketModel.ProductList = productList;
+                                //                    ticketModel.CountNum = (int)changeList.Sum(o => o.ChangeNumber);
+                                //                    ticketModel.TotalPrice = Math.Round(Difference, 1, MidpointRounding.AwayFromZero).ToString("0.###");
+                                //                    ticketModel.Receivable = Math.Round(Difference, 1, MidpointRounding.AwayFromZero).ToString("0.###");
+                                //                    ticketModel.Change = 0.0m;
+                                //                    ticketModel.OrderType = (int)Status;
+                                //                    DateTime orderTime = DateTime.Now;
+                                //                    DateTime.TryParse(result.Result.ToString(), out orderTime);
+                                //                    ticketModel.CreateDT = orderTime;
+
+                                //                    //  ticketModel.Weigh = "0 KG";
+                                //                    //ticketModel.PayType = payWays;
+                                //                    List<string> footItemList = new List<string>();
+                                //                    //if (PosViewModel.Current.Preferential > 0m)
+                                //                    //{
+                                //                    //    footItemList.Add("已优惠：" + string.Format("{0:N2}", PosViewModel.Current.Preferential));
+
+                                //                    //}
+
+                                //                    //footItemList.Add("称重商品数量请参照条码标签");
+                                //                    footItemList.Add("欢迎光临");
+                                //                    footItemList.Add("服务电话：" + _machinesInfo.Phone);
+                                //                    footItemList.Add("请保留电脑小票，作为退换货凭证");
+                                //                    footItemList.Add("退换小票");
+                                //                    ticketModel.FootItemList = footItemList;
+                                //                    string titleStr = string.Empty; string printStr = printer.GetPrintStr(ticketModel, out titleStr);
+                                //                    PrintHelper.Print(printStr, titleStr);
+                                //                }
+                                //                #endregion
+                                //            }
+                                //            catch (Exception ex)
+                                //            {
+                                //                Toast.ShowMessage(ex.Message, CurrentWindow);
+                                //            }
+
+                                //            //清除当前所有项
+                                //            ChangeList = new List<ChangingList>();
+                                //            Difference = 0m;
+                                //            Clear();
+                                //            CurrentWindow.Close();
+                                //            //关闭当前窗体
+                                //        }));
+                                //    }
+                                //    else
+                                //    {
+                                //        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                //        {
+                                //            Toast.ShowMessage(result.Message, CurrentWindow);
+                                //        }));
+                                //    }
+                                //} 
+                                #endregion
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(resultAuth.Message, CurrentWindow);
+                            }
+                        }));
+
+
+                        IsOperatEnabled = true;
+                        this.OnPropertyChanged(o => o.IsOperatEnabled);
+
+                    });
+                });
+            }
+        }
+
+        /// <summary>
+        /// 清除数据
+        /// </summary>
+        public void Clear()
+        {
+            //调用服务器清除接口
+            // MachineInformations _machinesInfo = Global.MachineSettings.MachineInformations;
+            Task.Factory.StartNew(() =>
+            {
+                ChangingParams _baseParams = new ChangingParams()
+                {
+                    StoreId = _machinesInfo.StoreId,
+                    MachineSn = _machinesInfo.MachineSn,
+                    CID = _machinesInfo.CompanyToken,
+                    Mode = (int)Status
+                };
+                ApiManager.Post<ChangingParams, ApiRetrunResult<object>>(@"api/ClearRefundOrChangeInfo", _baseParams);
+                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                {
+                    ChangeList = new List<ChangingList>();
+                    Difference = 0m;
+                    Password = string.Empty;
+                    PaySn = string.Empty;
+                }));
+
+            });
+        }
+
+
+
+
+
+
+        public bool IsOperatEnabled { get; set; }
+    }
+}

@@ -1,0 +1,30 @@
+﻿using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.ApiData.Pos.Cache
+{
+    public class ProductCache : MemoryCacheWrapper<ProductInfo>
+    {
+        public ProductCache()
+            : base("ProductCache", new TimeSpan(2, 0, 0), true)
+        {
+            RefreshProduct();
+        }
+
+        public void RefreshProduct()
+        {
+
+            //TODO Refresh
+            Task.Factory.StartNew(() =>
+            {
+                Thread.Sleep(new TimeSpan(0, 30, 0));
+                RefreshProduct();
+            });
+        }
+    }
+}

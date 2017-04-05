@@ -1,0 +1,99 @@
+﻿@{
+    ViewBag.Title = "ProductWeightSetting";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增会员", delText: "移除", hideDel: true, hideAdd: true, hideEdit: true, hideSearch: true));
+}
+<script type="text/javascript">
+    pharos.dropdown['deviceBands'] =@Html.Raw(ViewBag.deviceBands) ;
+    pharos.dropdown['deviceModel']=@Html.Raw(ViewBag.deviceModel);
+    pharos.dropdown['keyCount']=@Html.Raw(ViewBag.keyCount);
+    pharos.dropdown['pageModel']=@Html.Raw(ViewBag.pageModel);
+
+    pharos.manager.geturl = "@Url.Action("ProductWeigtSettingPageList")";
+    pharos.manager.columns = [[
+        { field: 'Id', hidden: true, width: 60 },
+        { field: 'SN', title: '秤号', width: 50, editor: { type: 'textbox', options: { required: true } } },
+        { field: 'Title', title: '秤名称', width: 100, editor: { type: 'textbox', options: { required: true } } },
+        { field: 'TypeSN', title: '设备类型', width: 120, editor: { type: 'combobox', options: {required:true,data:pharos.dropdown['deviceBands'],textField:'text',valueField:'value',editable:false} } },
+        { field: 'ModelSN', title: '型号', width: 120, editor: { type: 'combobox', options: {required:true,data:pharos.dropdown['deviceModel'],editable:false} } },
+        { field: 'KeyCount', title: '按键个数', width: 60, editor: { type: 'combobox', options: {required:true,data:pharos.dropdown['keyCount'],editable:false} } },
+        { field: 'PageModel', title: '双页模式', width: 80, editor: { type: 'combobox', options: {required:true,data:pharos.dropdown['pageModel'],editable:false} },formatter:function(value){if(value==1){return "单页"}else{return "双页"}} },
+        { field: 'IpAddress', title: 'IP地址', width: 160, editor: { type: 'textbox', options: { required: true } } },
+        { field: 'Port', title: '端口', width: 50, },
+        { field: 'operter', title: '操作', width: 70, formatter: operation },
+    ]];
+    pharos.manager.loadSuccess=loadSuccess;
+
+
+    var rowIndex=0;
+    //数据加载完成后增加空行
+    function loadSuccess(){
+        appendRow();
+    }
+
+    //加空行
+    function appendRow(){
+        pharos.manager.$dg.datagrid("appendRow",{
+            Id:"",
+            SN:"",
+            Title:"",
+            TypeSN:"",
+            ModelSN:"",
+            KeyCount:"",
+            PageModel:"",
+            IpAddress:"",
+            Port:33581
+        });
+        rowIndex=pharos.manager.$dg.datagrid("getRows").length-1;
+        pharos.manager.$dg.datagrid("selectRow",rowIndex).datagrid("beginEdit",rowIndex);
+    }
+
+    //操作列显示
+    function operation(value, row, index) {
+        if (row.Id == "" || row.Id == null) {
+            return "<a href='javascript:void(0)' onclick='appendItemProc()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItemProc('" + row.Id + "')\">删除</a>";
+        }
+    }
+    //删除
+    function removeItemProc(id){
+        if(id!=null){
+            $.messager.confirm("确认","确定删除该电子秤配置信息？",function(r){
+                if(r){
+                    $.post("@Url.Action("RemoveSetting")",{id:id},function(data){
+                        if(data.successed){
+                            $.messager.alert("提示","操作成功",function(){
+                                pharos.manager.gridReload();
+                            })
+                        }else{
+                            $.messager.alert("提示",data.message);
+                        }
+                    },"JSON");
+                }
+            })
+        }
+    }
+    //添加
+    function appendItemProc(){
+        var ck=pharos.manager.$dg.datagrid("validateRow",rowIndex);
+        if(ck){
+            pharos.manager.$dg.datagrid("endEdit",rowIndex);
+
+            var rowdata=pharos.manager.$dg.datagrid("getData").rows[rowIndex];
+            $.post("@Url.Action("CreateSetting")",rowdata,function(data){
+                if(data.successed){
+                    $.messager.alert("提示", "操作成功!", "info");
+                    pharos.manager.gridReload();
+                    return
+                }else{
+                    $.messager.alert("提示", data.message, "success");
+                    return
+                }
+            },"JSON")
+        }else{
+            $.messager.alert("提示", "请正确填写数据!", "info");
+        }
+    }
+
+</script>

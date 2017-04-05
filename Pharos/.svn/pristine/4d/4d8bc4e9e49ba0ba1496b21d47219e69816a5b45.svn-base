@@ -1,0 +1,101 @@
+﻿@model Pharos.Logic.OMS.Entity.OrderList
+@{
+    ViewBag.Title = "添加商户-采购意向清单";
+    Layout = "~/Areas/webapp/Views/Shared/_Layout.cshtml";
+}
+<header>
+    <a href="@Url.Action("AddTrader")"><span class="icon_arrow_left"></span></a>
+    采购意向清单
+</header>
+<div id="main" class="main">
+    @using(Html.BeginForm())
+    { 
+    <div id="content">
+        <div class="item">
+            <div class="item_title">
+                序号<span class="xh">1</span>
+                <span id="icon_delete" class="icon_delete"></span>
+            </div>
+            <div class="info_row">
+                <div class="info_tittle">产品</div>
+                <div class="select_item">
+                    @Html.DropDownListFor(o => o.DeviceId, ViewBag.devices as List<SelectListItem>)
+                    <input type="hidden" name="Title" />
+                </div>
+            </div>
+            <div class="info_row">
+                <div class="info_tittle">数量</div>
+                @Html.TextBoxFor(o => o.OrderNum, new { @type = "number", req = "数量" })
+            </div>
+            <div class="info_row">
+                <div class="info_tittle">单位</div>
+                <div class="select_item">
+                    @Html.DropDownListFor(o => o.UnitID, ViewBag.units as List<SelectListItem>)
+                    <input type="hidden" name="Unit" />
+                </div>
+            </div>
+            @Html.TextAreaFor(o => o.Remark, new { @class = "info_text", maxlength = "200" })
+            <p class="info_text1" style="margin-bottom:10px;">限长200个字，还可以输入<span class="info_num">200</span>个字</p>
+        </div>
+    </div>
+    }
+    <button class="info_row info_row1"><span class="icon_add">添加产品信息</span></button>
+</div>
+<footer>
+    <input type="button" class="button" value="完成" onclick="$('form').submit()"/>
+</footer>
+
+<script>
+    var msg = '@ViewData.Eval("msg")';
+        //添加产品信息
+    $(".info_row1").click(function () {
+        var item = $(".item").last().clone(true);
+        var maxlen = item.find("#Remark").attr("maxlength");
+        var xh = $(".xh").last().html();
+        var x = Number(xh) + 1;
+        item.find("#OrderNum").val("").andSelf().find(".info_text").val("").andSelf().find(".info_num").html(maxlen);
+        item.appendTo($("#content"));
+        $(".xh").last().html(x);
+
+        delinit();
+    });
+    function delinit() {
+        $(".icon_delete").off("click").on("click", function () {
+            var xh = $(".xh");
+            if (xh.size() <= 1) {
+                toastr.info("必须保留一项，删除失败！", "提示");
+                return false;
+            }
+            var obj = $(this).parent().parent().remove();
+            xh = $(".xh");
+            xh.each(function (i, r) {
+                $(r).html(i + 1);
+            });
+        })
+    }
+    //删除产品信息
+    $(function () {
+        delinit();
+        $("#DeviceId").change(function () {
+            var text = $(this).find("option:selected").text();
+            $(this).next().val(text);
+        });
+        $("#UnitID").change(function () {
+            var text = $(this).find("option:selected").text();
+            $(this).next().val(text);
+        });
+        var text = $("#DeviceId").find("option:selected").text();
+        $("[name='Title']").val(text);
+        text = $("#UnitID").find("option:selected").text();
+        $("[name='Unit']").val(text);
+
+        $("#Remark").keyup(function (e) {
+            var maxlen = $(this).attr("maxlength");
+            var len = $(this).val().length;
+            $(this).next().find("span").html(Number(maxlen) - len);
+        })
+
+        if (msg) toastr.error(msg, "错误");
+
+    });
+</script>

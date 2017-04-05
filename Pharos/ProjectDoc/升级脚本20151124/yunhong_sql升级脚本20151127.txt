@@ -1,0 +1,28 @@
+-----活动推送主表-----
+
+CREATE TABLE [dbo].[Push](
+	[Id] 		[int] 				IDENTITY(1,1) 	NOT NULL,
+	[PushId] 	[varchar](40) 		NOT NULL,
+	[Content] 	[nvarchar](1000) 	NULL,
+	[State] 	[smallint] 			NOT NULL,
+	[CreateUID] [varchar](40) 		NOT NULL,
+	[CreateDT] 	[datetime] 			NOT NULL,
+	[Type] 		[varchar](2000) 	NULL,
+	PRIMARY KEY CLUSTERED ([Id] ASC)
+);
+
+-----活动推送子表-----
+
+CREATE TABLE [dbo].[PushWithMember](
+	[Id] 		[int] 					IDENTITY(1,1) 	NOT NULL,
+	[PushId] 	[varchar](40) 			NOT NULL,
+	[MemberId] 	[varchar](40)	 		NOT NULL,
+	[State] 	[smallint] 				NOT NULL,
+	[Channel] 	[smallint] 				NOT NULL,
+	PRIMARY KEY CLUSTERED ([Id] ASC)
+);
+
+
+-----12.02
+-----商品售后退换信息主表新增处理来源标识字段
+ALTER TABLE dbo.SalesReturns ADD Source INT NOT NULL DEFAULT 0;

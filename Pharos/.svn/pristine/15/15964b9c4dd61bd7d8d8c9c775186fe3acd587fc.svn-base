@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <configSections>
+    <sectionGroup name="common">
+      <section name="logging" type="Common.Logging.ConfigurationSectionHandler, Common.Logging"/>
+    </sectionGroup>
+    <!-- For more information on Entity Framework configuration, visit http://go.microsoft.com/fwlink/?LinkID=237468 -->
+    <section name="entityFramework" type="System.Data.Entity.Internal.ConfigFile.EntityFrameworkSection, EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" requirePermission="false"/>
+    <!-- For more information on Entity Framework configuration, visit http://go.microsoft.com/fwlink/?LinkID=237468 -->
+    <section name="SocketClientConfig" type="Pharos.SocketClient.Retailing.Protocol.SocketClientConfig,Pharos.POS.ClientService"/>
+  </configSections>
+  <SocketClientConfig IP="192.168.10.122" Port="2020"></SocketClientConfig>
+  <startup>
+    <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.5" />
+  </startup>
+  <connectionStrings>
+    <add name="DefaultConnection" connectionString="Data Source=|DataDirectory|\Database\LocalDB.sdf;" providerName="System.Data.SqlServerCe.4.0"/>
+  </connectionStrings>
+  <entityFramework>
+    <defaultConnectionFactory type="System.Data.Entity.Infrastructure.SqlCeConnectionFactory, EntityFramework">
+      <parameters>
+        <parameter value="System.Data.SqlServerCe.4.0"/>
+      </parameters>
+    </defaultConnectionFactory>
+    <providers>
+      <provider invariantName="System.Data.SqlClient" type="System.Data.Entity.SqlServer.SqlProviderServices, EntityFramework.SqlServer"/>
+      <provider invariantName="System.Data.SqlServerCe.4.0" type="System.Data.Entity.SqlServerCompact.SqlCeProviderServices, EntityFramework.SqlServerCompact"/>
+    </providers>
+  </entityFramework>
+<system.data>
+    <DbProviderFactories>
+      <remove invariant="System.Data.SqlServerCe.4.0" />
+      <add name="Microsoft SQL Server Compact Data Provider 4.0" invariant="System.Data.SqlServerCe.4.0" description=".NET Framework Data Provider for Microsoft SQL Server Compact" type="System.Data.SqlServerCe.SqlCeProviderFactory, System.Data.SqlServerCe, Version=4.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91" />
+    </DbProviderFactories>
+  </system.data>
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <assemblyIdentity name="System.Web.Http" publicKeyToken="31bf3856ad364e35" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-5.2.3.0" newVersion="5.2.3.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Newtonsoft.Json" publicKeyToken="30ad4fe6b2a6aeed" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-6.0.0.0" newVersion="6.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Net.Http.Formatting" publicKeyToken="31bf3856ad364e35" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-5.2.3.0" newVersion="5.2.3.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Microsoft.Owin" publicKeyToken="31bf3856ad364e35" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-3.0.1.0" newVersion="3.0.1.0" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+  <system.web>
+    <!--请求大小限1024MB，最大超时限1h-->
+    <httpRuntime maxRequestLength="1048576" executionTimeout="3600"/>
+  </system.web>
+  <system.serviceModel>
+    <bindings>
+      <netTcpBinding>
+        <binding name="netTcpBindConfig" closeTimeout="00:30:00" portSharingEnabled="true" openTimeout="00:30:00" receiveTimeout="00:30:00" sendTimeout="00:30:00" transactionFlow="false" transferMode="Buffered" transactionProtocol="OleTransactions" hostNameComparisonMode="StrongWildcard" listenBacklog="10" maxBufferPoolSize="2147483647" maxReceivedMessageSize="2147483647">
+
+          <readerQuotas maxDepth="32" maxStringContentLength="2147483647" maxArrayLength="2147483647" maxBytesPerRead="2147483647" maxNameTableCharCount="2147483647"/>
+          <!--<reliableSession enabled="true" />-->
+          <security mode="None"/>
+        </binding>
+      </netTcpBinding>
+    </bindings>
+    <client>
+      <endpoint address="net.tcp://192.168.10.122/PosServerDbSyncService.svc" binding="netTcpBinding" bindingConfiguration="netTcpBindConfig" contract="Pharos.SyncService.IPosServerDbSyncService" name="WSHttpBinding_PosServerDbSyncService">
+      </endpoint>
+    </client>
+  </system.serviceModel>
+  <appSettings configSource="appSettings.config"/>
+  <common>
+    <logging>
+      <factoryAdapter type="Common.Logging.Log4Net.Log4NetLoggerFactoryAdapter, Common.Logging.Log4Net1211">
+        <arg key="configType" value="FILE-WATCH"/>
+        <arg key="configFile" value="~/Config/log4net.config"/>
+      </factoryAdapter>
+    </logging>
+  </common>
+</configuration>

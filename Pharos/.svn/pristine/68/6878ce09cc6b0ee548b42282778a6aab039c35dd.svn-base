@@ -1,0 +1,36 @@
+﻿using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class ConsumptionPaymentService : BaseGeneralService<Pharos.Logic.Entity.ConsumptionPayment, EFDbContext>
+    {
+
+        public static void Save(string paySn, decimal amount, int apiCode, string apiOrderSN = null, string cardNo = null, int token = 1)
+        {
+            try
+            {
+                ConsumptionPaymentService.Add(new ConsumptionPayment()
+                {
+                    Amount = amount,
+                    ApiCode = apiCode,
+                    PaySN = paySn,
+                    State = 1,
+                    ApiOrderSN = apiOrderSN,
+                    CardNo = cardNo,
+                    CompanyId = token
+                });
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+    }
+}

@@ -1,0 +1,41 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<link href="~/Content/global.css" rel="stylesheet" />
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+    <table class="SupplierType-save">
+        <tr>
+            <td>分组名称：</td>
+            <td><input type="text" name="Name" class="easyui-validatebox" style="height:14px;" data-options="required:true,novalidate:true" /></td>
+            <td><a href="#" class="easyui-linkbutton button-margin"   onclick="$('.default-form form').submit()">添加</a></td>
+        </tr>
+    </table>
+    }
+</div>
+<div id="loadpart" style="overflow:hidden;overflow-y:auto;height:210px;">
+    @Html.Partial("MemberGroupListPartial")
+</div>
+<script type="text/javascript">
+    function Refresh() {
+        $("[name='Name']").val("");
+        $("#loadpart").load("@Url.Action("MemberGroupListPartial")", {t:Math.random()}, function () { });
+    }
+    function delType(Id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {return r;}
+            $.post("@Url.Action("DeleteMemberGroup")", { id: Id, t: Math.random() }, function (json) {
+                if (json.successed) {
+                    Refresh();
+                } else {
+                    $.messager.alert('错误', '删除失败,' + json.message);
+                }
+            },"json")
+        });
+    }
+    $(function () {
+        Refresh();
+    })
+</script>

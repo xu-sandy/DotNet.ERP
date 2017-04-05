@@ -1,0 +1,93 @@
+﻿@model Pharos.Sys.EntityExtend.SysMenusExt
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o=>o.MenuId)
+        @Html.HiddenFor(o=>o.SortOrder)
+        @*@Html.HiddenFor(o => o.PId)*@
+        <div class="content">
+            <table class="table-toolbar" style="width:100%;height:143px;">
+                @if (Model.PMenuId != 0)
+                {
+                    <tr>
+                        <!--如果是添加则文本显示，如果编辑则下拉树可修改-->
+                        <td class="name">
+                            <span>上级菜单：</span>
+                        </td>
+                        <td class="input">
+                            @if (Model.Id > 0)
+{
+    <input class="easyui-combotree" id="PMenuId" name="PMenuId" value="@Model.PMenuId" data-options="url:'@Url.Action("GetMenusTreeList", new { id=Model.Id})',method:'get',required:true" />
+}
+else
+{
+                                @Html.HiddenFor(o => o.PMenuId)
+                                @Html.ValueFor(o => o.PTitle)
+                            }
+                        </td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                }
+                <tr>
+                    <td class="name">
+                        <span>
+                            菜单名称：
+                        </span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true" })
+                    </td>
+                    @*<td class="name">
+                        <span> 排序：</span>
+                    </td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.SortOrder, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true"})
+                    </td>*@
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span>链接地址：</span>
+                    </td>
+                    <td colspan="3" class="input">
+                        @Html.TextBoxFor(o => o.URL, new { @class = "easyui-textbox", data_options = "novalidate:true", style = "width:400px;" })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <span> 状态：</span>
+                    </td>
+                    <td class="input">
+                        @Html.RadioButtonFor(o => o.Status, true) 显示
+                        @Html.RadioButtonFor(o => o.Status, false) 关闭
+                    </td>
+                    <td colspan="2"></td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+
+@*<script>
+    $(function () {
+        var saveUrl = '@Url.Action("MenusSave")';
+        alert(1);
+        $('.default-form form').form({
+            url: saveUrl,
+            onSubmit: function () {
+                var isValid = SaveBefore();//$(this).form("enableValidation").form('validate');
+                if (isValid) isValid = $(this).form('validate');
+                if (isValid) {
+                    $.messager.progress({ title: "请稍候", msg: "正在保存数据...", interval: 300 });
+                }
+                return isValid;
+            },
+    })
+    })
+</script>*@

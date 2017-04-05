@@ -1,0 +1,50 @@
+﻿using Newtonsoft.Json.Linq;
+using Pharos.Logic.ApiData.Mobile.Services;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Web.Http;
+
+namespace Pharos.Api.Retailing.Controllers.Mobile
+{
+    /// <summary>
+    /// IM聊天
+    /// </summary>
+    [RoutePrefix("api/mobile")]
+    public class ChatController : ApiController
+    {
+        /// <summary>
+        /// 获取IM联系人列表
+        /// </summary>
+        /// <param name="account">（可选）当前用户登录账号</param>
+        /// <returns>状态为“正常”的用户列表（包含信息：EMUserName，FullName，PhotoUrl）。若username不为空，则过滤username。</returns>
+        [Route("GetStoreList")]
+        public object GetContactsList(string account)
+        {
+            return Pharos.Logic.BLL.UserInfoService.GetUsersInfoForIMContacts(account);
+        }
+
+        /// <summary>
+        /// 获取IM单个用户信息
+        /// </summary>
+        /// <param name="json"></param>
+        /// <returns>IM用户信息(（包含信息：PhotoUrl，FullName，UserCode，Sex，Department，Signature，Mobile）</returns>
+        [HttpPost]
+        [Route("GetUserInfo")]
+        public object GetUserInfo([FromBody]JObject json)
+        {
+            string emUserName = json.Property("emUserName", true);
+            return Pharos.Logic.BLL.UserInfoService.GetUserInfoForIM(emUserName);
+        }
+
+        [HttpPost]
+        [Route("IMAppKey")]
+        public object IMAppKey()
+        {
+            return new { IMAppKey = string.Format("{0}#{1}", ConfigurationManager.AppSettings["em_app_org"], ConfigurationManager.AppSettings["em_app_name"]) };
+        }
+    }
+}

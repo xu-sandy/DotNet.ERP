@@ -1,0 +1,68 @@
+﻿using Pharos.POS.Retailing.Printers.Services;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Printers.Domain.Models
+{
+    public class PrintJobExecutor
+    {
+        private readonly PrintJob _printJob;
+        private bool _highPriority;
+        private PrinterService _printerService;
+      //  Mark Printers
+        public IEnumerable<Printer> Printers
+        {
+            get { return null; }
+        }
+        //Mark PrinterTemplates 
+        protected IEnumerable<PrinterTemplate> PrinterTemplates
+        {
+            get { return null; }
+        }
+
+        public Printer PrinterById(int id)
+        {
+            return Printers.Single(x => x.Id == id);
+        }
+
+        private PrintJobExecutor(PrintJob printJob)
+        {
+            _printJob = printJob;
+        }
+
+        public static PrintJobExecutor For(PrintJob printJob)
+        {
+            return new PrintJobExecutor(printJob);
+        }
+        public PrintJobExecutor WithPrinterService(PrinterService printerService)
+        {
+            _printerService = printerService;
+            return this;
+        }
+
+        public PrintJobExecutor IsHighPriority(bool highPriority)
+        {
+            _highPriority = highPriority;
+            return this;
+        }
+
+        public void Execute()
+        {
+            AsyncPrintTask.Exec(_highPriority, () => InternalExecutePrintJob(_printJob));
+        }
+
+        public void InternalExecutePrintJob(PrintJob printJob)
+        {
+            if (printJob.PrinterMaps.Count > 0)
+            {
+                var printerMap = printJob.PrinterMaps[0];
+                var printerTemplate = PrinterTemplates.Single(x => x.Id == printerMap.PrinterTemplateId);
+                var content = printerTemplate.Template.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var printer = PrinterById(printerMap.PrinterId);
+                PrintJobFactory.CreatePrintJob(printer, _printerService).DoPrint(content);
+            }
+        }
+    }
+}

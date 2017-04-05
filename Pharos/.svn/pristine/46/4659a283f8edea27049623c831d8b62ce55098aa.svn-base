@@ -1,0 +1,425 @@
+﻿@{
+    ViewBag.Title = "ProductWeight";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style>
+    .bar {
+        height: 30px;
+        margin-bottom: 10px;
+    }
+
+    #nav {
+        font-family: "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+        position: relative;
+        width: 390px;
+        height: 56px;
+        font-size: 14px;
+        color: #999;
+        /*margin: 0 auto;*/
+        margin-bottom: 20px;
+    }
+
+        #nav ul {
+            list-style-type: none;
+        }
+
+            #nav ul li {
+                float: left;
+                position: relative;
+                border: 1px solid rgb(210,215,216);
+                border-radius: 5px;
+                margin-left: 20px;
+            }
+
+                #nav ul li:hover {
+                    cursor: pointer;
+                }
+
+                #nav ul li a {
+                    text-align: center;
+                    border-right: 1px solid #e9e9e9;
+                    padding: 10px;
+                    display: block;
+                    text-decoration: none;
+                }
+
+    .current {
+        background-color: #f5f5f5;
+        color: black;
+    }
+</style>
+<div style="padding:10px;">
+    <div class="bar">
+        <table class="table-toolbar">
+            <tr>
+                <td class="label-toolbar">
+                    <label>门 店：</label>
+                </td>
+                <td class="label-toolbar">
+                    <label id="store">@ViewBag.stores</label>
+                </td>
+                <td class="label-toolbar">
+                    <label>选择秤号：</label>
+                </td>
+                <td class="input-toolbar">
+                    @Html.DropDownList("scale", ViewBag.scale as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", @editable = "false", @multiple = true })
+                </td>
+                <td class="input-toolbar">
+                    &nbsp;&nbsp;
+                    @Html.DropDownList("history", ViewBag.history as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", @editable = "false" })
+                </td>
+                <td class="label-toolbar">
+                    &nbsp;&nbsp;<input type="checkbox" id="isClear" /><label for="isClear">清空电子秤历史数据</label>
+                </td>
+                <td class="input-toolbar" style="margin-left:20px;">
+                    <a href="#" id="searchBtn" class="easyui-linkbutton cus4 linkbtn" data-options="iconCls:'icon-ok'" onclick="sendProduct()">开始发送</a>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+
+    <div class="bar">
+        <div id="nav">
+            <ul>
+                <li class="current" data-index="0">
+                    <a>商品档案</a>
+                </li>
+                <li data-index="1">
+                    <a>已选商品<span id="count"></span></a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+<div id="product" class="easyui-layout" data-options="fit:true">
+    <div data-options="region:'west',width:200,">
+        <ul id="tree" class="easyui-tree" data-options="url:'@Url.Action("FindTreeList")',method:'post',onSelect:treeSelect,onBeforeSelect:treeBeforeSelect,onLoadSuccess:treeSuccess"></ul>
+    </div>
+    <div data-options="region:'center'">
+        <table id="grid"></table>
+    </div>
+</div>
+<div id="checkProdcut">
+    <table id="grid2"></table>
+</div>
+
+
+<div id="win" class="easyui-dialog" data-options="title:'下发电子秤',cache:false,modal:true,width:420,height:150,closed:true,collapsible:false,minimizable:false,maximizable:false">
+    <input type="text" value="正在下发数据，请稍候......" id="tips" style="width:100%; border:0; margin:20px 0 0 20px;" />
+    <input type="hidden" value="0" id="State" />
+</div>
+
+<script type="text/javascript">
+
+    $(function () {
+        $("#nav li").click(function () {
+            $(this).addClass("current").siblings().removeClass("current");
+            var val = $(this).data("index");
+            if (val == 0) {
+                $("#product").show();
+                $("#checkProdcut").hide();
+            } else {
+                $("#checkProdcut").show();
+                $("#grid2").datagrid("resize");
+
+                $("#product").hide();
+            }
+        })
+
+
+
+
+        $("#grid").datagrid({
+            url: "",
+            border: true,
+            rownumbers: true,
+            fit: false,
+            fitColumns: true,
+            pagination: false,
+            checkOnSelect: true,
+            striped: true,
+            columns: [[
+            { field: 'ck', checkbox: true },
+            { field: 'Id', hidden: true, width: 60 },
+            { field: 'ProductCode', title: '货号', width: 120 },
+            { field: 'Barcode', title: '条码', width: 100 },
+            { field: 'CategoryTitle', title: '品类', width: 180 },
+            { field: 'Title', title: '品名', width: 130 },
+            { field: 'Size', title: '规格', width: 60 },
+            { field: 'BrandTitle', title: '品牌', width: 120 },
+            { field: 'SysPrice', title: '售价', width: 160 },
+            { field: 'SubUnit', title: '单位', width: 130 },
+            ]],
+            onSelect: function (index, row) {
+                appendRow(row);
+            },
+            onSelectAll: function (rows) {
+                $.each(rows, function (index, row) {
+                    appendRow(row);
+                });
+            },
+            onUnselect: function (index, row) {
+                removeRow(row);
+            },
+            onUnselectAll: function (rows) {
+                $.each(rows, function (index, row) {
+                    removeRow(row);
+                })
+            }
+        });
+
+
+        $("#grid2").datagrid({
+            border: true,
+            rownumbers: true,
+            fit: false,
+            fitColumns: true,
+            pagination: false,
+            striped: true,
+            columns: [[
+            { field: 'Id', hidden: true, width: 60 },
+            { field: 'ProductCode', title: '货号', width: 120 },
+            { field: 'Barcode', title: '条码', width: 100 },
+            { field: 'CategoryTitle', title: '品类', width: 120 },
+            { field: 'Title', title: '品名', width: 130 },
+            { field: 'Size', title: '规格', width: 60 },
+            { field: 'BrandTitle', title: '品牌', width: 120 },
+            { field: 'SysPrice', title: '售价', width: 160 },
+            { field: 'SubUnit', title: '单位', width: 130 },
+            {
+                field: 'op', title: '操作', width: 80, formatter: function (value, row, index) {
+                    return "<a href='javascript:void(0)' onclick=optionter('" + row.Barcode + "')>[移除]</a>";
+                }
+            }
+            ]],
+        })
+        var hh = $(window).height() - 90;
+        var h2 = hh - 5;
+        $("#grid2").datagrid('resize', { height: hh })
+        //$("#product").attr("style", "width:100%;height:" + hh + "px");
+        $("#product").layout("resize", { height: hh })
+
+
+        $("#tree").parent().attr("style", "width:100%;height:" + h2 + "px")
+        $("#grid").datagrid('resize', { height: h2 })
+
+        $("#history").combobox({
+            onChange: function (n, o) {
+                if (n == "") {
+                    return false;
+                }
+                grid2GetData(n);
+            }
+
+        });
+
+        $("#scale").combobox({
+            onSelect: function (rec) {
+                var allval = $(this).combobox("getData");
+                var allth = allval.length;
+                if (rec.value != "") {
+                    $(this).combobox("unselect", "");
+                } else {
+                    for (var i = 0; i < allth; i++) {
+                        if (allval[i].value != "") {
+                            $(this).combobox("unselect", allval[i].value);
+                        }
+                    }
+                }
+            }
+        });
+        //秤号的默认选择
+        var selectItem = "";
+        var chs = $("#scale").combobox("getData");
+        if (chs.length == 2) {
+            selectItem = chs[1].value;
+        }
+
+        $("#scale").combobox("setValue", selectItem);
+    });
+
+    $(window).resize(function () {
+        var hh = $(window).height() - 90;
+        $("#product").attr("style", "width:100%;height:" + hh + "px");
+        $("#product").layout("resize", { height: hh + "px" })
+        $("#grid2").datagrid('resize', { height: hh })
+    })
+
+    function removeRow(row) {
+        var rows = $("#grid2").datagrid("getRows");
+        $.each(rows, function (index, item) {
+            debugger
+            if (item != undefined)
+                if (item.Id == row.Id) {
+                    $("#grid2").datagrid("deleteRow", index);
+                    return;
+                }
+        })
+        totalCount();
+    }
+
+    function grid2GetData(n) {
+        $("#grid2").datagrid({
+            url: "@Url.Action("ProductWeigtDataByBatch")" + "?batch=" + n,
+            onLoadSuccess: function (d) {
+                var rows = $("#grid2").datagrid("getRows");
+                if (rows.length > 0) {
+                    $("#count").click();
+                    totalCount();
+                }
+            }
+        });
+    }
+
+    function appendRow(row) {
+        var rows = $("#grid2").datagrid("getRows");
+        var isAdd = true;
+        $.each(rows, function (index, item) {
+            if (item.Id == row.Id) {
+                isAdd = false;
+            }
+        })
+        if (!isAdd) {
+            return;
+        }
+        $("#grid2").datagrid('appendRow', {
+            Id: row.Id,
+            ProductCode: row.ProductCode,
+            Barcode: row.Barcode,
+            CategoryTitle: row.CategoryTitle,
+            Title: row.Title,
+            Size: row.Size,
+            BrandTitle: row.BrandTitle,
+            SysPrice: row.SysPrice,
+            SubUnit: row.SubUnit,
+        })
+        totalCount();
+    }
+
+    function optionter(barcode) {
+        if (barcode != "") {
+            $.messager.confirm("确认", "确定移除该数据？", function (r) {
+                if (r) {
+                    var rows = $("#grid2").datagrid("getRows");
+                    $.each(rows, function (index, item) {
+                        if (item.Barcode == barcode) {
+                            $("#grid2").datagrid("deleteRow", index);
+                            totalCount();
+                            return
+                        }
+                    })
+
+                }
+            });
+        }
+    }
+
+    function treeSelect(node) {
+        if (node.Grade > 0) {
+            $("#grid").datagrid({
+                url: "@Url.Action("FindProductByCategory")" + "?category=" + node.CategorySN
+            });
+        }
+    }
+    function treeBeforeSelect(node) {
+
+    }
+    function treeSuccess(node, data) {
+        var bigsn = $("#BigCategorySN").val();
+        var midsn = $("#MidCategorySN").val();
+        var subsn = $("#CategorySN").val();
+        var node = null;
+        if (!isNull(subsn)) {
+            node = $("#tree").tree("find", subsn);
+        } else if (!isNull(midsn)) {
+            node = $("#tree").tree("find", midsn);
+        } else {
+            node = $("#tree").tree("find", bigsn);
+        }
+        //$('#tree').tree('select', node.target).tree("expandTo", node.target);
+    }
+    function isNull(obj) {
+        if (!obj) return true;
+        if (parseFloat(obj) <= 0) return true;
+        return false;
+    }
+    //统计数量
+    function totalCount() {
+        var count = $("#grid2").datagrid("getRows").length;
+        $("#count").html("(" + count + ")");
+    }
+    //开始传送
+    function sendProduct() {
+        //商品
+        //var type = 1;
+        var datas = $("#grid2").datagrid("getRows");
+        //var batch = "";
+        if (datas.length <= 0) {
+
+            //var hs = $("#history").combobox("getValue");
+            //if (hs == "") {
+            $.messager.alert("提示", "请选择商品！");
+            return false;
+            //} else {
+            //    batch = hs;
+            //    type = 2;
+            //}
+        }
+        var ids = "";
+        for (var i = 0; i < datas.length; i++) {
+            if (datas[i].Id != null) {
+                ids += datas[i].Id + ",";
+            }
+        }
+
+        //ip
+        var ips = $("#scale").combobox("getValues");
+        if (ips.length == 0) {
+            $.messager.alert("提示", "请选择秤号！");
+            return false;
+        }
+        ips = ips.join(",");
+        //isclear
+        var isclear = $("#isClear").is(":checked");
+        $("#win").dialog("open");
+        //send
+        $.post("@Url.Action("SendProduct")", { ids: ids, ips: ips, isClear: isclear }, function (data) {
+            if (data.successed) {
+                $.messager.alert("提示", "操作成功！");
+            } else {
+                $.messager.alert("提示", data.message);
+            }
+            $("#State").val("1");
+            $('#win').window('close');
+        }, "JSON");
+
+    }
+
+
+    var btngenerate = [{
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+
+        }
+    }];
+    $("#win").dialog({
+        buttons: btngenerate,
+        onClose: function () {
+            if ($("#State").val() == "0") {
+                $('#win').dialog('open');
+                $.messager.alert("提示", "正下发数据到电子秤，无法关闭！");
+            }
+            else {
+                $('#win').dialog('close');
+                pharos.manager.gridReload();
+            }
+        },
+        onOpen: function () {
+            $("#tips").val("正下发数据到电子秤，请稍候......");
+            $("State").val("0");
+        }
+    });
+</script>

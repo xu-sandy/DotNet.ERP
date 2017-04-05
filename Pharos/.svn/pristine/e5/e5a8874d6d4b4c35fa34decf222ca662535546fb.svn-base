@@ -1,0 +1,99 @@
+﻿@{
+    ViewBag.Title = "Category";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增栏目", hideAdd: false, hideDel: true, editText: "栏目分类详情", hideSearch: true));
+}
+
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-in-progress'" >显示</a>  @*onclick="setState(1)"*@
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" >关闭</a> @*onclick="setState(2)"*@
+}
+
+<script type="text/javascript">
+
+    @*pharos.manager.geturl = "@Url.Action("FindPageList")";*@
+    pharos.manager.geturl = "test.json";
+    pharos.manager.editurl = "@Url.Action("CategorySave")";
+
+    pharos.manager.columns = [[
+         { field: 'Id', checkbox: true, width: 30 },
+         { field: 'ReType', title: '栏目名称', width: 80, align: 'center' },
+         { field: 'StateTitle', title: '页面名称', width: 80, align: 'center' },
+         { field: 'ProductCode', title: '栏目类型', width: 80, align: 'center' },
+         { field: 'Title', title: '为主菜单', width: 80, align: 'center' },
+         { field: 'BrandTitle', title: '电脑端状态', width: 80, align: 'center' },
+         { field: 'SubUnit', title: '手机端状态', width: 80, align: 'center' },
+         {
+             title: '操作', field: 'Editor', width: 50, align: 'center', formatter: function (value, row, index) {
+                 var html = "&nbsp;&nbsp;&nbsp;<span style='color:#a3a3a3'>[删除]</span>";
+                 return html;
+             }
+         }
+        //  ,
+        //{
+        //    rows:[
+        //        { "Id":"1","ReType": "栏目名称", "StateTitle": "页面名称", "ProductCode": "栏目类型", "Title": "是", "BrandTitle": "显示", "SubUnit": "关闭" }
+        //    ]
+        //}
+
+    ]]
+
+    
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialogNew(this.addText, this.editurlNocache(), 700,350,false,false);
+    }
+
+    pharos.manager.editItem = function (Id) {
+        openDialog800(this.editText, this.editurlNocache() + "&Id=" + Id, true);
+    }
+
+    //var test = {
+    //    'total': 100, 'rows': [
+    //        { "ReType": "栏目名称", "StateTitle": "页面名称", "ProductCode": "栏目类型", "Title": "是", "BrandTitle": "显示", "SubUnit": "关闭" }
+    //    ]
+    //};
+    //$dg.datagrid('loadData', test);
+
+  
+
+    @*function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+
+        var isPass = true;
+        $.each(rows, function (i, r) {
+            if (r.StateTitle == "已完成" && (state == 0 || state == 1 )) {
+                $.messager.alert("提示", "已完成的记录不能更改状态！");
+                isPass = false;
+                return false;
+            }
+            else if (r.StateTitle == "处理中" && state == 1 ) {
+                $.messager.alert("提示", "不能把处理中的记录设为处理中，请检查您的选择");
+                isPass = false;
+                return false;
+            }
+            else if (r.StateTitle == "已完成" && state == 2) {
+                $.messager.alert("提示", "不能把已完成的记录设为已完成，请检查您的选择");
+                isPass = false;
+                return false;
+            }
+
+        });
+        if (!isPass) return;
+
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }*@
+
+</script>

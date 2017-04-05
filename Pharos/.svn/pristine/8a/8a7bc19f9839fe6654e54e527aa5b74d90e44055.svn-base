@@ -1,0 +1,162 @@
+﻿@model OrderReturns
+@{
+    ViewBag.Title = "ReturnManagement";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, editText: "退换详情"));
+}
+
+<style>
+    #tbReturnDetail tr td {
+        width: 150px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar" style="margin-top:-3px;">
+        <tr>
+            <td>
+                <label class="label-toolbar">类别：</label>
+            </td>
+            <td>
+                @Html.DropDownList("ReturnType", ViewBag.returntypes as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })              
+            </td>
+            <td style="padding-left:10px;">
+                处理状态：
+            </td>
+            <td>
+                @Html.RadioButtonListFor(o => o.State, ViewBag.returnstates as List<SelectListItem>, new { style="height:26px;"})
+            </td>
+            <td style="padding-left:10px;">
+                关键词：
+            </td>
+            <td>
+                <div class="input">
+                    <label>
+                        <input name="SearchText" class="datacontrol font-12" placeholder="货号/品名" />
+                    </label>
+                </div>
+            </td>
+        </tr>
+    </table>
+}
+
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-in-progress'" onclick="setState(1)">转入处理中</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(2)">转为已完成</a>
+    @*<a class="easyui-linkbutton cus1 linkbtn" onclick="">查看退换详情</a>*@
+}
+
+<script type="text/javascript">
+
+    pharos.manager.geturl = "@Url.Action("OrderReturnList")";
+    pharos.manager.editurl = "@Url.Action("ReturnDetail")";
+
+    pharos.manager.columns = [[
+         { field: 'Id', checkbox: true, width: 30 },
+         { field: 'ReType', title: '类别', width: 80, align: 'center' },
+         { field: 'StateTitle', title: '状态', width: 80, align: 'center' },
+         { field: 'Barcode', title: '条码', width: 120, align: 'center' },
+         { field: 'Title', title: '品名', width: 150, align: 'center' },
+         { field: 'BrandTitle', title: '品牌', width: 80, align: 'center' },
+         { field: 'SubUnit', title: '单位', width: 50, align: 'center' },
+         { field: 'ReturnNum', title: '数量', width: 80, align: 'center' },
+         { field: 'Price', title: '售价', width: 80, align: 'center' },
+         { field: 'CreateDT', title: '申请时间', width: 140, align: 'center' },
+         { field: 'StoreTitle', title: '分店', width: 120, align: 'center' },
+         { field: 'Memo', title: '备注', width: 120, align: 'center' },
+         { field: 'CreateTitle', title: '经办人', width: 80, align: 'center' }
+    ]]
+
+    pharos.manager.editItem = function (Id) {
+        openDialog(this.editText, this.editurlNocache() + "&Id=" + Id, 700, 290,true);
+    }
+
+    //变更状态
+    @*function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+        if (d.successed) {
+            $.messager.alert("提示", "修改成功！", "info");
+            pharos.manager.gridReload();
+        } else {
+            $.messager.alert("提示", "修改失败！" + d.message, "error");
+        }
+    }, "json");
+    }*@
+
+    function setState(state) {
+        var rows = pharos.manager.selectItems(); 
+        if (!rows) return;
+
+        var isPass = true;
+        $.each(rows, function (i, r) {
+            if (r.StateTitle == "已完成" && (state == 0 || state == 1 )) { 
+                $.messager.alert("提示", "已完成的记录不能更改状态！");
+                isPass = false;
+                return false;
+            }
+            else if (r.StateTitle == "处理中" && state == 1 ) {
+                $.messager.alert("提示", "不能把处理中的记录设为处理中，请检查您的选择");
+                isPass = false;
+                return false;
+            }
+            else if (r.StateTitle == "已完成" && state == 2) {
+                $.messager.alert("提示", "不能把已完成的记录设为已完成，请检查您的选择");
+                isPass = false;
+                return false;
+            }
+
+        });
+        if (!isPass) return;
+
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+
+
+    @*function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var isPass = true;
+        $.each(rows, function (i, r) {
+            if (r.StateTitle == "已完成" && state == 2) {
+                $.messager.alert("提示", "已完成的记录不能更改状态!");
+                isPass = false;
+                return false;
+            } 
+        });
+        if (!isPass) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "操作成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作失败！" + d.message, "error");
+            }
+        }, "json");
+    }*@
+
+
+
+
+
+</script>
+

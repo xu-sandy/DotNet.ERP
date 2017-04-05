@@ -1,0 +1,176 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  TradersPaySecretKey
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .formbox td {
+        padding: 5px 0px;
+    }
+
+    #table_payModeList {
+        border-collapse:collapse;
+    }
+
+    #table_payModeList, #table_payModeList th, #table_payModeList td {
+        border:1px solid #ccc;
+    }
+
+    #table_payModeList td {
+            padding:7px;
+    }
+</style>
+<script src="~/Scripts/tool.js"></script>
+<script type="text/javascript">
+
+    $(function () {
+
+    });
+
+    function SaveBefore() {
+        return true;
+    }
+
+    //删除
+    function del(d) {
+        $(d).parent().parent().remove();
+    }
+
+    /*************************** 商户号开始***************************/
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        $.ajax({
+            url: "@Url.Action("GetCidWhere", "PayAccount")",
+            type: "post",
+        data: {
+            //传值，还是JSON数据搜索
+            keyword: q
+        },
+        dataType: "json",
+        success: function (data) {
+            comboRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function (item) {
+                return { CID: item.CID, CID: item.CID };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+
+    function tradersOnChange(newValue, oldValue) {
+        $.ajax({
+            url: "/PayLicense/GetEntityTraders?CID=" + encodeURIComponent(newValue),
+            type: "post",
+            async: false,
+            dataType: "json",
+            data: {},
+            success: function (data) {
+                if (data.CID != 0) {
+                    $("#FullTitle").textbox("setValue", data.FullTitle);
+                }
+                else {
+                    $("#FullTitle").textbox("setValue", "");
+                }
+            }
+        });
+    }
+
+    /*************************** 商户号结束***************************/
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+
+        <div class="content">
+
+            <div class="formbox" >
+
+                <table class="table-form" width="100%">
+
+                    <tr>
+                        <td class="name" style=" width:10%;">指派人：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AssignUID, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name" style="width:15%;">商户号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.CID, new { @class = "easyui-combobox", data_options = "required:true,prompt:'请输入',validType:'length[1,7]', width:120,editable:true,mode:'remote',valueField:'CID',textField:'CID',loader:comboload,onChange:tradersOnChange" })</td>
+                        <td class="name" style="width:15%;">客户全称：</td>
+                        <td class="input">@Html.TextBox("FullTitle", new { @class = "easyui-textbox", data_options = "required:false,prompt:'自动获取',width:230,readonly:true" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">通道状态：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.State, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "未审核", Value = "0" }, new SelectListItem() { Text = "可用", Value = "1" }, new SelectListItem() { Text = "暂停", Value = "2" }, new SelectListItem() { Text = "注销", Value = "3" }, new SelectListItem() { Text = "无效", Value = "4" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name">支付安全Key：</td>
+                        <td class="input" colspan="3">@Html.TextBoxFor(o => o.SecretKey, new { @class = "easyui-textbox", data_options = "required:false,prompt:'',width:531,validType:'length[0,200]',readonly:true" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">支付通道：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.Source, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:120" })</td>
+                        <td class="name">第三方商户号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:120,validType:'length[0,100]'" })</td>
+                        <td class="name">第三方平台Key：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Cities, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',width:231,validType:'length[0,200]'" })</td>
+                    </tr>
+
+                </table>
+
+            </div>
+
+            <div class="formbox" style="padding-top:15px; border-bottom:0px;">
+                <table class="table-form" width="100%" id="table_payModeList">
+
+                    <input type="hidden" id="h_payModeList" name="h_payModeList" value="" />
+
+                    <tr style="background-color:#eff4fb;">
+                        <td style="width:10%;text-align:center;">支付方式</td>
+                        <td style="text-align:center;width:40%;">支付结果通知URL</td>
+                        <td style="text-align:center; width:40%;">退款结果通知URL</td>
+                        <td style="text-align:center;">操作</td>
+                    </tr>
+
+                    <tr name="payModeList">
+                        <td style="text-align:center;">扫码支付</td>
+                        <td style="text-align:center;" onclick="">http://sf.wefe.werfw/wefg/dft/</td>
+                        <td style="text-align:center;">http://sf.wefe.werfw/wefg/dft/</td>
+                        <td style="text-align:center;"><a href="javascript:;" onclick="del(this)" class="a_del" style="color:#8cc152;">删除</a></td>
+                    </tr>
+
+                    <tr name="tr">
+                        <td style="text-align:center;">
+                            <input id="comboboxPayMode" name="CurrentProvinceId" class="easyui-combobox datacontrol"  style="width:120px;"/>
+                        </td>
+                        <td style="text-align:center;">
+                            <input type="text" style=" width:95%;" value="" maxlength="500" class="easyui-validatebox" data-options="required:false" id="pUrl" />
+                        </td>
+                        <td style="text-align:center;">
+                            <input type="text" style=" width:95%;" value="" maxlength="500" class="easyui-validatebox" data-options="required:false" id="rUrl" />
+                        </td>
+
+                        <td style="text-align:center;">
+                            <a href="javascript:;" class="easyui-linkbutton" onclick="addPayMode()">添加</a>
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+
+        </div>
+    }
+</div>
+
+

@@ -1,0 +1,81 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.ChildPagesModels;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.DTOs
+{
+    /// <summary>
+    /// 查库存DTO
+    /// </summary>
+    public class CheckInventoryDto
+    {
+        public CheckInventoryDto(CheckInventoryDAO dao)
+        {
+            CurrentDAO = dao;
+        }
+
+        private CheckInventoryDAO CurrentDAO { get; set; }
+
+        public string ProductCode
+        {
+            get { return CurrentDAO.ProductCode; }
+            set { CurrentDAO.ProductCode = value; }
+        }
+
+        public string ProductName
+        {
+            get { return CurrentDAO.ProductName; }
+            set { CurrentDAO.ProductName = value; }
+        }
+
+        public string CategoryName
+        {
+            get { return CurrentDAO.CategoryName; }
+            set { CurrentDAO.CategoryName = value; }
+        }
+
+        public string Barcode
+        {
+            get { return CurrentDAO.Barcode; }
+            set { CurrentDAO.Barcode = value; }
+        }
+
+        public decimal SysPrice
+        {
+            get { return CurrentDAO.SysPrice; }
+            set { CurrentDAO.SysPrice = value; }
+        }
+
+        public decimal StockNumber
+        {
+            get { return CurrentDAO.StockNumber; }
+            set { CurrentDAO.StockNumber = value; }
+        }
+
+        public Visibility VisibilityDisableButton
+        {
+            get
+            {
+                return CurrentDAO.ValuationType != 1 ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+        public Visibility VisibilityButton
+        {
+            get
+            {
+                return CurrentDAO.ValuationType == 1 ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+        public GeneralCommand AddCommand
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    var isSuccess = CheckInventory.AddToBill(Barcode);
+                });
+            }
+        }
+    }
+}

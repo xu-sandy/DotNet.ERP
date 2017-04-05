@@ -1,0 +1,209 @@
+﻿using AX.CSF.Encrypt;
+using Newtonsoft.Json.Linq;
+using Pharos.CRM.Retailing.Models;
+using Pharos.Sys;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+namespace Pharos.CRM.Retailing
+{
+    public class Authorize
+    {
+        /// <summary>
+        /// 从序列号返回对象
+        /// </summary>
+        /// <param name="sn"></param>
+        /// <returns></returns>
+        public static CompanyAuthorize AnalysisSN(string sn)
+        {
+            if (!string.IsNullOrEmpty(sn))
+            {
+                try
+                {
+                    var text = DES.Decrypt(sn);
+                    JObject json = JObject.Parse(text);
+                    CompanyAuthorize company = new CompanyAuthorize();
+
+                    company.CID = Convert.ToInt32(json["CID"]);
+                    company.Title = Convert.ToString(json["Title"]);
+                    company.Source = Convert.ToInt16(json["Source"]);
+                    company.Way = Convert.ToInt16(json["Way"]);
+                    company.BusinessMode = Convert.ToInt16(json["BusinessMode"]);
+
+                    company.UserNum = Convert.ToInt16(json["UserNum"]);
+                    company.StoreNum = Convert.ToInt16(json["StoreNum"]);
+                    company.StoreProper = Convert.ToString(json["StoreProper"]);
+                    company.AppProper = Convert.ToString(json["AppProper"]);
+                    company.PosMinorDisp = Convert.ToString(json["PosMinorDisp"]);
+
+                    company.OpenVersionId = Convert.ToInt16(json["OpenVersionId"]);
+                    company.OpenScopeId = Convert.ToString(json["OpenScopeId"]);
+                    company.EffectiveDT = Convert.ToString(json["EffectiveDT"]);
+                    company.ExpirationDT = Convert.ToString(json["ExpirationDT"]);
+                    company.ValidityNum = Convert.ToInt16(json["ValidityNum"]);
+
+                    company.SupperAccount = Convert.ToString(json["SupperAccount"]);
+                    company.SupperPassword = Convert.ToString(json["SupperPassword"]);
+                    company.MachineSN = Convert.ToString(json["MachineSN"]);
+
+                    return company;
+                }
+                catch { }
+            }
+            return null;
+        }
+        public static OpResult Activate(string serialno)
+        {
+            string message = "";
+            var op = new OpResult();
+            DictRegister[SysCommonRules.CompanyId] = null;
+            op.Successed = HasRegister(ref message, serialno.IsNullOrEmpty() ? null : serialno);
+            op.Message = message;
+            if(op.Successed)
+            {
+                var company = CurrentUser.Company as CompanyAuthorize;
+                if(company!=null && !company.OpenScopeId.IsNullOrEmpty())
+                {
+                    var firsts= company.OpenScopeId.Split(',');
+                    var sources= Pharos.Logic.BLL.ProductCategoryService.FindList(o => firsts.Contains(o.Title));
+                    var maxode = Pharos.Logic.BLL.ProductCategoryService.MaxCode(0);
+                    var maxsn = Pharos.Logic.BLL.ProductCategoryService.MaxSn;
+                    var list = new List<Pharos.Logic.Entity.ProductCategory>();
+                    foreach(var first in firsts)
+                    {
+                        if (sources.Any(o => o.Title == first)) continue;
+                        list.Add(new Logic.Entity.ProductCategory()
+                        {
+                            CategoryPSN=0,
+                            State=1,
+                            CategoryCode=(++maxode),
+                            CompanyId=SysCommonRules.CompanyId,
+                            CategorySN=(++maxsn),
+                            Title=first,
+                            Grade=1
+                        });
+                    }
+                    if (list.Any()) Pharos.Logic.BLL.ProductCategoryService.AddRange(list);
+                }
+            }
+            return op;
+        }
+        public const string _SerialKey = "SerialNo";
+        static Dictionary<int, bool?> DictRegister = new Dictionary<int, bool?>();
+        public static bool HasRegister(ref string message, string serialno = null)
+        {
+            if (!DictRegister.ContainsKey(SysCommonRules.CompanyId) || DictRegister[SysCommonRules.CompanyId] == null)
+            {
+                DictRegister[SysCommonRules.CompanyId] = false;
+                CurrentUser.Company = null;
+                string key = serialno ?? Pharos.Utility.Config.GetAppSettings(_SerialKey);
+                var companyId = SysCommonRules.CompanyId;
+                if (!string.IsNullOrWhiteSpace(key) && companyId > 0)//离线
+                {
+                    CompanyAuthorize auth = AnalysisSN(key);
+                    if (auth == null)
+                    {
+                        message = "注册序列号不正确!";
+                    }
+                    else if (ValidateProperty(auth, ref message))
+                    {
+                        if (auth.Way == 2)
+                        {
+                            serialno = Pharos.Utility.Config.GetAppSettings(_SerialKey);
+                            if (serialno != key)
+                                new Pharos.Utility.Config().SetAppSettings(_SerialKey, key);
+                            else if (key.IsNullOrEmpty())
+                            {
+                                message = "独立方式，注册系列号不能为空，请联系管理员!";
+                                DictRegister[SysCommonRules.CompanyId] = false;
+                                return false;
+                            }
+                        }
+                        return true;
+                    }
+                }
+                else if (companyId > 0)
+                {
+                    return ValidateProperty(new CompanyAuthorize() { CID=companyId,Way=1}, ref message);
+                }
+            }
+            return DictRegister[SysCommonRules.CompanyId].GetValueOrDefault();
+        }
+        static bool ValidateProperty(CompanyAuthorize source, ref string message)
+        {
+            var companyId = source.ToJson();
+            var omsurl =OmsUrl + "api/outerapi/GetCompany";
+            var json = HttpClient.HttpPost(omsurl, companyId);
+            if (json=="404" && source.Way==1)//在线且返回空时
+            {
+                message = "连接OMS管理平台失败，请检查网络是否正常!";
+                DictRegister[SysCommonRules.CompanyId] = null;
+            }
+            else
+            {
+                if (json.IsNullOrEmpty() || json == "404") json = companyId;
+                var company = json.ToObject<CompanyAuthorize>();
+                if (company == null)
+                {
+                    message = "获取公司信息失败，请确认系列号是否正确!";
+                }
+                else if (company.Status != 1)
+                {
+                    message = "您处于停用或未审核状态，请联系管理员!";
+                }
+                else if (DateTime.Parse(company.EffectiveDT).AddDays(1) > DateTime.Now)
+                {
+                    message = "未到生效日期暂不能使用!";
+                }
+                else if (DateTime.Parse(company.ExpirationDT) <= DateTime.Now)
+                {
+                    message = "已过使用期,请联系管理员!";
+                }
+                else if (company.Way == 2 && company.CID == 0)
+                {
+                    message = "基础信息与注册不一致,请联系管理员!";
+                }
+                else if (company.Way==2 && company.MachineSN!=Machine.GetMAC)
+                {
+                    message = "请在注册时的服务器上使用!";
+                }
+                else
+                {
+                    DictRegister[SysCommonRules.CompanyId] = true;
+                    CurrentUser.Company = company;
+                    return true;
+                }
+            }
+            return false;
+        }
+        public static OpResult RegisterAgain(CompanyAuthorize comp)
+        {
+            new Pharos.Utility.Config().SetAppSettings(_SerialKey, "");
+            comp.SerialNo = "";
+            comp.MachineSN = Machine.GetMAC;
+            comp.CID = SysCommonRules.CompanyId;
+            if (comp.AppProper != "Y") comp.AppProper = "N";
+            if (comp.StoreProper != "Y") comp.StoreProper = "N";
+            if (comp.PosMinorDisp != "Y") comp.PosMinorDisp = "N";
+            var rt = HttpClient.HttpPost(OmsUrl + "api/outerapi/RegisterAgain", comp.ToJson());
+            if (rt=="0") return OpResult.Fail("连接OMS管理平台失败，请检查网络是否正常！");
+            CurrentUser.Company = null;
+            DictRegister[SysCommonRules.CompanyId] = null;
+            return OpResult.Success();
+        }
+        public static bool RedirectToActivate(CompanyAuthorize comp)
+        {
+            var serial=Pharos.Utility.Config.GetAppSettings(_SerialKey);
+            if (comp.Way == 2 && serial.IsNullOrEmpty())
+                return true;
+            return false;
+        }
+        static string OmsUrl
+        {
+            get { return Pharos.Utility.Config.GetAppSettings("omsurl"); }
+        }
+    }
+}

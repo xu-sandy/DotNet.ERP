@@ -1,0 +1,102 @@
+﻿using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.ObjectModels;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    public class CheckPrice : BaseViewModel
+    {
+        public CheckPrice()
+        {
+            categoryTree = categoryTree.InitCategory(CurrentWindow);
+            PageIndex = 1;
+            PageSize = 50;
+        }
+        decimal from;
+        public decimal From
+        {
+            get
+            {
+                return from;
+            }
+            set
+            {
+                from = value;
+                this.OnPropertyChanged(o => o.From);
+            }
+        }
+
+        decimal to;
+        public decimal To
+        {
+            get
+            {
+                return to;
+            }
+            set
+            {
+                to = value;
+                this.OnPropertyChanged(o => o.To);
+            }
+        }
+
+        IEnumerable<InventoryItem> inventoryItems;
+        public IEnumerable<InventoryItem> InventoryItems
+        {
+            get
+            {
+                return inventoryItems;
+            }
+            set
+            {
+                inventoryItems = value;
+                this.OnPropertyChanged(o => o.InventoryItems);
+            }
+        }
+
+        IEnumerable<TreeModel> categoryTree;
+        public IEnumerable<TreeModel> CategoryTree
+        {
+            get
+            {
+                return categoryTree;
+            }
+        }
+
+        public int PageSize { get; set; }
+        public int PageIndex { get; set; }
+        public GeneralCommand<object> SearchCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        List<int> _sns = new List<int>();
+                        _sns.Add(TreeModelExtensions.GetSelectItemSN(CategoryTree));
+                        GetProductPriceParams _params = new GetProductPriceParams() { StoreId = _machinesInfo.StoreId, MachineSn = _machinesInfo.MachineSn, CategorySns = _sns, From = From,To=To };
+                        var result = ApiManager.Post<GetProductPriceParams, ApiRetrunResult<PageResult<InventoryItem>>>(@"api/FindWithPriceRange?pageSize=" + PageSize + "&pageIndex=" + PageIndex, _params);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                          {
+                              if (result.Code == "200")
+                              {
+                                  InventoryItems = result.Result.Datas;
+                              }
+                              else
+                              {
+                                  Toast.ShowMessage(result.Message, CurrentWindow);
+                              }
+                          }));
+                    });
+                });
+            }
+        }
+    }
+}

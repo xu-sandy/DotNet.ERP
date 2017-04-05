@@ -1,0 +1,73 @@
+﻿@model CommodityPromotion
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">    .times .textbox{width:78px!important;}</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <div class="formbox">
+                <table class="table-form" height="117px">
+                    <tr>
+                        <td class="name">活动有效期：</td>
+                        <td class="input">
+                            <table>
+                                <tr>
+                                    <td>@Html.DisplayTextFor(o => o.StartDate,"{0:yyyy-MM-dd}")</td>
+                                    <td style="padding-left:5px;padding-right:5px;line-height:28px;">至</td>
+                                    <td>@Html.DisplayTextFor(o => o.EndDate, "{0:yyyy-MM-dd}")</td>
+                                    <td style="padding-left:10px;">适用客户：</td>
+                                    <td>@Html.RadioButtonListFor(o => o.CustomerObj, ViewBag.customers as List<SelectListItem>)</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="name">活动时效：</td>
+                        <td class="input times">
+                            <table>
+                                <tr>
+                                    <td>@Html.RadioButtonListFor(o => o.Timeliness, new List<SelectListItem>() { new SelectListItem() { Text = "不限", Value = "0", Selected = true }, new SelectListItem() { Text = "指定每天时效", Value = "1" } })</td>
+                                    <td id="tdtimes">@Html.TimeBoxList((List<string>)ViewBag.times, "Times")</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="name">适用门店：</td>
+                        <td class="input choose">@Html.CheckBoxListFor(o => o.StoreId, ViewBag.shops as List<SelectListItem>, new { @class = "easyui-validatebox", id = "store" },9)</td>
+                    </tr>
+                </table>
+            </div><br />
+            <table class="easyui-datagrid" id="grid2"
+                   data-options="url:'@Url.Action("LoadDetailList")',queryParams:{zhekouId:'@Model.Id'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect:true,onLoadError:loadError,idField:'Id'">
+                <thead>
+                    <tr>
+                        <th data-options="field:'ProductCode'" width="120">货号</th>
+                        <th data-options="field:'Barcode'" width="150">条码</th>
+                        <th data-options="field:'Title'" width="150">品名</th>
+                        <th data-options="field:'SubCategoryTitle'" width="80">品类</th>
+                        <th data-options="field:'BrandTitle'" width="80">品牌</th>
+                        <th data-options="field:'SubUnit'" width="60">单位</th>
+                        <th data-options="field:'SysPrice'" width="80">系统售价</th>
+                        <th data-options="field:'StockNums'" width="60">库存</th>
+                        <th data-options="field:'DiscountRate',editor:{type:'numberbox',options:{min:1,max:10,precision:1,required:true}}" width="100">折扣</th>
+                        <th data-options="field:'DiscountPrice',editor:{type:'numberbox',options:{min:0,precision:2,required:true}}" width="100">折后价</th>
+                        <th data-options="field:'MinPurchaseNum',editor:{type:'numberbox',options:{min:0,required:true}}" width="100">起购量</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        if ($("[name='Timeliness']").html() == "不限") {
+            $("#tdtimes").hide();
+        }
+    });
+
+</script>

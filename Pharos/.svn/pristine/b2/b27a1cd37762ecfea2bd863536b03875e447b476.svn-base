@@ -1,0 +1,95 @@
+﻿using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class SaleOrdersService : BaseGeneralService<SaleOrders, EFDbContext>
+    {
+        public static BillHistoryInfo GetBillDetailsHistory(string storeId, string machineSn, string paySn)
+        {
+
+            var order = CurrentRepository.Find(o => o.PaySN == paySn && o.StoreId == storeId);
+            if (order == null)
+            {
+                throw new PosException("未找到该订单！");
+            }
+            var query = (from a in SaleDetailService.CurrentRepository.Entities
+
+                         from b in ProductRecordService.CurrentRepository.Entities
+                         from c in BaseGeneralService<SaleDetailsTotal, EFDbContext>.CurrentRepository.Entities
+                         where a.Barcode == b.Barcode && a.PaySN == paySn && a.PaySN == c.PaySN && a.Barcode == c.Barcode
+                         select new BillDetails()
+                         {
+                             ActualPrice = a.ActualPrice,
+                             Barcode = a.Barcode,
+                             Number = a.PurchaseNumber,
+                             Brand = b.BrandTitle,
+                             Size = b.Size,
+                             Title = b.Title,
+                             SysPrice = b.SysPrice,
+                             Total = c.Total,
+                             IsGift = a.ActualPrice == 0,
+                             Unit= b.SubUnit
+                         });
+            var payments = BaseGeneralService<ApiLibrary, EFDbContext>.CurrentRepository.Entities.ToList().Where(o => ("," + order.ApiCode + ",").Contains("," + o.ApiCode + ",")).ToList();
+            var title = string.Empty;
+            switch (payments.Count)
+            {
+                case 0:
+                    title = "未知支付方式";
+                    break;
+                case 1:
+                    title = payments.FirstOrDefault().Title;
+                    break;
+                default:
+                    title = "多方式支付";
+                    break;
+            }
+            var cashier = SysStoreUserInfoService.Find(o => o.UID == order.CreateUID);
+            return new BillHistoryInfo()
+            {
+                Details = query.ToList(),
+                PreferentialAmount = order.PreferentialPrice,
+                TotalAmount = order.TotalAmount,
+                Payment = title,
+                PaySn = order.PaySN,
+                ProductCount = 0,
+                CashierId = cashier == null ? "未知" : cashier.UserCode,
+                Change = 0m,
+                MachineSn = order.MachineSN,
+                StoreId = order.StoreId,
+                OrderTime = order.CreateDT,
+                Received = 0m
+            };
+
+        }
+
+        public static IEnumerable<BillListItem> GetBills(string storeId, string machineSn, DateTime date)
+        {
+            var start = date.Date;
+
+            var end = date.Date.AddDays(1);
+            var query = (CurrentRepository.Entities.Where(o => o.StoreId == storeId && o.CreateDT > start && o.CreateDT < end).Select(o => new BillListItem()
+            {
+                Amount = o.TotalAmount,
+                Date = o.CreateDT,
+                PaySn = o.PaySN,
+                Number = (from a in SaleDetailService.CurrentRepository.Entities.Where(p => p.PaySN == o.PaySN)
+                          from b in ProductRecordService.CurrentRepository.Entities
+                          where a.Barcode == b.Barcode || a.Barcode == b.ProductCode
+                          select (decimal?)(b.ValuationType == 1 ? a.PurchaseNumber : 1)
+                              ).Sum() ?? 0,
+            }));
+            return query.ToList();
+
+        }
+
+    }
+}

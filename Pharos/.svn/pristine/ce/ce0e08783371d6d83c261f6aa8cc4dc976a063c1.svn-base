@@ -1,0 +1,170 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增结算账户", hideDel: true, hideAdd:true, searchHeight: 50));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+
+            <td class="label-toolbar">
+                <label>指派人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("AssignerUID", ViewBag.user as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>创建日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_begin" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_end" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按商户号", Value = "1" }, new SelectListItem() { Text = "按客户名称", Value = "2" }, new SelectListItem() { Text = "按结算卡号", Value = "3" }, new SelectListItem() { Text = "按财务联系人", Value = "4" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+            </td>
+
+        </tr>
+
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(1)">设为可用账户</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(1)">驳回申请</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(2)">暂停账户</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(3)">注销账户</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(4)">无效账户</a>
+}
+<script type="text/javascript">
+
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        var id = getUrlParam('id');
+        if (id == null) {
+            id = 0;
+        }
+        $.ajax({
+            url: "@Url.Action("getAgentsIdWhere", "AgentsInfo")",
+            type: "post",
+        data: {
+            //传值，还是JSON数据搜索
+            keyword: q,
+            id:id
+        },
+        dataType: "json",
+        success: function (data) {
+            comboRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function (item) {
+                return { AgentsId: item.AgentsId, AgentsId: item.AgentsId };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status == 0) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Title', title: '指派人', editor: { type: 'text', required: true }, width: 100 },
+        {
+            field: 'AgentType', title: '账户状态', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) {
+                return "";
+            }
+        },
+        { field: 'FullName', title: '商户号', editor: { type: 'text', required: true }, width: 100 }
+    ]];
+
+    pharos.manager.columns = [[
+        { field: 'AgentsId', title: '客户名称', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'FullName', title: '结算账户类型', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'LoginName', title: '结算卡号', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'LatestLogin', title: '账户名称', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo', title: '开户银行', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo', title: '财务联系人', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo', title: '财务联系电话', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo', title: '代理商编号', editor: { type: 'text', required: true }, width: 120 },
+        {
+            field: 'AgentType', title: '商户状态', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) {
+                return "";
+            }
+        },
+        {
+            field: 'AgentType', title: '所属体系', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) {
+                return "云平台";
+            }
+        },
+        { field: 'Memo', title: '创建时间', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo', title: '申请人', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo', title: '审核时间', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo', title: '审核人', editor: { type: 'text', required: true }, width: 120 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        //this.Id = "";
+        //openWin({ 'title': this.addText, 'width': 600, 'height': 330, hideSave: false, 'url': this.editurlNocache() });
+    };
+
+    pharos.manager.editItem = function (id, row) {
+        //this.Id = id;
+        //openWin({ 'title': this.editText, 'width': 600, 'height': 330, hideSave: false, 'url': this.editurlNocache() });
+    }
+
+    //将所选项设为
+    function upStatus(s) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("upStatus")", { ids: ids, Status:s, t: Math.random()}, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "设置成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "设置失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+
+    $(function () {
+
+    });
+</script>
+
+

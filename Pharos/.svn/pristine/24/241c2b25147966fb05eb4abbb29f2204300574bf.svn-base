@@ -1,0 +1,172 @@
+﻿using Common.Logging;
+using Pharos.Api.Retailing;
+using Pharos.Service.Retailing.Marketing;
+using Pharos.SocketClient.Retailing.Protocol.Clients;
+using System;
+using System.Collections.Generic;
+using System.Data.SqlServerCe;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.ServiceProcess;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Pharos.POS.ClientService
+{
+    class Program
+    {
+        // private static string[] tempArgs;
+        private static IDisposable webServer = null;
+        private static PosStoreClient client = null;
+        internal static IDictionary<string, Thread> ThreadDict = new Dictionary<string, Thread>();
+        public const string WEBSERVER = "WebServer";
+        public const string SYNCSERVICECLIENT = "SyncServiceClient";
+        public const string MARKETINGMANAGER = "MarketingManager";
+        public const string SOCKETCLIENT = "SocketClient";
+        [STAThread]
+        static void Main(string[] args)
+        {
+
+            //debug 的时候加上注释
+            //  ConsoleHelper.hideConsole();
+            if (args.Length == 0 || args[0] != "Restart")
+            {
+                var arr = System.Diagnostics.Process.GetProcessesByName("Pharos.POS.ClientService");
+                var posapp = arr.OrderBy(o => o.StartTime).FirstOrDefault();
+                if (posapp != null && arr.Count() != 1)
+                {
+                    Process.GetCurrentProcess().Kill();
+                }
+            }
+            else if (args.Contains("Restart"))
+            {
+                Thread.Sleep(5000);
+            }
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new HideFrom(() =>
+            {
+                Run("r", null);
+            }));
+            Application.ThreadException += Application_ThreadException;
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+        }
+
+        static void Application_ThreadException(object sender, ThreadExceptionEventArgs e)
+        {
+            ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+            var ex = e.Exception;
+            logger.Error(ex.Message, ex);
+
+        }
+        static bool RunInThread(Action<object> callback, object state)
+        {
+            try
+            {
+                return ThreadPool.QueueUserWorkItem((data) =>
+                  {
+                      try
+                      {
+                          if (ThreadDict.ContainsKey(data.ToString()))
+                          {
+                              var th = ThreadDict[data.ToString()];
+                              if (th != null && th.IsAlive)
+                              {
+                                  return;
+                              }
+                          }
+                          callback(data);
+                          ThreadDict[data.ToString()] = Thread.CurrentThread;
+
+                          if (data.ToString() != WEBSERVER)
+                              Thread.Sleep(Timeout.Infinite);
+                      }
+                      catch (Exception ex)
+                      {
+                          ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                          logger.Error(ex.Message, ex);
+                          Task.Factory.StartNew(() =>
+                          {
+                              Thread.Sleep(3000);
+                              RunInThread(callback, data);
+                          });
+                      }
+                  }, state);
+            }
+            catch (Exception ex)
+            {
+                ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+                logger.Error(ex.Message, ex);
+            }
+            return false;
+        }
+        static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            ILog logger = LogManager.GetLogger(Assembly.GetExecutingAssembly().GetName().Name);
+            var ex = (e.ExceptionObject as Exception);
+            logger.Error(ex.Message, ex);
+            //DO Log ;
+        }
+        internal static bool Run(string exeArg, string[] startArgs)
+        {
+            switch (exeArg.ToLower())
+            {
+                case ("c"):
+                    RunAsConsole(4);
+                    return true;
+                case ("m"):
+                    RunAsConsole(3);
+                    return true;
+                case ("w"):
+                    RunAsConsole(2);
+                    return true;
+                case ("s"):
+                    RunAsConsole(1);
+                    return true;
+                case ("r"):
+                    RunAsConsole();
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        static void RunAsConsole(int mode = 0)
+        {
+
+            if (mode == 0 || mode == 1)
+            {
+                RunInThread((o) =>
+                {
+                    SyncServiceClientStartup.AutoSync();
+                }, SYNCSERVICECLIENT);
+            }
+            if (mode == 0 || mode == 2)
+            {
+                RunInThread((o) =>
+                {
+                    webServer = WebApiStartup.RunWebServer();
+                }, WEBSERVER);
+            }
+            if (mode == 0 || mode == 3)
+            {
+                RunInThread((o) =>
+                {
+                    MarketingManager.InitStoreMarketing();
+                }, MARKETINGMANAGER);
+            }
+            if (mode == 0 || mode == 4)
+            {
+                RunInThread((o) =>
+                {
+                    client = new PosStoreClient();
+                }, SOCKETCLIENT);
+            }
+        }
+    }
+}

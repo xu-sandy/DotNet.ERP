@@ -1,0 +1,229 @@
+﻿using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Http;
+using Pharos.Utility.Helpers;
+using System.Net.Http;
+using System.Net;
+using System.IO;
+using System.Text;
+using Newtonsoft.Json;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS;
+using System.Security.Cryptography;
+using QCT.Api.Pay.Utils;
+using Pharos.Logic.OMS.Entity;
+using QCT.Pay.Common;
+using System.Collections;
+using System.ComponentModel.DataAnnotations;
+using System.Web.Http.Results;
+using QCT.Pay.Common.Models;
+using QCT.Pay.Common.Helpers;
+
+namespace QCT.Api.Pay.Controllers
+{
+    /// <summary>
+    /// QCT 支付相关
+    /// </summary>
+    public class PayController : BasePayController
+    {
+        // GET: /Pay/
+        #region Ninject Properties
+        /// <summary>
+        /// 支付交易Service
+        /// </summary>
+        [Ninject.Inject]
+        PayService PaySvc { get; set; }
+
+        #endregion
+
+        #region Test
+        /// <summary>
+        /// fishtest
+        /// </summary>
+        /// <returns></returns>
+        public object Test([FromBody]JObject requestParams)
+        {
+            //var tradeRst = new TradeResult();
+            //tradeRst.CreateDT = DateTime.Now;
+            //tradeRst.MchId3 = "201609100000000002";
+            //tradeRst.OutTradeNo = "201612161519280001";
+            //tradeRst.PayChannel = 1;
+            //tradeRst.ReceiptAmount = (decimal)0.01;
+            //tradeRst.TradeStatus = 1;
+            //tradeRst.SignType = "MD5";
+            //tradeRst.TradeDate = "20161216";
+            //tradeRst.TradeTime = "145719";
+            //tradeRst.TradeType = (short)QctTradeType.Income;
+            //tradeRst.Signature = "aaaa";
+            //tradeRst.Version = "1.0";
+            //var tradeOrder = new TradeOrder();
+            //var isSucc = PayTradeSvc.SaveMchTradeResult(tradeRst, out tradeOrder);
+            string url = "http://www.ubexp.net/unitpay-online/OSTPPUB1/STP10065.tran";
+            string paramsStr = "merchantId=201701100000000264&shopId=201701200000000083";
+            url = "http://www.baidu.com";
+            var result = PayHelper.SendPost(url, paramsStr);
+
+            return result;
+        }
+        #endregion
+
+        #region Qct支付平台接口调用
+
+        #region Qct Pay接口
+        /// <summary>
+        /// Qct支付接口调用（第三方随心付SxfPay）
+        /// </summary>
+        /// <param name="reqPms">请求参数</param>
+        /// <returns></returns>
+        [HttpPost]
+        public object QctPay([FromBody]JObject reqPms)
+        {
+            var result = QctPayReturn.Fail(msg: "参数格式错误");
+            String rstStrSxf = String.Empty;
+            var sign = String.Empty;
+            try
+            {
+                String method = reqPms.Property("method", true);
+                {
+                    switch (method)
+                    {
+                        case PayConst.QCTTRADE_PAY_BUYERSCAN_DYNA: //购买者付款扫码（动态二维码）（对应融合支付：主扫支付动态）
+
+                            var buyerOrderModel = reqPms.ToObject<PayBuyerScanDynaRequest>();
+                            OrderBuilder<PayBuyerScanDynaRequest, PayBuyerScanDynaResponse> buyerOrder = new OrderBuilderForBuyerScanDyna();
+                            result = buyerOrder.Build(buyerOrderModel);
+                            return buyerOrder.Result(result);
+
+                        case PayConst.QCTTRADE_PAY_MERCHSCAN://商家收款扫码（对应融合支付：被扫支付）
+
+                            var merchOrderModel = reqPms.ToObject<PayMerchScanRequest>();
+                            OrderBuilder<PayMerchScanRequest, PayMerchScanResponse> merchOrder = new OrderBuilderForPayMerchScan();
+                            result = merchOrder.Build(merchOrderModel);
+                            return merchOrder.Result(result);
+
+                        case PayConst.QCTTRADE_REFUNDAPPLY://退款申请
+
+                            var rfdOrderModel = reqPms.ToObject<RefundApplyRequest>();
+                            OrderBuilder<RefundApplyRequest, RefundApplyResponse> rfdOrder = new OrderBuilderForRefund();
+                            result = rfdOrder.Build(rfdOrderModel);
+                            return rfdOrder.Result(result);
+
+                        default:
+                            return QctPayReturn.Fail(msg: "[method]参数错误");
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                LogEngine.WriteError("[QctPay参数Json解析失败]" + ex.Message, ex, LogModule.支付交易);
+                result = QctPayReturn.Fail(msg: "参数格式错误");
+                return result;
+            }
+        }
+        #endregion
+
+        #region Qct Notify
+        /// <summary>
+        /// 支付结果、退款结果通知调用 fishtodo:验证签名有效性
+        /// </summary>
+        /// <param name="reqObj"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public object SxfTradeNotify([FromBody]JObject reqObj)
+        {
+            try
+            {
+                var type = reqObj.Property("type", true);
+                switch (type)
+                {
+                    case PayConst.SXF_TYPE_PAYNOTIFY: //支付结果后台通知
+                        var payModel = reqObj.ToObject<SxfPayNotifyRequest>();
+                        NotifyBuilder<SxfPayNotifyRequest> payNotify = new NotifyBuilderForPay();
+                        return payNotify.Build(payModel);
+                    case PayConst.SXF_TYPE_RFDNOTIFY://退款结果后台通知
+                        var rfdModel = reqObj.ToObject<SxfRefundNotifyRequest>();
+                        NotifyBuilder<SxfRefundNotifyRequest> rfdNotify = new NotifyBuilderForRefund();
+                        return rfdNotify.Build(rfdModel);
+                    default:
+                            return SxfPayReturn.Fail(msg: "通知类型错误");
+                }
+            }
+            catch (WebException ex)
+            {
+                LogEngine.WriteError(string.Format("[SxfTradeNotify通知格式错误，错误信息：{0}，返回参数：{1}]", ex.Message, reqObj.ToJson()), ex, LogModule.支付交易);
+                return SxfPayReturn.Fail(msg: "通知格式错误");
+            }
+        }
+        #endregion
+
+        #region Qct 支付查询
+        /// <summary>
+        /// 单笔支付订单查询
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <returns></returns>
+        public object PayQuery([FromBody]JObject reqObj)
+        {
+            OrderBuilder<PayQueryRequest, PayQueryResponse> orderQuery = new OrderQueryForPay();
+            var result = orderQuery.Query(reqObj.ToObject<PayQueryRequest>());
+            return Json(result);
+        }
+
+        /// <summary>
+        /// 单笔退款订单查询
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <returns></returns>
+        public object RefundQuery([FromBody]JObject reqObj)
+        {
+            OrderBuilder<RefundQueryRequest, RefundQueryResponse> orderQuery = new OrderQueryForRefund();
+            var result = orderQuery.Query(reqObj.ToObject<RefundQueryRequest>());
+            return Json(result);
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <returns></returns>
+        public object PayBatchQuery([FromBody]JObject reqObj)
+        {
+            OrderBuilder<PayBatchQueryRequest, PayBatchQueryResponse> orderQuery = new OrderQueryForPayBatch();
+            var result = orderQuery.Query(reqObj.ToObject<PayBatchQueryRequest>());
+            return Json(result);
+        }
+        #endregion
+
+        #endregion
+
+        //#region 平台内部各系统间调用
+        ///// <summary>
+        ///// 获取支付全局提示描述支付
+        ///// </summary>
+        ///// <returns></returns>
+        //public string GetPayPrompt(int type)
+        //{
+        //    string msg = string.Empty;
+        //    if (type == 1)
+        //        msg = "支持微信扫码";
+        //    return msg;
+        //}
+        ///// <summary>
+        ///// 根据商户CID获得该商户的可以通道
+        ///// </summary>
+        ///// <param name="cid"></param>
+        ///// <returns></returns>
+        //[HttpPost]
+        //public object GetPayChannelsByCID(int cid)
+        //{
+
+        //    return new object[] { };
+        //}
+        //#endregion
+    }
+
+}

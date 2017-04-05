@@ -1,0 +1,84 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+using Pharos.Wpf.Extensions;
+using System.Threading.Tasks;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.POS.Retailing.Models;
+
+namespace Pharos.POS.Retailing.Pages
+{
+    /// <summary>
+    /// PosPage.xaml 的交互逻辑
+    /// </summary>
+    public partial class PosPage : Page
+    {
+        public PosPage()
+        {
+            InitializeComponent();
+            Task.Factory.StartNew(() =>
+            {
+                CurrentModel = new PosViewModel();
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    Application.Current.MainWindow.ApplyBindings(this, CurrentModel);
+                }));
+            });
+            this.Loaded += PosPage_Loaded;
+        }
+
+        void PosPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            Keyboard.Focus(txtBarcode);
+        }
+        PosViewModel CurrentModel { get; set; }
+
+        private void SaleStatusTextBlock_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            switch (CurrentModel.SaleStatus)
+            {
+                case PosStatus.Normal:
+                    CurrentModel.SaleStatus = PosStatus.Gift;
+                    break;
+                case PosStatus.Gift:
+                    CurrentModel.SaleStatus = PosStatus.Normal;
+                    break;
+            }
+        }
+
+        private void PrintStatusTextBlock_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            switch (CurrentModel.PrintStatus)
+            {
+                case PrintStatus.Open:
+                    CurrentModel.PrintStatus = PrintStatus.Close;
+                    break;
+                case PrintStatus.Close:
+                    CurrentModel.PrintStatus = PrintStatus.Open;
+                    break;
+            }
+        }
+
+        private void txtBarcode_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var ctrl = sender as TextBox;
+            if (e.Key == Key.Enter)
+            {
+                ctrl.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                Keyboard.Focus(ctrl);
+            }
+        }
+
+
+    }
+}

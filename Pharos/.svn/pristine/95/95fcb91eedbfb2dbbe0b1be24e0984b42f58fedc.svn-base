@@ -1,0 +1,263 @@
+﻿using Pharos.Logic.OMS.BLL;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net;
+using System.Text;
+using System.Web.Mvc;
+using System.Linq;
+using System.Security.Cryptography;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using QCT.Pay.Common;
+using System.Reflection;
+using System.ComponentModel;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    /// <summary>
+    /// 金融接口
+    /// </summary>
+    public class FinanceController : BaseController
+    {
+        [Ninject.Inject]
+        PayChannelService PayChannelSvc { get; set; }
+
+        [Ninject.Inject]
+        DictionaryService DicSvc { get; set; }
+        [Ninject.Inject]
+        PayApiService PayApiSvc { get; set; }
+        //
+        // GET: /Finance/
+
+        #region 收单渠道管理
+        #region 表格
+        /// <summary>
+        /// 收单渠道管理-初始化表格
+        /// </summary>
+        /// <returns></returns>
+        [SysPermissionValidate]
+        public ActionResult PayChannelIndex()
+        {
+            ViewBag.ChannelJson = JsonHelper.ToJson(PayChannelSvc.GetPayChannelsForPayApi());
+            ViewBag.ChannelPayModeJson = JsonHelper.ToJson(EnumHelper.GetCacheList<ChannelPayMode>(false));
+            ViewBag.StateJson = JsonHelper.ToJson(EnumHelper.GetCacheList<PayChannelState>(false));
+            ViewBag.PayOperateTypeJson = JsonHelper.ToJson(EnumHelper.GetCacheList<PayOperateType>(false));
+            
+            return View();
+        }
+        /// <summary>
+        /// 收单渠道信息-获取表格分页
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        public JsonResult GetPayChannelPaging()
+        {
+            var count = 0;
+            var list = PayChannelSvc.GetPaging(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+        /// <summary>
+        /// 收单渠道信息-设置可以、停用
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public JsonResult SetPayChannelState(int id, short state)
+        {
+            return new JsonNetResult(PayChannelSvc.SetState(id, state));
+        }
+        /// <summary>
+        /// 收单渠道信息-设置注销
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public JsonResult CancelPayChannel(int id)
+        {
+            return new JsonNetResult(PayChannelSvc.CancelPayChannel(id));
+        }
+        /// <summary>
+        /// 初始化服务费率设置
+        /// </summary>
+        /// <param name="ChannelNo"></param>
+        /// <returns></returns>
+        public ActionResult PayChannelDetail(int ChannelNo)
+        {
+            ViewBag.ChannelPayModeJson = JsonHelper.ToJson(EnumHelper.GetCacheList<ChannelPayMode>(false));
+            ViewBag.PayOperateTypeJson = JsonHelper.ToJson(EnumHelper.GetCacheList<PayOperateType>(false));
+            ViewBag.ChannelNo = ChannelNo;
+            return View();
+        }
+        /// <summary>
+        /// 获取服务费率数据
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        public JsonResult GetPayChannelDetail()
+        {
+            var count = 0;
+            var list = PayChannelSvc.GetPayChannelDetail(Request.Params);
+            return ToDataGrid(list, count);
+        }
+        /// <summary>
+        /// 判断是否允许添加服务费费率
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public JsonResult CanAddChannelDetail(PayChannelDetail model)
+        {
+            return new JsonNetResult(PayChannelSvc.CanAddChannelDetail(model));
+        }
+        /// <summary>
+        /// 保存服务费率设置
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public JsonResult SavePayChannelDetail(PayChannelDetail model)
+        {
+            return new JsonNetResult(PayChannelSvc.SaveChannelDetail(model));
+        }
+        /// <summary>
+        /// 删除服务费率设置（fishtodo:是否允许删除的业务逻辑）
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public JsonResult RemoveDetailById(PayChannelDetail model)
+        {
+            return new JsonNetResult(PayChannelSvc.RemoveDetailById(model));
+        }
+        #endregion
+        #region 表单
+        /// <summary>
+        /// 收单渠道信息-初始化表单数据
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult PayChannelForm(int id=0)
+        {
+            return View(PayChannelSvc.GetOne(id));
+        }
+        /// <summary>
+        /// 收单渠道信息-保存表单
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult SavePayChannel(PayChannelManage model)
+        {
+            var op = PayChannelSvc.SaveOrUpdate(model);
+            return new OpActionResult(op);
+        }
+        #endregion
+        #endregion
+
+        #region 交易支付接口
+
+        #region 支付接口页面
+        /// <summary>
+        /// 支付接口页面-页面加载
+        /// </summary>
+        /// <returns></returns>
+        [SysPermissionValidate]
+        public ActionResult PayApiIndex()
+        {
+            var stateList = EnumHelper.GetCacheList<PayApiState>(false);
+            var ckbStateList = (from list in stateList select new SelectListItem() { Text = list.Text, Value = list.Value, Selected = true }).ToList();
+            ckbStateList[2].Selected = false;
+            ViewBag.CkbStateList = ckbStateList;
+            var payChannelList = PayApiSvc.GetPayChannels();
+            payChannelList.Insert(0,new DropdownItem() { Text = "全部", Value = "", IsSelected = true });
+            ViewBag.PayChannelJson = JsonHelper.ToJson(payChannelList);
+            ViewBag.TradeModeJson = JsonHelper.ToJson(EnumHelper.GetCacheList<PayTradeMode>(false));
+            ViewBag.OptTypeJson = JsonHelper.ToJson(EnumHelper.GetCacheList<PayOperateType>(false));
+            ViewBag.ChannelPayModeJson = JsonHelper.ToJson(EnumHelper.GetCacheList<ChannelPayMode>(false));
+
+            ViewBag.StateJson = JsonHelper.ToJson(stateList);
+
+            return View();
+        }
+        /// <summary>
+        /// 支付接口页面-获取分页数据
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult GetPayApiPaging()
+        {
+            var count = 0;
+            var list = PayApiSvc.GetPayApiPaging(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+
+        /// <summary>
+        /// 支付接口页面-删除所选项（只有未发布的支付通道才可删除）
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        public JsonResult RemovePayApi(int id)
+        {
+            return new JsonNetResult(PayApiSvc.RemovePayApi(id));
+        }
+        /// <summary>
+        /// 支付接口页面-设置启用关闭所选项
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public JsonResult SetPayApiState(int id, short state)
+        {
+            return new JsonNetResult(PayApiSvc.SetState(id, state));
+        }
+        #endregion
+
+        #region 支付接口表单
+        /// <summary>
+        /// 支付接口页面-新增支付接口页面
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult PayApiForm(int id=0)
+        {
+            ViewBag.StateList = JsonHelper.ToJson(EnumHelper.GetCacheList<PayApiState>(false));
+            ViewBag.ChannelNoList = JsonHelper.ToJson(PayChannelSvc.GetPayChannelsForPayApi());
+            ViewBag.ChannelPayModeList = JsonHelper.ToJson(EnumHelper.GetCacheList<ChannelPayMode>(false));
+            ViewBag.TradeModeList = JsonHelper.ToJson(EnumHelper.GetCacheList<PayTradeMode>(false));
+            ViewBag.OptTypeList = JsonHelper.ToJson(EnumHelper.GetCacheList<PayOperateType>(false));
+
+            return View(PayApiSvc.GetOne(id));
+        }
+        /// <summary>
+        /// 支付接口页面-新增或编辑支付接口页面-保存
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult SavePayApi(PayApi unitPay)
+        {
+            var op = PayApiSvc.SaveOrUpdate(unitPay);
+            return new OpActionResult(op);
+        }
+        #endregion
+        #endregion
+
+        #region 提现转账费率(费率周期设置)
+        [SysPermissionValidate]
+        public ActionResult RatePeriodIndex()
+        {
+            var stateList = EnumHelper.GetCacheList<PayApiState>(false);
+            var ckbStateList = (from list in stateList select new SelectListItem() { Text = list.Text, Value = list.Value, Selected = true }).ToList();
+            ckbStateList[0].Selected = true;
+            ckbStateList[1].Selected = true;
+            ViewBag.StateList = ckbStateList;
+            ViewBag.StateJson = JsonHelper.ToJson(stateList);
+
+            return View();
+        }
+        public ActionResult RatePeriodForm()
+        {
+            return View(new CashTransRate());
+        }
+        #endregion
+    }
+
+}

@@ -1,0 +1,133 @@
+﻿@model HouseMove
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style>
+    .panel-title { text-align: center; }
+</style>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {        
+        @Html.HiddenFor(o=>o.State)
+        @Html.HiddenFor(o => o.MoveId)
+        @Html.Hidden("Updated")
+        @Html.Hidden("Updated2")
+    <div class="content">
+        <div class="formbox" style="border:none;">
+            <table class="table-form" width="500" height="30">
+                <tr>
+                    <td class="name">接收分店：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.InStoreId, ViewBag.inshops as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,readonly:true" })</td>
+                    <td class="name">调出分店：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.OutStoreId, ViewBag.outshops as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,validType:'requiredForCombo',readonly:" + (Model.OutStoreId != null ? "true" : "false") })</td>
+                </tr>
+
+            </table>
+        </div>
+      
+        <table class="easyui-datagrid" id="orderdetail" style="line-height: 30px; border-color: #797979; "
+               data-options="url:'@Url.Action("LoadDetailList")',queryParams:{moveId:'@Model.MoveId'},showFooter:true,renderFooter:function(target, container, frozen){alert('foot')},border:true,rownumbers:true,fitColumns:true,pagination:false,singleSelect: true,title:'调出商品清单',onLoadError:loadError,idField:'Id',onClickCell:clickCell,onLoadSuccess:loadSuccess ">
+            <thead>
+                <tr>
+                    <th data-options="field:'Id',editor:{type:'textbox',options:{disabled:true}}" width="0" align="center" hidden="hidden">ID</th>
+                    <th data-options="field:'State',editor:{type:'textbox'}" hidden="hidden" width="0">状态</th>
+
+                    <th data-options="field:'ProductCode',editor:{type:'textbox',options:{disabled:true}}" width="80" align="center">货号</th>
+                    <th data-options="field:'Barcode',editor:{type:'combobox',options:{required:true,mode:'remote',valueField:'barcode',textField:'title'}}" width="120" align="center">条形码</th>
+                    <th data-options="field:'Title',editor:{type:'textbox',options:{disabled:true}}" width="250" align="center">品名</th>
+                    <th data-options="field:'SubUnit',editor:{type:'textbox',options:{disabled:true}}" width="60" align="center">单位</th>
+                    <th data-options="field:'SysPrice',editor:{type:'textbox',options:{disabled:true}}" width="70" align="center">系统售价</th>
+                    <th data-options="field:'StockNums',editor:{type:'textbox',options:{disabled:true}}" width="100" align="center">调出分店库存量</th>
+                    <th data-options="field:'OrderQuantity',editor:{type:'numberbox',options:{required:true,min:0.1,precision:2}}" width="70" align="center">申请数量</th>
+                    <th data-options="field:'DeliveryQuantity',editor:{type:'numberbox',options:{disabled:false,required:true,min:0.1,precision:2}}" width="90" align="center">配送数量</th>
+                    <th data-options="field:'ActualQuantity',editor:{type:'numberbox',options:{required:true,min:0.1,precision:2}}" width="70" align="center">收货数量</th>
+                    <th data-options="field:'Memo',editor:{type:'textbox'}" width="120">备注</th>
+
+                </tr>
+            </thead>
+        </table>
+    </div>
+    }
+</div>
+
+<script type="text/javascript">
+    var $dg2;
+    $(function () {
+        $dg2 = $("#orderdetail");
+    });
+
+    function loadSuccess() {
+        var rows = $dg2.datagrid("getRows");
+        $.each(rows, function (i, r) {
+            if (r.State != "3" && !r.DeliveryQuantity && r.OrderQuantity > 0) {
+                //$dg2.datagrid("updateRow", { index: i, row: { DeliveryQuantity: r.OrderQuantity } });
+                setTimeout(function () {
+                    $dg2.datagrid('selectRow', i).datagrid('editCell', { index: i, field: "DeliveryQuantity" });
+                    var ed = $dg2.datagrid('getEditor', { index: i, field: 'DeliveryQuantity' });
+                    $(ed.target).numberbox('setValue', r.OrderQuantity);
+                    $dg2.datagrid('endEdit', i);
+                }, 300)
+                $dg2.datagrid("hideColumn", "ActualQuantity");
+                //if (r.State == "3")
+                //{
+                //    $dg2.datagrid("hideColumn", "DeliveryQuantity");
+                //}
+            }
+            else {
+                $dg2.datagrid("showColumn", "ActualQuantity");
+            }
+            
+        });
+
+     
+
+    }
+
+    var clickIndex = undefined;
+
+    function clickCell(index, field) { 
+        if (endClickEditing() && (field == "Memo" || field == "DeliveryQuantity")) {
+            $dg2.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+        }
+    }
+
+    function endClickEditing() {
+        if (clickIndex == undefined) {
+            return true
+        }
+        if ($('#orderdetail').datagrid('selectRow', clickIndex)) {
+            $('#orderdetail').datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function changeValue() {
+        var updated = $dg2.datagrid('getChanges', "updated");
+        $("#Updated2").val(JSON.stringify(updated));
+    }
+
+    function SaveBefore() {
+        changeValue();
+        return true;
+    }
+
+    $(function () { 
+       // hideColumn();
+    })
+    function hideColumn(id, row) {
+        if (row.State == "1") {
+           
+            $dg2.datagrid("hideColumn", 9);
+        }
+    }
+
+
+
+</script>

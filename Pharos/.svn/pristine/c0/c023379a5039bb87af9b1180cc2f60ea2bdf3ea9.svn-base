@@ -1,0 +1,127 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+}
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'north',border:false" style="height:40px; ">
+        <form id="frmsearch">
+            <table class="table-toolbar">
+                <tr>
+                    <td class="label-toolbar margin-top-4">
+                        <label>品类：</label>
+                    </td>
+                    <td class="input-toolbar margin-top-4-1">
+                        @Form.CategoryCombobox("parentType", showThird: true, showAll: false, panelWidth: 350, controlWidth: 200)
+                        @*@Form.CategoryComboboxMultiple("parentType", secondMultiple: false, showThird: true, thirdMultiple: true, showAll: false, panelWidth: 350, controlWidth: 150, i: 2)*@
+                        @*@Form.CategoryCombotree("catetree")*@
+                    </td>
+                    <td class="label-toolbar margin-top-4">
+                        <label>品牌：</label>
+                    </td>
+                    <td class="input-toolbar margin-top-4-1">
+                        @Html.DropDownList("brandsn", ViewBag.brands as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", style = "width:130px;", data_options = "onSelect:function(r){console.log(r)}" })
+                        @*@Form.OneLevelComboMultiple("bran", Url.Action("GetBrandsList", "Common"), multiple: true)*@
+                    </td>
+                    @*<td class="input-toolbar margin-top-4-1">
+                            @Html.DropDownList("childType", new List<SelectListItem>() { new SelectListItem() { Text = "子类", Value = "", Selected = true } }, new { @class = "easyui-combobox datacontrol" })
+                        </td>*@
+                    <td class="label-toolbar margin-top-4">
+                        <label>关键字：</label>
+                    </td>
+                    <td class="input-toolbar margin-top-4-1">
+                        <input name="searchText" class="datacontrol input-toolbar font-12 margin-top-4" placeholder="货号/品名/条码" />
+                    </td>
+                    <td><a href="#" style="margin-left:4px;" id="searchBtn" class="easyui-linkbutton cus4 linkbtn" data-options="iconCls:'icon-search'" onclick="gridReload()">查询</a></td>
+                </tr>
+            </table>
+            <input type="hidden" name="supplierId" value="@Request["supplierID"]" />
+            <input type="hidden" name="startDate" value="@Request["startDate"]" />
+            <input type="hidden" name="endDate" value="@Request["endDate"]" />
+            <input type="hidden" name="customer" value="@Request["customer"]" />
+            <input type="hidden" name="store" value="@Request["store"]" />
+            <input type="hidden" name="isExclude" value="@Request["isExclude"]" />
+            <input type="hidden" name="barcodes" value="@Request["cds"]" />
+            <input type="hidden" name="promtype" value="@Request["promtype"]" />
+            <input type="hidden" name="order" value="@Request["order"]" />
+            <input type="hidden" name="zp" value="@Request["zp"]" />
+        </form>
+    </div>
+    <div data-options="region:'center',border:false">
+        <table class="easyui-datagrid" id="gridSel"
+               data-options="url:'',idField:'Id',checkOnSelect:false,border:true,rownumbers:true,fit:true,fitColumns:true,pagination:true,onClickCell:clickCell,onLoadSuccess:loadSuccess">
+            <thead>
+                <tr>
+                    <th data-options="field:'Id',checkbox: true" width="50"></th>
+                    <th data-options="field:'ProductCode'" width="120">货号</th>
+                    <th data-options="field:'Barcode'" width="150">条形码</th>
+                    <th data-options="field:'Title'" width="150">品名</th>
+                    <th data-options="field:'SupplierTitle'" width="150">供应商</th>
+                    <th data-options="field:'StockNums'" width="60">库存</th>
+                    <th data-options="field:'SubUnit'" width="50">单位</th>
+                    <th data-options="field:'SysPrice'" width="100">系统售价</th>
+                    @if (!Request["innum"].IsNullOrEmpty())
+                    {
+                        <th data-options="field:'innum',editor:{type:'numberbox',options:{required:true,min:1}}" width="70">数量</th>
+                    }
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+<script type="text/javascript">
+    var $dg3 = $("#gridSel"), clickIndex = undefined;
+    function gridReload() {
+        this.$dg3.datagrid('options').url = "@Url.Action("FindPageList")?" + $('#frmsearch').serialize();
+        this.$dg3.datagrid('reload');
+    }
+    $(function () {
+        gridReload();
+    })
+    function existsSelect(rows, cd) {
+        var result = { exists: false, index: -1 };
+        $.each(rows, function (idx, row) {
+            if (row.Barcode == cd) {
+                result.exists = true;
+                result.index = idx;
+                return;
+            }
+        });
+        return result;
+    }
+    function loadSuccess(data) {
+        var cds = $("[name='barcodes']").val().split(",");
+        $.each(cds, function (index, cd) {
+            var result = existsSelect(data.rows, cd);
+            if (result.exists) {
+                $dg3.datagrid("checkRow", result.index);
+            }
+        });
+        var pager = $dg3.datagrid("getPager");
+        var opt = $(pager).pagination("options");
+        opt.onRefresh = function (pageNumber, pageSize) {
+            $dg3.datagrid("clearChecked");
+        }
+    }
+    function parentSelect(record) {
+        $.post("@Url.Action("ParentTypeSelect","Product")", { Id: record.value, showTitle: 1, t: Math.random() }, function (data) {
+            $("#childType").combobox("clear").combobox("loadData", data);
+        }, "json");
+    }
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dg3.datagrid('validateRow', clickIndex)) {
+            $dg3.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function clickCell(index, field) {
+        if (endClickEditing() && field == "innum") {
+            $dg3.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+        }
+    }
+</script>

@@ -1,0 +1,134 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.EntityExtend;
+using Pharos.Logic.OMS.Entity.View;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.BLL;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class AgentsInfoController : BaseController
+    {
+
+        //代理商档案BLL
+        [Ninject.Inject]
+        AgentsInfoService agentsInfoService { get; set; }
+
+        //商户资料BLL
+        [Ninject.Inject]
+        TradersService tradersService { get; set; }
+
+        public ActionResult Index()
+        {
+            //待删除
+            ViewBag.ValidityY = ListToSelect(tradersService.getDataList(450).Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+
+            return View();
+        }
+
+        /// <summary>
+        /// 获取有效-起始日期、有效-终止日期
+        /// </summary>
+        /// <returns></returns>
+        public string getStartEndDT(int DicSN)
+        {
+            if (DicSN != 0)
+            {
+                SysDataDictionary data = agentsInfoService.getData(DicSN);
+                if (data != null)
+                {
+                    int year = Convert.ToInt32(data.Title.Replace("年",""));
+                    string StartEndDT = "";
+                    DateTime dtNow = DateTime.Now;
+                    StartEndDT = dtNow.ToString("yyyy-MM-dd");
+                    StartEndDT = StartEndDT + "|" + dtNow.AddYears(year).ToString("yyyy-MM-dd");
+                    return StartEndDT;
+                }
+                else
+                {
+                    return "";
+                }
+            }
+            else
+            {
+                return "";
+            }
+
+        }
+
+        public ActionResult Save(int? id)
+        {
+            //证件照
+            string img = "";
+            //结算账户
+            BankCardInfo bankCardInfo = new BankCardInfo();
+
+            /***********************待删除*******************************/
+            bankCardInfo.Status = -1;
+
+            //支付渠道
+            AgentPay agentPay = new AgentPay();
+            //是否存在下级代理商（0不存在，1是存在）
+            string readOnly = "0";
+            int _id = id == null ? 0 : Convert.ToInt32(id);
+            bool isE = agentsInfoService.isExistPAgentsId(_id);
+            if (isE)
+            {
+                readOnly = "1";
+            }
+
+            var obj = new AgentsInfo
+            {
+                //BusinessScopeId = "",
+                //Pay = "",
+                //CurrentProvinceId = 15
+            };
+            if (id.HasValue)
+            {
+                obj = agentsInfoService.GetOne(id.Value);
+                img = Tool.getIdCardPhotoPath(obj.AgentsId) + obj.IdCardPhoto;
+            }
+
+            //有效期
+            ViewBag.ValidityY = ListToSelect(tradersService.getDataList(450).Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+            //是否存在下级代理商（0不存在，1是存在）
+            ViewBag.ReadOnly = readOnly;
+            //证件照
+            ViewBag.img = img;
+            //结算账户
+            ViewBag.BankCardInfo = bankCardInfo;
+            //支付渠道
+            ViewBag.AgentPay = agentPay;
+            //指派人
+            ViewBag.user = ListToSelect(tradersService.getUserList().Select(o => new SelectListItem() { Value = o.UserId, Text = o.FullName}), emptyTitle: "请选择");
+            return View(obj.IsNullThrow());
+        }
+
+        [HttpPost]
+        public ActionResult Save(AgentsInfo agentsInfo)
+        {
+            HttpFileCollectionBase files= Request.Files;
+            HttpPostedFileBase PostedFileBase=files[0];
+
+            var op = agentsInfoService.Save(agentsInfo, PostedFileBase,Request.Params);
+            return new OpActionResult(op);
+        }
+
+        /// <summary>
+        /// 获取代理商编号
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult getAgentsIdWhere()
+        {
+            var list = agentsInfoService.GetListWhere(Request.Params);
+            return ToDataGrid(list, 0);
+        }
+
+    }
+}

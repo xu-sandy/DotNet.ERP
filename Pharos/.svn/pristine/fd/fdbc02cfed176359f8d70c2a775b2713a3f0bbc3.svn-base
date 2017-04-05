@@ -1,0 +1,86 @@
+﻿@model Pharos.Sys.Entity.SysLog
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    td { padding: 3px 0; }
+</style>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-toolbar" style="width:100%">
+                <tr>
+                    <td class="name">
+                        <label>服务器：</label>
+                    </td>
+                    <td>
+                        <label>@Model.ServerName</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <label>账号：</label>
+                    </td>
+                    <td>
+                        <label>@ViewBag.UserLoginName</label>
+                    </td>
+                    <td class="name">
+                        <label>客户端IP：</label>
+                    </td>
+                    <td>
+                        <label>@Model.ClientIP</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <label>类型：</label>
+                    </td>
+                    <td>
+                        <label>
+                            @switch (Model.Type)
+                            {
+                                case 1:
+                                    @:登录
+                                    break;
+                                case 2:
+                                @:退出
+                                    break;
+                                case 3:
+                                @:普通信息
+                                    break;
+                                case 4:
+                                @:异常
+                                    break;
+                                case 5:
+                                @:其他
+                                    break;
+                                default:
+                                @:其他
+                                    break;
+                            }
+                        </label>
+                    </td>
+                    <td class="name">
+                        <label>记录时间：</label>
+                    </td>
+                    <td>
+                        <label>@Model.CreateDT.ToString("yyyy-MM-dd HH:mm:ss")</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">
+                        <label>详情：</label>
+                    </td>
+                    <td colspan="3">
+                        @Html.TextAreaFor(a => a.Summary, new { style = "width:500px;height:300px;" })
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>

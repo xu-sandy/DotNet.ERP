@@ -1,0 +1,47 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.DAL
+{
+    internal class STHouseMoveDAL:BaseDAL
+    {
+        public DataTable LoadDetailList(string moveId)
+        {
+            string sql = @"SELECT a.MoveId,a.OrderQuantity,a.Memo,a.State,b.ProductCode,b.Barcode,b.Title,b.SubUnit,b.SysPrice,(b.AcceptNums-b.AcceptNums) AS StockNums FROM dbo.HouseMoveList a JOIN dbo.Vw_Product b ON a.Barcode=b.Barcode  WHERE a.MoveId=" + "'" + moveId + "'";//,(a.OrderQuantity-0) as DeliveryQuantity,(a.DeliveryQuantity-0) as ActualQuantity
+            DataTable dt = new DataTable();
+            using (EFDbContext db = new EFDbContext())
+            {
+                var conn = db.Database.Connection;
+                conn.Open();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = sql;
+                var dr = cmd.ExecuteReader();
+                for (int i = 0; i < dr.FieldCount; i++)
+                {
+                    dt.Columns.Add(dr.GetName(i), dr.GetFieldType(i));
+                }
+                int k = 0;
+                while (dr.Read())
+                {
+                    var row = dt.NewRow();
+                    foreach (DataColumn col in dt.Columns)
+                    {
+                        var obj = dr[col.ColumnName];
+                        row[col.ColumnName] = obj;
+                    }
+                    dt.Rows.Add(row);
+                    k++;
+                }
+                dr.Close();
+                conn.Close();
+            }
+            return dt;
+        }
+
+
+
+    }
+}

@@ -1,0 +1,83 @@
+﻿using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class MembersViewModel : BaseViewModel
+    {
+        /// <summary>
+        /// 会员手机号
+        /// </summary>
+        private string phone;
+
+        public string Phone
+        {
+            get { return phone; }
+            set { phone = value; this.OnPropertyChanged(o => o.Phone); }
+        }
+        /// <summary>
+        /// 会员卡号
+        /// </summary>
+        private string cardNo;
+
+        public string CardNo
+        {
+            get { return cardNo; }
+            set { cardNo = value; this.OnPropertyChanged(o => o.CardNo); }
+        }
+
+        public ICommand PayCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (!string.IsNullOrEmpty(Phone) || !string.IsNullOrEmpty(CardNo))
+                    {
+                        //调会员信息接口
+                        Task.Factory.StartNew(() =>
+                        {
+                            SetMemberParams _params = new SetMemberParams()
+                            {
+                                To = MembersSourseMode.Internal,
+                                Phone = Phone,
+                                CardNo = CardNo
+                            };
+                            var result = ApiManager.Post<SetMemberParams, ApiRetrunResult<SetMemberResult>>(@"", _params);
+                            if (result.Code == "200")
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    //会员信息回传到主界面
+
+                                }));
+                            }
+                            else
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    Toast.ShowMessage(result.Message, CurrentWindow);
+                                }));
+                            }
+                        });
+
+
+                    }
+                    else
+                    {
+                        Toast.ShowMessage("请输入会员卡号或会员手机号！", CurrentWindow);
+                    }
+                });
+            }
+        }
+
+    }
+}

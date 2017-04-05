@@ -1,0 +1,63 @@
+﻿using Pharos.POS.Retailing.Models.SalesPromotionRules.Discount;
+using System;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.Models.SalesPromotionRules
+{
+    /// <summary>
+    /// 销售界限上下文
+    /// </summary>
+    public class SaleContext : IDisposable
+    {
+        static SaleContext()
+        {
+            Status = SaleContextStatus.Loading;
+            Mapping<SingleDiscount>(1);
+            Mapping<BundlingDiscount>(2);
+            Mapping<FreebieDiscount>(3);
+            Mapping<MixDiscount>(4);
+            Mapping<FullYuanDiscount>(5);
+        }
+
+        public static SaleContextStatus Status { get; set; }
+        /// <summary>
+        /// 加载映射中的折扣优惠
+        /// </summary>
+        public static void LoadDiscout()
+        {
+            foreach (var item in BaseDiscount.RegisterActivities)
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    item.CacheActivity();
+                });
+            }
+           PosMachine.Current.Status = PosStatus.Market;
+            Status = SaleContextStatus.Loaded;
+        }
+        /// <summary>
+        /// 映射优惠折扣规则
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        private static void Mapping<T>(int i)
+            where T : BaseDiscount, new()
+        {
+            T t = new T();
+            t.OrderIndex = i;
+            t.Instance();
+            t.Register();
+        }
+
+        public void Dispose()
+        {
+            BaseDiscount.RegisterActivities.Clear();
+            GC.Collect();
+        }
+    }
+
+    public enum SaleContextStatus
+    {
+        Loading,
+        Loaded
+    }
+}

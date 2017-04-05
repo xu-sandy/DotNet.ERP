@@ -1,0 +1,129 @@
+﻿@model Pharos.Sys.Entity.SysPaymentSetting
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style>
+    .table-form .input input {
+        width: 230px;
+    }
+</style>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <div class="formbox" style="border-bottom:0; line-height:35px;">
+                <table class="table-form" width="100%">
+                    <tr>
+                        <td class="name" style="width:15%;">适用门店：</td>
+                        <td class="choose">
+                            @Html.CheckBoxListFor(o => o.StoreId, ViewBag.stores as List<SelectListItem>, new { data_options = "required:true,novalidate:true,missingMessage:'必勾选一项'", @class = "easyui-validatebox", id = "store" }, 5)
+                        </td>
+                    </tr>
+                    <tr style="display:none;">
+                        <td>
+                            <input name="PayType" value="1" />
+                        </td>
+                        <td></td>
+                    </tr>
+                </table>
+
+                <table class="table-form" width="100%">
+                    <tr>
+                        <td class="name" style="width:15%;">合作身份者ID：</td>
+                        <td class="input">
+                            @Html.TextBoxFor(o => o.PartnerId, new { @class = "easyui-textbox", data_options = "required:true" })
+                        </td>
+                        <td class="name">使用当面付编号：</td>
+                        <td class="input">
+                            @Html.TextBoxFor(o => o.AppId, new { @class = "easyui-textbox", data_options = "required:true" })
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="name">交易安全校验码：</td>
+                        <td class="input">
+                            @Html.TextBoxFor(o => o.CheckKey, new { @class = "easyui-textbox", data_options = "required:true" })
+                        </td>
+                        <td class="name">状态：</td>
+                        <td>
+                            <input type="checkbox" class="label-input" name="State" value="1" @(Model.State == 1 ? "checked='checked'" : "") /><label>可用</label>
+                        </td>
+
+                        @*<td class="name">支付通知页面：</td>
+                            <td class="input">
+                                @Html.TextBoxFor(o => o.NotifyUrl, new { @class = "easyui-textbox", data_options = "required:true" })
+                            </td>*@
+                    </tr>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+
+<script type="text/javascript">
+    $(function () {
+        $("[name='StoreId']").click(function () {
+            if ($(this).val() == "") {
+                debugger
+                var chk = this.checked;
+                $("[name='StoreId']:not(:first)").each(function (i, r) {
+                    r.checked = chk;
+                })
+            } else {
+                $("[name='StoreId']:first")[0].checked = $("[name='StoreId']:not(:first):checked").size() == $("[name='StoreId']:not(:first)").size();
+            }
+            storeRequired();
+        });
+        if ($("[name='StoreId']:first").attr("checked"))
+            $("[name='StoreId']:not(:first)").attr("checked", true);
+        storeRequired();
+    });
+
+    function storeRequired() {
+        if ($("[name='StoreId']:checked").size() <= 0)
+            $("#store").validatebox("enableValidation");
+        else
+            $("#store").validatebox("disableValidation");
+    }
+
+    function SaveBefore() {
+        var result = false;
+        var isUpdate = "@(Model.Id)" == "" ? false : true;
+        var store = "";
+        if ($("[name='StoreId']:first").is("checked")) {
+            store = "0";
+        }
+        else {
+            $("[name='StoreId']:checked").each(function (i, r) {
+                //store += this.value + ",";
+                if (i > 0) {
+                    store += "," + this.value;
+                }
+                else {
+                    store += this.value;
+                }
+            });
+        }
+        $.ajax({
+            url: '@Url.Action("IsExitStore")',
+            type: 'post',
+            async: false,
+            dataType: 'json',
+            data: { PayType: "1", StoreId: store, IsUpdate: isUpdate, Id: "@(Model.Id)" },
+            success: function (data) {
+                if (data != "") {
+                    if (confirm(data + '已存在支付配置方式，是否继续？')) {
+                        result = true;
+                    }
+                }
+                else {
+                    result = true;
+                }
+            }
+        })
+        return result;
+    }
+
+</script>

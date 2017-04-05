@@ -1,0 +1,40 @@
+﻿@model ProductBrand
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";    
+}
+
+<div class="default-form">
+    @using (Html.BeginForm("AddBrand","Brand"))
+    {
+        @Html.HiddenFor(o=>o.Id)
+        @Html.HiddenFor(o=>o.BrandSN)
+        @Html.HiddenFor(o=>o.State)
+        <div class="content">
+            <table class="table-form" width="100%" height="117px">
+                <tr>
+                    <td class="name">品牌分类：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.ClassifyId,ViewBag.types as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "" })</td>
+                </tr>
+                <tr>
+                    <td class="name">品牌名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">检索简拼：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.JianPin, new { @class = "easyui-textbox", data_options = "" })</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    function SaveBefore() {
+        if ($("#ClassifyId").combobox("getValue") == undefined) {
+            $.messager.alert("提示", "品牌分类不存在！"); return false;
+        }
+        return true;
+    }
+</script>
+
+

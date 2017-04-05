@@ -1,0 +1,119 @@
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace QCT.Pay.Common.Models
+{
+    /// <summary>
+    /// qct 返回对象
+    /// </summary>
+    public class QctReturn
+    {
+        public QctReturn(string code, string msg)
+        {
+            ReturnCode = code; 
+            ReturnMsg = msg;
+        }
+        /// <summary>
+        /// 返回状态码
+        /// </summary>
+        [JsonProperty("return_code")]
+        public string ReturnCode { get; set; }
+        /// <summary>
+        /// 返回信息
+        /// </summary>
+        [JsonProperty("return_msg")]
+        public string ReturnMsg { get; set; }
+
+        #region methods
+        /// <summary>
+        /// 返回成功对象
+        /// </summary>
+        /// <param name="code"></param>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static QctReturn Success(string msg = "")
+        {
+            return new QctReturn(PayConst.SUCCESS_CODE, msg);
+        }
+        /// <summary>
+        /// 返回失败对象
+        /// </summary>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static QctReturn Fail(string msg = "参数格式错误")
+        {
+            var code = PayConst.FAIL_CODE;
+            return new QctReturn(code, msg);
+        }
+        /// <summary>
+        /// 返回失败对象
+        /// </summary>
+        /// <param name="code"></param>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static QctReturn Fail(string code, string msg = "参数格式错误")
+        {
+            return new QctReturn(code, msg) ;
+        }
+        #endregion
+
+    }
+    /// <summary>
+    /// sxf 返回对象
+    /// </summary>
+    public class SxfReturn
+    {
+        public SxfReturn(string code, string msg)
+        {
+            Result = code; 
+            Message = msg;
+        }
+        /// <summary>
+        /// 返回状态码
+        /// </summary>
+        [JsonProperty("result")]
+        public string Result { get; set; }
+        /// <summary>
+        /// 返回信息
+        /// </summary>
+        [JsonProperty("message")]
+        public string Message { get; set; }
+
+        #region methods
+        /// <summary>
+        /// 返回成功对象
+        /// </summary>
+        /// <param name="code"></param>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static SxfReturn Success(string code = PayConst.SXF_SUCCESS_RETURN, string msg = "")
+        {
+            return new SxfReturn(code,msg);
+        }
+        /// <summary>
+        /// 返回失败对象
+        /// </summary>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static QctReturn Fail(string msg = "参数格式错误")
+        {
+            var code = PayConst.FAIL_CODE;
+            return new QctReturn(code, msg);
+        }
+        /// <summary>
+        /// 返回失败对象
+        /// </summary>
+        /// <param name="code"></param>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static SxfReturn Fail(string code, string msg = "参数格式错误")
+        {
+            return new SxfReturn(code, msg);
+        }
+        #endregion
+
+    }
+}

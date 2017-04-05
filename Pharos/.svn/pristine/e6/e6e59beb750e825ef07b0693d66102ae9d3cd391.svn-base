@@ -1,0 +1,80 @@
+﻿using Newtonsoft.Json;
+using Pharos.Logic.OMS.BLL;
+using QCT.Pay.Common;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+
+namespace Pharos.Logic.OMS
+{
+    public class PayRules
+    {
+        #region 计算费率
+        /// <summary>
+        /// 计算费率
+        /// </summary>
+        /// <param name="totalAmount">金额(元)</param>
+        /// <param name="rate">费率%</param>
+        /// <returns></returns>
+        public static decimal CalcFee(decimal totalAmount, decimal rate)
+        {
+            decimal per = 0.01m;
+            var val = totalAmount * rate * per;
+            if (val < per)
+                val = 0;
+            return val;
+        }
+        #endregion
+
+        #region Sign
+        /// <summary>
+        /// 签名（Qct Sxf）
+        /// </summary>
+        /// <param name="signObj"></param>
+        /// <param name="secretKey"></param>
+        /// <returns></returns>
+        public static string Sign(Dictionary<String, Object> signObj, String secretKey)
+        {
+            StringBuilder signdatasb = new StringBuilder();
+            foreach (var item in signObj)
+            {
+                String key = item.Key;
+                String value = signObj[key] == null ? "" : signObj[key].ToString();
+                signdatasb.Append("&").Append(key).Append("=").Append(value);
+            }
+
+            String signdata = signdatasb.ToString().Substring(1) + "&key=" + secretKey;
+            return PayHelper.GetMD5(signdata);
+        }
+        /// <summary>
+        /// 验证签名的有效性
+        /// </summary>
+        /// <param name="queryStr"></param>
+        /// <returns></returns>
+        public static bool VerifySign(Dictionary<string, object> signObj, string md5Key, string sign)
+        {
+            var thisSign = Sign(signObj, md5Key);
+            if (thisSign.Equals(sign, StringComparison.OrdinalIgnoreCase))
+                return true;
+            else
+                return false;
+        }
+        /// <summary>
+        /// 验证签名的有效性
+        /// </summary>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        public static bool VerifySign(string content)
+        {
+            var signObj = JsonConvert.DeserializeObject<Dictionary<string, object>>(content);
+            var sign = signObj["sign"];
+            signObj.Remove("sign");
+            var mchObj = (new PayTradeService()).GetMerchByID(signObj["mch_id"].ToType<int>());
+            var result = PayRules.VerifySign(signObj, mchObj.SecretKey, sign.ToString());
+            return result;
+        }
+        #endregion
+    }
+}

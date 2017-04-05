@@ -1,0 +1,116 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Text;
+using Newtonsoft.Json;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Payment
+{
+    public class ZhifubaoPay : BasePay, IThirdPartyPayment
+    {
+        public ZhifubaoPay()
+            : base(14, PayMode.Zhifubao)
+        {
+        }
+
+        public object RequestPay()
+        {
+            var request = (HttpWebRequest)WebRequest.Create(Path.Combine(ApiUrl, "Qrcode/QrcodePay"));
+
+            string msg = string.Format("paySN={0}&totalPrice={1}", base.PayDetails.PaySn, base.PayDetails.Amount);
+            request.Method = "POST";
+            request.ContentType = "application/x-www-form-urlencoded";
+            byte[] data = System.Text.Encoding.UTF8.GetBytes(msg);
+            request.ContentLength = data.Length;
+            var reqStream = request.GetRequestStream();
+            reqStream.Write(data, 0, data.Length);
+            reqStream.Close();
+            try
+            {
+                //获取服务端返回
+                var response = (HttpWebResponse)request.GetResponse();
+                //获取服务端返回数据
+                StreamReader sr = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+                var result = sr.ReadToEnd().Trim();
+                sr.Close();
+                var op = JsonConvert.DeserializeObject<OpResult>(result);
+                if (op.Successed)
+                {
+                    ThirdPartyPaymentManager.Add(this, PayMode.Zhifubao);
+                    return op.Message;
+                }
+                else
+                    throw new PosException("支付请求失败！");
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public ThirdPartyPaymentStatus GetPayStatus()
+        {
+            string url = Path.Combine(ApiUrl, "Qrcode/GetStatus") + string.Format("{?apicode={0}&paysn={1}", base.ApiCode, base.PayDetails.PaySn);
+            var request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "Get";
+            try
+            {
+                //获取服务端返回
+                var response = (HttpWebResponse)request.GetResponse();
+                //获取服务端返回数据
+                StreamReader sr = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+                var content = sr.ReadToEnd().Trim();
+                sr.Close();
+                var result = JsonConvert.DeserializeObject<ThirdPartyPaymentStatus>(content);
+                if (result == ThirdPartyPaymentStatus.Complete)
+                {
+                    base.SetComplete();
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        public override void RefreshStatus()
+        {
+            base.RefreshStatus();
+            if (base.Enable)
+            {
+                base.Enable = ConnectTest();
+            }
+        }
+
+        [JsonIgnore]
+        public DateTime RequestPayDate { get; set; }
+
+
+        public bool ConnectTest()
+        {
+            try
+            {
+                string url = Path.Combine(ApiUrl, "Qrcode/OnlineTest");
+                var request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "Get";
+                //获取服务端返回
+                var response = (HttpWebResponse)request.GetResponse();
+                //获取服务端返回数据
+                StreamReader sr = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+                var content = sr.ReadToEnd().Trim();
+                sr.Close();
+                var result = Convert.ToBoolean(content);
+                return result;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+    }
+}

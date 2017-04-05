@@ -1,0 +1,25 @@
+﻿using Microsoft.Synchronization;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.SyncService
+{
+    public class SyncController : SyncOrchestrator
+    {
+        public void DoSynchronize(KnowledgeSyncProvider localProvider, KnowledgeSyncProvider remoteProvider, SyncDirectionOrder _SyncDirectionOrder)
+        {
+            this.LocalProvider = localProvider;
+            this.RemoteProvider = remoteProvider;
+            this.Direction = _SyncDirectionOrder;
+            var stats = this.Synchronize();
+            Console.WriteLine("Download Applied:\t {0}", stats.DownloadChangesApplied);
+            Console.WriteLine("Download Failed:\t {0}", stats.DownloadChangesFailed);
+            Console.WriteLine("Download Total:\t\t {0}", stats.DownloadChangesTotal);
+            Console.WriteLine("Upload Applied Total:\t\t {0}", stats.UploadChangesApplied);
+            Console.WriteLine("Upload Failed Total:\t\t {0}", stats.UploadChangesFailed);
+            Console.WriteLine("Upload Total:\t\t {0}", stats.UploadChangesTotal);
+        }
+    }
+}

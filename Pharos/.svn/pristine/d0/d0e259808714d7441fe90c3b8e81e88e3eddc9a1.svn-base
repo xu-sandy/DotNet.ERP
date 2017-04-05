@@ -1,0 +1,72 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Infrastructure.Data.Normalize
+{
+    /// <summary>
+    /// 流水号生成器
+    /// </summary>
+    public class PaySn
+    {
+        public PaySn(string tempFilePath)
+        {
+            TempFilePath = tempFilePath;
+        }
+        const string FILENAMEFORMAT = "SN_{0}_{1}_{2}_{3}.SerialNumber";
+        public string MachineSn { get; set; }
+        public string StoreId { get; set; }
+        public int CompanyToken { get; set; }
+        public int SerialNumber { get; set; }
+
+        public string TempFilePath { get; set; }
+        public override string ToString()
+        {
+            return MachineSn + DateTime.Now.ToString("yyyyMMdd") + GetSerialNumber();
+        }
+
+        private string GetSerialNumber()
+        {
+            //当天文件名，记录当前流水号
+            string fileName = string.Format(FILENAMEFORMAT, CompanyToken, StoreId, MachineSn, DateTime.Now.ToString("yyyyMMdd"));
+            fileName = Path.Combine(TempFilePath, fileName);
+
+            if (File.Exists(fileName))
+            {
+                SerialNumber = Convert.ToInt32(File.ReadAllText(fileName));
+            }
+            if (SerialNumber == 0)
+            {
+                SerialNumber++;
+                File.WriteAllText(fileName, SerialNumber.ToString());
+            }
+            return SerialNumber.ToString("0000");
+        }
+
+        public void NextSerialNumber()
+        {
+            if (!Directory.Exists(TempFilePath))
+            {
+                Directory.CreateDirectory(TempFilePath);
+            }
+            //当天文件名，记录当前流水号
+            string fileName = string.Format(FILENAMEFORMAT, CompanyToken, StoreId, MachineSn, DateTime.Now.ToString("yyyyMMdd"));
+            fileName = Path.Combine(TempFilePath, fileName);
+
+            if (File.Exists(fileName))
+            {
+                SerialNumber = Convert.ToInt32(File.ReadAllText(fileName)) + 1; // +1递增
+            }
+            File.WriteAllText(fileName, SerialNumber.ToString());
+            //清除昨天的流水号文件
+            fileName = string.Format(FILENAMEFORMAT, CompanyToken, StoreId, MachineSn, DateTime.Now.AddDays(-1).ToString("yyyyMMdd"));
+            fileName = Path.Combine(TempFilePath, fileName);
+            if (File.Exists(fileName))
+            {
+                File.Delete(fileName);
+            }
+        }
+    }
+}

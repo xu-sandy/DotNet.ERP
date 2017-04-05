@@ -1,0 +1,42 @@
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.OMS.Entity
+{
+    public partial class ProductCategory
+    {
+        [NotMapped]
+        [JsonProperty("children")]
+        public virtual List<ProductCategory> Childrens { get; set; }
+        /// <summary>
+        /// 树形涨开或收缩(open|closed)
+        /// </summary>
+        [NotMapped]
+        [JsonProperty("state")]
+        public string OnOff { get; set; }
+        [NotMapped]
+        public string CategoryPSNTitle { get; set; }
+        [NotMapped]
+        public string StateTitle { get { return Enum.GetName(typeof(EnableState), State); } }
+        [NotMapped]
+        public bool IsRemove { get; set; }
+        [NotMapped]
+        public int ProductCount { get; set; }
+        [NotMapped]
+        [JsonProperty("text")]
+        public string Text { get { return (CategoryCode > 0 ? "[" + CategoryCode.ToString("00") + "]" : "") + Title; } }
+        [JsonProperty("id")]
+        [NotMapped]
+        public int SN { get { return CategorySN; } }
+    }
+    public partial class VwProduct:BaseProduct
+    {
+        public string CategoryTitle { get; set; }
+        public string SubUnit { get; set; }
+        public string BrandTitle { get; set; }
+    }
+}

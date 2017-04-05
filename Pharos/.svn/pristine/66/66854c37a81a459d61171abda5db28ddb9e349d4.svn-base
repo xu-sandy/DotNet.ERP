@@ -1,0 +1,40 @@
+﻿using System.Collections.Specialized;
+using System.ComponentModel;
+
+namespace Pharos.POS.Retailing.Models
+{
+    /// <summary>
+    /// 通用数据监视对象，用于通知WPF界面更新
+    /// </summary>
+    public abstract class BaseObservable : INotifyPropertyChanged, INotifyCollectionChanged
+    {
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        /// <summary>
+        /// 通知属性更新
+        /// </summary>
+        /// <param name="propertyName"></param>
+        virtual internal protected void OnPropertyChanged(string propertyName)
+        {
+            if (this.PropertyChanged != null)
+            {
+                this.PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+
+
+        public event NotifyCollectionChangedEventHandler CollectionChanged;
+
+        /// <summary>
+        /// 通知集合更新
+        /// </summary>
+        /// <param name="e"></param>
+        virtual internal protected void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+        {
+            if (this.CollectionChanged != null)
+            {
+                this.CollectionChanged(this, e);
+            }
+        }
+    }
+}

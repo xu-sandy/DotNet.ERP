@@ -1,0 +1,111 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Logic.EntityExtend;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.BLL
+{
+    /// <summary>
+    /// 菜单管理业务逻辑
+    /// </summary>
+    public class SysMenuBLL : BaseService<SysMenus>
+    {
+        /// <summary>
+        /// 查找全部数据
+        /// </summary>
+        /// <returns></returns>
+        public List<SysMenus> GetMenuList()
+        {
+            return GetMenuListBySearch(-1);
+        }
+        /// <summary>
+        /// 查询数据
+        /// </summary>
+        /// <param name="notid"></param>
+        /// <returns></returns>
+        public List<SysMenus> GetMenuListBySearch(int notId)
+        {
+            return FindList(o => o.Id != notId);
+        }
+        /// <summary>
+        /// 更改状态
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public OpResult ChangeStatus(int id)
+        {
+            var result = OpResult.Fail("状态变更失败!");
+            try
+            {
+                var model = FindById(id);
+                model.Status = !model.Status;
+                result = Update(model);
+            }
+            catch (Exception e)
+            {
+                result = OpResult.Fail("状态变更失败!" + e.Message);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 根据ID查找权限实体信息
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public SysMenusExt GetMenu(int id, int pid)
+        {
+            var data = Find(o => o.Id == id);
+            SysMenusExt model = null;
+            if (data == null)
+            {
+                model = new SysMenusExt();
+            }
+            else
+            {
+                model = new SysMenusExt(data);
+            }
+            if (pid != 0)
+            {
+                var pmodel = FindById(pid);
+                if (pmodel != null)
+                {
+                    model.PId = pmodel.Id;
+                    model.PTitle = pmodel.Title;
+                }
+            }
+            return model;
+        }
+        /// <summary>
+        /// 添加或者修改
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveMenu(SysMenus model)
+        {
+            var result = OpResult.Fail("数据保存失败!");
+            try
+            {
+                var savedate = Find(t => t.Id == model.Id);
+                if (savedate != null)
+                {
+                    savedate.Replace(model);
+                    result = Update(savedate);
+                }
+                else
+                {
+                    savedate = model;
+                    result = Add(savedate);
+                }
+            }
+            catch (Exception ex)
+            {
+                result = OpResult.Fail("数据保存失败!" + ex.Message);
+            }
+            return result;
+        }
+    }
+}

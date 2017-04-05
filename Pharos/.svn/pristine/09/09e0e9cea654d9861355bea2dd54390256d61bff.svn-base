@@ -1,0 +1,400 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Data;
+using System.Data.SqlClient;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using Pharos.DBFramework;
+using Pharos.Infrastructure.Data.Normalize;
+using Pharos.Logic.Entity;
+using Pharos.Sys.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+
+namespace Pharos.Logic.BLL
+{
+    public class MakingMembershipCardBLL
+    {
+        private readonly MakingMembershipCardService _service = new MakingMembershipCardService();
+
+        public OpResult CreateMakingMembershipCard(MakingMembershipCard _shipCard)
+        {
+            if (_shipCard.Id == 0)
+            {
+                //新增
+                var top1Card = _service.GetFirstMakingMemberShipCard();
+                var batchNum = 0;
+                var batchNumStr = string.Empty;
+                if (top1Card != null)
+                {
+                    int.TryParse(top1Card.BatchSN.Substring(top1Card.BatchSN.Length - 2, 2), out batchNum);
+                }
+                batchNum++;
+                if (batchNum.ToString().Length < 2)
+                {
+                    batchNumStr = "0" + batchNum.ToString();
+                }
+                else
+                {
+                    batchNumStr = batchNum.ToString();
+                }
+                _shipCard.BatchSN = DateTime.Now.ToString("yyMMdd") + batchNumStr;
+                _shipCard.CompanyId = CommonService.CompanyId;
+                _shipCard.CreateDT = DateTime.Now;
+                _shipCard.CreateUID = Sys.CurrentUser.UID;
+                //_shipCard.SecurityCode = new Random().Next(100000, 999999).ToString();
+                return _service.CreateMakingMembershipCard(_shipCard);
+
+            }
+            else
+            {
+                //修改
+                //var _memberCard = _service.GetShipCardById(_shipCard.Id);
+                //_memberCard = _shipCard;
+                return _service.UpdateShipCard(_shipCard);
+            }
+        }
+
+        public object GetMakingMembershipCardByWhere(string cardType, string batchSN, short? state, string createUID, DateTime? beginDate, DateTime? endDate, out int count)
+        {
+            return _service.GetMakingMembershipCardByWhere(cardType, batchSN, state, createUID, beginDate, endDate, out count);
+        }
+
+        public OpResult UpdateState(short state, string ids)
+        {
+            return _service.UpdateState(state, ids);
+        }
+
+        public MakingMembershipCard GetShipCardById(int id)
+        {
+            return _service.GetShipCardById(id);
+        }
+        /// <summary>
+        /// 获取所有制卡批次
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<MakingMembershipCard> GetBatchsToDropDown()
+        {
+            return _service.GetBatchsToDropDown();
+        }
+        /// <summary>
+        /// 获取所有批次创建人
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<SysStoreUserInfo> GetCreateUserToDropDown()
+        {
+            return _service.GetCreateUserToDropDown();
+        }
+
+        public OpResult ExportMemberCard(string ids)
+        {
+            //查询对应数据
+            try
+            {
+                #region MyRegion
+                //var datas = _service.GetMakingMembershipCardByIds(ids);
+
+                //var top1MemberCard = BaseService<MembershipCard>.CurrentRepository.Entities.OrderByDescending(o => o.CreateDT).FirstOrDefault();
+                //var oldCardNo = top1MemberCard.CardSN;
+                //var currentCardNo = string.Empty;
+                //int num = 0;
+                //if (top1MemberCard != null && top1MemberCard.CardSN.Length > 6)
+                //{
+                //    oldCardNo = top1MemberCard.CardSN.Substring(top1MemberCard.CardSN.Length - 7, 7);
+                //    int.TryParse(oldCardNo, out num);
+                //}
+                ////统计当前的所有批次
+                //var batchs = string.Empty;
+                ////生成相应会员卡信息
+                //foreach (var item in datas)
+                //{
+                //    //判断状态 0=未制卡
+                //    if (item.State == 0)
+                //    {
+                //        batchs += "," + item.BatchSN;
+                //        //生成会员卡数据
+                //        for (int i = 0; i < item.MakeNumber; i++)
+                //        {
+                //            num++;
+                //            currentCardNo = num.ToString();
+                //            while (currentCardNo.Length < 7)
+                //            {
+                //                currentCardNo = currentCardNo.Insert(0, "0");
+                //            }
+                //            var cardinfo = BaseService<CardInfo>.CurrentRepository.Entities.Where(o => o.CardTypeId == item.CardType).FirstOrDefault();
+                //            var cardType = 1;
+                //            if (cardinfo != null)
+                //            {
+                //                if (cardinfo.CardType == 1)
+                //                {
+                //                    cardType = 2;
+                //                }
+                //            }
+                //            //生成卡号：1位卡类型（1=固定面值；2=充值卡） 4位区号 7位商户号 7位序列号（港澳6位）
+                //            var cardSn = cardType + "3640" + "1000101" + currentCardNo;
+
+                //            var securitycode = ExtendHelper.GetRandomStr(7);
+                //            var isExit = BaseService<MakingMembershipCard>.CurrentRepository.Entities.Any(o => o.SecurityCode == securitycode);
+                //            while (isExit)
+                //            {
+                //                securitycode = ExtendHelper.GetRandomStr(7);
+                //                isExit = BaseService<MakingMembershipCard>.CurrentRepository.Entities.Any(o => o.SecurityCode == securitycode);
+                //            }
+
+                //            MembershipCard _memberCard = new MembershipCard()
+                //            {
+                //                CompanyId = CommonService.CompanyId,
+                //                BatchSN = item.BatchSN,
+                //                CardSN = cardSn,
+                //                CardType = cardinfo.CardTypeId,
+                //                ReChargeTotal = 0,
+                //                GiveTotal = 0,
+                //                Balance = 0,
+                //                Integer = 0,
+                //                Deposit = 0,
+                //                State = 0,
+                //                ExpiryStart = item.ExpiryStart,
+                //                ExpiryEnd = item.ExpiryEnd,
+                //                CreateDT = DateTime.Now,
+                //                CreateUID = Sys.CurrentUser.UID,
+                //                SecurityCode = securitycode,
+                //                ExportDT = DateTime.Now,//加入导出人，导出时间
+                //                ExportUID = Pharos.Sys.CurrentUser.UID//
+                //            };
+
+                //            BaseService<MembershipCard>.CurrentRepository.Add(_memberCard, false);
+                //        }
+                //    }
+                //} 
+
+                //BaseService<MembershipCard>.CurrentRepository.Update(new MembershipCard());
+                #endregion
+
+                var datas = _service.GetMakingMembershipCardByIds(ids);
+                if (datas == null || datas.Count == 0)
+                {
+                    return new OpResult() { Successed = false, Message = "找不到原数据！" };
+                }
+
+                StringBuilder batchs = new StringBuilder();
+                foreach (var item in datas)
+                {
+                    batchs.Append("," + item.BatchSN);
+                }
+
+
+                //导出到excel  new ExportExcel() { IsBufferOutput = true, HeaderText = title }.ToExcel(fileName, dt, fields.ToArray(), names.ToArray(), mergerCols, totalCols);
+                string fileName = "会员卡" + DateTime.Now.ToString("hhmmss");
+
+                SqlParameter[] parms ={
+                                     new SqlParameter("@batchs",batchs.ToString()),
+                                     new SqlParameter("@companyId",Sys.SysCommonRules.CompanyId)
+                                 };
+                string sql = "SELECT BatchSN,CardSN,c.CardName AS CardType,Balance,Deposit,ExpiryStart,ExpiryEnd,SecurityCode,s.FullName as ExportUID FROM dbo.MembershipCard AS m LEFT JOIN dbo.CardInfo AS c ON m.CardTypeId=c.CardTypeId LEFT JOIN dbo.SysStoreUserInfo AS s ON m.ExportUID =s.UID where (( CAST(CHARINDEX(BatchSN, @batchs) AS int)) > 0)  AND m.CompanyId=@companyId";
+                //var sql = BaseService<MembershipCard>.CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && batchs.Contains(o.BatchSN));
+                var dataResult = new DBHelper().DataTableText(sql, parms);
+                if (dataResult.Rows.Count == 0)
+                {
+                    return OpResult.Fail("当前无未导出数据！");
+                }
+                string[] fields = { "BatchSN", "CardSN", "CardType", "Balance", "Deposit", "ExpiryStart", "ExpiryEnd", "SecurityCode", "ExportUID" };
+                string[] names = { "批次", "卡号", "卡类型", "可用金额", "押金", "有效期开始", "有效期截止", "防伪码", "导出人" };
+                var fileUrl = new ExportExcel() { IsBufferOutput = true }.ToExcel(fileName, dataResult, fields, names, null);
+
+                //更新导出时间
+                SqlParameter[] param1 = { 
+                                            new SqlParameter("@batchs",batchs.ToString()),
+                                            new SqlParameter("@UID", Sys.CurrentUser.UID),
+                                            new SqlParameter("@companyId", CommonService.CompanyId)
+                                        };
+                string updateSql = "UPDATE dbo.MembershipCard SET ExportDT=GETDATE(),ExportUID=@UID  where (( CAST(CHARINDEX(BatchSN, @batchs) AS int)) > 0)  AND CompanyId=@companyId";
+                new DBHelper().DataTableText(updateSql, param1);
+
+                foreach (var item in datas)
+                {
+                    StringBuilder _ids = new StringBuilder();
+                    _ids.Append("," + item.Id);
+                    _service.UpdateState(2, ids);
+                }
+
+                return new OpResult() { Successed = true, Message = "操作成功！", Data = fileUrl };
+            }
+            catch (Exception e)
+            {
+                return new OpResult() { Successed = false, Message = e.Message };
+            }
+        }
+        /// <summary>
+        /// 生成会员卡
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <returns></returns>
+        public OpResult GenerateMemberCard(string ids)
+        {
+            try
+            {
+                var datas = _service.GetMakingMembershipCardByIds(ids);
+
+                if (datas == null || datas.Count == 0)
+                {
+                    return new OpResult() { Successed = false, Message = "找不到原数据！" };
+                }
+                var sw = new Stopwatch();
+
+                var securityCodes = BaseService<MembershipCard>.CurrentRepository.Entities.Select(o => o.SecurityCode).ToList();
+                var cardTypeIds = datas.Select(o => o.CardTypeId).ToList();
+                var cardTypeInfo = BaseService<CardInfo>.CurrentRepository.Entities.Where(o => cardTypeIds.Contains(o.CardTypeId)).ToDictionary(o => o.CardTypeId, o => o);
+                var areaCode = string.Empty;
+
+                //统计当前的所有批次
+                var batchs = string.Empty;
+                //生成相应会员卡信息
+                foreach (var item in datas)
+                {
+                    //查询当前cid区号
+                    if (string.IsNullOrEmpty(areaCode))
+                    {
+                        var companyEntity = BaseService<OMS_CompanyAuthorize>.CurrentRepository.Entities.FirstOrDefault(o => o.Code == item.CompanyId);
+                        if (companyEntity == null)
+                        {
+                            areaCode = "0000";
+                        }
+                        else
+                        {
+                            if (!string.IsNullOrEmpty(companyEntity.AreaCode))
+                                areaCode = companyEntity.AreaCode;
+                            else
+                                areaCode = "0000";
+                        }
+                    }
+                    //判断状态 0=未制卡
+                    if (item.State == 0)
+                    {
+                        batchs += "," + item.BatchSN;
+                        //生成会员卡数据
+                        var membershipCards = new List<MembershipCard>();
+
+                        var resetSwiftNumber = 0;
+                        SwiftNumber swiftNumber = new SwiftNumber(string.Format("MembershipCard_{0}", item.CompanyId), SwiftNumberMode.Normal);
+                        var swiftNumbers = swiftNumber.GetNumberRanges(item.MakeNumber, out resetSwiftNumber);
+                        sw.Start();
+                        var indexCard = string.Empty;
+                        for (int i = 0; i < item.MakeNumber; i++)
+                        {
+                            var securitycode = ExtendHelper.GetRandomStr(4, (o) => { return securityCodes.Contains(o); });
+                            securityCodes.Add(securitycode);
+                            //1位卡类型   4位区号  7位商户号  7位随机数
+                            StringBuilder cardSn = new StringBuilder();
+                            if (cardTypeInfo[item.CardTypeId].CardType.Contains(","))
+                            {
+                                indexCard = "3";
+                            }
+                            else
+                            {
+                                indexCard = cardTypeInfo[item.CardTypeId].CardType;
+                            }
+                            cardSn.Append(indexCard);
+                            cardSn.Append(areaCode);
+                            cardSn.Append(item.CompanyId.ToString("0000000"));
+                            cardSn.Append(swiftNumbers[i].ToString("0000000"));
+                            MembershipCard membershipCard = new MembershipCard()
+                            {
+                                CompanyId = item.CompanyId,
+                                BatchSN = item.BatchSN,
+                                CardSN = cardSn.ToString(),
+                                CardTypeId = item.CardTypeId,
+                                ReChargeTotal = 0m,
+                                GiveTotal = 0m,
+                                Balance = cardTypeInfo[item.CardTypeId].DefaultPrice,
+                                Deposit = 0m,
+                                State = 0,
+                                ExpiryStart = item.ExpiryStart,
+                                ExpiryEnd = item.ExpiryEnd,
+                                CreateDT = DateTime.Now,
+                                CreateUID = Sys.CurrentUser.UID,
+                                SecurityCode = securitycode,
+                            };
+                            membershipCards.Add(membershipCard);
+                        }
+                        //更新批次状态
+                        _service.UpdateState(1, item.Id.ToString());
+
+                        BluckHelper.BulkInsertAll<MembershipCard>(membershipCards);//5000 0.9767s
+                        //BaseService<MembershipCard>.CurrentRepository.AddRange(membershipCards);//5000条1.08分钟
+
+                        swiftNumber.Reset(resetSwiftNumber);
+                        sw.Stop();
+                    }
+                }
+                var date = sw.Elapsed;
+                return new OpResult() { Successed = true, Message = "操作成功！" };
+            }
+            catch (Exception e)
+            {
+                return new OpResult() { Successed = false, Message = e.Message };
+            }
+        }
+    }
+
+    public class BluckHelper
+    {
+        public static void BulkInsertAll<T>(IEnumerable<T> entities)
+        {
+            entities = entities.ToArray();
+            string cs = new Pharos.DBFramework.DBHelper().ConnectionString;
+            var conn = new SqlConnection(cs);
+            conn.Open();
+
+            Type t = typeof(T);
+
+            var bulkCopy = new SqlBulkCopy(conn)
+            {
+                DestinationTableName = t.Name
+            };
+
+            var properties = t.GetProperties().Where(EventTypeFilter).ToArray();
+            var table = new DataTable();
+
+            foreach (var property in properties)
+            {
+                Type propertyType = property.PropertyType;
+                if (propertyType.IsGenericType &&
+                    propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                {
+                    propertyType = Nullable.GetUnderlyingType(propertyType);
+                }
+
+                table.Columns.Add(new DataColumn(property.Name, propertyType));
+            }
+
+            foreach (var entity in entities)
+            {
+                table.Rows.Add(properties.Select(
+                  property => GetPropertyValue(
+                  property.GetValue(entity, null))).ToArray());
+            }
+            bulkCopy.WriteToServer(table);
+            conn.Close();
+        }
+
+        private static bool EventTypeFilter(System.Reflection.PropertyInfo p)
+        {
+            var attribute = Attribute.GetCustomAttribute(p,
+                typeof(AssociationAttribute)) as AssociationAttribute;
+
+            if (attribute == null) return true;
+            if (attribute.IsForeignKey == false) return true;
+
+            return false;
+        }
+
+        private static object GetPropertyValue(object o)
+        {
+            if (o == null)
+                return DBNull.Value;
+            return o;
+        }
+    }
+}

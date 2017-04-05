@@ -1,0 +1,387 @@
+﻿using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Web;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using System.Web.SessionState;
+using Pharos.Logic.DAL;
+namespace Pharos.Logic.BLL
+{
+    public class TuihuanService : BaseService<SalesReturns>, IRequiresSessionState
+    {
+        static CommonDAL dal = new CommonDAL();
+        /// <summary>
+        /// 用于datagrid列表
+        /// </summary>
+        /// <param name="nvl">传递条件</param>
+        /// <param name="count">返回总行数</param>
+        /// <returns>list</returns>
+        public static object FindPageList(NameValueCollection nvl, out int count)
+        {
+            var startDate = nvl["startDate"];//开始日期
+            var endDate = nvl["endDate"];//
+            var returnType = nvl["returnType"];//换货或退货
+            var dt= dal.GetTuiHuanPages(nvl,out count);
+            return dt;
+        }
+        #region 可以删除
+        public static SalesReturnsDetailed GetSaleBarcode(string paysn, string barcode, short? isnew)
+        {
+            SalesReturnsDetailed obj = null;
+            if (isnew == 1)
+            {
+                var querySale = BaseService<SaleOrders>.CurrentRepository.QueryEntity;
+                var queryDetail = BaseService<SaleDetail>.CurrentRepository.QueryEntity;
+                var queryProduct = ProductService.CurrentRepository.QueryEntity;
+                var query = from a in querySale
+                            join b in queryDetail on a.PaySN equals b.PaySN
+                            join c in queryProduct on b.Barcode equals c.Barcode
+                            where a.PaySN == paysn && a.StoreId == Sys.CurrentUser.StoreId && b.Barcode == barcode
+                            select new
+                            {
+                                b.Barcode,
+                                b.PurchaseNumber,
+                                c
+                            };
+                var list = query.ToList();
+                ProductService.SetSysPrice(Sys.CurrentUser.StoreId, list.Select(o => o.c).ToList());
+                obj = list.Select(o => new SalesReturnsDetailed()
+                {
+                    Barcode = o.Barcode,
+                    Title = o.c.Title,
+                    Number = o.PurchaseNumber,
+                    Price = o.c.SysPrice,
+                    TradingPrice = o.c.SysPrice,
+                    BuyPrice = o.c.BuyPrice
+                }).FirstOrDefault();
+            }
+            else
+            {
+                var querySale = BaseService<SaleOrders>.CurrentRepository.QueryEntity;
+                var queryDetail = BaseService<SaleDetail>.CurrentRepository.QueryEntity;
+                var queryProduct = ProductService.CurrentRepository.QueryEntity;
+                var query = from a in querySale
+                            join b in queryDetail on a.PaySN equals b.PaySN
+                            join c in queryProduct on b.Barcode equals c.Barcode
+                            where a.PaySN == paysn && a.StoreId == Sys.CurrentUser.StoreId && b.Barcode == barcode
+                            select new
+                            {
+                                b.Barcode,
+                                c.Title,
+                                b.PurchaseNumber,
+                                b.SysPrice,
+                                b.ActualPrice,
+                                c.BuyPrice
+                            };
+                obj = query.AsEnumerable().Select(o => new SalesReturnsDetailed()
+                {
+                    Barcode = o.Barcode,
+                    Title = o.Title,
+                    Number = o.PurchaseNumber,
+                    Price = o.SysPrice,
+                    TradingPrice = o.ActualPrice,
+                    BuyPrice = o.BuyPrice
+                }).FirstOrDefault();
+            }
+            return obj;
+        }
+        #endregion
+        #region New
+        /// <summary>
+        /// 通过流水号获取销售单明细记录
+        /// </summary>
+        /// <returns>销售单明细记录，带商品名称</returns>
+        public static object GetSaleDetails(string paySN)
+        {
+            var saleDetails = from o in BaseService<SaleOrders>.CurrentRepository.Entities
+                              join d in BaseService<SaleDetail>.CurrentRepository.Entities on o.PaySN equals d.PaySN
+                              where o.PaySN == paySN
+                              select d;
+            var detailTitle1 = BaseService<ProductRecord>.CurrentRepository.Entities.Where(a => a.ValuationType != 2).Select(a => new { Barcode = a.Barcode, a.Title });//非称重产品（单品、组合产品）
+            var detailTitle2 = BaseService<ProductRecord>.CurrentRepository.Entities.Where(a => a.ValuationType == 2).Select(a => new { Barcode = a.ProductCode, a.Title });//称重产品
+            var detailTitle3 = BaseService<Bundling>.CurrentRepository.Entities.Select(a => new { Barcode = a.NewBarcode, a.Title });
+            var detailTitle = detailTitle1.Union(detailTitle2).Union(detailTitle3);
+
+            var query = from d in saleDetails
+                        join t in detailTitle on d.Barcode equals t.Barcode into temp
+                        from tt in temp.DefaultIfEmpty()
+                        select new
+                        {
+                            Barcode = d.Barcode,
+                            Title = tt.Title == null ? "" : tt.Title,
+                            Number = d.PurchaseNumber,
+                            Price = d.SysPrice,
+                            TradingPrice = d.ActualPrice
+                        };
+            return query;
+        }
+        /// <summary>
+        /// 通过流水号获取门店销售单明细记录，用于退换处理
+        /// </summary>
+        /// <returns>销售单明细记录，带退换信息</returns>
+        public static object GetDetailsToTuiHuan(string paySN)
+        {
+            //var query = BaseService<VwSaleDetail>.CurrentRepository.QueryEntity.Where(a => a.PaySN == paySN && a.StoreId == Sys.CurrentUser.StoreId).Select(a => new
+            //{
+            //    a.Barcode,
+            //    a.Title,
+            //    Number = a.PurchaseNumber,
+            //    Price = a.SysPrice,
+            //    TradingPrice = a.ActualPrice,
+            //    a.HasReturned,
+            //    a.ReturnedNumber,
+            //    ReNumber = a.PurchaseNumber
+            //});
+            var query = from x in BaseService<SaleDetail>.CurrentRepository.QueryEntity
+                        join y in BaseService<SaleOrders>.CurrentRepository.QueryEntity on new { x.PaySN, x.CompanyId } equals new { y.PaySN, y.CompanyId }
+                        where x.CompanyId == CommonService.CompanyId && x.PaySN == paySN && y.State == 0 && y.Type == 0
+                        select x;
+            var list = query.ToList().Select(o => new TuiHuan()
+            {
+                Barcode=o.Barcode,
+                Id=o.Id,
+                Number=o.PurchaseNumber,
+                SysPrice=o.ActualPrice,
+                ProductCode=o.ProductCode,
+                Total=o.PurchaseNumber*o.ActualPrice,
+                Title=o.Title
+            }).ToList();
+            return list;
+        }
+        public static object GetBarcodeInput(string input)
+        {
+            var query = from x in BaseService<SaleDetail>.CurrentRepository.QueryEntity
+                        join y in BaseService<SaleOrders>.CurrentRepository.QueryEntity on new { x.PaySN, x.CompanyId } equals new { y.PaySN, y.CompanyId }
+                        where x.CompanyId == CommonService.CompanyId && y.StoreId==Sys.CurrentUser.StoreId && y.State == 0 && y.Type == 0 && x.ScanBarcode.Contains(input)
+                        select x;
+            var list = query.DistinctBy(o=>o.ScanBarcode).ToList();
+            return list.Select(o => new TuiHuan()
+            {
+                Barcode=o.ScanBarcode,
+                SysPrice=o.ActualPrice,
+                OldBarcode=o.Barcode,
+                ProductCode=o.ProductCode,
+                Title=o.Title,
+                Total=o.Total
+            });
+        }
+        #endregion
+
+        public static List<SalesReturnsDetailed> GetSaleDetailsToReturn(string paysn)
+        {
+            var query = from o in BaseService<SaleOrders>.CurrentRepository.Entities
+                        join d in BaseService<SaleDetail>.CurrentRepository.Entities on o.PaySN equals d.PaySN
+                        join p in BaseService<ProductRecord>.CurrentRepository.Entities on d.Barcode equals p.Barcode
+                        select o;
+            return new List<SalesReturnsDetailed>() { new SalesReturnsDetailed() };
+        }
+        public static List<SalesReturnsDetailed> FindNewPageList(string barcode)
+        {
+            var list = DataCache.Get<List<SalesReturnsDetailed>>(KeyNew);
+            var obj = ProductService.CurrentRepository.QueryEntity.Where(o => o.Barcode == barcode).AsEnumerable().Select(o => new SalesReturnsDetailed()
+            {
+                Barcode = o.Barcode,
+                Title = o.Title,
+                Number = 1,
+                Price = o.SysPrice,
+                TradingPrice = o.SysPrice,
+                BuyPrice = o.BuyPrice
+            }).FirstOrDefault();
+            if (obj == null) return list;
+            list = list ?? new List<SalesReturnsDetailed>();
+            list.Add(obj);
+            DataCache.Set(KeyNew, list, 20);
+            return list;
+        }
+        /// <summary>
+        /// 后台换货
+        /// </summary>
+        /// <param name="reason">换货理由（字典值）</param>
+        /// <param name="retprice">顾客补价</param>
+        /// <param name="returnDetailsStr">换货明细JSON字符串</param>
+        /// <param name="insertnewed"></param>
+        /// <param name="payno">销售单流水号</param>
+        /// <returns>OpResult</returns>
+        public static OpResult SaveHuang(int reason, decimal? retprice, string returnDetailsStr, string payno)
+        {
+            var op = OpResult.Fail();
+            var olds = returnDetailsStr.ToObject<List<TuiHuan>>();
+            if (!olds.Any())
+                op.Message = "换货商品信息不能为空";
+            else
+            {
+                payno = CommonRules.PaySN;
+                var saleObj = new SaleOrders()
+                {
+                    ApiCode = "11",
+                    MachineSN = "-1",
+                    CreateDT = DateTime.Now,
+                    CreateUID = Sys.CurrentUser.UID,
+                    PaySN = payno,
+                    TotalAmount = retprice.GetValueOrDefault(),
+                    Receive = retprice.GetValueOrDefault(),
+                    PreferentialPrice = 0,
+                    StoreId = Sys.CurrentUser.StoreId,
+                    Type = 1,
+                    Reason=reason,
+                    CompanyId = CommonService.CompanyId,
+                    Memo = "后台换货新单"
+                };
+                var newSaleDetails = new List<SaleDetail>();
+                olds.Each(o =>
+                {
+                    newSaleDetails.Add(new SaleDetail()
+                    {
+                        ActualPrice = o.SysPrice,
+                        SysPrice = o.SysPrice,
+                        Total=o.Total,
+                        BuyPrice = 0,
+                        Barcode = o.OldBarcode,
+                        ScanBarcode=o.Barcode,
+                        ProductCode=o.ProductCode,
+                        Title=o.Title,
+                        PaySN = saleObj.PaySN,
+                        PurchaseNumber = o.Number,
+                        SalesClassifyId = 0,
+                        CompanyId=saleObj.CompanyId,
+                        Memo = ""
+                    });
+                });
+                BaseService<SaleOrders>.Add(saleObj, false);
+                op=BaseService<SaleDetail>.AddRange(newSaleDetails);
+                if (op.Successed) dal.UpdateTuiHuanStock();
+            }
+            return op;
+        }
+        /// <summary>
+        /// 换货时,新产品可用
+        /// </summary>
+        /// <param name="barcode"></param>
+        /// <returns></returns>
+        public static object HuanProduct(string barcode)
+        {
+            if (barcode.IsNullOrEmpty()) return "";
+            var products = ProductService.FindList(o => o.Barcode == barcode.Trim() || (o.Barcodes != null && o.Barcodes.Contains(barcode)));
+            ProductService.SetSysPrice(Sys.CurrentUser.StoreId, products);
+            var list = new List<TuiHuan>();
+            foreach(var pro in products)
+            {
+                var obj = new TuiHuan()
+                {
+                    ProductCode=pro.ProductCode,
+                    SysPrice=pro.SysPrice,
+                    Title=pro.Title,
+                    OldBarcode = pro.OldBarcode,
+                    Barcode=pro.Barcode
+                };
+                if(!pro.Barcodes.IsNullOrEmpty())
+                {
+                    obj.OldBarcode = pro.Barcode;
+                    obj.Barcode = barcode;
+                }
+                else if(pro.Nature==1)
+                {
+                    obj.OldBarcode = obj.Barcode = pro.Barcode;
+                }
+                list.Add(obj);
+            }
+            return list.FirstOrDefault();
+        }
+        /// <summary>
+        /// 后台退货
+        /// </summary>
+        /// <param name="reason">换货理由（字典值）</param>
+        /// <param name="retprice">顾客补价</param>
+        /// <param name="returnDetailsStr">换货明细JSON字符串</param>
+        /// <param name="payno">销售单流水号</param>
+        /// <returns>OpResult</returns>
+        public static OpResult SaveTui(int reason, decimal? retprice, string returnDetailsStr, string payno, bool returnAll = false)
+        {
+            var op = OpResult.Fail();
+            var olds = returnDetailsStr.ToObject<List<TuiHuan>>();
+            if (!olds.Any())
+                op.Message = "退货商品信息不能为空";
+            else
+            {
+                if (!payno.IsNullOrEmpty() && returnAll)
+                {
+                    var obj= BaseService<SaleOrders>.Find(o => o.CompanyId == CommonService.CompanyId && o.PaySN == payno);
+                    if (obj == null) op.Message = "输入流水号不存在!";
+                    else
+                    {
+                        obj.State = 1;
+                        op = BaseService<SaleOrders>.Update(obj);
+                    }
+                }
+                else
+                {
+                    payno = CommonRules.PaySN;
+                    var saleObj = new SaleOrders()
+                    {
+                        ApiCode = "11",
+                        MachineSN = "-1",
+                        CreateDT = DateTime.Now,
+                        CreateUID = Sys.CurrentUser.UID,
+                        PaySN = payno,
+                        TotalAmount = retprice.GetValueOrDefault(),
+                        Receive = -retprice.GetValueOrDefault(),
+                        PreferentialPrice = 0,
+                        StoreId = Sys.CurrentUser.StoreId,
+                        Type = 2,
+                        Reason = reason,
+                        CompanyId = CommonService.CompanyId,
+                        Memo = "后台退货新单"
+                    };
+                    var newSaleDetails = new List<SaleDetail>();
+                    olds.Each(o =>
+                    {
+                        newSaleDetails.Add(new SaleDetail()
+                        {
+                            ActualPrice = o.SysPrice,
+                            SysPrice = o.SysPrice,
+                            Total = o.Total,
+                            BuyPrice = 0,
+                            Barcode = o.OldBarcode,
+                            ScanBarcode = o.Barcode,
+                            Title = o.Title,
+                            ProductCode = o.ProductCode,
+                            PaySN = saleObj.PaySN,
+                            PurchaseNumber = o.Number,
+                            SalesClassifyId = 0,
+                            CompanyId = saleObj.CompanyId,
+                            Memo = ""
+                        });
+                    });
+                    BaseService<SaleOrders>.Add(saleObj, false);
+                    op = BaseService<SaleDetail>.AddRange(newSaleDetails);
+                }
+                if (op.Successed) dal.UpdateTuiHuanStock();
+            }
+            return op;
+        }
+        public static string KeyOld
+        {
+            get { return "oldbarcodes" + HttpContext.Current.Session.SessionID; }
+        }
+        public static string KeyNew
+        {
+            get { return "newbarcodes" + HttpContext.Current.Session.SessionID; }
+        }
+        class TuiHuan
+        {
+            public int Id { get; set; }
+            public string ProductCode { get; set; }
+            public string OldBarcode { get; set; }
+            public string Barcode { get; set; }
+            public string Title { get; set; }
+            public decimal SysPrice { get; set; }
+            public decimal Number { get; set; }
+            public decimal Total { get; set; }
+        }
+    }
+
+}

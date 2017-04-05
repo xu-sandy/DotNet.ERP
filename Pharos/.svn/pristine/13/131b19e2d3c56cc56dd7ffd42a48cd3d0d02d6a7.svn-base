@@ -1,0 +1,52 @@
+﻿using Pharos.Infrastructure.Data.Cache;
+using Pharos.Infrastructure.Data.Redis;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+using System.Threading.Tasks;
+using Pharos.Infrastructure.Data.IO;
+
+
+namespace Pharos.Infrastructure.Data.Normalize
+{
+    /// <summary>
+    /// 流水号生成器
+    /// </summary>
+    public class PaySn : SwiftNumber
+    {
+        public PaySn(int companyId, string storeId, string machineSn)
+            :base(string.Format("PaySn{0}_{1}_{2}", companyId, storeId, machineSn))
+        {
+            CompanyToken = companyId;
+            StoreId = storeId;
+            MachineSn = machineSn;
+        }
+        public string MachineSn { get; set; }
+        public string StoreId { get; set; }
+        public int CompanyToken { get; set; }
+        public override string ToString()
+        {
+            return MachineSn + DateTime.Now.ToString("yyyyMMdd") + GetNumber().ToString("0000");
+        }
+
+        public void NextSerialNumber()
+        {
+            Next();
+        }
+
+        public void ResetSerialNumber(int serialNumber)
+        {
+            Reset(serialNumber);
+        }
+
+    }
+    public class PaySnDto : SwiftNumberDto
+    {
+        public string MachineSn { get; set; }
+        public string StoreId { get; set; }
+        public int CompanyToken { get; set; }
+    }
+}

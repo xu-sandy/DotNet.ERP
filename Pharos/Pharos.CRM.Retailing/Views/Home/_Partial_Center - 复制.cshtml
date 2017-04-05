@@ -1,0 +1,349 @@
+﻿@{
+    var noticeList = ViewBag.NoticeList as List<Notice>;
+    var activityList = ViewBag.ActivityList as List<CommodityPromotion>;
+    var orderList = ViewBag.OrderList as List<VwOrder>;
+    var chart1Data = ViewBag.chart1Data;
+    var chart2Data = ViewBag.chart2Data;
+    var chart3Data = ViewBag.chart3Data;
+}
+<style type="text/css">
+    .box .list-item:hover { background: #e0e9fb; cursor: pointer; }
+    .box .list-item td :hover { background: none; }
+    .box-buttom .chart-img-div { height: 230px; }
+    .box-topr .order .a_hint{color:#333;}
+</style>
+
+<!-- ECharts单文件引入 -->
+<script src="~/Scripts/Echarts/build/dist/echarts.js"></script>
+<script type="text/javascript">
+    // 路径配置
+    require.config({
+        paths: {
+            echarts: '../Scripts/Echarts/build/dist'
+        }
+    });
+
+    // 使用
+    require(
+        [
+            'echarts',
+            'echarts/chart/bar', // 使用柱状图就加载bar模块，按需加载
+            'echarts/chart/pie', //  饼状图
+            'echarts/chart/line'//  折线图
+
+        ],
+        function (ec) {
+            // 基于准备好的dom，初始化echarts图表
+
+            var char1DataCount = Number('@chart1Data.Count');
+            if (char1DataCount != 0) {
+                var myChart1 = ec.init(document.getElementById('chart1'));
+                var option1 = {
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: "{a} <br/>{b} : {c} ({d}%)"
+
+                    },
+                    legend: {
+                        orient: 'horizontal',
+                        data: @Html.Raw(ViewBag.categoryJSON),
+                        padding: [15, 0, 0, 0]
+                    },
+                    calculable: true,
+                    series: @Html.Raw(ViewBag.categoryData)
+                    };
+                // 为echarts对象加载数据
+                myChart1.setOption(option1);
+            }
+
+            var chart2DataCount = Number('@chart2Data.Count')
+            if (chart2DataCount != 0) {
+                var myChart2 = ec.init(document.getElementById('chart2'));
+                var option2 = {
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    grid: {
+                        height: 110,
+                        width: 280,
+                        x: 50,y:80
+                    },
+                    legend: {
+                        x: 20,
+                        padding: [15, 10, 0, 0],
+                        data: @Html.Raw(ViewBag.categoryJSON)
+                        },
+                    calculable: true,
+                    xAxis: [
+                        {
+                            type: 'category',
+                            boundaryGap: false,
+                            data: @Html.Raw(ViewBag.hoursJSON)
+                            }
+                    ],
+                    yAxis: [
+                        {
+                            name: name || '',
+                            type: 'value',
+                            splitArea: { show: true }
+                        }
+                    ],
+                    series: @Html.Raw(ViewBag.hourData)
+                    };
+
+                myChart2.setOption(option2);
+            }
+
+            var chart3DataCount = Number('@chart3Data.Count');
+            if (chart3DataCount != 0) {
+                var myChart3 = ec.init(document.getElementById('chart3'));
+                var option3 = {
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    legend: {
+                        orient: 'horizontal',
+                        padding: [15, 0, 0, 0],
+                        data: @Html.Raw(ViewBag.storeJSON)
+                        },
+                    calculable: true,
+                    grid: {
+                        x: 70, y: 50,
+                        height: 110,
+                        width: 250
+                    },
+                    xAxis: [
+                        {
+                            type: 'category',//下边
+                            axisLabel: { show: true,rotate:30 },
+                            data: @Html.Raw(ViewBag.categoryJSON)
+                            },
+                        {
+                            type: 'category',//上边
+                            axisLine: { show: false },
+                            axisTick: { show: false },
+                            axisLabel: { show: false },
+                            splitArea: { show: false },
+                            splitLine: { show: false },
+                            data: @Html.Raw(ViewBag.categoryJSON)
+                            }
+                    ],
+                    yAxis: [
+                        {
+                            type: 'value'
+                        }
+                    ],
+                    series: @Html.Raw(ViewBag.storeData)
+                    };
+
+                myChart3.setOption(option3);
+
+            }
+
+
+        }
+        );
+</script>
+
+<div class="box">
+    <div class="box-top clearfix">
+        <div class="box-topl">
+            <div class="inform">
+                <table class="notice-table" cellspacing="0" cellpadding="0" border="0">
+                    <colgroup>
+                        <col style="width:20px;">
+                        <col style="width:450px;">
+                        <col style="width:125px;">
+                        <col style="width:56px; color:#003">
+                    </colgroup>
+                    <tr>
+                        <td><span>&nbsp;</span></td>
+                        <td><img src="~/Content/image/notice.png" /><span>通知公告</span></td>
+                        <td><span>&nbsp;</span></td>
+                        <td><a class="more" href="javascript:toNotice();">more</a></td>
+                    </tr>
+                    @{
+                        int noticeIndex = 0;
+                        foreach (var notice in noticeList)
+                        {
+                            noticeIndex++;
+                            <tr class="list-item">
+                                <td><span>&nbsp;</span></td>
+                                <td>@noticeIndex<span>@notice.Theme</span></td>
+                                <td>@notice.CreateDT.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td><span>&nbsp;</span></td>
+                            </tr>
+                        }
+                    }
+
+                </table>
+            </div>
+            <div class="exercise">
+                <table cellspacing="0" cellpadding="0" border="0">
+                    <colgroup>
+                        <col style="width:20px;">
+                        <col style="width:200px;">
+                        <col style="width:285px;">
+                        <col style="width:146px; color:#003">
+                    </colgroup>
+                    <tr>
+                        <td><span>&nbsp;</span></td>
+                        <td><img src="~/Content/image/active.png" /><span>活动列表</span></td>
+                        <td><span>&nbsp;</span></td>
+                        <td><span>&nbsp;</span></td>
+                    </tr>
+                    @{
+                        int activityIndex = 0;
+                        foreach (var activity in activityList)
+                        {
+                            activityIndex++;
+                            <tr class="list-item">
+                                <td><span>&nbsp;</span></td>
+                                <td>@activityIndex<span id="activityType_@activityIndex">@activity.PromotionType</span></td>
+                                <td>@DateTime.Parse(activity.StartDate.ToString()).ToString("yyyy-MM-dd") 至 @DateTime.Parse(activity.EndDate.ToString()).ToString("yyyy-MM-dd")</td>
+                                <td><span id="activityState_@activityIndex">@activity.State</span></td>
+                            </tr>
+                        }
+                    }
+                </table>
+            </div>
+        </div>
+
+        <div class="box-topr">
+            <div class="order">
+                <table cellspacing="0" cellpadding="0" border="0">
+                    <colgroup>
+                        <col style="width:20px;">
+                        <col style="width:130px;">
+                        <col style="width:80px;">
+                        <col style="width:120px;">
+                        <col style="width:135px;">
+                        <col style="width:56px; color:#003">
+                    </colgroup>
+                    <tr style="line-height:40px;">
+                        <td><span>&nbsp;</span></td>
+                        <td><img src="~/Content/image/order.png" /><span>采购订单</span></td>
+                        <td><span>&nbsp;</span></td>
+                        <td><span>&nbsp;</span></td>
+                        <td><span>&nbsp;</span></td>
+                        <td><a class="more" href="javascript:toOrder()">more</a></td>
+                    </tr>
+                    @for (var i = 1; i <= orderList.Count; i++)
+                    {
+                        var order = orderList[i - 1];
+                        var orderGiftnumArr = order.OrderGiftnum.Split('/');
+                        <tr style="line-height:40px;" class="list-item" onclick="toOrderDetail(@order.Id)">
+                            <td><span>&nbsp;</span></td>
+                            <td>@i<span>@order.IndentOrderId</span></td>
+                            <td>
+                                <a href="javascript:void(0);" title="订单数" class="a_hint">@(orderGiftnumArr[0] == null ? "" : orderGiftnumArr[0])</a>/
+                                <a href="javascript:void(0);" title="赠品数" class="a_hint">@(orderGiftnumArr[1] == null ? "" : orderGiftnumArr[1])</a>
+                            </td>
+                            <td><font>@order.OrderTotal.ToString("C")</font></td>
+                            <td>@order.CreateDT.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td><span>@order.StateTitle</span></td>
+                        </tr>
+                    }
+
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="box-buttom">
+        <table cellspacing="0" cellpadding="0" border="0">
+            <colgroup>
+                <col style="width:10px;">
+                <col style="width:370px;">
+                <col style="width:370px;">
+                <col style="width:370px;">
+                <col style="width:30px;">
+            </colgroup>
+            <tr>
+                <td><span>&nbsp;</span></td>
+                <td><img src="~/Content/image/report.png" /><span>今日销售排行</span></td>
+                <td><span>&nbsp;</span></td>
+                <td><span>&nbsp;</span></td>
+                <td><span>&nbsp;</span></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    @if (chart1Data.Count == 0)
+                    {
+                        <div style="height:230px;width:350px;text-align:center;"><div style="padding-top:105px">暂无数据</div></div>
+                    }
+                    else
+                    {
+                        <div id="chart1" class="chart-img-div" style="width:350px;"></div>
+                    }
+                    <p>前6名门店商品销量占比</p>
+                </td>
+                <td>
+                    @if (chart2Data.Count == 0)
+                    {
+                        <div style="height:230px;width:350px;text-align:center;"><div style="padding-top:105px;padding-left:65px;">暂无数据</div></div>
+                    }
+                    else
+                    {
+                        <div id="chart2" class="chart-img-div" style="width:350px;"></div>
+                    }
+                    <p>前6名门店商品销量</p>
+                </td>
+                <td>
+                    @if (chart3Data.Count == 0)
+                    {
+                        <div style="height:230px;width:350px;text-align:center;"><div style="padding-top:105px">暂无数据</div></div>
+                    }
+                    else
+                    {
+                        <div id="chart3" class="chart-img-div" style="width:330px;"></div>
+                    }
+                    <p>前6名门店商品销售额</p>
+                </td>
+                <td></td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        formatterActivityList();
+    })
+    function formatterActivityList() {
+        var activityCount = '@activityList.Count'
+        for (var i = 1; i <= activityCount; i++) {
+            var actype = Number($("#activityType_" + i).html());
+            var type = '';
+            switch (actype) {
+                case 1: type = '单品折扣'; break;
+                case 2: type = '捆绑促销'; break;
+                case 3: type = '组合促销'; break;
+                case 4: type = '买赠促销'; break;
+                case 5: type = '满元促销'; break;
+            }
+            $("#activityType_" + i).html(type);
+            var acstate = Number($("#activityState_" + i).html());
+            var state = '';
+            switch (acstate) {
+                case 0: state = '未开始'; break;
+                case 1: state = '活动中'; break;
+            }
+            $("#activityState_" + i).html(state);
+        }
+
+    }
+
+    function toNotice() {
+        jump("公告管理", '@Url.Action("NoticeManagement","Notice")', "2");
+    }
+    function toOrder() {
+        jump("采购订单", '@Url.Action("Index","Order")', "10")
+    }
+
+    function toOrderDetail(id){
+        openDialog("订单详情", "@Url.Action("Detail","Order")?isdetail=1&Id=" + id, $(window.parent).width() - 80, $(window.parent).height() - 80, true);
+    }
+
+</script>

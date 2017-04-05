@@ -1,0 +1,67 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Sys.DAL;
+using Pharos.Sys.Entity;
+using Pharos.Utility;
+
+namespace Pharos.Sys.BLL
+{
+    public class SysPaymentSettingBLL
+    {
+        private SysPaymentSettingDAL _dal = new SysPaymentSettingDAL();
+        /// <summary>
+        /// 获取支付宝配置信息列表
+        /// </summary>
+        /// <returns></returns>
+        public List<SysPaymentSetting> GetList(int PayType, string StoreId, int State)
+        {
+            return _dal.GetList(PayType, StoreId, State);
+        }
+
+        /// <summary>
+        /// 根据Id获取支付宝配置信息
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public SysPaymentSetting GetModel(int id)
+        {
+            var data = _dal.GetById(id);
+            if (data == null)
+            {
+                data = new SysPaymentSetting();
+            }
+            return data;
+        }
+
+        /// <summary>
+        /// 保存支付宝配置信息
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveModel(SysPaymentSetting model)
+        {
+            var result = OpResult.Fail("数据保存失败!");
+            try
+            {
+                if (_dal.ExistsById(model.Id))
+                {
+                    var re = _dal.Update(model);
+                    if (re) { result = OpResult.Success("数据保存成功"); }
+                }
+                else
+                {
+                    var re = _dal.Insert(model);
+                    if (re > 0) { result = OpResult.Success("数据保存成功"); }
+                }
+            }
+            catch (Exception ex)
+            {
+                result = OpResult.Fail("数据保存失败!" + ex.Message);
+            }
+            return result;
+        }
+
+    }
+}

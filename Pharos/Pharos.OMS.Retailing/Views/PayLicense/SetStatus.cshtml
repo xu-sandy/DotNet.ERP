@@ -1,0 +1,107 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  AgentsUsers
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .table-form td {
+        padding: 5px 0px;
+    }
+</style>
+
+<script type="text/javascript">
+
+
+
+    $(function () {
+
+        var msg = "";
+        var state = getUrlParam('state');
+        if (state == 4) {
+            msg = "请填写具体暂停原因";
+        }
+        else if (state == 5) {
+            msg = "请填写具体注销原因";
+        }
+        else if (state == 6) {
+            msg = "请填写具体无效原因"; 
+        }
+        $('#specific').validatebox({
+            required:true, 
+            missingMessage:msg, 
+            validType: 'length[1,50]'
+        });
+
+
+        //具体暂停、注销、无效原因
+        $("#specific").keyup(function () {
+            spec(this);
+        }).trigger("keyup");
+
+    });
+
+    //具体暂停、注销、无效原因
+    function spec(sTextArea) {
+        //获得textarea的maxlength属性
+        var MaxLength = sTextArea.getAttribute("maxlength");
+        var num = MaxLength - sTextArea.value.length;
+        $('#s_num').html(num);
+    }
+
+    function SaveBefore() {
+        return true;
+    }
+
+    //获取url的参数
+    function getUrlParam(name) {
+
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+
+        var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+
+        if (r != null) return unescape(r[2]); return null; //返回参数值
+
+    }
+
+
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("ids", new { value = ViewBag.idss as string })
+        @Html.Hidden("state", new { value = ViewBag.sta as string })
+        <div class="content">
+            <table class="table-form" width="100%">
+
+                <tr>
+                    <td class="name" style="width:18%;"></td>
+                    <td class="input">
+                      <div style="width:380px; overflow:hidden; line-height:21px;">
+                          @Html.Raw(ViewBag.msg)
+                      </div>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="name"></td>
+                    <td class="input">
+                        @Html.TextArea("specific", new { @class = "easyui-validatebox", style = "width:350px; height: 100px; max-width: 350px; max-height: 100px; resize: none; ", maxlength = "50" })
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="name"></td>
+                    <td class="input">限长50个字，还可以输入 <span style="color:#FF0000;" id="s_num">50</span> 个字</td>
+                </tr>
+
+            </table>
+        </div>
+    }
+</div>
+
+
+

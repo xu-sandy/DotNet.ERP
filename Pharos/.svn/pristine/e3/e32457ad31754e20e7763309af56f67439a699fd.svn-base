@@ -1,0 +1,61 @@
+﻿@{
+    ViewBag.Title = "TakeCouponIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(delText: "移除",hideDel: true, hideAdd: true, hideEdit: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>今年关怀：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox">
+                    <option>全部</option>
+                    <option selected>未关怀</option>
+                    <option>已关怀</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>日历：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option>
+                    <option>按公历</option>
+                    <option>按农历</option>
+                </select>
+            </td>
+            <td class="input-toolbar">
+                &nbsp;<input type="text" class="easyui-textbox" data-options="prompt:'距离生日天数'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-menubutton cus1" data-options="menu:'#mm1',iconCls:'icon-usable'" onclick="">发送关怀</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">关怀模板</a>
+    <div id="mm1">
+        <div data-options="iconCls:''" onclick="">全部</div>
+        <div data-options="iconCls:''" onclick="">系统</div>
+        <div data-options="iconCls:''" onclick="">短信</div>
+        <div data-options="iconCls:''" onclick="">邮件</div>
+    </div>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindTakeCouponPageList")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StateTitle', title: '编号', width: 80 },
+        { field: 'StateTitle2', title: '名称', width: 80 },
+        { field: 'StateTitle3', title: '生日', width: 80 },
+        { field: 'StateTitle4', title: '等级', width: 80 },
+        { field: 'StateTitle5', title: '类型', width: 80 },
+        { field: 'StateTitle6', title: '状态', width: 80 },
+        { field: 'StateTitle7', title: '性别', width: 80 },
+        { field: 'StateTitle8', title: '今年关怀', width: 80 },
+        { field: 'StateTitle9', title: '累积关怀', width: 80 },
+    ]];
+
+</script>

@@ -1,0 +1,94 @@
+﻿@model Pharos.Logic.Entity.MemberLevel
+@{
+    ViewBag.Title = "CreateMemberGrade";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">名称：</td>
+                    <td class="input"><input type="text" name="LevelTitle" class="easyui-validatebox" data-options="required:true" value="@Model.LevelTitle" /></td>
+                </tr>
+                <tr>
+                    <td class="name">优惠方式：</td>
+                    <td class="input">
+                        <select id="coupontype" name="CouponType" class="easyui-combobox" data-options="validType:'requiredForCombo',editable:false">
+                            @*<option value="0">请选择</option>*@
+                            @*<option value="1">方案折扣</option>*@
+                            <option value="2">固定折扣</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">积分系数：</td>
+                    <td class="input">
+                        <input type="text" name="IntegralCoefficient" class="easyui-validatebox" data-options="required:true" value="@Model.IntegralCoefficient" /> %
+                    </td>
+                </tr>
+                @*<tr>
+                        <td class="name">积分方式：</td>
+                        <td class="input">
+                            <select name="IntegerType" class="easyui-combobox">
+                                <option value="0">无</option>
+                                <option value="1">方案积分</option>
+                            </select>
+                        </td>
+                    </tr>*@
+                <tr id="discount">
+                    <td class="name">折扣：</td>
+                    <td class="input"><input name="Discount" type="text" class="easyui-numberbox" value="@Model.Discount" data-options="precision:1,required:true" /></td>
+                </tr>
+                <tr>
+                    <td class="name">升级分值：</td>
+                    <td class="input"><input name="UpgradeScore" type="text" class="easyui-numberbox" value="@Model.UpgradeScore" /></td>
+                </tr>
+                @*<tr>
+                        <td class="name">积分转换比例：</td>
+                        <td class="input"><input name="ConverRatio" type="text" class="easyui-validatebox" data-ng-options="required:true" />(即XX元自动兑换成1个积分)</td>
+                    </tr>*@
+                <tr>
+                    <td class="name">等级说明：</td>
+                    <td class="input"><textarea name="Memo" style="width:150px;height:60px;" class="easyui-validatebox" placeholder="限输入200字符" maxlength="200">@Model.Memo</textarea></td>
+                </tr>
+                <tr>
+                    <td class="name">自动升级：</td>
+                    <td class="input">
+                        <input type="checkbox" class="label-input" name="AutoUpdate" value="true" @(Model.AutoUpdate == true ? "checked='checked'" : "") /><label>自动升级</label>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+        //优惠方式下拉框变更
+        $("#coupontype").combobox({
+            onSelect: function (rec) {
+                var val = $("#coupontype").combobox("getValue");
+                if (val == 2) {
+                    $("#discount").show();
+                } else {
+                    $("input[name=Discount]").val("");
+                    $("#discount").hide();
+                }
+            }
+        })
+
+
+
+
+        if(@Model.Id>0){
+            $("#coupontype").combobox("setValue", '@Model.CouponType');
+            if('@Model.CouponType'=='2'){
+                $("#discount").show();
+            }
+        }else{
+            $("#coupontype").combobox("setValue", 2);
+        }
+    })
+</script>

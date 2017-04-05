@@ -1,0 +1,39 @@
+﻿<Window x:Class="Pharos.POS.Retailing.ChildPages.VerifyPassword"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"     
+        WindowState="Normal" WindowStyle="None"
+        xmlns:Helpers="clr-namespace:Pharos.POS.Retailing.Helper"
+        
+        AllowsTransparency="True"  WindowStartupLocation="CenterScreen"
+        Background="Transparent" BorderBrush="Transparent"   Style="{DynamicResource SkinWindowStyle}"
+        Name="mainWindow" Icon="..\Images\unlocked17.png"  FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" 
+        Title="" Height="320" Width="500">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\VerifyPassword.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid >
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"></RowDefinition>
+            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="80"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Column="0" Grid.Row="1">授权密码：</TextBlock>
+
+        <PasswordBox TabIndex="1" Grid.Column="1" Grid.Row="1" Height="40"  Width="200" VerticalContentAlignment="Center" VerticalAlignment="Bottom" HorizontalAlignment="Left" Helpers:PasswordBoxBindingHelper.IsPasswordBindingEnabled="True" Helpers:PasswordBoxBindingHelper.BindedPassword="{Binding Path=Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"></PasswordBox>
+
+        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+            <Button TabIndex="2" Width="160" Height="45" Style="{StaticResource BtnStyle}" Command="{Binding ElementName=mainWindow,Path=LoginAction}"  CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}" >确定</Button>
+        </StackPanel>
+    </Grid>
+</Window>
+

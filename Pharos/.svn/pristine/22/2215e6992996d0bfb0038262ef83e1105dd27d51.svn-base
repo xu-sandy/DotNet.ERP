@@ -1,0 +1,50 @@
+﻿using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.DAL
+{
+    /// <summary>
+    /// 销售订单 数据访问
+    /// </summary>
+    internal class SaleOrderDAL : BaseDAL
+    {
+        public DataTable QuerySaleOrdersPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var cashier = nvl["cashier"];
+            var saler = nvl["saler"];
+            var store = nvl["store"];
+
+            string sql = @"SELECT Id,CreateDT,Cashier,Saler,Store,PaySN,(PaySN + (CASE WHEN [Type]=1 THEN '</br><span style=""color:red"">换货</span>' ELSE '' END)) PaySNFormat,TotalAmount,PreferentialPrice,ApiTitle,Title,
+                        (Barcode+(CASE WHEN TuiCount>0 THEN '</br><span style=""color:red"">已退</span>' ELSE '' END)+(CASE WHEN TuiCount>0 AND HuanCount>0 THEN '</br><span style=""color:red"">|</span>' ELSE '' END)+(CASE WHEN HuanCount>0 THEN '</br><span style=""color:red"">已换</span>' ELSE '' END)) BarcodeFormat,
+                        PurchaseNumber,SysPrice,ActualPrice,Barcode,SalesClassifyId FROM(	
+		                SELECT a.*,dbo.F_UserNameById(CreateUID) Cashier,dbo.F_UserNameById(Salesman) Saler, dbo.F_StoreNameById(StoreId) Store,
+        				ISNULL(c.Title,dbo.F_ProductNameBybarcode(b.Barcode)) Title, b.PurchaseNumber, b.SysPrice, b.ActualPrice, b.Barcode, b.SalesClassifyId,
+                        STUFF((SELECT ','+Title FROM ConsumptionPayment,ApiLibrary WHERE ApiLibrary.ApiCode=dbo.ConsumptionPayment.ApiCode AND PaySN=a.PaySN FOR XML PATH('')),1,1,'') ApiTitle,
+                        (SELECT COUNT(*) FROM dbo.SalesReturns sr INNER JOIN dbo.SalesReturnsDetailed srd ON srd.ReturnId=sr.ReturnId WHERE srd.ReceiptsNumber=b.PaySN AND (sr.ReturnType=0 OR sr.ReturnType=2) AND srd.Barcode=b.Barcode) AS TuiCount,
+                        (SELECT COUNT(*) FROM dbo.SalesReturns sr INNER JOIN dbo.SalesReturnsDetailed srd ON srd.ReturnId=sr.ReturnId WHERE srd.ReceiptsNumber=b.PaySN AND (sr.ReturnType=1) AND srd.Barcode=b.Barcode) AS HuanCount
+                        FROM dbo.SaleOrders a
+				        INNER JOIN dbo.SaleDetail b ON a.PaySN = b.PaySN
+				        LEFT JOIN dbo.ProductRecord c ON b.Barcode = c.Barcode
+		                WHERE 1 = 1 ";
+            if (!startDate.IsNullOrEmpty())
+                sql += " AND a.CreateDT >= '" + startDate + "'";
+            if (!endDate.IsNullOrEmpty())
+                sql += " AND a.CreateDT < '" + endDate + "'";
+            if (!store.IsNullOrEmpty())
+                sql += " AND StoreId = '" + store + "'";
+            if (!cashier.IsNullOrEmpty())
+                sql += " AND CreateUID = '" + cashier + "'";
+            if (!saler.IsNullOrEmpty())
+                sql += " AND Salesman = '" + saler + "'";
+            sql += ") tb";
+            return base.ExceuteSqlForPage(sql, out recordCount);
+        }
+    }
+}

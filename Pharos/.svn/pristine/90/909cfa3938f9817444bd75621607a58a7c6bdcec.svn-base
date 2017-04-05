@@ -1,0 +1,114 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.EntityExtend;
+using Pharos.Logic.OMS.Entity.View;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.BLL;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class BankCardInfoController : BaseController
+    {
+
+        //结算账户信息BLL
+        [Ninject.Inject]
+        BankAccountService bankAccountService { get; set; }
+
+        [Ninject.Inject]
+        //商户资料
+        TradersService tradersService { get; set; }
+
+        public ActionResult Index()
+        {
+            //指派人
+            ViewBag.user = ListToSelect(tradersService.getUserList().Select(o => new SelectListItem() { Value = o.UserId, Text = o.FullName }), emptyTitle: "全部");
+            return View();
+        }
+
+        public ActionResult Save(int? id)
+        {
+            var obj = new BankAccount
+            {
+
+            };
+            if (id.HasValue)
+            {
+
+                obj = bankAccountService.GetEntityById(id.Value);
+            }
+            return View(obj.IsNullThrow());
+        }
+
+        public ActionResult FindPageList()
+        {
+            var count = 0;
+            var list = bankAccountService.GetPageList(Request.Params , out count);
+            return ToDataGrid(list, count);
+        }
+
+        /// <summary>
+        /// 更新状态
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        public ActionResult UpState(string ids, short state)
+        {
+            string msg = "";
+            if (state == 2)
+            {
+                msg = "您将设为可用账户！";
+            }
+            else if (state == 3)
+            {
+                msg = "您将驳回申请！";
+            }
+            else if (state == 4)
+            {
+                msg = "您将暂停账户！";
+            }
+            else if (state == 5)
+            {
+                msg = "您将注销账户！";
+            }
+            else if (state == 6)
+            {
+                msg = "您将设置账户为无效！";
+            }
+            ViewBag.msg = msg;
+            //ids
+            ViewBag.idss = ids;
+            ViewBag.sta = state;
+            return View();
+        }
+
+        /// <summary>
+        /// 更新状态
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="state"></param>
+        /// <param name="specific"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult UpState(string ids, short state, string specific)
+        {
+            return new JsonNetResult(bankAccountService.UpState(ids, state, specific));
+        }
+
+        /// <summary>
+        /// 是否能设置状态
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult ExistState(string ids, short state)
+        {
+            return new JsonNetResult(bankAccountService.ExistState(ids, state));
+        }
+
+    }
+}

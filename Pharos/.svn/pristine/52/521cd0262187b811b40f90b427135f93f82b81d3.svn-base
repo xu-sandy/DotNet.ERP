@@ -1,0 +1,74 @@
+﻿using Pharos.Client.AutoUpdater;
+using Pharos.Wpf.HotKeyHelper;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
+using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Xml;
+
+namespace Test
+{
+    /// <summary>
+    /// App.xaml 的交互逻辑
+    /// </summary>
+    public partial class App : Application
+    {
+        public App() 
+        {
+            //Todo Load Hotkey Config
+            //HotKey.LoadConfig();
+
+            #region check and download new version program
+            bool bHasError = false;
+            IAutoUpdater autoUpdater = new AutoUpdater();
+            try
+            {
+                autoUpdater.Update();
+            }
+            catch (WebException exp)
+            {
+                MessageBox.Show("Can not find the specified resource");
+                bHasError = true;
+            }
+            catch (XmlException exp)
+            {
+                bHasError = true;
+                MessageBox.Show("Download the upgrade file error");
+            }
+            catch (NotSupportedException exp)
+            {
+                bHasError = true;
+                MessageBox.Show("Upgrade address configuration error");
+            }
+            catch (ArgumentException exp)
+            {
+                bHasError = true;
+                MessageBox.Show("Download the upgrade file error");
+            }
+            catch (Exception exp)
+            {
+                bHasError = true;
+                MessageBox.Show("An error occurred during the upgrade process");
+            }
+            finally
+            {
+                if (bHasError == true)
+                {
+                    try
+                    {
+                        autoUpdater.RollBack();
+                    }
+                    catch (Exception)
+                    {
+                        //Log the message to your file or database
+                    }
+                }
+            }
+            #endregion
+        }
+    }
+}

@@ -1,0 +1,170 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Http;
+using Newtonsoft.Json.Linq;
+using Pharos.Api.Retailing.Models;
+using Pharos.Logic.ApiData.Mobile.Services;
+using Pharos.Api.Retailing.Models.Mobile;
+using Pharos.Logic.ApiData.Mobile.Exceptions;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Utility.Helpers;
+namespace Pharos.Api.Retailing.Controllers.Mobile
+{
+    /// <summary>
+    /// 盘点
+    /// </summary>
+    [RoutePrefix("api/mobile")]
+    public class TakeStockController : ApiController
+    {
+        /// <summary>
+        /// 根据门店获取相关批次列表
+        /// </summary>
+        /// <param name="requestParams">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetStoreBatchnoList")]
+        public object GetStoreBatchnoList([FromBody]BaseApiParams requestParams)
+        {
+            //string storeId = requestParams.Property("storeId", true);
+            return TakeStockService.GetStoreBatchnoList(requestParams.StoreId);
+        }
+        /// <summary>
+        /// 根据门店批次获取盘点员列表
+        /// </summary>
+        /// <param name="requestParams">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetCheckerListByBatchno")]
+        public object GetCheckerListByBatchno([FromBody]TakeStockBatchRequest requestParams)
+        {
+            //string storeId = requestParams.Property("storeId", true);
+            return TakeStockService.GetCheckerByBatchnoList(requestParams.CheckBatch);
+        }
+        /// <summary>
+        /// 根据门店和批次获取未盘点列表
+        /// </summary>
+        /// <param name="requestParams">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetTakestockUnList")]
+        public PageResult<object> GetTakestockUnList([FromBody]TakeStockRequest requestParams)
+        {
+            if(requestParams.BaseList==null)
+                throw new MessageException("BaseList为空!");
+            return TakeStockService.GetTakestockList(requestParams.StoreId, requestParams.CheckBatch, requestParams.Barcode, "", "2", requestParams.BaseList.PageIndex, requestParams.BaseList.PageSize);
+        }
+        /// <summary>
+        /// 根据门店和批次获取已盘点列表
+        /// </summary>
+        /// <param name="requestParams">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetTakestockList")]
+        public object GetTakestockList([FromBody]TakeStockRequest requestParams)
+        {
+            if (requestParams.BaseList == null)
+                throw new MessageException("BaseList为空!");
+            return TakeStockService.GetTakestockList(requestParams.StoreId, requestParams.CheckBatch, requestParams.Barcode, requestParams.UserCode, requestParams.Substract, requestParams.BaseList.PageIndex, requestParams.BaseList.PageSize);
+        }
+        /// <summary>
+        /// 根据门店,批次和条码自动提示列表
+        /// </summary>
+        /// <param name="requestParams">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetTakestockByinputBarcode")]
+        public object GetTakestockByinputBarcode([FromBody]JObject requestParams)
+        {
+            string storeId = requestParams.Property("storeId", true);
+            string checkBatch = requestParams.Property("checkBatch", true);
+            string barcode = requestParams.Property("barcode", true);
+            return TakeStockService.GetTakestockByinputBarcode(storeId, checkBatch,barcode);
+        }
+        /// <summary>
+        /// 根据门店,批次和条码获取盘点商品
+        /// </summary>
+        /// <param name="requestParams">{}</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetTakestockBybarcode")]
+        public object GetTakestockBybarcode([FromBody]TakeStockRequest requestParams)
+        {
+            return TakeStockService.GetTakestockBybarcode(requestParams.StoreId, requestParams.CheckBatch, requestParams.Barcode,requestParams.UserCode);
+        }
+        /// <summary>
+        /// 盘点录入
+        /// </summary>
+        /// <param name="data">{}</param>
+        /// <param name="cid">企业ID</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("SaveStock")]
+        public void SaveStock(string data,int cid)
+        {
+            //SaveStock([FromBody]SaveTakeStockRequest requestParams)
+            /*string storeId = requestParams.Property("storeId", true);
+            string checkBatch = requestParams.Property("checkBatch", true);
+            string userCode = requestParams.Property("userCode", true);
+            string barcodes = requestParams.Property("barcodes", true);
+            var barnums = new Dictionary<string, decimal>();
+            if (!string.IsNullOrWhiteSpace(barcodes))
+            {
+                var bars = JArray.Parse(barcodes);
+                for (var i = 0; i < bars.Count; i++)
+                {
+                    var barjson = JObject.Parse(bars[i].ToString());
+                    var barc = barjson.Property("barcode", true);
+                    var num = barjson.Property("num", true);
+                    if (string.IsNullOrWhiteSpace(barc) || string.IsNullOrWhiteSpace(num))
+                        continue;
+                    barnums[barc] = Convert.ToDecimal(num);
+                }
+            }*/
+            if (string.IsNullOrWhiteSpace(data))
+                throw new MessageException("参数不能为空!");
+            var requestParams = data.ToObject<SaveTakeStockRequest>();
+            if (requestParams == null)
+                throw new MessageException("JSON参数不正确!");
+            TakeStockService.SaveStock(requestParams.StoreId, requestParams.CheckBatch, requestParams.UserCode, requestParams.TakeStockList.ToDictionary(o => o.Barcode, o => o.Number));
+        }
+        /// <summary>
+        /// 盘点复盘
+        /// </summary>
+        /// <param name="data">{}</param>
+        /// <param name="cid">企业ID</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("ReSaveStock")]
+        public void ReSaveStock(string data,int cid)
+        {
+            //[FromBody]SaveTakeStockRequest requestParams
+            if (string.IsNullOrWhiteSpace(data))
+                throw new MessageException("参数不能为空!");
+            var requestParams = data.ToObject<SaveTakeStockRequest>();
+            if (requestParams == null)
+                throw new MessageException("JSON参数不正确!");
+
+            string barcode = "";
+            decimal? number=null;
+            if (requestParams.TakeStockList.Any())
+            {
+                barcode = requestParams.TakeStockList[0].Barcode;
+                number = requestParams.TakeStockList[0].Number;
+            }
+            TakeStockService.ReSaveStock(requestParams.StoreId, requestParams.CheckBatch, requestParams.UserCode, barcode, number);
+        }
+        /// <summary>
+        /// 获取盘点日志
+        /// </summary>
+        /// <param name="requestParams"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("GetTakestockLogs")]
+        public IEnumerable<dynamic> GetTakestockLogs([FromBody]TakeStockLogRequest requestParams)
+        {
+            return TakeStockService.TakeStockLogs(requestParams.CheckBatch, requestParams.Barcode);
+        }
+    }
+}

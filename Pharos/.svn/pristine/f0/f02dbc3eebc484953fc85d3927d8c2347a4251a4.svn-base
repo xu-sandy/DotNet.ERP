@@ -1,0 +1,81 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: true, hideDel: true));
+}
+
+@*销售员日结报表*@
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" id="date" value="@DateTime.Now.ToString("yyyy-MM")" class="datacontrol Wdate" onclick="WdatePicker({ dateFmt: 'yyyy-MM', maxDate: '#F{$dp.$D(\'date2\')}' })" />
+            </td>
+            <td>-</td>
+            <td class="input-toolbar">
+                <input name="date2" id="date2" value="@DateTime.Now.ToString("yyyy-MM")" class="datacontrol Wdate" onclick="WdatePicker({ dateFmt: 'yyyy-MM', minDate: '#F{$dp.$D(\'date\')}' })" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @*@Html.DropDownList("store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datecontrol", data_options = (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelHeight:'auto',panelMaxHeight:200" })*@
+                @Form.Combobox("store", ViewBag.stores as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>收银员：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("cashier", ViewBag.cashiers as List<SelectListItem>, dataOptions: "editable:false,panelHeight:'auto',panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>导购员：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("saler", ViewBag.salers as List<SelectListItem>, dataOptions: "editable:false,panelHeight:'auto',panelMaxHeight:200")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = '@Url.Action("QueryCashierSaleOrderMonthPageList")';
+    pharos.manager.pagination = true;
+    pharos.manager.showFooter = true;
+    pharos.manager.columns = [[
+        { field: 'Month', title: '月结时间', width: 90, align: 'center' },
+        { field: 'Cashier', title: '收银员', width: 90 },
+        { field: 'Saler', title: '导购员', width: 90 },
+        { field: 'FirstTime', title: '首笔时间', width: 130, align: 'center' },
+        { field: 'LastTime', title: '末笔时间', width: 130, align: 'center' },
+        { field: 'XSCount', title: '销售笔数', width: 60, align: 'center' },
+        { field: 'XSMoney', title: '销售金额', width: 80 },
+        { field: 'ZSCount', title: '赠送笔数', width: 60, align: 'center' },
+        { field: 'ZSMoney', title: '赠送金额', width: 80, align: 'center' },
+        { field: 'TUICount', title: '退货笔数', width: 60, align: 'center' },
+        { field: 'TUIMoney', title: '退货金额', width: 80, align: 'center' },
+        { field: 'HUANCount', title: '换货笔数', width: 60, align: 'center' },
+        { field: 'HUANMoney', title: '换货金额', width: 80, align: 'center' },
+        { field: 'MLCount', title: '抹零笔数', width: 60, align: 'center' },
+        { field: 'MLMoney', title: '抹零金额', width: 80, align: 'center' }
+    ]];
+    @*pharos.manager.editItem = function (id, row) {
+        openDialog("销售明细", "@Url.Action("SaleOrderDetail")?paysn=" + row.PaySN + "&" + $('#frmsearch').serialize(), 1000, 560, true);
+    }*@
+    function Export() {
+        var date = $("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        window.location.href = '@Url.Action("SaleExport")?type=11&' + $('#frmsearch').serialize();
+    }
+
+
+</script>

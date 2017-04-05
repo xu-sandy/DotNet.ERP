@@ -1,0 +1,167 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.Logic.DAL;
+using Pharos.SyncService.SyncEntities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.SyncService.Helpers;
+using Pharos.SyncService.Exceptions;
+using System.Data.Entity;
+
+
+namespace Pharos.SyncService.RemoteDataServices
+{
+    public class SalePackageSyncRemoteService : ISyncDataService
+    {
+        public TimeSpan SyncInterval
+        {
+            get
+            {
+                return new TimeSpan(0, 0, 1);
+            }
+        }
+        public string Name
+        {
+            get
+            {
+                return this.GetType().ToString();
+            }
+
+        }
+        public Microsoft.Synchronization.SyncDirectionOrder SyncDirectionOrder
+        {
+            get { return Microsoft.Synchronization.SyncDirectionOrder.UploadAndDownload; }
+        }
+
+        public IEnumerable<ISyncDataObject> GetSyncObjects(int companyId, string storeId)
+        {
+            try
+            {
+                using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+                {
+
+                    var result = db.Database.SqlQuery<SyncDataObject>(@"select  'SalePackage' EntityType, s.SyncItemId,(select max(t.SyncItemVersion) from ( 
+                    select s.SyncItemVersion
+                    union all
+                    select a.SyncItemVersion from SaleDetail a where s.PaySN= a.PaySN
+                    union all
+                    select b.SyncItemVersion from ConsumptionPayment b where s.PaySN= b.PaySN
+                    union all
+                    select c.SyncItemVersion from WipeZero c where s.PaySN= c.PaySN
+                    ) as t) SyncItemVersion  from SaleOrders s where s.storeid =@p0 and s.companyId= @p1", storeId, companyId).ToList();
+                    return result;
+                }
+            }
+            catch
+            {
+                return new List<ISyncDataObject>();
+            }
+        }
+        private ISyncDataObject GetVersion(Guid syncid, int companyId, string storeId, EFDbContext db)
+        {
+            var result = db.Database.SqlQuery<SyncDataObject>(@"select 'SalePackage' as  EntityType, SyncItemId,max (SyncItemVersion)  as SyncItemVersion from (
+select  s.syncitemid,s.SyncItemVersion from saleorders s where s.syncitemid = @p0
+union all
+select  s.syncitemid,d.SyncItemVersion from saleorders s,SaleDetail d where s.paysn = d.paysn and s.syncitemid = @p0
+union all
+select  s.syncitemid,b.SyncItemVersion from saleorders s,ConsumptionPayment b where s.paysn = b.paysn and s.syncitemid = @p0
+union all
+select  s.syncitemid,w.SyncItemVersion from saleorders s,WipeZero w where s.paysn =w.paysn  and s.syncitemid = @p0) as t group by SyncItemId ", syncid).ToList();
+            return result.FirstOrDefault();
+        }
+
+        public ISyncDataObject GetItem(Guid guid, int companyId, string storeId)
+        {
+            using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+            {
+                var orders = db.SaleOrders.Where(o => o.SyncItemId == guid).ToList();
+                var order = orders.FirstOrDefault();
+                var saleDetails = db.SaleDetails.Where(o => o.PaySN == order.PaySN && o.CompanyId == companyId).ToList();
+                var consumptionPayments = db.ConsumptionPayments.Where(o => o.PaySN == order.PaySN && o.CompanyId == companyId).ToList();
+                var wipeZeros = db.WipeZeros.Where(o => o.PaySN == order.PaySN && o.CompanyId == companyId).ToList();
+                var package = new Package() { SyncItemId = guid, EntityType = "SalePackage" };
+                package.Init(orders.Select(o => new SaleOrders().InitEntity(o)).ToList());
+                package.Init(saleDetails.Select(o => new SaleDetail().InitEntity(o)).ToList());
+                package.Init(consumptionPayments.Select(o => new ConsumptionPayment().InitEntity(o)).ToList());
+                package.Init(wipeZeros.Select(o => new WipeZero().InitEntity(o)).ToList());
+                return package;
+            }
+        }
+        public IDictionary<Microsoft.Synchronization.SyncId, ISyncDataObject> GetItems(IEnumerable<Microsoft.Synchronization.SyncId> ids, int companyId, string StoreId)
+        {
+            using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+            {
+                var syncidsdict = ids.ToDictionary(o => o.GetGuidId(), o => o);
+                var syncids = syncidsdict.Keys;
+                var query = db.SaleOrders.Where(o => syncids.Contains(o.SyncItemId)).Include(o => o.SaleDetails).Include(o => o.WipeZeros).Include(o => o.ConsumptionPayments).ToList();
+       
+                return query.ToDictionary(o => syncidsdict[o.SyncItemId], o =>
+                {
+                    var package = new Package() { SyncItemId = o.SyncItemId, EntityType = "SalePackage" };
+                    package.Init(new SaleOrders[] { new SaleOrders().InitEntity(o) });
+                    package.Init(o.SaleDetails.Select(p => new SaleDetail().InitEntity(p)).ToList());
+                    package.Init(o.ConsumptionPayments.Select(p => new ConsumptionPayment().InitEntity(p)).ToList());
+                    package.Init(o.WipeZeros.Select(p => new WipeZero().InitEntity(p)).ToList());
+                    return package as ISyncDataObject;
+                });
+            }
+        }
+        public byte[] CreateItem(ISyncDataObject data, Guid guid, int companyId, string storeId)
+        {
+            var temp = data as Package;
+            using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+            {
+                if (!db.SaleOrders.Any(o => o.SyncItemId == guid))
+                {
+                    var orders = temp.GetEntities<SaleOrders>();
+                    var saleDetails = temp.GetEntities<SaleDetail>();
+                    var consumptionPayments = temp.GetEntities<ConsumptionPayment>();
+                    var wipeZeros = temp.GetEntities<WipeZero>();
+                    db.SaleOrders.AddRange(orders.Select(o => new Pharos.Logic.Entity.SaleOrders().InitEntity(o, false)));
+                    db.SaleDetails.AddRange(saleDetails.Select(o => new Pharos.Logic.Entity.SaleDetail().InitEntity(o, false)));
+                    db.ConsumptionPayments.AddRange(consumptionPayments.Select(o => new Pharos.Logic.Entity.ConsumptionPayment().InitEntity(o, false)));
+                    db.WipeZeros.AddRange(wipeZeros.Select(o => new Pharos.Logic.Entity.WipeZero().InitEntity(o, false)));
+                    db.SaveChanges();
+                }
+                var version = GetVersion(guid, companyId, storeId, db);
+                return version.SyncItemVersion;
+            }
+        }
+
+        public byte[] UpdateItem(Guid guid, ISyncDataObject mergedData, int companyId, string storeId)
+        {
+            var temp = mergedData as Package;
+            using (var db = SyncDbContextFactory.Factory<EFDbContext>())
+            {
+                var orders = temp.GetEntities<SaleOrders>();
+
+                var order = db.SaleOrders.FirstOrDefault(o => o.SyncItemId == guid);
+                if (order == null)
+                    throw new SyncService.Exceptions.SyncException("未能找到更新的项！");
+                var tempOrder = orders.FirstOrDefault();
+                order.State = tempOrder.State;
+                order.IsProcess = tempOrder.IsProcess;
+                order.Receive = tempOrder.Receive;
+                order.ReturnDT = tempOrder.ReturnDT;
+                order.ReturnOrderUID = tempOrder.ReturnOrderUID;
+                order.IsTest = tempOrder.IsTest;
+                order.SyncItemId = tempOrder.SyncItemId;
+                order.SyncItemVersion = tempOrder.SyncItemVersion;
+                db.SaveChanges();
+                var version = GetVersion(guid, companyId, storeId, db);
+                return version.SyncItemVersion;
+            }
+        }
+
+        public void DeleteItem(Guid syncItemId, int companyId, string storeId)
+        {
+            throw new SyncException("销售数据包不允许删除远程数据");
+        }
+
+        public ISyncDataObject Merge(ISyncDataObject syncDataObject1, ISyncDataObject syncDataObject2, int companyId, string storeId)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

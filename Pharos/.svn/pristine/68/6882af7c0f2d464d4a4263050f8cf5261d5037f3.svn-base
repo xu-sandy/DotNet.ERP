@@ -1,0 +1,50 @@
+﻿
+-----销售订单主表退换货Id字段长度更改-----
+
+ALTER TABLE [dbo].[SaleOrders] ALTER COLUMN ReturnId NVARCHAR(4000) NULL
+
+
+-----添加根据Barcode得到商品名称函数-----
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE FUNCTION [dbo].[F_CommodityTitleByBarcode]
+(
+	@barcode VARCHAR(30)
+)
+RETURNS Nvarchar(50)
+AS
+BEGIN
+	
+	DECLARE @Title Nvarchar(50);
+	SELECT @Title=[Title] FROM dbo.ProductRecord WHERE Barcode=@barcode;
+	IF(@Title is null)
+		BEGIN
+			SELECT @Title=[Title] FROM dbo.ProductRecord WHERE ProductCode=@barcode;
+		END
+	IF(@Title is null)
+		BEGIN
+			SELECT @Title=[Title] FROM dbo.Bundling WHERE NewBarcode=@barcode;
+		END
+	RETURN ISNULL(@Title,'');
+
+END
+GO
+
+
+-----添加销售明细（包含售后退换信息）视图-----
+
+CREATE VIEW [dbo].[Vw_SaleDetail]
+AS
+SELECT     d.Id, d.PaySN, d.Barcode, dbo.F_CommodityTitleByBarcode(d.Barcode) AS Title, d.PurchaseNumber, d.BuyPrice, d.SysPrice, d.ActualPrice, d.SalesClassifyId,
+                          (SELECT     COUNT(*) AS Expr1
+                            FROM          dbo.SalesReturnsDetailed AS b
+                            WHERE      (o.ReturnId LIKE '%' + ReturnId + '%') AND (Barcode = d.Barcode)) AS HasReturned,
+                          (SELECT     SUM(Number) AS Expr1
+                            FROM          dbo.SalesReturnsDetailed AS b
+                            WHERE      (o.ReturnId LIKE '%' + ReturnId + '%') AND (Barcode = d.Barcode)) AS ReturnedNumber, o.ReturnId, o.StoreId, o.Type, o.State
+FROM         dbo.SaleOrders AS o INNER JOIN
+                      dbo.SaleDetail AS d ON o.PaySN = d.PaySN

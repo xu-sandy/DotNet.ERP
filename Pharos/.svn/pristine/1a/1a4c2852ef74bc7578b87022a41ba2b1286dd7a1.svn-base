@@ -1,0 +1,325 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using System.Data;
+using System.Collections.Specialized;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.Mapping;
+using Pharos.Utility;
+
+namespace Pharos.Logic.BLL
+{
+    public class MsppBLL : BaseService<OrderDistribution>
+    {
+        /// <summary>
+        /// 订单配送列表
+        /// </summary>
+        /// <param name="nvl">查询条件</param>
+        /// <param name="recordCount">返回总行数</param>
+        /// <returns>列表</returns>
+        public static object FindPageList(NameValueCollection nvl, out int recordCount)
+        {
+            var query = BaseService<VwOrder>.CurrentRepository.QueryEntity;
+            var state = nvl["State"];
+            var startDate = nvl["StartDate"];
+            var endDate = nvl["EndDate"];
+                        
+            if (!state.IsNullOrEmpty())
+            {
+                var st = short.Parse(state);
+                query = query.Where(d => d.State == st);
+            }
+            if (!startDate.IsNullOrEmpty() && !endDate.IsNullOrEmpty())
+            {
+                var st1 = DateTime.Parse(startDate);
+                var st2 = DateTime.Parse(endDate);
+                if (st1 > st2)
+                {
+                    var temp = st1;
+                    st1 = st2;
+                    st2 = temp;
+                    st2 = st2.AddDays(1);
+                    query = query.Where(d => d.CreateDT >= st1 && d.CreateDT < st2);
+                }
+                else
+                {
+                    st1 = DateTime.Parse(startDate);
+                    st2 = DateTime.Parse(endDate).AddDays(1);
+                    query = query.Where(d => d.CreateDT >= st1 && d.CreateDT < st2);
+                }
+            }
+            string userID = Pharos.Sys.SupplierUser.SupplierId;
+            query = query.Where(o => o.State > 0 && o.SupplierID == userID);
+            recordCount = query.Count();
+            //return query.ToPageList(nvl);
+            return query.ToPageList(nvl).Select(o => new
+            {
+                o.Id,
+                o.IndentOrderId,
+                o.State,               
+                StateTitle=o.StateTitle,
+                o.StoreTitle,
+                o.RecipientsTitle,
+                o.Phone,
+                IndentNums=o.IndentNums.ToAutoString(),
+                OrderTotal=o.OrderTotal.ToAutoString(),
+                DeliveryNums=o.DeliveryNums.ToAutoString(),
+                AcceptNums=o.AcceptNums.ToAutoString(),
+                CreateDT=o.CreateDT.ToString("yyyy-MM-dd"),
+                o.PeiSongStartDate,
+                o.PeiSongEndDate,
+                o.SupplierID,
+                o.OrderGiftnum
+            });
+
+        }
+
+        /// <summary>
+        /// 加载配送记录
+        /// </summary>
+        /// <param name="orderId">订货单ID</param>
+        /// <param name="recordCount">配送记录数</param>
+        /// <returns>配送记录</returns>
+        public static object LoadDeliveryRecordList(string orderId, string barcode, out int recordCount)
+        {
+            var queryDelivery = BaseService<OrderDistribution>.CurrentRepository.QueryEntity;
+            var queryProduct = BaseService<VwProduct>.CurrentRepository.QueryEntity;
+            var query = from x in queryDelivery
+                        join y in queryProduct on x.Barcode equals y.Barcode
+                        where x.IndentOrderId == orderId && x.Barcode == barcode
+                        select new
+                        {
+                            x.Id,
+                            x.Barcode,
+                            x.DistributionBatch,
+                            x.ProducedDate,
+                            x.ProductionBatch,
+                            x.DeliveryNum,
+                            x.DeliveryDT,
+                            x.State,
+                            y.Title
+                        };
+
+            recordCount = query.Count();
+            var sql = query.ToString();
+            return query.ToPageList().Select(o => new
+            {
+                o.Id,
+                o.Barcode,
+                o.DistributionBatch,
+                o.ProducedDate,
+                o.ProductionBatch,
+                DeliveryNum=(o.DeliveryNum??0).ToAutoString(),
+                o.DeliveryDT,
+                StateTitle = Enum.GetName(typeof(OrderDistributionState), o.State),
+                o.Title
+            });
+        }
+       
+        /// <summary>
+        /// 获取订单详情
+        /// </summary>
+        /// <param name="orderId">订单ID</param>
+        /// <param name="recordCount">返回记录数</param>
+        /// <returns></returns>
+        public static object LoadDetailList(string orderId)     //todo:数量格式化
+        {
+            //var queryDetail = BaseService<IndentOrderList>.CurrentRepository.QueryEntity;
+            //var queryProduct = BaseService<VwProduct>.CurrentRepository.QueryEntity;
+            //var query = from x in queryDetail
+            //            //join a in queryProduct on x.Barcode equals a.Barcode into tempProduct
+            //            //from y in tempProduct.DefaultIfEmpty()
+            //            join y in queryProduct on x.Barcode equals y.Barcode
+
+            //            //join z in CurrentRepository.QueryEntity on x.IndentOrderId equals z.IndentOrderId 
+            //            where x.IndentOrderId == orderId
+            //            select new
+            //            {
+            //                x.Id,
+            //                y.ProductCode,
+            //                y.Title,
+            //                y.Barcode,
+            //                y.SubUnitId,
+            //                //y.SysPrice,
+            //                SysPrice = x.Price,
+            //                y.SubUnit,
+            //                x.IndentNum,
+            //                AlreadyDeliveryNum = x.DeliveryNum,
+            //                x.Subtotal,
+            //                PreDeliveryNum = (x.IndentNum - x.DeliveryNum < 0) ? 0 : (x.IndentNum - x.DeliveryNum),
+            //                y.Expiry
+            //            };
+            int count=0;
+            object footer = null;
+            var dt = OrderService.LoadDetailList(orderId, out count, ref footer);
+            dt.Columns.Add("ProducedDate");
+            dt.Columns.Add("ProductionBatch");
+            dt.Columns.Add("PreDeliveryNum");
+            dt.Columns.Add("AlreadyDeliveryNum");
+            foreach(DataRow dr in dt.Rows)
+            {
+                var indentNum=(decimal)dr["IndentNum"];
+                var deliverNum=(decimal)dr["DeliveryNum"];
+                dr["DeliveryNum"] = (indentNum - deliverNum < 0) ? 0 : (indentNum - deliverNum);
+                dr["AlreadyDeliveryNum"] = deliverNum.ToAutoString();
+            }
+            return dt;
+        }
+        /// <summary>
+        /// 配送
+        /// </summary>
+        /// <param name="indentOrderId">订单ID</param>
+        /// <param name="updated"></param>
+        /// <param name="updated2">界面编辑时的值</param>
+        /// <param name="disBatch">配送批次</param>
+        /// <param name="disMemo">备注</param>
+        /// <returns>操作结果</returns>       
+        public static OpResult Save(string indentOrderId, string updated, string updated2, string disBatch, string disMemo, bool producedDate=true)
+        {
+            var op = new OpResult();
+            try
+            {
+                var dists = updated.ToObject<List<OrderDistribution>>();
+
+                if (!updated2.IsNullOrEmpty())
+                {
+                    var dists2 = updated2.ToObject<List<OrderDistribution>>();
+                    if (dists2.Any())
+                    {
+                        var barcodes = dists2.Select(o => o.Barcode);
+                        dists.RemoveAll(o => barcodes.Contains(o.Barcode));
+                        dists.AddRange(dists2);
+                    }
+                }
+                dists = dists.Where(o => o.DeliveryNum > 0).ToList();
+
+                var firstDisBatch = DateTime.Now.ToString("yyyyMMdd") + "00001";
+                var firstDisBatchToInt = long.Parse(firstDisBatch);
+
+                var currentSupplier = BaseService<IndentOrder>.FindList(o => o.SupplierID == Pharos.Sys.SupplierUser.SupplierId).Select(o => o.IndentOrderId).ToArray();
+                var min = DateTime.Parse(DateTime.Now.ToShortDateString());
+                var max = min.AddDays(1);
+                var sources = BaseService<OrderDistribution>.FindList(o => currentSupplier.Contains(o.IndentOrderId) && o.DeliveryDT >= min && o.DeliveryDT < max).Select(o => o.DistributionBatch).Distinct();
+                var distributionCount = sources.Count();
+
+                if (!dists.Any())
+                {
+                    op.Message = "配送量必须大于0！";
+                }
+                else
+                {
+                    if (IsExist(o => o.DistributionBatch == disBatch && currentSupplier.Contains(o.IndentOrderId) && o.DeliveryDT >= min && o.DeliveryDT < max))
+                    {
+                        op.Message = "已存在该配送批次";
+                        return op;
+                    }
+                    dists.Each(o =>
+                    {
+                        o.IndentOrderId = indentOrderId;
+
+                        if (disBatch.IsNullOrEmpty() && distributionCount == 0)
+                        {
+                            o.DistributionBatch = firstDisBatch;
+                        }
+                        if (disBatch.IsNullOrEmpty() && distributionCount > 0)
+                        {
+                            o.DistributionBatch = (firstDisBatchToInt + distributionCount).ToString();
+                        }
+                        if (!disBatch.IsNullOrEmpty())
+                        {
+                            o.DistributionBatch = disBatch;
+                        }
+                        o.Memo = disMemo;
+                        o.DistributionId = CommonRules.GUID;
+                        o.DeliveryDT = DateTime.Now;
+                        o.State = 4;
+
+                        var oProduct = BaseService<VwProduct>.Find(d => d.Barcode == o.Barcode || (","+d.Barcodes+",").Contains(","+o.Barcode+","));
+
+                        //如果保质期>0,截止保质日期=生产日期+保质期
+                        if (oProduct.Expiry > 0 && producedDate)
+                        {
+                            if (o.ProducedDate.IsNullOrEmpty())
+                                throw new FormatException();
+                            o.ExpiryDateUnit = oProduct.ExpiryUnit;
+                            o.ExpiryDate = oProduct.Expiry;
+
+                            if (o.ExpiryDateUnit == 1)
+                            {
+                                o.ExpirationDate = DateTime.Parse(o.ProducedDate).AddDays(o.ExpiryDate).ToString("yyyy-MM-dd");
+                            }
+                            if (o.ExpiryDateUnit == 2)
+                            {
+                                o.ExpirationDate = DateTime.Parse(o.ProducedDate).AddMonths(o.ExpiryDate).ToString("yyyy-MM-dd");
+                            }
+                            if (o.ExpiryDateUnit == 3)
+                            {
+                                o.ExpirationDate = DateTime.Parse(o.ProducedDate).AddYears(o.ExpiryDate).ToString("yyyy-MM-dd");
+                            }
+                        }
+                        //如果保质期不限，截止保质日期=当前日期+20年
+                        else if (oProduct.Expiry == 0)
+                        {
+                            o.ExpiryDateUnit = 3;
+                            o.ExpiryDate = 20;
+                            o.ExpirationDate = DateTime.Now.AddYears(o.ExpiryDate).ToString("yyyy-MM-dd");
+                        }
+                    });
+
+                    var details = BaseService<IndentOrderList>.FindList(o => o.IndentOrderId == indentOrderId && o.Nature == 0);
+                    var order = OrderService.Find(o => o.IndentOrderId == indentOrderId);
+                    foreach (var dt in details)
+                    {
+                        var obj = dists.FirstOrDefault(o => o.Barcode == dt.Barcode);
+                        if (obj == null) continue;
+                        dt.DeliveryNum += obj.DeliveryNum.GetValueOrDefault();
+                        if (dt.DeliveryNum >= dt.IndentNum)
+                            dt.State = 4;
+                        else
+                            dt.State = 2;
+                        if (dt.DeliveryNum > 0)
+                            order.State = 2;
+                    }
+                    AddRange(dists, true);
+
+                    //设置采购订单表的状态为已配送
+                    var detailDeliveried = BaseService<IndentOrderList>.FindList(o => o.IndentOrderId == indentOrderId && o.State == 4 && o.Nature==0);
+                    var detailReceived = BaseService<IndentOrderList>.FindList(o => o.IndentOrderId == indentOrderId && o.State == 5 && o.Nature == 0);
+                    int countDeliveried = detailDeliveried.Count;
+                    int countReceived=detailReceived.Count;               
+                    if (countDeliveried == details.Count)
+                        order.State = 4;
+                    else if (countDeliveried + countReceived == details.Count && countDeliveried > 0)
+                        order.State=4;
+
+                    //设置订货配送表的配送开始时间 配送结束时间
+                    var deliveryList = BaseService<OrderDistribution>.FindList(o => o.IndentOrderId == indentOrderId).DefaultIfEmpty().OrderBy(o => o.DeliveryDT);
+                    if (deliveryList.Any())
+                    {
+                        order.PeiSongStartDate = deliveryList.FirstOrDefault().DeliveryDT.ToString("yyyy-MM-dd");
+                    }
+                    if ((order.State == 4))
+                    {
+                        order.PeiSongEndDate = deliveryList.LastOrDefault().DeliveryDT.ToString("yyyy-MM-dd");
+                    }
+
+                    op = BaseService<IndentOrderList>.Update(details);
+                }
+            }
+            catch (FormatException)
+            {
+                op.Message = "有保质期的产品生产日期必须填写！";
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                Log.WriteError(ex);
+            }
+            return op;
+        }
+
+
+    }
+}

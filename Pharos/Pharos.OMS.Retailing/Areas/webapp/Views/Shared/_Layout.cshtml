@@ -1,0 +1,64 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+    <meta content="no-cache" http-equiv="Cache-Control" />
+    <meta charset="utf-8">
+    <title>@ViewBag.Title</title>
+    <meta content="width=device-width, user-scalable=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" name="viewport" />
+    <meta content="yes" name="apple-mobile-web-app-capable" />
+    <meta content="telephone=no" name="format-detection" />
+    @*<link href="~/Areas/webapp/Content/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/Areas/webapp/Content/css/bootstrap-select.css" rel="stylesheet" />*@
+    <link href="~/Areas/webapp/Content/css/toastr.css" rel="stylesheet" />
+    <link href="~/Areas/webapp/Content/css/LArea.css" rel="stylesheet" />
+    <link href="~/Areas/webapp/Content/css/app_style.css" rel="stylesheet" />
+    <script src="~/Scripts/jquery-1.11.1.min.js"></script>
+    <script src="~/Areas/webapp/Content/js/jquery.form.js"></script>
+    @*<script src="~/Areas/webapp/Content/js/bootstrap.min.js"></script>
+    <script src="~/Areas/webapp/Content/js/bootstrapValidator.js"></script>*@
+    <script src="~/Areas/webapp/Content/js/resize.js"></script>
+    <script src="~/Areas/webapp/Content/js/toastr.min.js"></script>
+    <script src="~/Areas/webapp/Content/js/toastr.ext.js"></script>
+</head>
+<body>
+    <script type="text/javascript">
+        $(function () {
+            $("form").ajaxForm({
+                beforeSubmit:function(){
+                    var result = true;
+                    $("form").find("[name!='']").each(function (i, r) {
+                        var tip = $(r).attr("tip");
+                        var req = $(r).attr("required");
+                        var minlen = $(r).attr("minlength");
+                        var val = $.trim($(r).val());
+                        if (req && tip && !val) {
+                            toastr.info(tip + "不能为空", "提示");
+                            result = false;
+                            return false;
+                        }
+                        if (tip && minlen && val && Number(minlen) > val.length) {
+                            toastr.info(tip + "最小长度为"+minlen, "提示");
+                            result = false;
+                            return false;
+                        }
+                    });
+                    return result;
+                },
+                success: function (data) {
+                    var json = $.parseJSON(data);
+                    if (json.successed) {
+                        if (json.message)
+                            toastr.success(json.message, "提示");
+                        refresh();
+                    } else {
+                        toastr.error(json.message, "提示");
+                    }
+                }
+            })
+        })
+        function refresh(){}
+    </script>
+    @RenderBody()
+</body>
+</html>

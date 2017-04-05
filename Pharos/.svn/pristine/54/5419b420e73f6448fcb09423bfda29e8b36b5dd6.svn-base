@@ -1,0 +1,71 @@
+﻿@model Members
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var st = ViewBag.stores as List<SelectListItem>;
+}
+<style type="text/css">
+    .table-form tr{height:28px;}
+    .input{width:170px}
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o=>o.Id)
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <td class="name">来 源：</td>
+                    <td class="input">@Html.DisplayText("Store")</td>
+                    <td class="name">内部人员：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.Insider, new List<SelectListItem>() { new SelectListItem() { Value = "是" }, new SelectListItem() { Value = "否", Selected = true } })</td>
+                </tr>
+                <tr>
+                    <td class="name">姓 名：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.RealName)</td>
+                    <td class="name">卡 号：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.MemberCardNum)</td>
+                </tr>
+                <tr>
+                    <td class="name">手机号：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.MobilePhone)</td>
+                    <td class="name">生 日：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.Birthday)</td>
+                </tr>
+                <tr>
+                    <td class="name">微信号：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.Weixin)</td>
+                    <td class="name">QQ号：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.QQ)</td>
+                </tr>
+                <tr>
+                    <td class="name">邮 箱：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.Email)</td>
+                    <td class="name">性 别：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.Sex, new List<SelectListItem>() { new SelectListItem() { Value = "男", Selected = true }, new SelectListItem() { Value = "女" } })</td>
+                </tr>
+                <tr>
+                    <td class="name">城 市：</td>
+                    <td class="input">@Html.DisplayText("City")</td>
+                    <td class="name">地 址：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.Address)</td>
+                </tr>
+                <tr>
+                    <td class="name">可用积分：</td>
+                    <td class="input">@Html.DisplayTextFor(o=>o.UsableIntegral)</td>
+                    <td class="name">已用积分：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.UsedIntegral)</td>
+                </tr>
+                <tr>
+                    <td class="name">消费额款：</td>
+                    <td class="input">@Html.DisplayTextFor(o => o.ConsumerCredit)</td>
+                    <td class="name">状 态：</td>
+                    <td class="input">@(Model.Status == 1 ? "有效" : "无效")</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+
+
+

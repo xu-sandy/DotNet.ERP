@@ -1,0 +1,59 @@
+﻿@model Pharos.Logic.OMS.Entity.CompanyAuthorize
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Source)
+        @Html.HiddenFor(o => o.BusinessMode)
+        @Html.HiddenFor(o => o.MachineSN)
+        @Html.HiddenFor(o => o.OpenScopeId)
+        @Html.HiddenFor(o => o.OpenVersionId)
+        @Html.HiddenFor(o => o.Way)
+        @Html.HiddenFor(o => o.SupperAccount)
+        @Html.HiddenFor(o => o.SupperPassword)
+        <div class="content">
+            <table class="table-form" width="100%" height="260px">
+                <tr>
+                    <td class="name">商户号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.CID, new { @class = "easyui-textbox", data_options = "readonly:true" })</td>
+                    <td class="name">客户名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "readonly:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">用户数量：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.UserNum, new { @class = "easyui-numberbox", data_options = "required:true,precision:0,prompt:'0为不限制',min:0" })</td>
+                    <td class="name">门店数量：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.StoreNum, new { @class = "easyui-numberbox", data_options = "required:true,precision:0,prompt:'0为不限制',min:0" })</td>
+                </tr>
+                <tr>
+                    <td class="name">会员共享：</td>
+                    <td class="input">@Html.RadioButtonFor(o => o.MemberShared, "Y", new { @class = "easyui-switchbutton" })</td>
+                    <td class="name">分店专属后台：</td>
+                    <td class="input">@Html.RadioButtonFor(o => o.StoreProper, "Y", new { @class = "easyui-switchbutton" })</td>
+                </tr>
+                <tr>
+                    <td class="name">POS次屏显示：</td>
+                    <td class="input">@Html.RadioButtonFor(o => o.PosMinorDisp, "Y", new { @class = "easyui-switchbutton" })</td>
+                    <td class="name">APP管理：</td>
+                    <td class="input">@Html.RadioButtonFor(o => o.AppProper, "Y", new { @class = "easyui-switchbutton" })</td>
+                </tr>
+                <tr>
+                    <td class="name">有效期(月)：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.ValidityNum, Form.GetValidityNum(), new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+                    <td class="name">生效日期：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.EffectiveDT, "{0:yyyy-MM-dd}", new { @class = "easyui-validatebox Wdate", data_options = "required:true" })</td>
+                </tr>
+                <tr>
+                    <td class="name">合同编号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.ContractNo, new { @class = "easyui-textbox", data_options = "required:true,validType:'length[4,20]'" })</td>
+                    <td class="name">指派人：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.AssignerUID, ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox" })</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>

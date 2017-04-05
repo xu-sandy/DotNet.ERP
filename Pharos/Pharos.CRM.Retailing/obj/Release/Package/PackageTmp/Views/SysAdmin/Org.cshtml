@@ -1,0 +1,172 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+
+    var lmtAdd = CurrentUser.HasPermiss(SysConstLimits.组织机构_创建机构或部门);
+    var lmtDel = CurrentUser.HasPermiss(SysConstLimits.组织机构_删除机构或部门);
+    var lmtStatus = CurrentUser.HasPermiss(SysConstLimits.组织机构_关闭或显示机构部门);
+}
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'center',split:false,border:false">
+        <table id="treegrid"></table>
+        <div id="toolbar">
+            @if (lmtAdd)
+            {
+                <a class="easyui-linkbutton  cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="addOrganizations(); return false;">新增机构</a>
+            }
+        </div>
+    </div>
+</div>
+<script src="~/Scripts/managerlist.js"></script>
+
+<script type="text/javascript">
+    var lmtAdd = '@(lmtAdd ? "1" : "0")';
+    var lmtDel = '@(lmtDel ? "1" : "0")';
+    var lmtStatus = '@(lmtStatus ? "1" : "0")';
+    var hideSave = (lmtAdd == "1" ? false : true);
+
+    var jqElement = $('#treegrid');
+    jqElement.treegrid({
+        toolbar: '#toolbar',
+        border: false,
+        fit: true,
+        fitColumns: true,
+        url: "@Url.Action("GetOrg")",
+        rownumbers: true,
+        idField: 'Id',
+        singleSelect: true,
+        treeField: 'Title',
+        columns: [[
+            { title: '机构（或部门）名称', field: 'Title', width: 150 },
+            { title: '机构（或部门）代码', field: 'SN', width: 150 },
+            { title: '机构（或部门）领导', field: 'ManagerUName', width: 150 },
+            {
+                title: '成员数', field: 'ChildsNum', width: 60, formatter: function (value, row) {
+                    if (row.children != null && row.children.length > 0) {
+                        return "";
+                    } else {
+                        return value;
+                    }
+                }
+            },
+            {
+                title: '状态', field: 'Status', formatter: function (value, row) {
+                    return DealWithStatus(value);
+                }, width: 150
+            },
+            {
+                title: '操作', field: 'Id', formatter: function (value, row) {
+                    var operat = "";
+                    if (lmtAdd == "1") {
+                        if ((row.Type == 3 || row.children == null) && row.PDepId !== 0) {
+
+                            operat += "<a style='color:#555'>[添加]</a>&nbsp;&nbsp;&nbsp;";
+                        } else {
+                            operat += "<a href='javascript:addOrganizations(\"" + value + "\",\"" + row.DepId + "\")'>[添加]</a>&nbsp;&nbsp;&nbsp;";
+                        }
+                    }
+                    
+                    if (lmtStatus == "1") {
+                        operat += '<a href=\'javascript:closeOrganizations("' + value + '")\'>['
+                        operat += DealWithStatus(!row.Status);
+                        operat += ']</a>&nbsp;&nbsp;&nbsp;';
+                    }
+                    
+                    if (lmtDel == "1") {
+                        if (!(row.children != null && row.children.length > 0)) {
+                            if (row.ChildsNum != null && row.ChildsNum > 0) {
+                                operat += '<a  style="color:#a3a3a3">[移除]</a>';
+                            } else {
+                                operat += '<a href=\'javascript:removeOrganizations("' + value + '")\'>[移除]</a>';
+                            }
+                        } else {
+                            operat += '<a  style="color:#a3a3a3">[移除]</a>';
+                        }
+                    }
+
+                    return operat;
+                }, width: 150
+            },
+
+        ]],
+        onClickCell: function (field, row) {
+            var level = jqElement.treegrid("getLevel", row.Id)
+            if (field == 'Title') {
+                if (level == 1) {
+                    openWin({ 'title': '编辑机构', 'width': 550, 'height': 400, 'url': "@Url.Action("OrgSave")?id=" + row.Id, hideSave: hideSave });
+                }
+                else if (level == 2) {
+                    openWin({ 'title': '编辑部门', 'width': 550, 'height': 400, 'url': "@Url.Action("OrgSave")?id=" + row.Id, hideSave: hideSave });
+                }
+                else if (level == 3) {
+                    openWin({ 'title': '编辑子部门', 'width': 550, 'height': 400, 'url': "@Url.Action("OrgSave")?id=" + row.Id, hideSave: hideSave });
+                }
+            }
+        }
+    });
+
+    function DealWithStatus(status) {
+        return status ? '显示' : '关闭';
+    }
+    function closeDialog() {
+        jqElement.treegrid('reload');
+    }
+    function addOrganizations(id, depid) {
+        var level = jqElement.treegrid("getLevel", id);
+        if (id) {
+            openWin({ 'title': level == 1 ? '新增部门' : "新增子部门", 'width': 550, 'height': 390, 'url': "@Url.Action("OrgSave")?pdepid=" + depid, hideSave: hideSave });
+        } else {
+            openWin({ 'title': '新增机构', 'width': 550, 'height': 390, 'url': "@Url.Action("OrgSave")", hideSave: hideSave });
+        }
+    }
+    function closeOrganizations(id) {
+        id = getId(id);
+        if (!id) { return; }
+        $.messager.confirm('提示', "是否确定切换机构（或部门）状态?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { id: id },
+                url: "@Url.Action("ChangeOrgStatusById")",
+                success: function (data) {
+                    //    $.messager.alert("提示", "切换机构（或部门）状态成功！", "info");
+                    jqElement.treegrid('reload');
+
+                }, error: function (data) {
+                    $.messager.alert("提示", "切换机构（或部门）状态失败！", "info");
+                }
+            });
+        });
+    }
+    function removeOrganizations(id) {
+        id = getId(id);
+        if (!id) { return; }
+        $.messager.confirm('提示', "是否确定移除机构（或部门）?", function (r) {
+            if (!r) {
+                return r;
+            }
+
+            $.ajax({
+                type: 'post',
+                data: { id: id },
+                url: "@Url.Action("RemoveOrg")",
+                success: function (data) {
+                    //     $.messager.alert("提示", "移除机构（或部门）成功！", "info");
+                    jqElement.treegrid('reload');
+
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除机构（或部门）失败！", "info");
+
+                }
+            });
+        });
+    }
+    function getId(id) {
+        id = id || jqElement.treegrid("getSelected").id;
+        if (!id) {
+            $.messager.alert("提示", "请选择一条数据！", "info");
+        }
+        return id;
+    }
+</script>

@@ -1,0 +1,37 @@
+﻿using SuperSocket.SocketBase;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.SuperSocketProtocol
+{
+    public class SocketServer : AppServer<SocketSession, SockectRequestMessage>
+    {
+        public SocketServer(IRouteProvider routeProvider, ISessionManager sessionManager)
+            : base(new DefaultReceiveFilterFactory())
+        {
+            RouteProvider = routeProvider;
+            SessionManager = sessionManager;
+            sessionManager.Server = this;
+        }
+        public IRouteProvider RouteProvider { get; private set; }
+
+        public ISessionManager SessionManager { get; private set; }
+
+        public static SocketServer InitServer(IRouteProvider routeProvider, ISessionManager sessionManager, int port)
+        {
+            SocketServer appServer = new SocketServer(routeProvider, sessionManager);
+            if (!appServer.Setup(port)) //Setup with listening port
+            {
+                throw new Exception("Failed to setup!");
+            }
+            if (!appServer.Start())
+            {
+                throw new Exception("Failed to start!");
+            }
+            return appServer;
+        }
+    }
+}

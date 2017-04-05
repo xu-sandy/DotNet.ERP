@@ -1,0 +1,195 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideDel: true, hideAdd: true, hideEdit: true, hideSearch: false));
+}
+
+@section search{
+        <table class="table-toolbar">
+            <tr>
+                <td class="label-toolbar">
+                    <span>设备类型：</span>
+                </td>
+                <td class="input-toolbar">
+                    <select id="machineType" name="machineType" class="easyui-combobox" style="width:75px;">
+                        <option value="-1">全部</option>
+                        <option value="1">大POS机</option>
+                        <option value="2">PAD</option>
+                        <option value="3">Mobile</option>
+                    </select>
+                </td>
+                <td class="label-toolbar">
+                    <span>门店：</span>
+                </td>
+                <td class="input-toolbar">
+                    @*<input type="text" id="store" name="store" class="datacontrol easyui-textbox" placeholder="门店" style="margin-left: 0px; margin-right: 0px; padding-top: 5px; padding-bottom: 5px; width: 150px;" data-options="prompt:'门店'">*@
+                    @Html.DropDownList("Store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+                </td>
+                <td class="label-toolbar">
+                    <label>状态：</label>
+                </td>
+                <td class="input-toolbar">
+                    <select id="status" name="status" class="easyui-combobox" style="width:75px;">
+                        <option value="-1">全部</option>
+                        <option value="0">禁用</option>
+                        <option value="1">可用</option>
+                    </select>
+                </td>
+
+                <td class="label-toolbar">
+                    <label>关键词：</label>
+                </td>
+                <td class="input-toolbar">
+                    <input type="text" id="keyword" name="keyword" class="datacontrol easyui-textbox" autocomplete="off" placeholder="编码/备注" style="margin-left: 0px; margin-right: 0px; padding-top: 5px; padding-bottom: 5px; width: 150px;" data-options="prompt:'编码/备注'">
+                </td>
+            </tr>
+        </table>
+
+}
+@section toolbar{
+    @if (CurrentUser.HasPermiss(SysConstLimits.设备管理_状态设定))
+    {
+        <div>
+            <a href="#" class="easyui-menubutton" style="margin-left:20px;" data-options="menu:'#mm1',iconCls:'icon-edit'">设置状态</a>
+            <div id="mm1" style="width:150px;">
+                <div data-options="iconCls:'icon-putaway-1'" onclick="setEnable(1)">设为可用</div>
+                <div data-options="iconCls:'icon-sold-out-1'" onclick="setEnable(0)">设为禁用</div>
+            </div>
+        </div>
+    }
+}
+@*@section toolbar
+    {
+
+    }*@
+
+<script type="text/javascript">
+    pharos.manager.pagination = false;
+    pharos.manager.geturl = "@Url.Action("FindPageByWhere")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StoreId', hidden: true },
+        { field: 'Type', title: '设备类型', width: 70, align: 'center', formatter: deviceTypeFormat },
+        { field: 'DeviceSN', title: '设备编码', width: 200 },
+        {
+            field: 'Store', title: '门店', width: 180, align: 'center', formatter: function (value, row, index) {
+                var storeId = row.StoreId;
+                if (storeId < 10) {
+                    storeId = "0" + storeId;
+                }
+                return "[" + storeId + "] " + value;
+            }
+        },
+        { field: 'MachineSN', title: 'POS机号', width: 60, align: 'center' },
+
+        { field: 'CreateDT', title: '注册时间', width: 120, align: 'center' },
+        { field: 'State', title: ' 设备状态', width: 60, align: 'center', formatter: deviceStateFormat },
+        { field: 'Memo', title: '备注', width: 200, align: 'center', editor: { type: 'textbox', options: { validType: 'length[0,200]' } } },
+        { field: 'Auditor', title: '审核人', width: 60, align: 'center' }
+    ]];
+    function setEnable(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var valid = true;
+        $.each(rows, function (i, n) {
+            if (n.State == state) {
+                valid = false;;
+            }
+        });
+        if (!valid) {
+            $.messager.alert("提示", "勾选项中存在状态为\"" + deviceStateFormat(state) + "\"的项，请取消勾选！", "info");
+            return false;
+        }
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetDevState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "所选设备状态成功设为 " + deviceStateFormat(state) + "！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    function deviceTypeFormat(value) {
+        switch (value) {
+            case 1:
+                return "大POS机";
+                break;
+            case 2:
+                return "PAD";
+                break;
+            case 3:
+                return "Mobile";
+                break;
+            default:
+                return "";
+        }
+    }
+    function deviceStateFormat(value) {
+        switch (value) {
+            case 0:
+                return "禁用";
+                break;
+            case 1:
+                return "可用";
+                break;
+            default:
+                return "";
+        }
+    }
+
+
+
+    $(function () {
+        $dg = $("#grid");
+        var editIndex = undefined;
+        $dg.datagrid({
+            onClickCell: function (index, field) {
+                if (endClickEditing() && (field == "Memo")) {
+                    $dg.datagrid('selectRow', index)
+                            .datagrid('editCell', { index: index, field: field });
+                    editIndex = index;
+                }
+            },
+            onEndEdit: function (index, row) {
+                var ed = $dg.datagrid('getEditor', { index: index, field: 'Memo' });
+                var momo = $(ed.target).textbox('getText');
+
+                $.ajax({
+                    url: '@Url.Action("SaveMemo")',
+                    type: 'post',
+                    dataType: 'json',
+                    data: { id: row.Id, memo: momo },
+                    success: function (data) {
+                        if (data.successed) {
+                            //editIndex = undefined;
+                        }
+                        else {
+                            $.messager.alert("提示", "备注修改失败.", "warning", function () {
+                                editIndex = index;
+                            });
+                        }
+                    }
+                })
+            }
+
+        })
+
+        function endClickEditing() {
+            if (editIndex == undefined) { return true; }
+            if ($dg.datagrid('validateRow', editIndex)) {
+                $dg.datagrid('endEdit', editIndex);
+                editIndex = undefined;
+                return true;
+
+            } else {
+                return false;
+            }
+        }
+
+
+    })
+
+</script>

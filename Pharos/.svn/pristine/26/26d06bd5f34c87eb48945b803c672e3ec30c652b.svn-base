@@ -1,0 +1,119 @@
+﻿using AX.CSF.Encrypt;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class DeviceAuthorService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<DeviceAuthorize> DeviceAuthorRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<Devices> DevicesRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysUserInfo> UserRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<SysDataDictionary> DictRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<Traders> TraderRepository { get; set; }
+        public OpResult SaveOrUpdate(DeviceAuthorize obj)
+        {
+            //if (!TraderRepository.GetQuery(o => o.CID == obj.CID).Any())
+                //return OpResult.Fail("商户不存在!");
+            if (obj.Id == 0)
+            {
+                obj.CreateDT = DateTime.Now;
+                obj.CreateUID = CurrentUser.UID;
+                obj.ExpirationDT = DateTime.Parse(obj.EffectiveDT).AddMonths(obj.ValidityNum.GetValueOrDefault()).ToString("yyyy-MM-dd");
+                obj.CID= DeviceAuthorRepository.GetQuery().Max(o => (int?)o.CID).GetValueOrDefault()+1;
+                DeviceAuthorRepository.Add(obj);
+            }
+            else
+            {
+                var res = DeviceAuthorRepository.Get(obj.Id);
+                obj.ToCopyProperty(res, new List<string>() { "CreateDT", "CreateUID", "CID","MachineSN","SerialNo" });
+                res.ExpirationDT = DateTime.Parse(obj.EffectiveDT).AddMonths(obj.ValidityNum.GetValueOrDefault()).ToString("yyyy-MM-dd");
+                DeviceAuthorRepository.SaveChanges();
+            }
+            return OpResult.Success();
+        }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var text = nvl["searchText"];
+            var state = nvl["state"];
+            var queryDevAuth = DeviceAuthorRepository.GetQuery();
+            var queryDev = DevicesRepository.GetQuery();
+            var queryDict = DictRepository.GetQuery();
+            var queryUser = UserRepository.GetQuery();
+            if(!text.IsNullOrEmpty())
+            {
+                int cid=0;
+                int.TryParse(text,out cid);
+                queryDevAuth = queryDevAuth.Where(o => o.Title.Contains(text));
+                if (cid > 0) queryDevAuth = queryDevAuth.Where(o => o.CID == cid);
+            }
+            if(!state.IsNullOrEmpty())
+            {
+                var st=short.Parse(state);
+                queryDevAuth = queryDevAuth.Where(o => o.Status == st);
+            }
+            var query = from x in queryDevAuth
+                        join y in queryDev on x.DeviceId equals y.DeviceId
+                        select new
+                        {
+                            x.Id,
+                            x.CID,
+                            x.Title,
+                            x.Source,
+                            Category = queryDict.Where(o=>o.DicSN== y.CategoryId).Select(o=>o.Title).FirstOrDefault(),
+                            y.Spec,
+                            y.Brand,
+                            x.DeviceNo,
+                            x.StoreName,
+                            x.EffectiveDT,
+                            x.ValidityNum,
+                            x.ExpirationDT,
+                            x.ContractNo,
+                            x.Status,
+                            Assigner = queryUser.Where(o=>o.UserId== x.AssignerUID).Select(o=>o.FullName).FirstOrDefault()
+                        };
+            recordCount = query.Count();
+            return query.ToPageList();
+        }
+
+        public Pharos.Utility.OpResult Deletes(int[] ids)
+        {
+            var list= DeviceAuthorRepository.GetQuery(o=>ids.Contains(o.Id)).ToList();
+            return OpResult.Result(DeviceAuthorRepository.RemoveRange(list));
+        }
+
+        public DeviceAuthorize GetOne(object id)
+        {
+            var obj= DeviceAuthorRepository.Get(id);
+            var dev = DevicesRepository.Find(o => o.DeviceId == obj.DeviceId);
+            if (dev != null) obj.DeviceName = dev.Title;
+            return obj;
+        }
+        public DeviceAuthorize GetOneByCID(int cid)
+        {
+            return DeviceAuthorRepository.Find(o=>o.CID==cid);
+        }
+
+
+        public OpResult SetState(string ids, short state)
+        {
+            var idlist= ids.Split(',').Select(o => int.Parse(o));
+            var list= DeviceAuthorRepository.GetQuery(o => idlist.Contains(o.Id)).ToList();
+            list.ForEach(o => o.Status = state);
+            DeviceAuthorRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        
+    }
+}

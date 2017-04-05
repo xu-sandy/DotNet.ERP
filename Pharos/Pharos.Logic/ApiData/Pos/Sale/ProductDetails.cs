@@ -1,0 +1,80 @@
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale
+{
+    public class ProductDetails
+    {
+        /// <summary>
+        /// 商品名称
+        /// </summary>
+        public string Title { get; set; }
+        /// <summary>
+        /// 规格
+        /// </summary>
+        public string Size { get; set; }
+        /// <summary>
+        /// 品牌
+        /// </summary>
+        public string Brand { get; set; }
+        /// <summary>
+        /// 分类
+        /// </summary>
+        public string Category { get; set; }
+        /// <summary>
+        /// 单位
+        /// </summary>
+        public string Unit { get; set; }
+        /// <summary>
+        /// 是否允许修改销售数量
+        /// </summary>
+        public bool EnableEditNum { get; set; }
+        /// <summary>
+        /// 是否允许修改售价
+        /// </summary>
+        public bool EnableEditPrice { get; set; }
+        /// <summary>
+        /// 系统售价
+        /// </summary>
+        public decimal SystemPrice { get; set; }
+
+        /// <summary>
+        /// 进价
+        /// </summary>
+        public decimal BuyPrice { get; set; }
+        /// <summary>
+        /// 赠品/加购赠品  促销活动Id
+        /// </summary>
+        public string MarketingRuleId { get; set; }
+
+        /// <summary>
+        /// 销售状态
+        /// </summary>
+        public SaleStatus SaleStatus { get; set; }
+        /// <summary>
+        /// 活动后台赠品是否过期
+        /// </summary>
+        public bool IsActivityGiftsTimeOut { get; set; }
+
+        ///// <summary>
+        ///// 赠品Id 
+        ///// </summary>
+        //public string GiftId { get; set; }
+
+
+        decimal _total;
+        /// <summary>
+        /// 小计
+        /// </summary>
+        public decimal Total { get { return _total; } set { _total = Math.Round(value, 2, MidpointRounding.AwayFromZero); } }
+
+        /// <summary>
+        /// 集合促销价
+        /// </summary>
+        public decimal CollectionMarketingPrice { get; set; }
+
+    }
+}

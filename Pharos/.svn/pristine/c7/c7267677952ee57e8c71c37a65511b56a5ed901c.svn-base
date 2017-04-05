@@ -1,0 +1,39 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class HomeController : Controller
+    {
+        //
+        // GET: /Home/
+
+        public ActionResult Index()
+        {
+            if (!Sys.CurrentUser.IsLogin || Sys.CurrentUser.IsStore)
+            {
+                return RedirectToAction("Login", "User");
+            }     
+            //todo: 模拟数据
+            string mode = Request["mode"];
+            ViewBag.accessCount = 0;
+            ViewBag.WelcomeText = "欢迎光临";
+            ViewBag.CurUserName = Sys.CurrentUser.FullName;
+            ViewBag.CurLoginName = Sys.CurrentUser.UserName;
+
+            var list = new List<Pharos.Sys.Models.MenuModel>() { 
+                new Pharos.Sys.Models.MenuModel(){Name="系统管理",Value="1",Id="1",Level=0,Children=new List<Sys.Models.MenuModel>(){
+                    new Pharos.Sys.Models.MenuModel(){Name="用户管理",Value="2",Id="2",Level=1,Children=new List<Sys.Models.MenuModel>(),Url="/User/Index"},
+                    new Pharos.Sys.Models.MenuModel(){Name="授权管理",Value="3",Id="3",Level=1,Children=new List<Sys.Models.MenuModel>(),Url="/Authorization/Index"}
+                }}
+            };
+            
+            ViewBag.Menus = list;
+            return View();
+        }
+
+    }
+}

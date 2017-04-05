@@ -1,0 +1,228 @@
+﻿@model  OMS_CompanyAuthorize
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .formbox td {
+        padding:10px 0px;
+    }
+</style>
+
+<script type="text/javascript">
+    //删除
+    function delSummary(d) {
+        $(d).parent().parent().remove();
+    }
+    //增加
+    function addSummary() {
+        var v = '';
+        v = v + '<td><input class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: \'yyyy-MM-dd\' })" value="" /></td>';
+        v = v + '<td style="text-align:center;"><input type="text" value=""   t="addTxt" /></td>';
+        v = v + '<td style="text-align:center;"><input type="button" value="删除" onclick="delSummary(this)" /></td>';
+        $("#tabSummary").append("<tr>" + v + "</tr>");
+
+        $("#tabSummary").find("input[t=addTxt]").textbox({
+            novalidate: true,
+            prompt: '回访小结',
+            width: 950
+        })
+    }
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+
+        <div class="content">
+            
+            <div class="formbox">
+                <table class="table-form" width="100%" height="100px">
+                    <tr>
+                        <td class="name">分类：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AppProper, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "商户分类1", Value = "1" }, new SelectListItem() { Text = "商户分类2", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false" })</td>
+                        <td class="name">信息来源：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.Code, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "平台", Value = "1" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">客户简称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle , new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'4-20个字符',validType: 'length[4,20]'" })</td>
+                        <td class="name">客户全称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title , new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'4-100个字符',validType: 'length[4,100]'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">区域：</td>
+                        <td class="input">
+                           @Html.DropDownListFor(o => o.AppProper, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "福建省", Value = "1" }, new SelectListItem() { Text = "广东省", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:100" })-
+                           @Html.DropDownListFor(o => o.AppProper, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "厦门市", Value = "1" }, new SelectListItem() { Text = "泉州市", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:100" })-
+                           @Html.DropDownListFor(o => o.AppProper, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "思明区", Value = "1" }, new SelectListItem() { Text = "湖里区", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:130" })
+                        </td>
+                        <td class="name">详细地址：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'详细地址',width:200" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">联系人：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'联系人'" })</td>
+                        <td class="name">手机号码：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'手机号码',validType:'mobile'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">经营模式：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.FullTitle, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "个体专营", Value = "1" }, new SelectListItem() { Text = "连锁专营", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:false,novalidate:true,validType:'requiredForCombo', editable: false" })</td>
+                        <td class="name">货品盘点：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'定期几号盘点'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">经营类目：</td>
+                        <td class="input" colspan="3" width="70%" style=" width:90%; line-height:30px;">
+                            <input type="checkbox" value="1" id=" BusinessCk1" name="BusinessScopeId" />&nbsp;<label for="BusinessCk1">服装</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="2" id=" BusinessCk2" />&nbsp;<label for="BusinessCk1">手机</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="3" id=" BusinessCk3" />&nbsp;<label for="BusinessCk1">电脑</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="1" id=" BusinessCk1" />&nbsp;<label for="BusinessCk1">服装</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="2" id=" BusinessCk2" />&nbsp;<label for="BusinessCk1">手机</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="3" id=" BusinessCk3" />&nbsp;<label for="BusinessCk1">电脑</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="1" id=" BusinessCk1" />&nbsp;<label for="BusinessCk1">服装</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="2" id=" BusinessCk2" />&nbsp;<label for="BusinessCk1">手机</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="3" id=" BusinessCk3" />&nbsp;<label for="BusinessCk1">电脑</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="3" id=" BusinessCk3" />&nbsp;<label for="BusinessCk1">电脑</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="1" id=" BusinessCk1" />&nbsp;<label for="BusinessCk1">服装</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="2" id=" BusinessCk2" />&nbsp;<label for="BusinessCk1">手机</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="3" id=" BusinessCk3" />&nbsp;<label for="BusinessCk1">电脑</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="1" id=" BusinessCk1" />&nbsp;<label for="BusinessCk1">服装</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="2" id=" BusinessCk2" />&nbsp;<label for="BusinessCk1">手机</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="3" id=" BusinessCk3" />&nbsp;<label for="BusinessCk1">电脑</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="3" id=" BusinessCk3" />&nbsp;<label for="BusinessCk1">电脑</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="1" id=" BusinessCk1" />&nbsp;<label for="BusinessCk1">服装</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="2" id=" BusinessCk2" />&nbsp;<label for="BusinessCk1">手机</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="3" id=" BusinessCk3" />&nbsp;<label for="BusinessCk1">电脑</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="1" id=" BusinessCk1" />&nbsp;<label for="BusinessCk1">服装</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="2" id=" BusinessCk2" />&nbsp;<label for="BusinessCk1">手机</label>&nbsp;&nbsp;
+                            <input type="checkbox" value="3" id=" BusinessCk3" />&nbsp;<label for="BusinessCk1">电脑</label>&nbsp;&nbsp;
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">跟踪状态：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.FullTitle, new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" }, new SelectListItem() { Text = "未跟进", Value = "1" }, new SelectListItem() { Text = "停滞", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:100" })</td>
+                        <td class="name">备注：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'备注'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">登记人：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'当前用户，系统自动',readonly:true" })</td>
+                    </tr>
+                </table>
+             </div>
+
+            <div class="formbox">
+                <table class="table-form" width="100%" height="100px">
+
+                    @*<tr>
+                        <td colspan="4" style="text-align:center;">门店现状情况</td>
+                    </tr>*@
+
+                    <tr>
+                        <td class="name" style="width:10%;">现有系统名称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle , new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'门店现有系统名称'" })</td>
+                        <td class="name" style="width:31%;">现有设备名称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'门店现有设备名称'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">现有门店数量：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'现有门店数量',validType:'integer'" })</td>
+                        <td class="name">每门店机数：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'每门店机数',validType:'integer'" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">每门店人均数：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.FullTitle, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'每门店人均数',validType:'integer'" })</td>
+                        <td class="name">计划扩张门店数量：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'计划扩张门店数量',validType:'integer'" })</td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox">
+                <table class="table-form" width="100%" height="100px">
+
+                    @*<tr>
+                        <td colspan="4" style="text-align:center;">采购意向清单</td>
+                    </tr>*@
+
+
+
+                    <tr >
+                        <td class="name" style=" width:10%;">
+                            采购意向清单：
+                        </td>
+                        <td class="input" colspan="3">
+                            <input  type="checkbox" value="1" id="ck1" name="ck"/>&nbsp;
+                            <label for="ck1">软件系统</label>&nbsp;
+                            <input id="txt1" name="txt1" class="easyui-textbox" data-options="novalidate:true,required:false,prompt:'数量',validType:'integer',value:'0'" /><br />
+
+                            <input type="checkbox" value="2" id="ck2" name="ck" />&nbsp;
+                            <label for="ck1">mPOS一体机</label>&nbsp;
+                            <input id="txt2" name="txt2" class="easyui-textbox" data-options="novalidate:true,required:false,prompt:'数量',validType:'integer',value:'0'" /><br />
+
+                            <input type="checkbox" value="3" id="ck3" name="ck" />&nbsp;
+                            <label for="ck3">mPOS迷你机</label>&nbsp;
+                            <input id="txt3" name="txt3" class="easyui-textbox" data-options="novalidate:true,required:false,prompt:'数量',validType:'integer',value:'0'" /><br />
+
+                            <input type="checkbox" value="4" id="ck4" name="ck" />&nbsp;
+                            <label for="ck4">PAD</label>&nbsp;
+                            <input id="txt4" name="txt4" class="easyui-textbox" data-options="novalidate:true,required:false,prompt:'数量',validType:'integer',value:'0'" /><br />
+
+                            <input type="checkbox" value="5" id="ck5" name="ck" />&nbsp;
+                            <label for="ck5">手机</label>&nbsp;
+                            <input id="txt5" name="txt5" class="easyui-textbox" data-options="novalidate:true,required:false,prompt:'数量',validType:'integer',value:'0'" /><br />
+
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <div class="formbox">
+                <table class="table-form" width="100%" height="100px" id="tabSummary">
+
+                    @*<tr>
+                <td colspan="4" style="text-align:center;">回访跟踪记录</td>
+            </tr>*@
+
+                    <tr>
+                        <td class="name" style="width:10%;"><input type="button" value="添加" id="addVisit" onclick="addSummary()" /></td>
+                        <td></td>
+                        <td style="width:5%;"></td>
+                    </tr>
+
+                    <tr style="background-color:#eff4fb">
+                        <td class="name">回访时间</td>
+                        <td style="text-align:center">回访小结</td>
+                        <td style="text-align:center">删除</td>
+                    </tr>
+
+
+                    <tr>
+                        <td><input class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" value="" /></td>
+                        <td style="text-align:center;"><input type="text" value="" class="easyui-textbox" data-options="novalidate:true,prompt:'回访小结',width:950" /></td>
+                        <td style="text-align:center;"></td>
+                    </tr>
+
+                </table>
+            </div>
+       </div>
+    }
+</div>
+
+
+

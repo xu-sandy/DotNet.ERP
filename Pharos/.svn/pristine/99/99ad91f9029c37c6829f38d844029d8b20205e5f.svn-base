@@ -1,0 +1,20 @@
+﻿using SuperSocket.ClientEngine;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.DataSynchronism.Protocol
+{
+    public interface IDataSyncManager<TSocketClient, TDataSyncActionInfo>
+        where TSocketClient : EasyClientBase
+        where TDataSyncActionInfo : IDataSyncActionInfo
+    {
+        void Initialize(TSocketClient client, DataSyncActionSettings<TDataSyncActionInfo> settings);
+
+        void Execute(DataSyncMode mode, Func<DataSyncActionItem[], DataSyncActionItem[]> filter = null);
+
+
+        void ActionRegister(DataSyncMode mode, IDataSyncAction<TSocketClient, TDataSyncActionInfo> action);
+    }
+}

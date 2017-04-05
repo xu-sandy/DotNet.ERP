@@ -1,0 +1,351 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Data;
+using Pharos.Utility;
+using Pharos.Logic.Entity;
+using Pharos.Logic.DAL;
+using System.Transactions;
+
+namespace Pharos.Logic.BLL
+{
+    public class MakingCouponCardBLL : BaseService<MakingCouponCard>
+    {
+        private MakingCouponCardDAL _dal = new MakingCouponCardDAL();
+
+        /// <summary>
+        /// 获取当前ConpanyId下当天制作的优惠券批次总数
+        /// </summary>
+        /// <returns>当前ConpanyId下当天制作的优惠券批次总数</returns>
+        public int GetBatchCount()
+        {
+            int count = 0;
+            var min = DateTime.Parse(DateTime.Now.ToShortDateString());
+            var max = min.AddDays(1);
+            count = BaseService<MakingCouponCard>.FindList(o => o.CreateDT >= min && o.CreateDT < max).Where(o => o.CompanyId == CommonService.CompanyId).Count();
+            return count;
+        }
+
+        /// <summary>
+        /// 保存新增或修改
+        /// </summary>
+        /// <param name="model">优惠券对象</param>
+        /// <returns>保存结果</returns>
+        public OpResult SaveOrUpdate(MakingCouponCard model)
+        {
+            OpResult result = new OpResult();
+            if (model.Id == 0)
+            {
+                model.CreateDT = DateTime.Now;
+                model.CreateUID = Sys.CurrentUser.UID;
+                model.CompanyId = CommonService.CompanyId;
+                model.State = 0;
+                #region 批次
+                var firstBatchSN = DateTime.Now.ToString("yyMMdd") + "01";
+                var firstBatchToInt = long.Parse(firstBatchSN);
+                var batchCount = GetBatchCount();
+                model.BatchSN = (firstBatchToInt + batchCount).ToString();//批次：6位日期 + 2位序号,示例：16081601
+                #endregion
+                result = BaseService<MakingCouponCard>.Add(model);
+                return result;
+            }
+            else
+            {
+                var obj = BaseService<MakingCouponCard>.FindById(model.Id);
+                if (obj != null)
+                {
+                    Pharos.Utility.Helpers.ExtendHelper.ToCopyProperty(model, obj);
+                    result = BaseService<MakingCouponCard>.Update(obj);
+                }
+                return result;
+            }
+        }
+
+        //获取制作优惠券列表
+        public DataTable FindCreateCouponPageList(Paging paging, int couponType, int couponFrom, short state, string storeIds, string expiryStart, string expiryEnd, string receiveStart, string receiveEnd, string createUID)
+        {
+            return _dal.FindCreateCouponPageList(paging, couponType, couponFrom, state, storeIds, expiryStart, expiryEnd, receiveStart, receiveEnd, createUID);
+        }
+
+        //获取单个优惠券对象
+        public MakingCouponCard FindModelById(int Id)
+        {
+            var model = BaseService<MakingCouponCard>.FindById(Id);
+            return model;
+        }
+
+        /// <summary>
+        /// 获取品类/具体商品/品牌列表
+        /// </summary>
+        /// <param name="recordCount">总数</param>
+        /// <returns>品类/具体商品/品牌列表</returns>
+        public object LoadTypeList(int Id, int type, out int recordCount)
+        {
+            recordCount = 0;
+            if (Id==0) return null;
+            var dal = new Pharos.Logic.DAL.MakingCouponCardDAL();
+            var obj = BaseService<MakingCouponCard>.FindById(Id);
+            int proTypes = -1;
+            string proCodes = "";
+            
+            if (obj!=null)
+            {
+                proTypes = obj.ProductTypes;
+                proCodes = obj.ProductCode;
+            }
+            if (proTypes == 2 && proTypes==type)//指定品类
+            {
+                var dt = dal.GetCategoryList(proCodes);
+                var list = dt.AsEnumerable().Select(dr => new
+                {
+                    BigCategoryTitle = dr["BigCategoryTitle"],
+                    MidCategoryTitle = dr["MidCategoryTitle"],
+                    SubCategoryTitle = dr["SubCategoryTitle"],
+                    CategorySN = dr["CategorySN"]
+                }).ToList();
+                recordCount = list.Count;
+                return list;
+            }
+            else if (proTypes == 3 && proTypes == type)//具体商品
+            {
+                var proList = proCodes.Split(',').ToList();
+
+                var queryProduct = BaseService<VwProduct>.CurrentRepository.QueryEntity.ToList();
+                //var query = queryProduct.Where(o => proList.Contains(o.Barcode));
+                var query = from y in proList
+                            from z in queryProduct
+                            where (y == z.Barcode || ("," + z.Barcodes + ",").Contains("," + y + ","))
+                            select new
+                            {
+                                z.Barcode,
+                                z.ProductCode,
+                                z.Title,
+                                z.CategoryTitle,
+                                z.SubUnit,
+                                z.SysPrice,
+                                z.StockNums
+                            };
+
+                var list = query.ToList();
+                recordCount = list.Count;
+                return list;
+            }
+            else if (proTypes == 4 && proTypes == type)//指定品牌
+            {
+                var dt = dal.GetBrandList(proCodes);
+                var list = dt.AsEnumerable().Select(dr => new
+                {
+                    Id = dr["Id"],
+                    BrandSN = dr["BrandSN"],
+                    Title = dr["Title"],
+                    JianPin = dr["JianPin"],
+                    Num = dr["Num"],
+                    ClassifyTitle = dr["ClassifyTitle"]
+                }).ToList();
+                recordCount = list.Count;
+                return list;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 设置状态
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        public OpResult SetCouponState(string ids, short state)
+        {
+            OpResult result = new OpResult();
+            try
+            {
+                var updateData = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ",")).ToList();
+                if (updateData.Count() > 0)
+                {
+                    using (TransactionScope scope = new TransactionScope())
+                    {
+                        foreach (var item in updateData)
+                        {
+                            if (item.State != state)
+                            {
+                                item.State = state;
+                                result= BaseService<MakingCouponCard>.Update(item);
+                                if (!result.Successed)
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                        scope.Complete(); 
+                    }
+                    if (result.Successed)
+                    {
+                        return new OpResult() { Successed = true, Message = "操作成功！" };
+                    }
+                    else
+                    {
+                        return new OpResult() { Successed = true, Message = "无数据更新！" };
+                    }
+                }
+                else
+                {
+                    return new OpResult() { Successed = true, Message = "未找到对应数据！" };
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 生成优惠券
+        /// </summary>
+        /// <param name="batchSN"></param>
+        /// <param name="num"></param>
+        /// <returns></returns>
+        public OpResult GenerateCoupon(string id, string batchSN, int num)
+        {
+            OpResult result = new OpResult() { Successed = false, Message = "生成失败！" };
+            if ((!string.IsNullOrEmpty(batchSN)) && num > 0)
+            {
+                using (TransactionScope scope = new TransactionScope())
+                {
+                    var ranArray = GetRandString(3, num);//3位不重复的随机字符串数组，数组长度为num
+                    if (ranArray[0] == "错误")
+                    {
+                        return result;
+                    }
+                    for (int i = 0; i < num; i++)
+                    {
+                        GenerateCoupon model = new GenerateCoupon();
+                        model.CreateDT = DateTime.Now;
+                        model.CreateUID = Sys.CurrentUser.UID;
+                        model.CompanyId = CommonService.CompanyId;
+                        model.BatchSN = batchSN;
+                        var serialNo = (i + 1).ToString().PadLeft(5, '0');
+                        model.TicketNo = batchSN + serialNo;//券号：8位批次号 + 5位序号,示例：1608160100001
+                        model.SecurityCode = ranArray[i];//防伪码：3位英文字母随机组合，同一批次内唯一
+                        result = BaseService<GenerateCoupon>.Add(model);
+                        if (!result.Successed)
+                        {
+                            break;
+                        }
+                    }
+                    result = SetCouponState(id, 1);
+                    scope.Complete();
+                }
+                if (result.Successed)
+                {
+                    return new OpResult() { Successed = true, Message = "生成成功！" };
+                }
+                else
+                {
+                    return new OpResult() { Successed = false, Message = "生成失败！" };
+                }
+            }
+            else
+            {
+                return result;
+            }
+        }
+
+        #region 获取随机不重复字符串
+
+        private const string CHAR = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; //数字+字母
+        /// <summary>
+        /// 获取随机字符串
+        /// </summary>
+        /// <param name="len"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        private List<string> GetRandString(int len, int count)
+        {
+            List<string> errMsg=new List<string>();
+            double max_value = Math.Pow(36, len);
+            if (max_value > long.MaxValue)
+            {
+                errMsg[0]="错误";
+                errMsg[1]=string.Format("Math.Pow(36, {0}) 超出 long最大值！", len);
+                return errMsg;
+            }
+             
+            long all_count = (long)max_value;
+            long stepLong = all_count / count;
+            if (stepLong > int.MaxValue)
+            {
+                errMsg[0]="错误";
+                errMsg[1]=string.Format("stepLong ({0}) 超出 int最大值！", stepLong);
+                return errMsg;
+            }
+            int step = (int)stepLong;
+            if (step < 3)
+            {
+                errMsg[0]="错误";
+                errMsg[1]="step 不能小于 3!";
+                return errMsg;
+            }
+            long begin = 0;
+            List<string> list = new List<string>();
+            Random rand = new Random();
+            while (true)
+            {
+                long value = rand.Next(1, step) + begin;
+                begin += step;
+                list.Add(GetChart(len, value));
+                if (list.Count == count)
+                {
+                    break;
+                }
+            }
+            list = SortByRandom(list);
+            return list;
+        }
+
+        /// <summary>
+        /// 将数字转化成字符串
+        /// </summary>
+        /// <param name="len"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private string GetChart(int len, long value)
+        {
+            StringBuilder str = new StringBuilder();
+            while (true)
+            {
+                str.Append(CHAR[(int)(value % 36)]);
+                value = value / 36;
+                if (str.Length == len)
+                {
+                    break;
+                }
+            }
+ 
+            return str.ToString();
+        }
+
+        /// <summary>
+        /// 随机排序
+        /// </summary>
+        /// <param name="charList"></param>
+        /// <returns></returns>
+        private List<string> SortByRandom(List<string> charList)
+        {
+            Random rand = new Random();
+            for (int i = 0; i < charList.Count; i++)
+            {
+                int index = rand.Next(0, charList.Count);
+                string temp = charList[i];
+                charList[i] = charList[index];
+                charList[index] = temp;
+            }
+            return charList;
+        }
+        #endregion
+
+    }
+}

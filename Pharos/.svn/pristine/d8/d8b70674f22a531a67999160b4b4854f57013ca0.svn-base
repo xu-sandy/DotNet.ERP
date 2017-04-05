@@ -1,0 +1,63 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Linq;
+using System.ServiceProcess;
+using System.Text;
+using System.Threading.Tasks;
+using System.Timers;
+
+namespace Pharos.Service.Retailing
+{
+    public partial class Service1 : ServiceBase
+    {
+        public Service1()
+        {
+            InitializeComponent();
+        }
+
+        protected override void OnStart(string[] args)
+        {
+            EventLog.WriteEntry("Pharos.Service.Retailing 服务启动");//在系统事件日志中记录描述
+
+            Timer t = new Timer();
+            t.Interval = 1000 * 60 * 2;//间隔：1s * 60 * 2;
+            t.Elapsed += new ElapsedEventHandler(AutoRun);//到达时间执行该事件
+            t.AutoReset = true; //设为一直执行
+            t.Enabled = true;
+        }
+
+        /// <summary>
+        /// 定时检查，并自动执行方法
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="e"></param>
+        protected void AutoRun(object source, System.Timers.ElapsedEventArgs e)
+        {
+            #region //todo：活动推送（短信）
+
+            #endregion
+
+            #region //todo：活动推送（邮件）
+
+            #endregion
+
+            #region //todo：发送外部邮件
+
+            #endregion
+
+            #region //todo：系统异常提醒
+
+            #endregion
+
+            //todo：
+        }
+
+        protected override void OnStop()
+        {
+            EventLog.WriteEntry("Pharos.Service.Retailing 服务停止");//在系统事件日志中记录描述
+        }
+    }
+}

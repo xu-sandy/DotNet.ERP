@@ -1,0 +1,89 @@
+﻿using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.DataSync;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.SettingsPagesModels
+{
+    public class MachineInfoModel : BaseObservable
+    {
+        public bool canClose = false;
+        public MachineInfoModel()
+        {
+            MachineId = PosMachineInfo.Infos.MachineId;
+            StoreId = PosMachineInfo.Infos.StoreId;
+            StoreName = PosMachineInfo.Infos.StoreName;
+            StorePhone = PosMachineInfo.Infos.StorePhone;
+            CompanyName = PosMachineInfo.Infos.CompanyName;
+            // var serverSettings = DataSyncConfigManage.Current;
+            ServerUrl = PosMachineInfo.Infos.ServerUrl;
+            IsModify = true;
+        }
+        public string MachineId { get; set; }
+
+        public string StoreId { get; set; }
+
+        public string StorePhone { get; set; }
+        public string StoreName { get; set; }
+
+        public string CompanyName { get; set; }
+
+        public bool IsModify { get; set; }
+        public string ServerUrl { get; set; }
+        /// <summary>
+        /// 保存Pos信息，并重启程序
+        /// </summary>
+        public GeneralCommand Save
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    if (string.IsNullOrEmpty(MachineId) && IsModify)
+                    {
+                        Toast.DoShow("POS机编号必填！");
+                        return;
+                    }
+                    if (string.IsNullOrEmpty(StoreId) && IsModify)
+                    {
+                        Toast.DoShow("门店标识必填！");
+                        return;
+                    }
+                    if (string.IsNullOrEmpty(StorePhone) && IsModify)
+                    {
+                        Toast.DoShow("门店电话必填！");
+                        return;
+                    }
+                    if (string.IsNullOrEmpty(StoreName) && IsModify)
+                    {
+                        Toast.DoShow("门店名称必填！");
+                        return;
+                    }
+                    if (string.IsNullOrEmpty(CompanyName) && IsModify)
+                    {
+                        Toast.DoShow("公司简称必填！");
+                        return;
+                    }
+                    if (string.IsNullOrEmpty(ServerUrl))
+                    {
+                        Toast.DoShow("服务器地址必填！");
+                        return;
+                    }
+                    PosMachineInfo.Infos.MachineId = MachineId;
+                    PosMachineInfo.Infos.StoreId = StoreId;
+                    PosMachineInfo.Infos.StoreName = StoreName;
+                    PosMachineInfo.Infos.StorePhone = StorePhone;
+                    PosMachineInfo.Infos.CompanyName = CompanyName;
+                    // var serverSettings = DataSyncConfigManage.Current;
+                    PosMachineInfo.Infos.ServerUrl = ServerUrl;
+                    if (PosMachineInfo.Infos.WriteConfig())
+                    {
+                        //  serverSettings.Save.Execute(Application.Current.MainWindow);
+                        string path = System.Reflection.Assembly.GetEntryAssembly().Location;
+                        System.Diagnostics.Process.Start(path, "Restart");
+                        Application.Current.Shutdown();
+                    }
+                });
+            }
+        }
+    }
+}

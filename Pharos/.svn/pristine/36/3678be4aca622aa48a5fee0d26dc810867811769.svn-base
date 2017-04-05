@@ -1,0 +1,105 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var giftNum = Convert.ToDecimal(ViewData.Eval("GiftNum"));
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("Id")
+        @Html.Hidden("DeliveryNum")
+        @Html.Hidden("Updated")
+        <div class="content">
+            <table class="table-form" width="100%" height="220px">
+                <tr>
+                    <td class="name">条 码：</td>
+                    <td class="input">@Html.DisplayText("Barcode")</td>
+                    <td class="name">品 名：</td>
+                    <td class="input">@Html.DisplayText("Title")</td>
+                </tr>
+                <tr>
+                    <td class="name">订货日期：</td>
+                    <td class="input">@Html.DisplayText("CreateDT", "{0:yyyy-MM-dd}")</td>
+                    <td class="name">订货人：</td>
+                    <td class="input">@Html.DisplayText("OrderTitle")</td>
+                </tr>
+                <tr>
+                    <td class="name">配送批次：</td>
+                    <td class="input">@Html.DisplayText("DistributionBatch")</td>
+                    <td class="name">订货单号：</td>
+                    <td class="input">@Html.DisplayText("IndentOrderId")</td>
+                </tr>
+                <tr>
+                    <td class="name">累积收货：</td>
+                    <td class="input">@Html.DisplayText("ReceivedNums")</td>
+                    <td class="name">订货数量：</td>
+                    <td class="input">@Html.DisplayText("IndentNum")</td>
+                </tr>
+                <tr>
+                    <td class="name">本次退换：</td>
+                    <td class="input">@Html.DisplayText("ReturnNum")</td>
+                    <td class="name">本次配送：</td>
+                    <td class="input">@Html.DisplayText("DeliveryNums")</td>
+                </tr>
+                <tr>
+                    <td class="name">赠品数：</td>
+                    <td class="input">@Html.DisplayText("GiftNum")</td>
+                    <td class="name">本次收货数量：</td>
+                    <td class="input">@Html.TextBox("ReceivedNum", ViewData.Eval("ReceiveNum"), new { @class = "easyui-numberspinner", data_options = (ViewData.Eval("ValuationType").ToString() == "1" ? "min:1" : "min:0.1") + ",width:100,required:true,precision:2" })</td>
+                </tr>
+            </table>
+            @if(giftNum>0)
+            { 
+            <div class="formbox" style="margin-bottom:10px;"></div>
+    <table class="easyui-datagrid" id="grid"
+           data-options="url:'@Url.Action("LoadGiftList")',title:'赠品信息',queryParams:{id:'@Html.DisplayText("Id")',Barcode:'@Html.DisplayText("Barcode")',OrderId:'@Html.DisplayText("IndentOrderId")'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect:true,onLoadError:loadError,onClickCell:clickCell">
+        <thead>
+            <tr>
+                <th data-options="field:'Barcode'" width="120">条形码</th>
+                <th data-options="field:'Title'" width="150">品名</th>
+                <th data-options="field:'IndentNum'" width="100">赠品数量</th>
+                <th data-options="field:'ReceivedNum',editor:{type:'numberbox',options:{disabled:false,required:true,precision:2}}" width="100">实收数量</th>
+            </tr>
+        </thead>
+    </table>
+            }
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    var $dg = null;
+    $(function () {
+        $dg = $("#grid");
+    });
+    function SaveBefore() {
+        var delNum= $("#DeliveryNum").val();
+        var receNum = $("#ReceivedNum").numberbox("getValue");
+        if (receNum > parseInt(delNum)) {
+            $.messager.alert("提示", "收货数量不能大于配送数量!"); return false;
+        }
+        if ($dg[0]) {
+            var updated = $dg.datagrid('getChanges', "updated");
+            $("#Updated").val(JSON.stringify(updated));
+            endClickEditing();
+        }
+        return true;
+    }
+    var clickIndex = undefined;
+    function clickCell(index, field) {
+        if (endClickEditing() && field == "ReceivedNum") {
+            $dg.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+        }
+    }
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dg.datagrid('validateRow', clickIndex)) {
+            $dg.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            return true;
+        } else {
+            return false;
+        }
+    }
+</script>

@@ -1,0 +1,53 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    x:Class="Pharos.POS.Retailing.Styles.Base.ChildPageFrame"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ControlTemplate x:Key="ChildPageFrame" TargetType="Window">
+        <Grid Margin="10">
+            <Grid.Effect>
+                <DropShadowEffect ShadowDepth="0" BlurRadius="15" Opacity="0.8" Color="#80000000"></DropShadowEffect>
+            </Grid.Effect>
+            <Border BorderThickness="5"  CornerRadius="10"  Background="#F9F9F9">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="40"></RowDefinition>
+                        <RowDefinition Height="*"></RowDefinition>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" BorderThickness="0,0,0,1" BorderBrush="#AFB3B7" MouseDown="MoveWindow">
+                        <Grid Cursor="Hand">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="300*"></ColumnDefinition>
+                                <ColumnDefinition Width="50"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel  Margin="10,5,0,0" Height="40" PreviewMouseLeftButtonDown="MoveWindow"  
+                                        Background="#F9F9F9" Grid.Column="0" VerticalAlignment="Center" Orientation="Horizontal">
+                                <Image Margin="5,0,10,0" Source="{TemplateBinding Icon}" Width="25" ></Image>
+                                <TextBlock Text="{TemplateBinding Title}" FontSize="16" Foreground="#404040" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1"  VerticalAlignment="Center" HorizontalAlignment="Center" MouseDown="CloseWindow">
+                                <TextBlock FontSize="45" TextAlignment="Center" FontFamily="/Pharos.POS.Retailing;component/Fonts/#Microsoft YaHei" Foreground="#A0A0A1" TextDecorations="{x:Null}">×</TextBlock>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Grid Grid.Row="1">
+                        <ContentControl Content="{TemplateBinding Content}"></ContentControl>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </ControlTemplate>
+
+    <Style x:Key="SkinWindowStyle" TargetType="Window">
+        <Setter Property="WindowStyle" Value="None" />
+        <Setter Property="AllowsTransparency" Value="True" />
+        <Setter Property="ResizeMode" Value="CanResize" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Opacity" Value="1.0" />
+        <Setter Property="Template" Value="{StaticResource ChildPageFrame}" />
+
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding WindowState}" Value="Maximized">
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+</ResourceDictionary>

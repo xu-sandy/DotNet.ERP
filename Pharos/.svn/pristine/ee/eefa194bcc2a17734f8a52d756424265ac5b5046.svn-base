@@ -1,0 +1,62 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Web.Http.Filters;
+using Pharos.Api.Retailing.Models;
+#if(Local!= true)
+using Pharos.Component.qrcode;
+using Pharos.Utility.Helpers;
+#endif
+namespace Pharos.Api.Retailing
+{
+    public class ResponseFilterAttribute : ActionFilterAttribute
+    {
+        public override void OnActionExecuted(HttpActionExecutedContext actionExecutedContext)
+        {
+            if (actionExecutedContext.Response == null) return;
+            var content = actionExecutedContext.Response.Content;
+            var x = content == null ? null : content.ReadAsAsync<object>().Result;
+            var result = new ApiRetrunResult<object>()
+            {
+                Code = "200",
+                Result = x
+            };
+            var code = (System.Net.HttpStatusCode)Enum.Parse(typeof(System.Net.HttpStatusCode), result.Code, true);
+            var response = actionExecutedContext.Request.CreateResponse<ApiRetrunResult<object>>(code, result, "application/json");
+            response.Headers.Add("Access-Control-Allow-Origin", "*");
+            //response.Content = new StringContent(string.Concat(result), Encoding.UTF8, "application/xml");
+            ////var response = actionExecutedContext.Request.CreateResponse<string>(code, result.ToJson(), "application/json");
+            //if (string.Equals(actionExecutedContext.ActionContext.ControllerContext.RouteData.Values["controller"].ToString(),"Login",StringComparison.CurrentCultureIgnoreCase))
+            //{
+            //    //var cookie = new CookieHeaderValue("session","hello!");
+            //    //cookie.Expires = DateTimeOffset.Now.AddDays(1);
+            //    //cookie.Domain = actionExecutedContext.Request.RequestUri.Host;
+            //    //cookie.Path = "/";
+            //    //response.Headers.AddCookies(new CookieHeaderValue[] { cookie } );
+            //}
+            actionExecutedContext.Response = response;
+        }
+        public override void OnActionExecuting(System.Web.Http.Controllers.HttpActionContext actionContext)
+        {
+            try
+            {
+#if(Local!= true)
+                if (actionContext.ActionArguments.Any() && actionContext.ActionArguments.Values.Any())
+                {
+                    var parms = actionContext.ActionArguments.Values.ToJson();
+                    if (parms.Length > 5)
+                    {
+                        var json = " 参数:" + parms;
+                        Log.Debug(actionContext.Request.RequestUri.AbsolutePath, json);
+                    }
+                }
+#endif
+            }
+            catch { }
+            base.OnActionExecuting(actionContext);
+        }
+    }
+}

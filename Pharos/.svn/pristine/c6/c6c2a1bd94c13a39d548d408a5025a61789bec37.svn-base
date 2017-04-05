@@ -1,0 +1,88 @@
+﻿@{
+    //ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<script type="text/javascript">
+    $(function () {
+        var tj = 0;
+        var intid = null;
+        var saveUrl = $('.default-form form').attr("action");
+        if (!saveUrl) saveUrl = "@Url.Action("Save")";
+        $('.default-form form').form({
+            url: saveUrl,
+            ajax:true,
+            onSubmit: function () {
+                var isValid = SaveBefore();//$(this).form("enableValidation").form('validate');
+                //window.top.$('#lbsave').linkbutton("disable");
+                if (isValid) isValid = $(this).form('validate');
+                
+                if (!isValid) {
+                    SaveBefore2();
+                }
+                
+                if (tj == 1) isValid = false;//不允许重复提交
+                if (isValid) {
+                    $.messager.progress({ title: "请稍候", msg: "正在保存数据...", interval: 0 });
+                    tj = 1;
+                    intid = setInterval(function () {
+                        var progressBar = $.messager.progress("bar");
+                        var vl = progressBar.progressbar('getValue');
+                        vl += 5;
+                        if (vl >= 95) { clearInterval(intid); }
+                        progressBar.progressbar('setValue', vl);
+                    }, 400)
+                }
+                return isValid;
+            },
+            success: function (data) {
+                clearInterval(intid);
+                tj = 0;
+                var json = $.parseJSON(data);
+                if (json.successed) {
+                    //$.messager.alert('提示', '操作成功！', "info", function () {
+                    Refresh(json);
+                    //});
+                } else {
+                    var msg = json.descript ? "" : json.message;
+                    $.messager.alert('错误', '操作失败！' + msg, "error", function () {
+                        dispErr(json.message,json.descript);
+                    });
+                }
+                $.messager.progress('close');
+            }
+        });
+    });
+    function SaveBefore(){
+        return true;
+    }
+    function SaveBefore2(){
+    }
+    function Refresh() {
+        //alert($("#grid")[0]);
+        //window.top.$("#grid").datagrid("reload");
+        if ($("#hidadd").val() == "1") {
+            //window.location.reload();
+            pharos.easyui.dialog.curJquery("formDiv")("#grid").datagrid("reload").datagrid("clearSelections").datagrid("clearChecked");
+            var src = window.top.$('.formDiv:last iframe').attr("src");
+            window.location.href = src;
+        } else {
+            pharos.easyui.dialog.curJquery("formDiv")("#grid").datagrid("reload").datagrid("clearSelections").datagrid("clearChecked");
+            pharos.easyui.dialog.topClose("formDiv");
+        }
+    }
+    function dispErr(msg,desc) {
+
+    }
+    function guidGenerator() {
+        var S4 = function () {
+            return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+        };
+        return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
+    }
+    function isNull(obj) {
+        if (!obj) return true;
+        if (parseFloat(obj) <= 0) return true;
+        return false;
+    }
+</script>
+@RenderBody()

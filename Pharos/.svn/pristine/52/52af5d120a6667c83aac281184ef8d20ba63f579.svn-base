@@ -1,0 +1,30 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// DuoFangShiZhiFu.xaml 的交互逻辑
+    /// </summary>
+    public partial class DuoFangShiZhiFu : DialogWindow02
+    {
+        public DuoFangShiZhiFu(decimal amount, PayAction action)
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+            Task.Factory.StartNew(() =>
+            {
+                var model = new MultiPaymentViewModel(amount, action);
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    this.ApplyBindings(this, model);
+                }));
+            });
+        }
+    }
+}

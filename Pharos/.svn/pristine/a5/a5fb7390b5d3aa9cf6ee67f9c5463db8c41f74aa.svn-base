@@ -1,0 +1,545 @@
+﻿@model BreakageGoods
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var chs = ViewBag.channel as List<SelectListItem>;
+}
+
+<div class="default-form">
+    @using (Html.BeginForm("SaveBreakageGoods", "Store", FormMethod.Post))
+    {
+        @Html.HiddenFor(o => o.Rows)
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.BreakageGoodsId)
+        @Html.HiddenFor(o => o.State)
+
+        <table style="font-size:14px; line-height:37px; padding:2px 0 4px 0; min-width:1000px;" id="query">
+            <tr>
+                <td class="left_td font-12">报损仓库：</td>
+                <td class="font-12 width-162">
+                    @Html.DropDownListFor(o => o.StoreId, ViewBag.shops as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "validType:'requiredForCombo',novalidate:true,onChange:applySelect,readonly:" + (Model.StoreId != null ? "true" : "false") }) @*, data_options = "validType:'requiredForCombo',novalidate:true,editable:false"*@
+                </td>
+                <td class="left_td font-12">经办人：</td>
+                <td class="font-12 width-162">
+                    @Html.DropDownListFor(o => o.OperatorUID, ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "validType:'requiredForCombo',novalidate:true" })
+                </td>
+
+                <td class="left_td font-12">登记日期：</td>
+                <td class="font-12 width-162">
+                    <input name="CreateDT" id="CreateDT" value="@(Model.CreateDT == new DateTime() ? DateTime.Now.ToString("yyyy-MM-dd") : Model.CreateDT.ToString("yyyy-MM-dd"))" class="Wdate datacontrol" style="width: 148px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+                </td>
+            </tr>
+            <tr>
+                <td class="left_td font-12">报损类别：</td>
+                <td class="font-12 width-158">
+                    @if (Model.Id > 0)
+                    {
+                        if (Model.BreakageType == 1)
+                        {
+                            <span>入库</span>
+                        }
+                        else { 
+                            <span>出库</span>
+                        }
+                    }
+                    else
+                    {
+                        @Html.RadioButtonListFor(o => o.BreakageType, ViewBag.breakageType as List<SelectListItem>)
+                    }
+                </td>
+                <td class="left_td font-12">原始单据：</td>
+                <td>
+                    <input id="Receipt" name="Receipt" class="easyui-textbox datacontrol font-12" style="width:168px;" data-options="required:true" value="@Model.Receipt" />
+                </td>
+                <td class="left_td font-12">摘要/备注：</td>
+                <td>
+                    <input id="Memo" name="Memo" class="datacontrol font-12" style="width:153px;" value="@Model.Memo" />
+                </td>
+            </tr>
+        </table>
+
+        <input type="button" id="btnapp" onclick="append()" value="add" style="display:none" />
+        <table class="easyui-datagrid" id="grid2"
+               data-options="border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,title:'报损清单',onLoadSuccess:gridLoadSuccess,onBeforeEdit:beforeEdit,onLoadError:function(){alert('error')},onClickCell:clickCell">
+            <thead>
+                <tr>
+                    <th data-options="field:'ProductCode',editor:{type:'textbox',options:{disabled:true}}" width="150">货号</th>
+                    <th data-options="field:'Barcode',editor:{type:'combobox',options:{required:true,panelWidth:400,mode:'remote',valueField:'barcode',textField:'title',loader:comboload,onChange:comboSelect}}" width="200">条形码</th>
+                    <th data-options="field:'Title',editor:{type:'textbox',options:{disabled:true}}" width="250">品名</th>
+                    <th data-options="field:'SubUnit',editor:{type:'textbox',options:{disabled:true}}" width="60">计量单位</th>
+                    <th data-options="field:'BreakageNumber',editor:{type:'numberbox',options:{required:true,min:0.001,precision:3}}" width="60">数量</th>
+                    <th data-options="field:'BreakagePrice',editor:{type:'textbox',options:{drequired:true,min:0.00,precision:2}}" width="60">批发价</th>
+                    <th data-options="field:'Subtotal',formatter:formatterSubTotal" width="100">小计</th>
+                    <th data-options="field:'Editor',formatter:operation" width="100">操作</th>
+                </tr>
+            </thead>
+        </table>
+        <div>
+            @if(CurrentUser.HasPermiss(SysConstLimits.库存管理_报损登记))
+            { 
+            <a id="save_btn" class="easyui-linkbutton cus4 linkbtn" onclick="saveBreakageGoods()" style="margin-left:500px; margin-top:50px; width:80px;">保存</a>
+            }
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+        //入库：进价，出库：批发价
+        var title = "@Model.BreakageType" == "1" ? "进价" : "批发价";
+        $(".datagrid-header-inner .datagrid-cell-c1-BreakagePrice span:first").html(title);
+        $("[name='BreakageType']").click(function () {
+            var BreakType = $(this).val();
+            title = BreakType == "1" ? "进价" : "批发价";
+            $(".datagrid-header-inner .datagrid-cell-c1-BreakagePrice span:first").html(title);
+        });
+
+        $dg2 = $("#grid2");
+        if ($("#Id").val() > 0) {
+            $("#save_btn").css("visibility", "hidden");
+            var breakageGoodsId = $("#BreakageGoodsId").val();
+            $dg2.datagrid('options').queryParams = { breakageGoodsId: breakageGoodsId };
+            $dg2.datagrid('options').url = '@Url.Action("GetBreakageListByBreakageGoodId", "Store")';
+            setTimeout(function () { $dg2.datagrid('reload'); }, 100);
+        } else {
+            appClick();
+        }
+
+        //报损类别改变时，清空报损清单
+        $("input[name=BreakageType]").change(function () {
+            applySelect();
+        })
+    });
+
+    //获取RadioButton的值
+    function GetRadioValue(RadioName) {
+        var obj;
+        obj = document.getElementsByName(RadioName);
+        if (obj != null) {
+            var i;
+            for (i = 0; i < obj.length; i++) {
+                if (obj[i].checked) {
+                    return obj[i].value;
+                }
+            }
+        }
+        return null;
+    }
+
+    //小计格式化
+    function formatterSubTotal(value, row, index) {
+        if (isNaN(row.BreakageNumber)) return value;
+        if (isNaN(row.BreakagePrice)) return '';
+        var subTotal = Number(row.BreakagePrice * row.BreakageNumber).toFixed(2);
+        return row.BreakagePrice ? '￥' + subTotal : '';
+    }
+
+    function gridLoadSuccess() {
+        if ($("#Id").val() > 0 && $("#State").val() != 0) {
+            $dg2.datagrid("hideColumn", "Editor");
+            appendTotalRow();
+            changeValue();
+        } else {
+            setTimeout(function () { appClick(); }, 100);
+        }
+    }
+
+    function appendTotalRow() {
+        var rows = $dg2.datagrid('getRows');
+        $.each(rows, function (index, row) {
+            if (row != undefined) {
+                if (row.Id == 'countrow') {
+                    var rowIndex = $dg2.datagrid('getRowIndex', row);
+                    $dg2.datagrid('deleteRow', rowIndex);
+                }
+            }
+        })
+        var totalRow = {
+            Id: 'countrow',
+            Title: '<span>合计</span>',
+            BreakageNumber: '<span id="totalNum">0</span>',
+            BreakagePrice: '<span id="totalBreakagePrice">0</span>',
+            Subtotal: '<span id="totalPrice">￥0</span>',
+            Editor: 'countrow'
+        }
+        $dg2.datagrid('appendRow', totalRow);
+    }
+
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 1) return false;
+        $.ajax({
+            @*url: "@Url.Action("GetProductFromBreak")",*@
+            url:"@Url.Action("GetProductInput", "Product")",
+            type: "post",
+            data: {
+                //传值，还是JSON数据搜索
+                searchName: q,
+                storeId: $("#StoreId").combobox("getValue"),
+                zp: '1',
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function (item) {
+                    return { barcode: item.Barcode, title: item.TitleExt }; // + "(" + item.Barcode + ")"
+                });
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    var comboRows = [];
+    function comboSelect(newValue, oldValue) {
+        var obj = getRow(newValue); 
+        if (!obj) return;
+        editIndex = $dg2.datagrid('getRows').length - 2;
+        var ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'ProductCode' });
+        $(ed.target).textbox('setValue', obj.ProductCode);
+        ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'Title' });
+        $(ed.target).textbox('setValue', obj.Title);
+        ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'SubUnit' });
+        $(ed.target).textbox('setValue', obj.SubUnit);
+        
+        var breakageType = "";
+        @if (Model.Id > 0)
+        {
+            @:breakageType = '@Model.BreakageType';
+        }
+        else
+        {
+            @:breakageType = $("input[name=BreakageType]:checked").val();
+        }
+        if (breakageType == "1") {//入库:进价
+            ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'BreakagePrice' });
+            $(ed.target).textbox('setValue', obj.BuyPrice.toFixed(2));
+        } else {
+            //出库:批发价
+            ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'BreakagePrice' });
+            $(ed.target).textbox('setValue', obj.TradePrice.toFixed(2));
+        }
+
+        ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'BreakageNumber' });
+        $(ed.target).unbind("keyup").bind("keyup", function (e) {
+            e.preventDefault();
+            if (e.keyCode == 13) append();
+        });//.focus().select();
+    }
+    function getRow(Barcode) {
+        var obj = null;
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == Barcode) {
+                obj = row; return;
+            }
+        });
+        if (obj == null) {
+            if (Barcode != undefined)
+                initComboRows(Barcode);
+            $.each(comboRows, function (i, row) {
+                if (row.Barcode == Barcode) {
+                    obj = row; return;
+                }
+            });
+        }
+        return obj;
+    }
+    function initComboRows(barcode) {
+        $.ajax({
+            @*url: "@Url.Action("GetProductFromBreak")",*@
+            url:"@Url.Action("GetProductInput", "Product")",
+            type: "post",
+            async: false,
+            data: {
+                searchName: barcode,
+                storeId: $("#StoreId").combobox("getValue"),
+                zp: '1'
+            },
+            dataType: "json",
+            success: function (data) {
+                comboRows = data.rows;
+            }
+        });
+    }
+    var editIndex = undefined, clickIndex = undefined, opadd = false;
+    var $dg2;
+    function endEditing() {
+        if (editIndex == undefined) { return true }
+        editIndex = $dg2.datagrid('getRows').length - 2;
+        if ($dg2.datagrid('validateRow', editIndex)) {
+            var ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'Barcode' });
+            if (ed == null) return true;
+            var vl = $(ed.target).combobox('getValue');
+            if (comboRowsExisitBarcode(vl) == false) {
+                $.messager.alert("提示", "该条码不存在!"); return false;
+            }
+            var ed2 = $dg2.datagrid('getEditor', { index: editIndex, field: 'ProductCode' });
+            if (!$(ed2.target).textbox('getValue')) {
+                $.messager.alert("提示", "该条码不存在!"); return false;
+            }
+            var data = $dg2.datagrid("getData");
+            if (isExists(data.rows, vl)) {
+                $.messager.alert("提示", "该货号已存在", "warning", function () {
+                    $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                });
+                return false;
+            } else {
+                $dg2.datagrid('endEdit', editIndex);
+                editIndex = undefined;
+                return true;
+            }
+        } else {
+            return false;
+        }
+    }
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dg2.datagrid('validateRow', clickIndex)) {
+            $dg2.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            changeValue();
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function beforeEdit(rowIndex, rowData) {
+        //var ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'Barcode' });
+        //setTimeout(function () { $(".datagrid-cell-c1-ProdcutCd .textbox-text").focus(); }, 1000);
+    }
+    function append() {
+        if (endClickEditing() && endEditing()) {
+            opadd = true;
+            $dg2.datagrid('appendRow', { BreakageNumber: 1, Id: guidGenerator() });
+            editIndex = $dg2.datagrid('getRows').length - 1;
+            $dg2.datagrid('selectRow', editIndex)
+                .datagrid('beginEdit', editIndex);
+            //$dg2.datagrid('beginEdit', editIndex);
+        }
+        appendTotalRow();
+        changeValue();
+
+        //绑定回车事件
+        setTimeout(function () {
+            var bindEditIndex = $dg2.datagrid('getRows').length - 2;
+            var ed = $dg2.datagrid('getEditor', { index: bindEditIndex, field: 'Barcode' });
+            var ed2 = $dg2.datagrid('getEditor', { index: bindEditIndex, field: 'BreakageNumber' });
+            var ed3 = $dg2.datagrid('getEditor', { index: bindEditIndex, field: 'BreakagePrice' });
+
+            $(ed.target).textbox('textbox').focus();
+            $($(ed.target).combo('textbox')).unbind("keyup").bind("keyup", function (e) {
+                if (e.keyCode == 13) {
+                    $(ed2.target).textbox('textbox').focus();
+                    $(ed2.target).textbox('textbox').select();
+                }
+            });
+            $($(ed2.target).combo('textbox')).unbind("keyup").bind("keyup", function (e) {
+                if (e.keyCode == 13) {
+                    $(ed3.target).textbox('textbox').focus();
+                    $(ed3.target).textbox('textbox').select();
+                }
+            });
+
+            $($(ed3.target).combo('textbox')).unbind("keyup").bind("keyup", function (e) {
+                if (e.keyCode == 13) {
+                    append();
+                }
+            });
+        }, 50)
+
+    }
+
+    function removeItem(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dg2.datagrid("selectRecord", id);
+            var row = $dg2.datagrid("getSelected")
+            var index = $dg2.datagrid("getRowIndex", row);
+            $dg2.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+    function operation(value, row, index) {
+        if (value == 'countrow') return '';
+        if (opadd) {
+            opadd = false;
+            return "<a href='javascript:void(0)' onclick='append()'>[添加]</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItem('" + row.Id + "')\">[删除]</a>";
+        }
+    }
+    function clickCell(index, field) {
+        if (index == $dg2.datagrid('getRows').length - 1)
+            return false;
+        if ($("#Id").val() > 0 && $("#State").val() != 0)
+            return false
+        if (endClickEditing() && (field == "BreakageNumber" || field == "BreakagePrice")) {
+            $dg2.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+        }
+    }
+    function appClick() {
+        setTimeout(function () {
+            $("#btnapp").click()
+        }, 1000);
+    }
+    function acceptChanges() {
+        $dg2.datagrid("acceptChanges");
+    }
+    function changeValue() {
+        var rows = $dg2.datagrid("getRows");
+        var submitRows = [];
+        for (var i = 0; i < rows.length; i++) {
+            if (rows[i].Id != "countrow") {
+                rows[i].Id = i + 1;
+                submitRows.add(rows[i]);
+            }
+        }
+        $("#Rows").val(JSON.stringify(submitRows));
+        editIndex = rows.length - 1;
+        var total = 0;
+        var totalNum = 0;
+        var totalBreakagePrice = 0;
+        $.each(rows, function (i, r) {
+            if (!isNaN(r.BreakagePrice) && !isNaN(r.BreakageNumber)) {
+                total += r.BreakagePrice * r.BreakageNumber;
+                totalBreakagePrice += Number(r.BreakagePrice);
+                totalNum += Number(r.BreakageNumber);
+            }
+        });
+        $("#totalPrice").html("￥" + total.toFixed(2));
+        $("#totalBreakagePrice").html("" + totalBreakagePrice.toFixed(2))
+        $("#totalNum").html("" + totalNum);
+    }
+    function isExists(rows, Barcode) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.Barcode == Barcode) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+
+    function saveBreakageGoods() {
+        $('form').submit();
+    }
+
+    //保存成功之后重置页面
+    function Refresh(result) {
+        $.messager.alert("提示", "操作成功!");
+        if ($("#Id").val() == 0) {
+            $('.default-form form').form('reset');
+            $("#grid2").datagrid('loadData', { total: 0, rows: [] });
+            appClick();
+        } else {
+            pharos.easyui.dialog.topClose("formDiv");
+            pharos.easyui.dialog.curJquery("formDiv")("#grid").datagrid("reload");
+        }
+    }
+
+    function SaveBefore() {
+        if ($("#StoreId").combobox("getValue") == "") {
+            $.messager.alert("提示", "请选择报损仓库", "warning");
+            return false;
+        }
+        if ($("#OperatorUID").combobox("getValue") == undefined) {
+            $.messager.alert("提示", "请选择经办人", "warning");
+            return false;
+        }
+        if ($("#StoreId").combobox("getValue") == undefined) {
+            $.messager.alert("提示", "输入的报损仓库不存在，请重新选择", "warning");
+            return false;
+        }
+        if ($("#OperatorUID").combobox("getValue") == undefined) {
+            $.messager.alert("提示", "输入的经办人不存在，请重新选择", "warning");
+            return false;
+        }
+        if ($("#Receipt").textbox("getValue") == undefined) {
+            $.messager.alert("提示", "请输入原始单据", "warning");
+            return false;
+        }
+        var title = "出库";
+        if ($("[name='BreakageType']:checked").val() == "1")
+            title = "入库";
+        var rowsLength = $dg2.datagrid('getRows').length;
+        if (rowsLength <= 2) {
+            $.messager.alert("提示", "请添加需要" + title + "的产品", "warning");
+            return false;
+        }
+        editIndex = $dg2.datagrid('getRows').length - 2;
+        var ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'Barcode' });
+        if (ed == null) return true;
+        $(ed.target).combobox('disableValidation');
+        endClickEditing();
+        changeValue();
+        return true;
+    }
+    $.extend($.fn.validatebox.defaults.rules, {
+        cdexist: {
+            validator: function (value) {
+                var ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'Barcode' });
+                if (!ed) return true;
+                var vl = $(ed.target).combobox('getValue');
+                var data = $dg2.datagrid("getData");
+                return !isExists(data.rows, vl);
+            },
+            message: '该货号已存在列表中'
+        }
+    });
+    //function guidGenerator() {
+    //    var rows = $dg2.datagrid("getRows");
+    //    var ids = $.map(rows, function (row) {
+    //        return row.Id ? row.Id : 0;
+    //    });
+    //    var maxId = Math.max.apply(null, ids);
+    //    if (maxId == -Infinity) maxId = 0;
+    //    return maxId + 1;
+    //}
+    function guidGenerator() {
+        var S4 = function () {
+            return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+        };
+        return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
+    }
+
+    var isChange = false;
+    function applySelect(newValue, oldValue) {
+        var changeEl = this;
+        if (isChange) { isChange = false; return; }
+        var rows = $dg2.datagrid("getRows");
+        var ed = $dg2.datagrid('getEditor', { index: editIndex, field: 'Barcode' });
+        if (!rows || rows.length <= 2) {
+            if (ed == null) return;
+        }
+        $.messager.confirm("提示", "重选择将会清空已选商品,是否继续?", function (r) {
+            if (!r) { isChange = true; $(changeEl).combobox("setValue", oldValue); return; }
+            for (var i = rows.length - 3; i >= 0; i--) {
+                $dg2.datagrid("deleteRow", i);
+            }
+            editIndex = rows.length - 1;
+            $("#grid2").datagrid('loadData', { total: 0, rows: [] });
+            appClick();
+        })
+    }
+
+
+    function comboRowsExisitBarcode(barcode) {
+        var result = false;
+        $.each(comboRows, function (index, comboRow) {
+            if (barcode == comboRow.Barcode) {
+                result = true;
+            }
+        });
+        return result;
+    }
+</script>

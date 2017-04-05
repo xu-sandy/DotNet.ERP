@@ -1,0 +1,492 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Text.RegularExpressions;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL-----商户资料
+    /// </summary>
+    public class TradersService : BaseService
+    {
+        [Ninject.Inject]
+        // 商户资料
+        IBaseRepository<Traders> TradersRepository { get; set; }
+
+        [Ninject.Inject]
+        // 商户分类
+        IBaseRepository<TraderType> TraderTypeRepository { get; set; }
+
+        [Ninject.Inject]
+        //区域管理信息
+        public IBaseRepository<Area> AreaRepository { get; set; }
+
+        [Ninject.Inject]
+        //数据字典信息
+        public IBaseRepository<SysDataDictionary> SysDataDictionaryRepository { get; set; }
+
+        [Ninject.Inject]
+        //行业管理信息
+        public IBaseRepository<Business> BusinessRepository { get; set; }
+
+        [Ninject.Inject]
+        //帐户管理
+        public IBaseRepository<SysUserInfo> SysUserInfoRepository { get; set; }
+
+        [Ninject.Inject]
+        //采购意向清单
+        public IBaseRepository<OrderList> OrderListRepository { get; set; }
+
+        [Ninject.Inject]
+        //回访跟踪记录
+        public IBaseRepository<VisitTrack> VisitTrackRepository { get; set; }
+
+        //BLL-----回访跟踪记录
+        [Ninject.Inject]
+        VisitTrackService visitTrackService { get; set; }
+
+         //BLL-----采购意向清单
+        [Ninject.Inject]
+         OrderListService  orderListService { get; set; }
+
+        [Ninject.Inject]
+        
+        public IBaseRepository<CompanyAuthorize> CompanyAuthorizeRepository { get; set; }
+
+        [Ninject.Inject]
+        //设备授权信息
+        public IBaseRepository<DeviceAuthorize> DeviceAuthorizeRepository { get; set; }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+
+            //商户资料
+            var Tra = TradersRepository.GetQuery();
+            //回访跟踪记录
+            var VisitT = VisitTrackRepository.GetQuery();
+            //区域
+            var ar = AreaRepository.GetQuery();
+            //帐户管理
+            var user=SysUserInfoRepository.GetQuery();
+            //状态（数据字典信息）
+            var data = SysDataDictionaryRepository.GetQuery(o=>o.DicPSN==205);
+
+            //省份
+            var CurrentProvinceId = (nvl["CurrentProvinceId"] ?? "").Trim();
+            //城市
+            var CurrentCityId = (nvl["CurrentCityId"] ?? "").Trim();
+            //来源
+            var Source = (nvl["Source"] ?? "").Trim();
+            //登记日期（开始）
+            var CreateDT_begin = (nvl["CreateDT_begin"] ?? "").Trim();
+            //登记日期（结束）
+            var CreateDT_end = (nvl["CreateDT_end"] ?? "").Trim();
+            //关键字
+            var keyword = (nvl["keyword"] ?? "").Trim();
+            //跟踪状态
+            var TrackStautsId = (nvl["TrackStautsId"] ?? "").Trim();
+
+
+            if (!CurrentProvinceId.IsNullOrEmpty() && CurrentProvinceId != "0")
+            {
+                var c = short.Parse(CurrentProvinceId);
+                Tra = Tra.Where(w => w.CurrentProvinceId == c);
+            }
+            if (!CurrentCityId.IsNullOrEmpty() && CurrentCityId != "0")
+            {
+                var c = short.Parse(CurrentCityId);
+                Tra = Tra.Where(w => w.CurrentCityId == c);
+            }
+            if (!Source.IsNullOrEmpty())
+            {
+                var s = short.Parse(Source);
+                Tra = Tra.Where(w => w.Source == s);
+            }
+            if (!TrackStautsId.IsNullOrEmpty())
+            {
+                var t = short.Parse(TrackStautsId);
+                Tra = Tra.Where(w => w.TrackStautsId == t);
+            }
+            if (!CreateDT_begin.IsNullOrEmpty())
+            {
+                var c = Convert.ToDateTime(CreateDT_begin + " " + "00:00:00");
+                Tra = Tra.Where(w => w.CreateDT >= c);
+            }
+            if (!CreateDT_end.IsNullOrEmpty())
+            {
+                var c = Convert.ToDateTime(CreateDT_end + " " + "23:59:59");
+                Tra = Tra.Where(w => w.CreateDT <= c);
+            }
+            if (!keyword.IsNullOrEmpty())
+            {
+                
+                if (IsNumber(keyword)&&keyword.Length<10)
+                {
+                    var k = Convert.ToInt32(keyword);
+                    Tra = Tra.Where(w => w.CID==k || w.Title.Contains(keyword) || w.LinkMan.Contains(keyword) || w.MobilePhone.Contains(keyword));
+                }
+                else
+                {
+                    Tra = Tra.Where(w=> w.Title.Contains(keyword) || w.LinkMan.Contains(keyword) || w.MobilePhone.Contains(keyword));
+                }
+            }
+
+
+            var q = from t in Tra
+                    let l=from v in VisitT where v.CID==t.CID select v
+                    join a in ar on t.CurrentCityId equals a.AreaID
+                    into aa
+                    from aaa in aa.DefaultIfEmpty()
+                    join u in user on t.CreateUID equals u.UserId
+                    into uu
+                    from uuu in uu.DefaultIfEmpty()
+                    join d in data on t.TrackStautsId equals d.DicSN
+                    into dd
+                    from ddd in dd.DefaultIfEmpty()
+                    select new
+                    {
+                        t.Id,
+                        t.CID,
+                        t.Source,
+                        t.Title,
+                        city=aaa==null?"":aaa.Title,
+                        t.LinkMan,
+                        t.MobilePhone,
+                        user = uuu == null ? "" : uuu.FullName,
+                        //跟踪状态
+                        TrackStauts = ddd == null ? "" : ddd.Title,
+                        Status=t.Status,
+                        //最近回访
+                        maxVDT = l.Max(o=>o.VisitDT),
+                        CreateDT=t.CreateDT
+                    };
+
+            recordCount = q.Count();
+            return q.ToPageList();
+        }
+
+        /// <summary>
+        /// 获取最大CID
+        /// </summary>
+        /// <returns></returns>
+        public int getMaxCID()
+        {
+            return TradersRepository.GetQuery().Max(o => (int?)o.CID).GetValueOrDefault() + 1;
+        }
+
+        public Traders GetOne(object id)
+        {
+            return TradersRepository.Get(id);
+        }
+
+        /// <summary>
+        /// 增加、修改
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public int SaveOrUpdate(Traders model, string[] BusinessScopeId)
+        {
+            model.BusinessScopeId = "";
+            if (BusinessScopeId.Length > 0)
+            {
+                foreach (var v in BusinessScopeId)
+                {
+                    if (model.BusinessScopeId == "")
+                    {
+                        model.BusinessScopeId = v;
+                    }
+                    else
+                    {
+                        model.BusinessScopeId = model.BusinessScopeId+","+v;
+                    }
+                    
+                }
+            }
+            if (model.Id == 0)
+            {
+                model.CreateUID = CurrentUser.UID;
+                model.CreateDT = DateTime.Now;
+                model.UpdateDT = DateTime.Now;
+                model.AssignerUID = CurrentUser.UID;
+                model.CID = getMaxCID();
+                TradersRepository.Add(model);
+            }
+            else
+            {
+                model.UpdateDT = DateTime.Now;
+                var source = TradersRepository.Get(model.Id);
+                model.CID = source.CID;
+                model.ToCopyProperty(source, new List<string>() { "CreateUID", "CreateDT", "AssignerUID", "CID", "Status" });
+            }
+
+            if (TradersRepository.SaveChanges())
+            {
+                LogEngine.WriteUpdate(model.Id + "," + model.Title, LogModule.商户资料);
+            }
+            return model.CID;
+        }
+
+        /// <summary>
+        /// 获取省
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getProvince()
+        {
+            var province = AreaRepository.GetQuery(o => o.Type == 2).ToList();
+            province.Insert(0, new Area() { AreaID = 0, Title = "请选择" });
+            return province;
+        }
+
+        /// <summary>
+        /// 获取城市
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getCity(int ProvinceID)
+        {
+            List<Area> list = new List<Area>();
+            if (ProvinceID > 0)
+            {
+                list = AreaRepository.GetQuery(o => o.AreaPID == ProvinceID).ToList();
+            }
+            list.Insert(0, new Area() { AreaID = 0, Title = "请选择" });
+            return list;
+        }
+
+        /// <summary>
+        /// 获取区县
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getDistrict(int CityID)
+        {
+            List<Area> list = new List<Area>();
+            if (CityID > 0)
+            {
+                list = AreaRepository.GetQuery(o => o.AreaPID == CityID).ToList();
+            }
+            list.Insert(0, new Area() { AreaID = 0, Title = "请选择" });
+            return list;
+        }
+        public List<Traders> GetTraderInput(string searchName)
+        {
+            if (searchName.IsNullOrEmpty()) return null;
+            int cid = 0;
+            int.TryParse(searchName, out cid);
+            var query= TradersRepository.GetQuery(o =>o.Title.Contains(searchName) || o.FullTitle.Contains(searchName));
+            if(cid>0) query=query.Where(o=>o.CID==cid);
+            return query.Take(20).ToList();
+        }
+
+        /// <summary>
+        /// 获取商户分类
+        /// </summary>
+        /// <returns></returns>
+        public List<TraderType> getTraderTypeList()
+        {
+            return TraderTypeRepository.GetQuery().ToList();
+        }
+
+        /// <summary>
+        /// 获取经营模式
+        /// </summary>
+        /// <returns></returns>
+        public List<SysDataDictionary> getDataList()
+        {
+            return SysDataDictionaryRepository.GetQuery(w => w.DicPSN == 221).OrderBy(o => o.SortOrder).ToList();
+        }
+
+        /// <summary>
+        /// 获取字典
+        /// </summary>
+        /// <returns></returns>
+        public List<SysDataDictionary> getDataList(int DicPSN)
+        {
+            return SysDataDictionaryRepository.GetQuery(w => w.DicPSN == DicPSN).OrderBy(o => o.SortOrder).ToList();
+        }
+
+        /// <summary>
+        /// 获取经营类目
+        /// </summary>
+        /// <returns></returns>
+        public List<Business> getBusinessList()
+        {
+            //var  dd= BusinessRepository.GetQuery().ToList();
+            //return null;
+            return BusinessRepository.GetQuery().ToList();
+        }
+
+        /// <summary>
+        /// 获取登记人
+        /// </summary>
+        /// <returns></returns>
+        public string getFullName(string UserId)
+        {
+            string uid = "";
+            if (UserId.IsNullOrEmpty())
+            {
+                uid = CurrentUser.UID;
+            }
+            else
+            {
+                uid = UserId;
+            }
+            return SysUserInfoRepository.GetQuery(o => o.UserId == uid).Select(o=>o.FullName).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// 获取采购意向清单
+        /// </summary>
+        /// <param name="TradersCID">企业ID</param>
+        /// <returns></returns>
+        public List<ViewOrderList> getOrderList(int TradersCID)
+        {
+            //数据字典信息
+            var data = SysDataDictionaryRepository.GetQuery(w => w.DicPSN == 197).OrderBy(o => o.SortOrder);
+            //采购意向清单
+            var orderList = OrderListRepository.GetQuery(o=>o.CID==TradersCID);
+
+            var order = from d in data
+                        join o in orderList on d.DicSN equals o.DeviceId
+                        into oo
+                        from ooo in oo.DefaultIfEmpty()
+                        select new ViewOrderList
+                        {
+                            Id=d.DicSN,
+                            IsCheck=ooo==null?0:ooo.Id,
+                            Title = d.Title,
+                            OrderNum = ooo == null ? 0 : ooo.OrderNum
+                        };
+            return order.ToList();
+        }
+
+        /// <summary>
+        /// 保存
+        /// </summary>
+        /// <param name="traders">商户资料</param>
+        /// <param name="h_OrderList">采购意向清单</param>
+        /// <param name="h_VisitTrack">回访小结</param>
+        /// /// <param name="h_VisitTrack">经营类目</param>
+        /// <returns></returns>
+        public OpResult save(Traders traders, string h_OrderList, string h_VisitTrack, string[] BusinessScopeId)
+        {
+            int CID = SaveOrUpdate(traders, BusinessScopeId);
+            if (CID > 0)
+            {
+                //采购意向清单
+                JObject jObj = null;
+                jObj = JObject.Parse(h_OrderList);
+                JArray jlist = JArray.Parse(jObj["OrderList"].ToString());
+                orderListService.Deletes(CID);
+                foreach(JObject item in jlist)
+                {
+                    short Id = Convert.ToInt16(item["Id"]);
+                    string Title = item["Title"].ToString();
+                    short OrderNum = Convert.ToInt16(item["OrderNum"]);
+
+                    OrderList orderList = new OrderList();
+                    orderList.CID = CID;
+                    orderList.DeviceId = Id;
+                    orderList.Title = Title;
+                    orderList.OrderNum = OrderNum;
+                    orderListService.SaveOrUpdate(orderList);
+                }
+
+                //回访小结
+                JObject jVisitTrack = null;
+                jVisitTrack = JObject.Parse(h_VisitTrack);
+                JArray jVisitTrackList = JArray.Parse(jVisitTrack["VisitTrack"].ToString());
+                visitTrackService.Deletes(CID);
+                foreach (JObject item in jVisitTrackList)
+                {
+                    string content = item["content"].ToString();
+                    string VisitDT = item["VisitDT"].ToString();
+
+                    VisitTrack visitTrack = new VisitTrack();
+                    visitTrack.CID = CID;
+                    visitTrack.Content = content;
+                    visitTrack.VisitDT = VisitDT;
+                    visitTrackService.SaveOrUpdate(visitTrack);
+                }
+            }
+            return OpResult.Success();
+        }
+
+        /// <summary>
+        /// 商户审核通过、设为无效商户
+        /// </summary>
+        public OpResult setStatus(string ids, short status)
+        {
+            var sId = ids.Split(',').Select(o => int.Parse(o));
+            var olist = TradersRepository.GetQuery(o => sId.Contains(o.Id)).ToList();
+            olist.Each(o => o.Status = status);
+            return OpResult.Result(TradersRepository.SaveChanges());
+        }
+
+
+        /// <summary>
+        /// 删除
+        /// </summary>
+        public Utility.OpResult Deletes(int[] ids)
+        {
+            var op = new OpResult();
+            try
+            {
+                var tra = TradersRepository.GetQuery(o => ids.Contains(o.Id));
+                var cid = tra.Select(o => o.CID).ToArray();
+                var CompanyAuthorize = CompanyAuthorizeRepository.GetQuery(o => cid.Contains(o.CID ?? 0));
+                if (CompanyAuthorize.Any())
+                {
+                    op.Message = "无法删除，软件服务包含了选择的商户";
+                    return op;
+                }
+
+                var DAuthorize = DeviceAuthorizeRepository.GetQuery(o => cid.Contains(o.CID ?? 0));
+                if (DAuthorize.Any())
+                {
+                    op.Message = "无法删除，设备服务包含了选择的商户";
+                    return op;
+                }
+
+                var oList = OrderListRepository.GetQuery(o => cid.Contains(o.CID));
+                var vList = VisitTrackRepository.GetQuery(o => cid.Contains(o.CID));
+                
+
+                OrderListRepository.RemoveRange(oList.ToList());
+                VisitTrackRepository.RemoveRange(vList.ToList());
+                TradersRepository.RemoveRange(tra.ToList());
+
+                op.Successed = true;
+                LogEngine.WriteDelete("删除商户", LogModule.商户资料);
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                LogEngine.WriteError(ex);
+            }
+            return op;
+        }
+
+        /// <summary> 
+        /// 判断给定的字符串(strNumber)是否是数值型 
+        /// </summary> 
+        /// <param name="strNumber">要确认的字符串</param> 
+        /// <returns>是则返加true 不是则返回 false</returns> 
+        public bool IsNumber(string strNumber)
+        {
+            return new Regex(@"^([0-9])[0-9]*(\.\w*)?$").IsMatch(strNumber);
+        }
+
+
+    }
+}

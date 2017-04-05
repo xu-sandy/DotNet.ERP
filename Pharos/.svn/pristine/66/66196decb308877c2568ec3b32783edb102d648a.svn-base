@@ -1,0 +1,616 @@
+﻿using Newtonsoft.Json;
+using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.SalesPromotionRules.Discount;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models
+{
+    public class Product : BaseObservable
+    {
+        private bool isSaveSuccess = false;
+        public Product() { }
+        public Product(Barcode barcode, ProductStatus status, string promotionId = "")
+        {
+            //获取商品可用优惠折扣信息
+            CurrentBarcode = barcode;
+
+            if (barcode.IsInProductInfo)
+            {
+                var productInfo = ProductInfoLocalService.Find(o => (!barcode.IsCustom && (("," + o.Barcodes + ",").Contains("," + barcode.ProductOrBarcode + ",") || o.Barcode == barcode.ProductOrBarcode)) || (barcode.IsCustom && o.ProductCode == barcode.ProductOrBarcode));
+                Code = productInfo.Barcode;
+                Name = productInfo.Title;
+                Price = productInfo.SysPrice;
+                Sale = Price;
+                Unit = SysDataDictionaryLocalService.GetUnitDict(productInfo.SubUnitId);
+                var brand = ProductBrandLocalService.Find(o => o.BrandSN == productInfo.BrandSN);
+                Brand = brand != null ? brand.Title : string.Empty;
+                Size = productInfo.Size;
+                if (barcode.IsCustom)
+                {
+                    EnableEditNum = false;
+                }
+                EnableEditSale = Convert.ToBoolean(productInfo.Favorable ?? 1);
+            }
+            else
+            {
+                var bundling = BundlingLocalService.Find(o => o.NewBarcode == barcode.ProductOrBarcode);
+                var list = BundlingListLocalService.GetBundlingList(bundling.CommodityId);
+                var titles = list.Select(o => o.Title);
+                Code = bundling.NewBarcode;
+                Sale = bundling.BundledPrice;
+                Name = string.Join("|", titles);
+                Price = list.Sum(o => o.Number * o.SysPrice);
+                EnableEditSale = false;
+                Unit = "件";
+            }
+            if (PosMachine.Current.Status == PosStatus.Gift)
+            {
+                Status = barcode.IsCustom ? ProductStatus.POSWeighGift : ProductStatus.POSGift;
+                Sale = 0;
+            }
+            else if (barcode.Price != -1)
+            {
+                Sale = barcode.Price;
+                Status = status;
+            }
+            else
+            {
+                Status = status;
+            }
+
+            GiftPromotionIdOrGiftId = promotionId;
+            //设置商品打折信息
+            Num = barcode.WeightOrNum;
+            ManualMode = false;
+
+            if (Status == ProductStatus.Normal && !barcode.IsCustom && barcode.IsInProductInfo)
+            {
+                AllDiscount = BaseDiscount.RegisterActivities.Where(o => o.HasDiscount(Code)).OrderBy(o => o.OrderIndex);
+            }
+            else
+            {
+                //排除赠品、捆绑销售商品、称重商品
+                AllDiscount = new List<BaseDiscount>();
+            }
+            if (barcode.IsCustom)
+            {
+                EnableEditNum = false;
+                EnableEditSale = false;
+                ProductCode = barcode.ProductOrBarcode;
+            }
+            if (Status == ProductStatus.Normal && barcode.IsCustom)
+            {
+                Status = ProductStatus.WeighProduct;
+            }
+            if (Status == ProductStatus.Gift || Status == ProductStatus.AddMoneyGift || Status == ProductStatus.POSWeighGift || Status == ProductStatus.POSGift)
+            {
+                EnableEditSale = false;
+            }
+            //Discount();
+        }
+        [JsonIgnore]
+        public FrameworkElement NumNode { get; set; }
+        [JsonIgnore]
+        public FrameworkElement SaleNode { get; set; }
+        public Barcode CurrentBarcode { get; set; }
+
+        public bool IsDiscountSplite { get; set; }
+        /// <summary>
+        /// 手动折价模式
+        /// </summary>
+        public bool ManualMode { get; private set; }
+
+        internal string giftId;
+        /// <summary>
+        /// 买赠促销赠品ID
+        /// </summary>
+        public string GiftId { get { return giftId; } }
+        internal List<string> promotionIds = new List<string>();
+        /// <summary>
+        /// 商品对应促销Id
+        /// </summary>
+        [JsonIgnore]
+        public List<string> PromotionIds { get { return promotionIds; } }
+        [JsonIgnore]
+
+        /// <summary>
+        /// 如为促销赠品，该值不能为空
+        /// </summary>
+        public string GiftPromotionIdOrGiftId { get; set; }
+        [JsonIgnore]
+
+        /// <summary>
+        /// 品牌
+        /// </summary>
+        public string Brand { get; set; }
+        [JsonIgnore]
+
+        /// <summary>
+        /// 规格
+        /// </summary>
+        public string Size { get; set; }
+
+        /// <summary>
+        /// 是否为赠品
+        /// </summary>
+        public ProductStatus Status { get; set; }
+        [JsonIgnore]
+
+
+        /// <summary>
+        /// 货号
+        /// </summary>
+        public string ProductCode { get; set; }
+
+
+        private int id;
+        [JsonIgnore]
+
+        /// <summary>
+        /// 显示序号
+        /// </summary>
+        public int Id
+        {
+            get { return id; }
+
+            set
+            {
+                id = value;
+                OnPropertyChanged("Id");
+            }
+        }
+
+        private string code;
+
+        /// <summary>
+        /// 条形码
+        /// </summary>
+        public string Code
+        {
+            get { return code; }
+
+            set
+            {
+                code = value;
+                ShowCode = CurrentBarcode.Current;
+                OnPropertyChanged("Code");
+                OnPropertyChanged("ShowCode");
+            }
+        }
+
+        public string ShowCode { get; set; }
+        private string name;
+        [JsonIgnore]
+
+        /// <summary>
+        /// 商品名称
+        /// </summary>
+        public string Name
+        {
+            get
+            {
+                return Brand + " " + name + " " + Size + " "
+                    + ((Status == ProductStatus.Gift || Status == ProductStatus.POSWeighGift || Status == ProductStatus.POSGift) ?
+                    "【赠品】"
+                    :
+                    (Status == ProductStatus.AddMoneyGift ? "【加购赠品】" : string.Empty));
+            }
+
+            set
+            {
+                name = value;
+                OnPropertyChanged("Name");
+            }
+        }
+
+        private decimal num;
+        /// <summary>
+        /// 数量
+        /// </summary>
+        public decimal Num
+        {
+            get { return num; }
+
+            set
+            {
+                if (Status != ProductStatus.Normal && !string.IsNullOrEmpty(GiftPromotionIdOrGiftId))
+                {
+                    var giftInfo = BaseDiscount.PendingGift.FirstOrDefault(o => o.Id == GiftPromotionIdOrGiftId || o.CommodityId == GiftPromotionIdOrGiftId);
+                    var number = PosMachine.Current.BillList.Where(o => o.GiftPromotionIdOrGiftId == GiftPromotionIdOrGiftId).Sum(o => o.Num) - Num;
+                    if ((number + value) > giftInfo.GiftNumber)
+                    {
+                        Toast.DoShow(string.Format("超出促销活动赠送数量！当前允许赠送该商品最多{0}件", giftInfo.GiftNumber - number));
+                        if (num.ToString() != BeforeSaveNum)
+                        {
+                            BeforeSaveNum = num.ToString();
+                        }
+                        return;
+                    }
+
+                    //var gift = BaseDiscount.PendingGift.FirstOrDefault(o => o.Barcode == Code);
+                    //if (gift != null)
+                    //    gift.ProductToGiftNum = value;
+
+                    if (!string.IsNullOrEmpty(GiftPromotionIdOrGiftId))
+                    {
+                        BaseDiscount.pendingGiftCountDict[GiftPromotionIdOrGiftId] =
+                            (PosMachine.Current.BillList.Where(o => o.GiftPromotionIdOrGiftId == GiftPromotionIdOrGiftId).Sum(o => o.Num) - num + value);
+
+                    }
+                }
+                if (Status == ProductStatus.Normal && value != num)
+                {
+                    BaseDiscount.Current.RemoveDiscount(PromotionIds, GiftId);
+                }
+                num = value;
+                OnPropertyChanged("Num");
+                if (num.ToString() != BeforeSaveNum)
+                {
+                    BeforeSaveNum = num.ToString();
+                }
+            }
+        }
+
+        private string beforeSaveNum;
+        [JsonIgnore]
+
+        public string BeforeSaveNum
+        {
+            get { return beforeSaveNum; }
+
+            set
+            {
+                beforeSaveNum = value;
+                OnPropertyChanged("BeforeSaveNum");
+            }
+        }
+
+        private string unit;
+        [JsonIgnore]
+
+        /// <summary>
+        /// 单位
+        /// </summary>
+        public string Unit
+        {
+            get { return unit; }
+
+            set
+            {
+                unit = value;
+                OnPropertyChanged("Unit");
+            }
+        }
+
+        private decimal price;
+        [JsonIgnore]
+
+        /// <summary>
+        /// 价格
+        /// </summary>
+        public decimal Price
+        {
+            get { return price; }
+
+            set
+            {
+                price = value;
+                OnPropertyChanged("Price");
+            }
+        }
+        private string beforeSaveSale;
+        [JsonIgnore]
+
+        public string BeforeSaveSale
+        {
+            get { return string.Format("{0:N}", Convert.ToDecimal(beforeSaveSale)); }
+
+            set
+            {
+                beforeSaveSale = value;
+                OnPropertyChanged("BeforeSaveSale");
+
+            }
+        }
+
+        internal decimal sale;
+        [JsonIgnore]
+
+        /// <summary>
+        /// 折后售价
+        /// </summary>
+        public decimal Sale
+        {
+            get { return sale; }
+
+            set
+            {
+                sale = value;
+                SetSaleToUI();
+            }
+        }
+
+        private decimal total;
+        [JsonIgnore]
+
+        /// <summary>
+        /// 总计
+        /// </summary>
+        public decimal Total
+        {
+            get { return total; }
+
+            set
+            {
+                total = value;
+                OnPropertyChanged("Total");
+            }
+        }
+
+        private bool isEdit;
+        /// <summary>
+        /// 是否为编辑状态
+        /// </summary>
+        [JsonIgnore]
+        public bool IsEdit
+        {
+            get { return isEdit; }
+
+            set
+            {
+                isEdit = value;
+                OnPropertyChanged("IsEdit");
+                OnPropertyChanged("Current");
+            }
+        }
+        [JsonIgnore]
+
+        public int EditMode { get; set; }
+        bool enableEditSale = true;
+        [JsonIgnore]
+        public bool EnableEditSale
+        {
+            get
+            {
+                if (EditMode == 0 || EditMode == 1)
+                {
+                    return enableEditSale;
+                }
+                else
+                {
+                    return false;
+                }
+
+            }
+
+            set
+            {
+                enableEditSale = value;
+                OnPropertyChanged("Current");
+                OnPropertyChanged("EnableEditSale");
+            }
+        }
+        bool enableEditNum = true;
+
+        [JsonIgnore]
+        public bool EnableEditNum
+        {
+            get
+            {
+                if (EditMode == 0 || EditMode == 2)
+                {
+                    return enableEditNum;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            set
+            {
+                enableEditNum = value;
+                OnPropertyChanged("Current");
+                OnPropertyChanged("EnableEditNum");
+            }
+        }
+
+        [JsonIgnore]
+        public IEnumerable<BaseDiscount> AllDiscount { get; internal set; }
+
+        /// <summary>
+        /// 移除商品
+        /// </summary>
+        [JsonIgnore]
+        public GeneralCommand Remove
+        {
+
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    Num = 0;
+                });
+            }
+        }
+        /// <summary>
+        /// 数量+1
+        /// </summary>
+        [JsonIgnore]
+        public GeneralCommand PlusStep
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    var value = Convert.ToDecimal(string.IsNullOrEmpty(BeforeSaveNum) ? "0" : BeforeSaveNum);
+                    value++;
+                    BeforeSaveNum = value.ToString();
+                });
+            }
+        }
+        /// <summary>
+        /// 数量-1
+        /// </summary>
+        [JsonIgnore]
+        public GeneralCommand MinusStep
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    var value = Convert.ToDecimal(string.IsNullOrEmpty(BeforeSaveNum) ? "0" : BeforeSaveNum);
+                    value--;
+                    if (value <= 0)
+                    {
+                        value = 1;
+                    }
+                    BeforeSaveNum = value.ToString();
+                });
+            }
+        }
+        /// <summary>
+        /// 保存
+        /// </summary>
+        [JsonIgnore]
+        public GeneralCommand Save
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+
+                    isSaveSuccess = true;
+                    var temNum = Num;
+                    if (!string.IsNullOrEmpty(beforeSaveNum) && !string.IsNullOrEmpty(beforeSaveSale))
+                    {
+                        var tempSale = Convert.ToDecimal(beforeSaveSale);
+                        if (sale != tempSale)
+                        {
+                            ManualMode = true;
+                        }
+                        Sale = tempSale;
+                        Num = Convert.ToDecimal(beforeSaveNum);
+                    }
+                    else
+                    {
+                        BeforeSaveSale = Sale.ToString();
+                        BeforeSaveNum = Num.ToString();
+                    }
+                    if (isSaveSuccess == true)
+                    {
+                        IsEdit = false;
+                    }
+                    if (temNum - Num <= 0)
+                        Discount();
+                    else if (temNum - Num > 0)
+                    {
+                        var items = PosMachine.Current.BillList;
+                        foreach (var item in items)
+                        {
+                            item.Discount();
+                        }
+                    }
+
+
+                });
+            }
+        }
+        /// <summary>
+        /// 退出编辑状态
+        /// </summary>
+        [JsonIgnore]
+        public GeneralCommand ExitEdit
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    IsEdit = false;
+                });
+            }
+        }
+        /// <summary>
+        /// 进入编辑状态
+        /// </summary>
+        [JsonIgnore]
+        public GeneralCommand GotoEdit
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    IsEdit = true;
+                    BeforeSaveSale = Sale.ToString();
+                    BeforeSaveNum = Num.ToString();
+                    PosMachine.Current.ScannerStatus = ScannerStatus.Normal;
+                });
+            }
+        }
+
+        [JsonIgnore]
+        public Product Current
+        {
+            get { return this; }
+            set { }
+        }
+        /// <summary>
+        /// 刷新商品项目统计
+        /// </summary>
+
+        public void ResetTotal()
+        {
+            Total = Sale * Num;
+        }
+        private decimal tempTotal;
+
+        /// <summary>
+        /// 优惠折扣规则
+        /// </summary>
+        public void Discount()
+        {
+
+            ResetTotal();
+            if (!ManualMode)
+            {
+                var disounts = AllDiscount.Where(o => o is MixDiscount || o is FullYuanDiscount || o is SingleDiscount || o is FreebieDiscount).OrderBy(o => o.OrderIndex);
+                sale = Price;
+                foreach (var item in AllDiscount)
+                {
+                    item.Discount(this);
+                }
+            }
+            ResetTotal();
+            SetSaleToUI();
+            if (tempTotal > 0)
+            {
+                EnableEditSale = false;
+            }
+        }
+
+        internal void SetSaleToUI()
+        {
+            if (sale.ToString() != BeforeSaveSale)
+            {
+                BeforeSaveSale = sale.ToString();
+            }
+            OnPropertyChanged("Sale");
+        }
+    }
+
+
+
+    public enum ProductStatus
+    {
+        Normal = 0,
+        Gift = 1,
+        POSGift = 2,
+        AddMoneyGift = 3,
+        WeighProduct = 4,
+        POSWeighGift = 5
+    }
+}

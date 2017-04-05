@@ -1,0 +1,227 @@
+﻿using Pharos.Logic.BLL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System.Collections.Generic;
+using System.Web.Mvc;
+using Pharos.CRM.Retailing.Models;
+using System;
+using System.Linq;
+using Pharos.Logic;
+
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class HomeController : Controller
+    {
+
+        private readonly Pharos.Sys.BLL.SysMenuBLL _menuBLL = new Pharos.Sys.BLL.SysMenuBLL();
+        #region 首页
+        public ActionResult Index()
+        {
+            if (!Sys.CurrentUser.IsLogin || Sys.CurrentUser.IsStore)
+            {
+                return RedirectToAction("Login", "Account");
+            }     
+            //获取活动列表 
+            var activityList = CommodityPromotionService.GetNewestActivity(3);
+            //获取公告列表
+            var noticeList = NoticeService.GetNewestNotice(3);
+            //采购订单列表
+            ViewBag.OrderList = OrderService.GetNewOrder(3);
+
+            List<ActivityNoticeModel> activityNoticeList = new List<ActivityNoticeModel>();
+            if (activityList != null)
+            {
+                foreach (var activity in activityList)
+                {
+                    activityNoticeList.Add(new ActivityNoticeModel(activity.Id, Enum.GetName(typeof(PromotionType), activity.PromotionType),
+                        DateTime.Parse(activity.StartDate.ToString()).ToString("yyyy-MM-dd") + "至" + DateTime.Parse(activity.EndDate.ToString()).ToString("yyyy-MM-dd"),
+                        Enum.GetName(typeof(SaleState), activity.State), activity.CreateDT, 1));
+                }
+            }
+            if (noticeList != null)
+            {
+                foreach (var notice in noticeList)
+                {
+                    activityNoticeList.Add(new ActivityNoticeModel(notice.Id.ToString(), notice.Theme, notice.BeginDate.ToString("yyyy-MM-dd") + "至" + notice.ExpirationDate.ToString("yyyy-MM-dd"),
+                        notice.State == 1 ? "已发布":"未发布",notice.CreateDT,2));
+                }
+            }
+            activityNoticeList = activityNoticeList.OrderByDescending(o => o.CreateDT).Take(3).ToList();
+            if (activityNoticeList == null)
+                activityNoticeList = new List<ActivityNoticeModel>();
+            ViewBag.activityNoticeList = activityNoticeList;//活动公告
+
+
+            //todo: 模拟数据
+            string mode = Request["mode"];
+            ViewBag.accessCount = 0;
+
+            ViewBag.WelcomeText = "欢迎光临";
+            ViewBag.CurUserName = Sys.CurrentUser.FullName;
+            ViewBag.CurLoginName = Sys.CurrentUser.UserName;
+
+            //近3天数据
+            var beginTime = DateTime.Parse(DateTime.Now.AddDays(-2).ToString("yyyy-MM-dd"));
+            var endTime = DateTime.Parse(DateTime.Now.AddDays(1).ToString("yyyy-MM-dd"));
+            ViewBag.newMemberNumber = MembersService.GetNewMemberNumber(beginTime, endTime);//新增会员数量
+            ViewBag.newSalesVolume = ReportBLL.GetSalesVolume(beginTime, endTime);//新增销售量
+            var saleOrderList3Day = SaleOrdersService.GetIndexSaleOrder(beginTime, endTime);//3天内的销售订单
+            ViewBag.newSaleOrderNumber = saleOrderList3Day.Count();//新增客单量
+            decimal newSaleTotal = 0;
+            newSaleTotal = saleOrderList3Day.Sum(o => o.Receive);
+            ViewBag.newSaleTotal = newSaleTotal;//新增销售额
+
+            //近7天数据
+            var dayTitleList = new List<string>();
+            var saleTotalList = new List<decimal>();
+            var saleOederNumberList = new List<int>();
+            var hotProductNameList = new List<string>();
+            var hotProductSaleNumList = new List<int>();
+            for (int i = 6; i >= 0; i--)
+            {
+                var time1 = DateTime.Parse(DateTime.Now.AddDays(0 - i).ToString("yyyy-MM-dd"));
+                var time2 = DateTime.Parse(DateTime.Now.AddDays(0 - i + 1).ToString("yyyy-MM-dd"));
+                var saleOrderList = SaleOrdersService.GetIndexSaleOrder(time1, time2);
+
+                dayTitleList.Add(int.Parse(DateTime.Now.AddDays(0 - i).ToString("dd")) + "日");
+                saleTotalList.Add(saleOrderList.Sum(o => o.Receive));
+                saleOederNumberList.Add(saleOrderList.Count());
+            }
+
+            var hotProductBeginTime = DateTime.Parse(DateTime.Now.AddDays(-6).ToString("yyyy-MM-dd"));
+            var hotProductEndTime = DateTime.Parse(DateTime.Now.AddDays(1).ToString("yyyy-MM-dd"));
+
+            ReportBLL.GetHotProduct(hotProductBeginTime, hotProductEndTime, out hotProductNameList, out hotProductSaleNumList);
+
+            //近7天热销商品
+            ViewBag.hotProductNameList = hotProductNameList.ToJson();
+            ViewBag.hotProductSaleNumList = hotProductSaleNumList.ToJson();
+            ViewBag.hotProductNameListNotJson = hotProductNameList;
+
+            ViewBag.dayTitleList = dayTitleList.ToJson();
+            ViewBag.saleTotalList = saleTotalList.ToJson();//近7天销售额
+            ViewBag.saleOederNumberList = saleOederNumberList.ToJson();//近7天客单量
+
+            var list = new List<Pharos.Sys.Models.MenuModel>();
+            list = _menuBLL.GetHomeMenusByUID(Sys.CurrentUser.UID);
+            ViewBag.Menus = list;
+            var set= new Pharos.Sys.BLL.SysWebSettingBLL().GetWebSetting();
+            return View(set);
+        }
+        #endregion
+
+        #region 旧首页
+        public ActionResult Old_Index()
+        {
+            if (!Sys.CurrentUser.IsLogin || Sys.CurrentUser.IsStore)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+            //获取公告列表
+            ViewBag.NoticeList = NoticeService.GetNewestNotice(3);
+            //获取活动列表 
+            ViewBag.ActivityList = CommodityPromotionService.GetNewestActivity(3);
+            ViewBag.OrderList = OrderService.GetNewOrder(7);
+            //todo: 模拟数据
+            string mode = Request["mode"];
+            ViewBag.accessCount = 0;
+
+            ViewBag.WelcomeText = "欢迎光临";
+            ViewBag.CurUserName = Sys.CurrentUser.FullName;
+            ViewBag.CurLoginName = Sys.CurrentUser.UserName;
+
+            var categories = new List<string>();
+            var stores = new List<string>();
+            var hours = new TimeSpan[] { new TimeSpan(8, 0, 0), new TimeSpan(10, 0, 0), new TimeSpan(12, 0, 0), new TimeSpan(14, 0, 0), new TimeSpan(16, 0, 0), new TimeSpan(18, 0, 0), new TimeSpan(20, 0, 0) };
+            var list = new List<Pharos.Sys.Models.MenuModel>();
+            list = _menuBLL.GetHomeMenusByUID(Sys.CurrentUser.UID);
+            ViewBag.Menus = list;
+            ViewBag.categoryData = ReportBLL.QueryIndexSaleCategorys(ref categories).ToJson();
+            ViewBag.chart1Data = ReportBLL.QueryIndexSaleCategorys(ref categories).FirstOrDefault() == null ? new List<object>() : ReportBLL.QueryIndexSaleCategorys(ref categories).FirstOrDefault().data;
+            ViewBag.categoryJSON = categories.ToJson();
+            ViewBag.hourData = ReportBLL.QueryIndexSaleHour(categories, hours).ToJson();
+            ViewBag.chart2Data = ReportBLL.QueryIndexSaleHour(categories, hours).FirstOrDefault() == null ? new List<object>() : ReportBLL.QueryIndexSaleHour(categories, hours).FirstOrDefault().data;
+            ViewBag.hoursJSON = hours.Select(o => o.Hours.ToString("00") + ":" + o.Minutes.ToString("00")).ToJson();
+            ViewBag.storeData = ReportBLL.QueryIndexSaleStore(categories, ref stores).ToJson();
+            ViewBag.chart3Data = ReportBLL.QueryIndexSaleStore(categories, ref stores).FirstOrDefault() == null ? new List<object>() : ReportBLL.QueryIndexSaleStore(categories, ref stores).FirstOrDefault().data;
+            ViewBag.storeJSON = stores.ToJson();
+            return View();
+        }
+        #endregion
+
+        public ActionResult Logout()
+        {
+            Sys.CurrentUser.Exit();
+            //if(CurrentUser.StoreId=="sup")//供应平台
+            //    return RedirectToAction("Login", "Supplier");
+            return RedirectToAction("Login", "Account");
+        }
+        /// <summary>
+        /// 获得首页弹窗提醒
+        /// </summary>
+        /// <param name="type">提醒类型</param>
+        /// <returns>提醒列表（最多6条）</returns>
+        [HttpPost]
+        public ActionResult GetRemind(string type)
+        {
+            List<RemindModel> rmList = new List<RemindModel>();
+            switch (type.ToLower())
+            {
+                case "stockout"://缺货提醒
+                    var datas = CommodityService.GetStockout().GroupBy(o => o.Key);
+                    foreach (var item in datas)
+                    {
+                        rmList.Add(new RemindModel(item.Key + "缺货提醒", item.Key + "以下商品缺货：<br/>" + string.Join(",", item.Select(o => o.Value))));
+                    }
+                    break;
+                case "activity"://活动提醒
+                    Dictionary<short, string> promotionTypeDict = new Dictionary<short, string>();
+                    //1:单品折扣、 2:捆绑促销、 3:组合促销、4:买赠促销、 5:满元促销
+                    promotionTypeDict.Add(1, "单品折扣");
+                    promotionTypeDict.Add(2, "捆绑促销");
+                    promotionTypeDict.Add(3, "组合促销");
+                    promotionTypeDict.Add(4, "买赠促销");
+                    promotionTypeDict.Add(5, "满元促销");
+                    var promotions = CommodityPromotionService.GetNewestActivity(10);
+                    foreach (var item in promotions)
+                    {
+                        var storeids = item.StoreId.Split(",".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+                        var stores = WarehouseService.FindList(o => storeids.Contains(o.StoreId)).Select(o => o.Title);
+                        rmList.Add(
+                            new RemindModel(
+                           string.Format(
+                                 "{1}~{2} {0}",
+                                 promotionTypeDict[item.PromotionType], (item.StartDate ?? new DateTime()).ToString("yyyy-MM-dd"),
+                                (item.EndDate ?? new DateTime()).ToString("yyyy-MM-dd")),
+                         item.Id));
+                    }
+                    break;
+                case "receive"://收货提醒
+                    var orderDatas = OrderDistributionService.GetReceivedOrder();
+                    foreach (var item in orderDatas)
+                    {
+                        rmList.Add(new RemindModel(string.Format("{0}有订单发货，请注意查收！", item.Store), string.Format("<br/>门店：{0}<br/>配送批次号：{1}<br/>订单编号：{2}<br/>", item.Store, item.DistributionBatch, item.IndentOrderId)));
+                    }
+                    break;
+                case "expiration"://保质期到期提醒
+                    var commodities = CommodityService.GetExpiresProduct();
+                    foreach (var item in commodities)
+                    {
+                        rmList.Add(new RemindModel(string.Format("{0}已过期或将要过期", item.Key), string.Format("{0}将要过期<br/>过期时间：{1}", item.Key, item.Value.ExpirationDate)));
+                    }
+                    break;
+                case "contract"://合同提醒
+                    var contracts = ContractSerivce.GetContractRemind();
+                    foreach (var item in contracts)
+                    {
+                        rmList.Add(new RemindModel(string.Format("<span style=\"width:120px;display:inline-block;\">{0}</span><span style=\"width:110px;display:inline-block;\">{1}</span><span style=\"width:110px;display:inline-block;\">{2}</span>", item.ContractSN, item.SupplierTitle, item.EndDate), 
+                                  string.Format("合同编号：{0}<br/>供应商：{1}<br/>结束日期：{2}",item.ContractSN,item.SupplierTitle,item.EndDate)));
+                    }
+                    break;
+            }
+
+            return new JsonNetResult(rmList);
+        }
+
+    }
+}

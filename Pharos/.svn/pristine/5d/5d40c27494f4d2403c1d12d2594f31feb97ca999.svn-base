@@ -1,0 +1,1115 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ChildPagesModels;
+using Pharos.POS.Retailing.Models.Printer;
+using Pharos.POS.Retailing;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Threading;
+using System.Windows;
+using System.Linq;
+using System.Windows.Input;
+using Pharos.POS.Retailing.Models.Payment;
+using Pharos.POS.Retailing.Models.DataSync;
+using System.Windows.Controls;
+using System.Drawing.Printing;
+
+namespace Pharos.POS.Retailing
+{
+    /*
+     * 余雄文 
+     * 2015-05-18
+     * 描述： 快捷键处理命令
+     * GeneralCommand 的参数为当前Window 对象
+     */
+
+    public interface IKeyboardShortcutsCommand
+    {
+        GeneralCommand GetCommand();
+        string Describe { get; set; }
+    }
+    public class BillScannerCommand : IKeyboardShortcutsCommand
+    {
+        public BillScannerCommand()
+        {
+            Describe = "入单扫码";
+        }
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                var win = o as MainWindow;
+
+                win.ClearDataGridSelectItem();
+                PosMachine.Current.ScannerStatus = ScannerStatus.BillScanner;
+                (Keyboard.FocusedElement as UIElement).MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+            });
+        }
+
+        public string Describe { get; set; }
+    }
+    public class MemberScannerCommand : IKeyboardShortcutsCommand
+    {
+        public MemberScannerCommand()
+        {
+            Describe = "会员信息";
+        }
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                var win = o as MainWindow;
+                win.ClearDataGridSelectItem();
+                PosMachine.Current.ScannerStatus = ScannerStatus.MemberScanner;
+                (Keyboard.FocusedElement as UIElement).MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+
+            });
+        }
+
+        public string Describe { get; set; }
+    }
+
+    public class NormalScannerCommand : IKeyboardShortcutsCommand
+    {
+        public NormalScannerCommand()
+        {
+            Describe = "结束输入锁定";
+        }
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                var win = o as MainWindow;
+                PosMachine.Current.ScannerStatus = ScannerStatus.Normal;
+            });
+        }
+
+        public string Describe { get; set; }
+    }
+    public class BuyLastProductCommand : IKeyboardShortcutsCommand
+    {
+        public BuyLastProductCommand()
+        {
+            Describe = "购买最后一条商品";
+        }
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                var win = o as MainWindow;
+                if (PosMachine.Current.BillList.Count > 0)
+                {
+                    var last = PosMachine.Current.BillList.LastOrDefault();
+                    if (last != null)
+                    {
+                        last.BeforeSaveNum = (last.Num + 1).ToString();
+                        last.Save.Execute(null);
+                    }
+                }
+            });
+        }
+
+        public string Describe { get; set; }
+    }
+
+
+
+    public class MainWindowDataRowRemoveModeCommand : IKeyboardShortcutsCommand
+    {
+        public MainWindowDataRowRemoveModeCommand()
+        {
+            Describe = "删除销售信息";
+        }
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                var win = o as MainWindow;
+                win.RemoveDateRow();
+
+            });
+        }
+
+        public string Describe { get; set; }
+    }
+
+    public class DataGridSelectLastItemCommand : IKeyboardShortcutsCommand
+    {
+        public DataGridSelectLastItemCommand()
+        {
+            Describe = "列表最后一行";
+        }
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                if (o is IDataGridOperat)
+                {
+                    var win = (o as Window);
+                    var operat = (o as IDataGridOperat);
+                    operat.SetDataGridSelectLastItem();
+                }
+
+            });
+        }
+
+        public string Describe { get; set; }
+    }
+
+
+    public class DataGridPreviousSelectItemCommand : IKeyboardShortcutsCommand
+    {
+        public DataGridPreviousSelectItemCommand()
+        {
+            Describe = "上一行";
+        }
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                if (o is IDataGridOperat)
+                {
+                    var win = (o as Window);
+                    var operat = (o as IDataGridOperat);
+                    var obj = operat.GetDataGridSelectItem();
+                    if (obj != null)
+                    {
+                        operat.SetPreviousSelectItem();
+                    }
+                }
+
+            });
+        }
+
+        public string Describe { get; set; }
+    }
+
+
+    public class DataGridNextSelectItemCommand : IKeyboardShortcutsCommand
+    {
+        public DataGridNextSelectItemCommand()
+        {
+            Describe = "下一行";
+        }
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                if (o is IDataGridOperat)
+                {
+                    var win = (o as Window);
+                    var operat = (o as IDataGridOperat);
+                    var obj = operat.GetDataGridSelectItem();
+                    if (obj != null)
+                    {
+                        operat.SetNextSelectItem();
+                    }
+                }
+
+            });
+        }
+
+        public string Describe { get; set; }
+    }
+    public class DataSyncCommand : IKeyboardShortcutsCommand
+    {
+        public DataSyncCommand()
+        {
+            Describe = "数据同步";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                DataSync page = new DataSync();
+                page.ShowDialogInScreen();
+            }, Describe);
+        }
+
+
+        public string Describe { get; set; }
+    }
+
+    public class HelpCommand : IKeyboardShortcutsCommand
+    {
+        public HelpCommand()
+        {
+            Describe = "帮助";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                Help page = new Help();
+                page.ShowDialogInScreen();
+            }, Describe);
+        }
+
+
+        public string Describe { get; set; }
+    }
+
+    public class CannelCommand : IKeyboardShortcutsCommand
+    {
+        public CannelCommand()
+        {
+            Describe = "取消";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                if (o is MainWindow && (o as MainWindow).GetDataGridSelectItem() != null)
+                {
+                    var win = (o as MainWindow);
+                    var obj = win.GetDataGridSelectItem();
+                    var product = (obj as Product);
+                    product.ExitEdit.Execute(o);
+                    win.SetDataGridFocus();
+                    return;
+                }
+                var method = o.GetType().GetMethod("CannelHandler");
+
+                if (method != null)
+                {
+                    method.Invoke(o, new object[0]);
+                }
+                else
+                {
+                    var window = o as Window;
+                    window.CannelHandler();
+                }
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class QianXiangCommand : IKeyboardShortcutsCommand
+    {
+        public QianXiangCommand()
+        {
+            Describe = "打开钱箱";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                PrintDocument pdc = new PrintDocument();
+                string printerName = pdc.PrinterSettings.PrinterName;
+                string send = string.Empty;
+                switch (PosMachineInfo.Infos.MachineType)
+                {
+                    case 0:
+                        send = "" + (char)(27) + (char)(112) + (char)(0) + (char)(60) + (char)(255);//机型一(包括研科T58Z)
+                        break;
+                    case 1:
+                        send = "" + (char)(27) + (char)(64) + (char)(27) + 'J' + (char)(255);    //机型二
+                        break;
+
+                }
+
+                RawPrinterHelper.SendStringToPrinter(printerName, send);
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class ConfirmCommand : IKeyboardShortcutsCommand
+    {
+        public ConfirmCommand()
+        {
+            Describe = "确定";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                var method = o.GetType().GetMethod("ConfirmHandler");
+
+                if (method != null)
+                {
+                    method.Invoke(o, new object[0]);
+                }
+                else
+                {
+                    var window = o as Window;
+                    window.ConfirmHandler();
+                }
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+    public class ExitSystemCommand : IKeyboardShortcutsCommand
+    {
+        public ExitSystemCommand()
+        {
+            Describe = "退出系统";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                if (o is Login)
+                {
+                    Application.Current.Shutdown();
+                    return;
+                }
+                if (PosMachine.Current.LocalBills.Count > 0)
+                {
+                    if (UMessageBox.Show("提示", "存在挂单信息，是否清空？", MessageBoxButton.OKCancel))
+                    {
+                        PosMachine.Current.LocalBills.Clear();
+                    }
+
+                }
+                UMessageBox.Show("提示", "确定退出程序？", new Button()
+                {
+                    Content = "直接退出",
+                    Width = 120,
+                    Height = 40,
+                    Margin = new Thickness(10, 0, 0, 0),
+                    Command = new GeneralCommand((w) =>
+                    {
+                        var win = w as Window;
+                        if (win != null)
+                        {
+                            win.Hide();
+                        }
+                        while (!SqliteTrap.EnableClose)
+                        {
+                            Toast.DoShow("正在保存数据，请稍等！");
+                            Thread.Sleep(10);
+                        }
+                        Application.Current.Shutdown();
+
+                    })
+                }, new Button()
+                {
+                    Content = "返回",
+                    Width = 120,
+                    Height = 40,
+                    Margin = new Thickness(10, 0, 0, 0),
+                    Command = new GeneralCommand((w) =>
+                    {
+                        var win = w as Window;
+                        if (win != null)
+                        {
+                            win.Close();
+                        }
+                    })
+
+                });
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+    public class GuaDanCommand : IKeyboardShortcutsCommand
+    {
+        public GuaDanCommand()
+        {
+            Describe = "挂单";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                PosMachine.Current.GuaDan.Execute(o);
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class LockScreenCommand : IKeyboardShortcutsCommand
+    {
+        public LockScreenCommand()
+        {
+            Describe = "解/锁屏";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                PosMachine.Current.Status = PosStatus.UserLock;
+                Unlock page = new Unlock();
+                page.ShowDialogInScreen();
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+    public class DuDanCommand : IKeyboardShortcutsCommand
+    {
+        public DuDanCommand()
+        {
+            Describe = "读单";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                PosMachine.Current.DuDan.Execute(o);
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+
+    public class ChuRuKuanCommand : IKeyboardShortcutsCommand
+    {
+        public ChuRuKuanCommand()
+        {
+            Describe = "出入款";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                ChuRuKuanCaoZou page = new ChuRuKuanCaoZou();
+                page.ShowDialogInScreen();
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+    public class DuiZhangCommand : IKeyboardShortcutsCommand
+    {
+        public DuiZhangCommand()
+        {
+            Describe = "对账";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                DuiZhangCaoZou page = new DuiZhangCaoZou();
+                page.ShowDialogInScreen();
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+    public class ChaKuCunCommand : IKeyboardShortcutsCommand
+    {
+        public ChaKuCunCommand()
+        {
+            Describe = "查库存";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                ChaKuCun page = new ChaKuCun();
+                page.ShowDialogInScreen();
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+    public class ChaJiaGeCommand : IKeyboardShortcutsCommand
+    {
+        public ChaJiaGeCommand()
+        {
+            Describe = "查价格";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                ChaJiaGe page = new ChaJiaGe();
+                page.ShowDialogInScreen();
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+    public class JieSuanCommand : IKeyboardShortcutsCommand
+    {
+        public JieSuanCommand()
+        {
+            Describe = "结算";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                Toast.Close();
+                var win = o as Window;
+                if (PosMachine.Current.BillList.Count == 0)
+                {
+                    Toast.DoShow("当前账单没有条目，不能结算！", win);
+                    return;
+                }
+                PayWay page = new PayWay();
+                page.ShowDialogInScreen();
+
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class CashPayCommand : IKeyboardShortcutsCommand
+    {
+        public CashPayCommand()
+        {
+            Describe = "现金支付";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                foreach (var item in Application.Current.Windows)
+                {
+                    if (item is PayWay)
+                    {
+                        var win = (item as PayWay);
+                        if (win != null)
+                        {
+                            win.Cash_MouseDown(null, null);
+                        }
+                    }
+                }
+
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class CashPayInMainWindowCommand : IKeyboardShortcutsCommand
+    {
+        public CashPayInMainWindowCommand()
+        {
+            Describe = "现金支付";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+
+                if (o is MainWindow && PosMachine.Current.BillList.Count > 0)
+                {
+                    CashPay pay = new CashPay();
+                    PosMachine.Current.BillList.Discount();
+                    var money = PosMachine.Current.BillList.Receivable;
+                    var receivable = Math.Truncate((money * 10m)) / 10m;
+                    pay.Pay(new PayDetails()
+                    {
+                        MoneyNeedPay = receivable,
+                        IsReturnProduct = false,
+                        Remark = "",
+                        PaySN = DateTime.Now.ToString("yyyyMMddHHmmssfff"),
+                        BillDiscount = money - receivable,
+                        Preferential = PosMachine.Current.BillList.Preferential,
+                        //    SaleManUid = CurrentModel.SalesmanUid,
+                        Unit = "元"
+                    });
+                    PayCash page = new PayCash(pay);
+                    page.ShowDialogInScreen();
+                }
+                else
+                {
+                    Toast.DoShow("购物清单为空，不能结算！");
+                }
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+    public class MultiModePayCommand : IKeyboardShortcutsCommand
+    {
+        public MultiModePayCommand()
+        {
+            Describe = "多方式支付";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                foreach (var item in Application.Current.Windows)
+                {
+                    if (item is PayWay)
+                    {
+                        var win = (item as PayWay);
+                        if (win != null)
+                        {
+                            win.btnMultiMode_Click(null, null);
+                        }
+                    }
+                }
+
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class MultiModePayInMainWindowCommand : IKeyboardShortcutsCommand
+    {
+        public MultiModePayInMainWindowCommand()
+        {
+            Describe = "多方式支付";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                if (o is MainWindow && PosMachine.Current.BillList.Count > 0)
+                {
+                    MultiModePay pay = new MultiModePay();
+                    PosMachine.Current.BillList.Discount();
+
+                    var money = PosMachine.Current.BillList.Receivable;
+                    var receivable = Math.Truncate((money * 10m)) / 10m;
+                    pay.Pay(new PayDetails()
+                    {
+                        MoneyNeedPay = receivable,
+                        IsReturnProduct = false,
+                        Remark = "",
+                        PaySN = DateTime.Now.ToString("yyyyMMddHHmmssfff"),
+                        Preferential = PosMachine.Current.BillList.Preferential,
+                        BillDiscount = money - receivable,
+                        //    SaleManUid = CurrentModel.SalesmanUid,
+                        Unit = "元"
+                    });
+                    Duofangshizhifu page = new Duofangshizhifu(pay);
+                    page.ShowDialogInScreen();
+                }
+                else
+                {
+                    Toast.DoShow("购物清单为空，不能结算！");
+                }
+
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+
+    public class UnionpayInMainWindowCommand : IKeyboardShortcutsCommand
+    {
+        public UnionpayInMainWindowCommand()
+        {
+            Describe = "银联支付";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+
+                if (o is MainWindow && PosMachine.Current.BillList.Count > 0)
+                {
+                    var pay = new UnionPay();
+                    PosMachine.Current.BillList.Discount();
+
+                    var money = PosMachine.Current.BillList.Receivable;
+                    var receivable = Math.Truncate((money * 10m)) / 10m;
+                    pay.Pay(new PayDetails()
+                    {
+                        MoneyNeedPay = receivable,
+                        IsReturnProduct = false,
+                        Remark = "",
+                        PaySN = DateTime.Now.ToString("yyyyMMddHHmmssfff"),
+                        Preferential = PosMachine.Current.BillList.Preferential,
+                        BillDiscount = money - receivable,
+                        //    SaleManUid = CurrentModel.SalesmanUid,
+                        Unit = "元"
+                    });
+                    Unionpay page = new Unionpay(pay);
+                    page.ShowDialogInScreen();
+                }
+                else
+                {
+                    Toast.DoShow("购物清单为空，不能结算！");
+                }
+
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+
+    public class UnionpayCommand : IKeyboardShortcutsCommand
+    {
+        public UnionpayCommand()
+        {
+            Describe = "银联支付";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                foreach (var item in Application.Current.Windows)
+                {
+                    if (item is PayWay)
+                    {
+                        var win = (item as PayWay);
+                        if (win != null)
+                        {
+                            win.UnionPay_MouseDown(null, null);
+                        }
+                    }
+                }
+
+
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class ZhiFuBaoPayCommand : IKeyboardShortcutsCommand
+    {
+        public ZhiFuBaoPayCommand()
+        {
+            Describe = "支付宝支付";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                foreach (var item in Application.Current.Windows)
+                {
+                    if (item is PayWay)
+                    {
+                        var win = (item as PayWay);
+                        if (win != null)
+                        {
+                            win.ZhiFuBao_MouseDown(null, null);
+                        }
+                    }
+                }
+
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class PrintLastOrderCommand : IKeyboardShortcutsCommand
+    {
+        public PrintLastOrderCommand()
+        {
+            Describe = "打印最后一单";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                //打印
+                try
+                {
+                    if (PosMachine.Current.IsRunningPrinter)
+                    {
+                        var printWidthStr = ConfigurationManager.AppSettings["PrintWidth"];
+                        int printWidth = 40;
+                        if (!string.IsNullOrEmpty(printWidthStr))
+                        {
+                            try
+                            {
+                                printWidth = Convert.ToInt32(printWidth);
+                            }
+                            catch
+                            {
+                                printWidth = 40;
+                            }
+                        }
+
+                        PrintModelHelper printer = new PrintModelHelper();
+                        TicketModel ticketModel = new TicketModel();
+                        ticketModel.TicketWidth = printWidth;//发票宽度，按字符数计算，根据打印机型号有所区别(通常在30-70之间),建议系统提供配置入口
+                        ticketModel.StoreName = PosMachineInfo.Infos.StoreName;
+                        ticketModel.DeviceNumber = PosMachineInfo.Infos.MachineId;
+                        var order = SaleOrdersLocalService.GetLastSaleOrder();
+                        if (order == null)
+                        {
+                            Toast.DoShow("未找到订单信息！");
+                            return;
+                        }
+                        var orderDetail = SaleDetailLocalService.GetLastOrderDetails(order.PaySN);
+                        var pay = ConsumptionPaymentLocalService.GetPayWay(order.PaySN);
+                        ticketModel.SN = order.PaySN;
+                        ticketModel.Cashier = UserModel.Current.UserCode;
+                        var integral = MemberIntegralLocalService.GetMemberIntegral(order.PaySN);
+
+                        List<ProductModel> productList = new List<ProductModel>();
+                        foreach (var item in orderDetail)
+                        {
+                            var productinfos = ProductInfoLocalService.Find(p => p.Barcode == item.Barcode);
+                            ProductModel productModel = new ProductModel();
+                            productModel.Code = item.Barcode;
+                            productModel.Name = productinfos != null ? productinfos.Title : "未知商品";
+                            productModel.Num = item.PurchaseNumber;
+                            productModel.Price = item.ActualPrice;
+                            productModel.SubTotal = (item.ActualPrice * item.PurchaseNumber);
+                            productList.Add(productModel);
+                        }
+                        ticketModel.ProductList = productList;
+                        ticketModel.CountNum = orderDetail.Count;
+                        ticketModel.TotalPrice = order.TotalAmount;
+                        ticketModel.Receivable = order.TotalAmount;
+                        ticketModel.Change = 0;
+                        ticketModel.PayType = pay;
+
+                        List<string> footItemList = new List<string>();
+                        footItemList.Add("称重商品数量请参照条码标签");
+                        footItemList.Add("欢迎光临——服务电话：" + PosMachineInfo.Infos.StorePhone);
+                        footItemList.Add("请保留电脑小票，作为退换货凭证");
+                        footItemList.Add("重打小票");
+                        ticketModel.FootItemList = footItemList;
+                        string titleStr = string.Empty; string printStr = printer.GetPrintStr(ticketModel, out titleStr);
+                        PrintHelper.Print(printStr, titleStr);
+                    }
+                }
+                catch { }
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class SwicthPrinterCommand : IKeyboardShortcutsCommand
+    {
+        public SwicthPrinterCommand()
+        {
+            Describe = "开关打印机";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                PosMachine.Current.IsRunningPrinter = !PosMachine.Current.IsRunningPrinter;
+                DataSyncConfigManage.UpdateAppConfig("IsRunningPrinter", PosMachine.Current.IsRunningPrinter.ToString());
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class BanJieCommand : IKeyboardShortcutsCommand
+    {
+        public BanJieCommand()
+        {
+            Describe = "交班";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                var win = o as Window;
+                JiaoBan page = new JiaoBan();
+                page.ShowDialogInScreen();
+
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class HistoryCommand : IKeyboardShortcutsCommand
+    {
+        public HistoryCommand()
+        {
+            Describe = "查询历史订单";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                History page = new History();
+                page.ShowDialogInScreen();
+
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class RiJieCommand : IKeyboardShortcutsCommand
+    {
+        public RiJieCommand()
+        {
+            Describe = "日结";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                var win = o as Window;
+                try
+                {
+                    var saleDatasSync = DataSyncResources.UpdateRanges.FirstOrDefault(p => p.Title == "销售信息上传");
+                    var hasUpload = DataSynchronization.HasUpdate(saleDatasSync.Datas().Datas);
+                    if (hasUpload)
+                    {
+                        UMessageBox.Show("提示", "销售数据尚未上传，确定日结操作？", new Button()
+                        {
+                            Content = "确定",
+                            Width = 120,
+                            Height = 40,
+                            Margin = new Thickness(10, 0, 0, 0),
+                            Command = new GeneralCommand((w) =>
+                            {
+                                var uwin = w as Window;
+                                if (uwin != null)
+                                {
+                                    uwin.Close();
+                                }
+
+                                RiJie page = new RiJie();
+                                page.ShowDialogInScreen();
+                            })
+                        }, new Button()
+                        {
+                            Content = "返回",
+                            Width = 120,
+                            Height = 40,
+                            Margin = new Thickness(10, 0, 0, 0),
+                            Command = new GeneralCommand((w) =>
+                            {
+                                var uwin = w as Window;
+                                if (uwin != null)
+                                {
+                                    uwin.Close();
+                                }
+                            })
+
+                        });
+                    }
+                    else
+                    {
+                        RiJie page = new RiJie();
+                        page.ShowDialogInScreen();
+                    }
+                }
+                catch
+                {
+                    RiJie page = new RiJie();
+                    page.ShowDialogInScreen();
+                }
+
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class ZhengDanZheKouCommand : IKeyboardShortcutsCommand
+    {
+        public ZhengDanZheKouCommand()
+        {
+            Describe = "整单折扣";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                PosMachine.Current.BillList.Discount();
+
+                var discount = new BillDiscount() { Receivable = PosMachine.Current.BillList.Receivable };
+                if (discount.Receivable != 0)
+                {
+                    ZhengDanZheKou page = new ZhengDanZheKou(discount);
+                    page.ShowDialogInScreen();
+                }
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class SaleStatusCommand : IKeyboardShortcutsCommand
+    {
+        public SaleStatusCommand()
+        {
+            Describe = "正常销售/临时赠送 切换";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                foreach (var item in Application.Current.Windows)
+                {
+                    if (item is MainWindow)
+                    {
+                        var win = (item as MainWindow);
+                        if (win != null)
+                        {
+                            win.StatusSwitch_MouseDown(null, null);
+                        }
+                    }
+                }
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class HuanHuoCommand : IKeyboardShortcutsCommand
+    {
+        public HuanHuoCommand()
+        {
+            Describe = "换货";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                var page = o as Changing;
+                if (!(o is Changing))
+                {
+                    ChangingModel model1 = new ChangingModel();
+                    RefundModel model2 = new RefundModel();
+                    page = new Changing(model1, model2);
+                    page.Change(true);
+                    page.ShowDialogInScreen();
+
+                }
+                else
+                {
+                    page.Change(true);
+
+                }
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+    public class TuiHuoCommand : IKeyboardShortcutsCommand
+    {
+        public TuiHuoCommand()
+        {
+            Describe = "退货";
+        }
+
+        public GeneralCommand GetCommand()
+        {
+            return new GeneralCommand((o) =>
+            {
+                var page = o as Changing;
+                if (!(o is Changing))
+                {
+                    ChangingModel model1 = new ChangingModel();
+                    RefundModel model2 = new RefundModel();
+                    page = new Changing(model1, model2);
+                    page.Change(false);
+
+                    page.ShowDialogInScreen();
+
+
+                }
+                else
+                {
+                    page.Change(false);
+                }
+            }, Describe);
+        }
+        public string Describe { get; set; }
+    }
+}
+
+

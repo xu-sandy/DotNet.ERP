@@ -1,0 +1,42 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Sys;
+using Pharos.Sys.BLL;
+using Pharos.Sys.Entity;
+using Pharos.Utility.Helpers;
+using Pharos.CRM.Retailing.Models;
+using Pharos.Utility;
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class AuthorizationController : Controller
+    {
+        #region 产品注册
+        public ActionResult Register(int again=0)
+        {
+            var companyId = SysCommonRules.CompanyId;
+            var obj =CurrentUser.Company as CompanyAuthorize ?? new CompanyAuthorize() { Way = 1 };
+            return View(obj);
+        }
+        [HttpPost]
+        public ActionResult Register(CompanyAuthorize obj)
+        {
+            var op= Authorize.RegisterAgain(obj);
+            return Content(op.ToJson());
+        }
+        public ActionResult Activate()
+        {
+            var comp = CurrentUser.Company as CompanyAuthorize;
+            return View(comp);
+        }
+        [HttpPost]
+        public ActionResult Activate(string serialNo)
+        {
+            var op = Authorize.Activate(serialNo);
+            return Content(op.ToJson());
+        }
+        #endregion
+    }
+}

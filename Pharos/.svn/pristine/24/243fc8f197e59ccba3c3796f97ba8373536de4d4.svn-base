@@ -1,0 +1,179 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: true, hideDel: true, searchHeight: 80, firstLoadData: false));
+    var start = DateTime.Now.ToString("yyyy-MM-01");
+    var end = DateTime.Parse(start).AddMonths(1).AddDays(-1).ToString("yyyy-MM-dd");
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" id="date" value="@start" class="datacontrol Wdate" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd', maxDate: '#F{$dp.$D(\'date2\')}' })" style="width:100px"/>-
+            </td>
+            <td class="input-toolbar">
+                <input name="date2" id="date2" value="@end" class="datacontrol Wdate" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd', minDate: '#F{$dp.$D(\'date\')}' })" style="width:100px" />
+            </td>
+            <td class="label-toolbar">
+                <label>品类：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.CategoryCombobox("categorySn", true)
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("store", ViewBag.stores as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                @Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "仅显示来往数据", Value = "1", Selected = true }, new SelectListItem() { Text = "显示所有", Value = "0" } }, "isRelated")
+            </td>
+        </tr>
+        <tr>
+            <td class="label-toolbar">
+                <label>供应商：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.SupplierCombobox("supplierId", emptyTitle: "全部", multiple: true, controlWidth: 280, panelWidth: 280)
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <select id="searchField" name="searchField" class="easyui-combobox" data-options="editable:false">
+                    <option value="barcode">条码</option>
+                    <option value="Title">品名</option>
+                </select>
+            </td>
+            <td class="input-toolbar">
+                &nbsp;<select name="searchText" class="easyui-combobox" data-options="prompt:'请输入查询条件...',width:150,mode:'remote',valueField:'value',textField:'text',loader:comboload"></select>
+            </td>
+            <td class="label-toolbar" id="btns"></td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" id="btnExcel" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+<script type="text/javascript">
+    var comboload=function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 1) return false;
+        $.ajax({
+            url:"@Url.Action("GetDataForSearch","Report")",
+            type:"post",
+            data:{
+                //传值，还是JSON数据搜索
+                searchText: q,
+                searchField: $("#searchField").combobox("getValue"),
+                product:1
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType:"json",
+            success: function (data) {
+                var items = $.map(data, function(item){
+                    return { value: item.value, text: item.text };
+                });
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    pharos.manager.geturl = '@Url.Action("QueryInvoicingSummaryPageList")';
+    pharos.manager.pagination = true;
+    pharos.manager.showFooter = true;
+    pharos.manager.pageSize = 50;
+    pharos.manager.pageList = [50, 100, 200];
+    pharos.manager.columns = [[
+        { field: '商品类别', title: '商品类别', width: 150 },
+        { field: '单位', title: '单位', width: 50 },
+        { field: '期初库存', title: '期初库存', width: 80 },
+        { field: '期初金额', title: '期初金额', width: 80 },
+        { field: '采购入库数', title: '采购入库数', width: 80 },
+        { field: '采购入库金额', title: '采购入库金额', width: 80, formatter: numberToFixed },
+        { field: '赠送入库数量', title: '赠送入库数量', width: 90 },
+        { field: '赠送入库金额', title: '赠送入库金额', width: 90, formatter: numberToFixed },
+        { field: '采购退货数量', title: '采购退货数量', width: 90 },
+        { field: '采购退货金额', title: '采购退货金额', width: 90, formatter: numberToFixed },
+        { field: '店内调出数量', title: '店内调出数量', width: 90 },
+        { field: '店内调出金额', title: '店内调出金额', width: 90, formatter: numberToFixed },
+        { field: '店内调入数量', title: '店内调入数量', width: 90 },
+        { field: '店内调入金额', title: '店内调入金额', width: 90, formatter: numberToFixed },
+        { field: '批发销售数', title: '批发销售数', width: 90 },
+        { field: '批发销售金额', title: '批发销售金额', width: 90, formatter: numberToFixed },
+        { field: '批发销售成本', title: '批发销售成本', width: 90, formatter: numberToFixed },
+        { field: '批发毛利', title: '批发毛利', width: 90 },
+        { field: '批发毛利率', title: '批发毛利率', width: 90 },
+        { field: '其它出库数量', title: '其它出库数量', width: 90 },
+        { field: '其它出库金额', title: '其它出库金额', width: 90, formatter: numberToFixed },
+        { field: '其它入库数量', title: '其它入库数量', width: 90 },
+        { field: '其它入库金额', title: '其它入库金额', width: 90, formatter: numberToFixed },
+        { field: '零售数量', title: '零售数量', width: 90 },
+        { field: '零售金额', title: '零售金额', width: 90, formatter: numberToFixed },
+        { field: '零售成本', title: '零售成本', width: 90, formatter: numberToFixed },
+        { field: '未税零售成本', title: '未税零售成本', width: 90, formatter: numberToFixed },
+        { field: '零售毛利', title: '零售毛利', width: 90, formatter: numberToFixed },
+        { field: '零售毛利率', title: '零售毛利率', width: 90 },
+        { field: '销售成本', title: '销售成本', width: 90, formatter: numberToFixed },
+        { field: '销售毛利', title: '销售毛利', width: 90, formatter: numberToFixed },
+        { field: '销售毛利率', title: '销售毛利率', width: 90 },
+        { field: '报损数量', title: '报损数量', width: 90 },
+        { field: '报损金额', title: '报损金额', width: 90, formatter: numberToFixed },
+        { field: '盘点盈亏数量', title: '盘点盈亏数量', width: 90 },
+        { field: '盘点盈亏金额', title: '盘点盈亏金额', width: 90, formatter: numberToFixed },
+        { field: '组合数量', title: '组合数量', width: 90 },
+        { field: '组合金额', title: '组合金额', width: 90, formatter: numberToFixed },
+        { field: '拆分数量', title: '拆分剩余数量', width: 90 },
+        { field: '拆分金额', title: '拆分剩余金额', width: 90, formatter: numberToFixed },
+        { field: '结存数量', title: '结存数量', width: 90 },
+        { field: '结存金额', title: '结存金额', width: 90, formatter: numberToFixed },
+        { field: '未税结存金额', title: '未税结存金额', width: 90, formatter: numberToFixed }
+    ]];
+    pharos.manager.frozenColumns = [[
+        { field: '主供应商', title: '主供应商', width: 80 },
+        //{ field: '商品编码', title: '商品编码', width: 80 },
+        { field: '商品条码', title: '商品条码', width: 120 },
+        { field: '品名', title: '品名', width: 180 }
+    ]];
+    var isExp = true;
+    function Export() {
+        var date=$("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        if (isExp) {
+            isExp = false;
+            window.location.href = '@Url.Action("SaleExport")?type=8&' + $('#frmsearch').serialize();
+            setTimeout(function () { isExp = true;}, 2000);
+        }
+    }
+    var storeIds = [];
+    function storeSelect(record) {
+        if (record.value) {
+            storeIds.remove("");
+            storeIds.add(record.value);
+        } else {
+            storeIds = [];
+            storeIds.add(record.value);
+        }
+        $(this).combobox("setValues", storeIds);
+    }
+    function storeUnSelect(record) {
+        storeIds.remove(record.value);
+        $(this).combobox("setValues", storeIds);
+    }
+    $(function () {
+        $("#btns").append($("#searchBtn")).append($("#btnExcel"));
+    })
+</script>

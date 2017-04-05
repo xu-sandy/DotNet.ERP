@@ -1,0 +1,369 @@
+﻿using Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale.Marketings;
+using Pharos.Logic.ApiData.Pos.Services;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Sys.BLL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.DataAdapter
+{
+    /// <summary>
+    /// 本地数据源适配器( for sql server Compact)
+    /// </summary>
+    public class SqlServerCEDataAdapter : IDataAdapter
+    {
+        public string StoreId
+        {
+            get;
+            set;
+        }
+
+        public string MachineSN
+        {
+            get;
+            set;
+        }
+
+        public string DeviceSn
+        {
+            get;
+            set;
+        }
+        /// <summary>
+        /// 企业标识
+        /// </summary>
+        public int CompanyToken
+        {
+            get;
+            set;
+        }
+
+        public bool Enable
+        {
+            get { return SysStoreUserInfoService.CurrentRepository._context.Database.Exists(); }
+        }
+        /// <summary>
+        /// 是否练习模式
+        /// </summary>
+        public bool IsSalesclerkTest
+        {
+            get;
+            set;
+        }
+
+        public ValueObject.ProductInfo GetProductInfoByBarcode(string barcode)
+        {
+            return ProductRecordService.GetProductRecod(StoreId, barcode, CompanyToken);
+        }
+
+        public ValueObject.ProductInfo GetProductInfoByProductCode(string productCode)
+        {
+            return ProductRecordService.GetProductRecodByProductCode(StoreId, productCode, CompanyToken);
+        }
+
+        public ValueObject.ProductInfo GetProductInfoFromBundlingByBarcode(string barcode)
+        {
+            return BundlingService.GetProductInfoFromBundlingByBarcode(StoreId, barcode, CompanyToken);
+        }
+
+        public ValueObject.UserInfo GetUser(string account)
+        {
+            var result = SysStoreUserInfoService.GetStoreUserInfo(account, StoreId, CompanyToken);
+            return result;
+        }
+
+        public IEnumerable<ValueObject.UserInfo> GetStoreManagers(User.StoreOperateAuth storeOperateAuth)
+        {
+            return SysStoreUserInfoService.GetStoreManagers(StoreId, storeOperateAuth, CompanyToken);
+        }
+
+        public ValueObject.PageResult<ValueObject.InventoryResult> CheckedInventory(IEnumerable<int> categorySns, string keyword, int pageSize, int pageIndex)
+        {
+            return WarehouseService.CheckedInventory(StoreId, CompanyToken, categorySns, keyword, pageSize, pageIndex);
+        }
+
+        public ValueObject.PageResult<ValueObject.InventoryResult> CheckedPrice(IEnumerable<int> categorySns, decimal from, decimal to, int pageSize, int pageIndex)
+        {
+            return WarehouseService.CheckedPrice(StoreId, CompanyToken, categorySns, from, to, pageSize, pageIndex);
+        }
+
+        public ValueObject.MemberInfo GetMemberInfo(string phone, string cardNo, string uid)
+        {
+            return MembersService.GetMemberInfo(StoreId, CompanyToken, phone, uid, cardNo);
+        }
+
+        public IEnumerable<ValueObject.CategoryDAO> GetStoreCategory()
+        {
+            return ProductCategorySerivce.GetStoreCategories(StoreId, CompanyToken);
+        }
+
+        public void PosIncomePayout(string uid, decimal money, User.PosIncomePayoutMode mode)
+        {
+            PosIncomePayoutService.Save(StoreId, MachineSN, uid, money, mode, CompanyToken, IsSalesclerkTest);
+        }
+
+        public ValueObject.BillHistoryInfo GetBillDetailsHistory(string paySn)
+        {
+            return SaleOrdersService.GetBillDetailsHistory(StoreId, MachineSN, paySn, CompanyToken, IsSalesclerkTest);
+        }
+
+        public IEnumerable<ValueObject.ReasonItem> GetReason(int mode)
+        {
+            int psn = mode == 1 ? 7 : 8;
+            var result = new SysDataDictionaryBLL().GetDicListByPSN(psn).Select(o => new ReasonItem()
+            {
+                DicSN = o.DicSN,
+                Title = o.Title
+            }).ToList();
+            return result;
+        }
+
+        public void RefundAll(int reason, string paySn, decimal amount, string uid)
+        {
+            var order = SaleOrdersService.CurrentRepository.Entities.FirstOrDefault(o => o.CompanyId == CompanyToken && o.PaySN == paySn && o.StoreId == StoreId && o.State == 0);
+            if (order == null)
+            {
+                throw new PosException("未查找到该订单，不允许退货！");
+            }
+            order.State = 1;
+            order.IsProcess = false;
+            order.Reason = reason;
+            order.Receive = -order.Receive;
+            order.ReturnDT = DateTime.Now;
+            SaleOrdersService.CurrentRepository.Update(order);
+        }
+
+        public void ChangeOrRefund(Sale.AfterSale.OrderChangeRefundSale changeList, int reason, MachineInformation machineInformation, string newPaySn, decimal amount, decimal receive, string uid, string apiCodes)
+        {
+            //try
+            //{
+            //    SaleOrders _saleOrder = new SaleOrders()
+            //    {
+            //        PaySN = changeList.PaySn,
+            //        MachineSN = machineInformation.MachineSn,
+            //        StoreId = machineInformation.StoreId,
+            //        TotalAmount = amount,
+            //        //Receive = receive,
+            //        PreferentialPrice = 0,
+            //        ApiCode = apiCodes,
+            //        CreateUID = machineInformation.CashierUid,
+            //        CreateDT = DateTime.Now,
+            //        CompanyId = machineInformation.CompanyToken,
+            //        ProductCount = changeList.RecordCount,
+            //        Type = (short)changeList.Mode,
+            //        State = 0,
+            //        MemberId = null
+            //        //IsTest = IsSalesclerkTest,
+            //        //InInventory = 0,
+            //        //IsProcess = false,
+            //        //Reason = reason
+            //    };
+            //    SaleOrdersService.CurrentRepository.Add(_saleOrder, false);
+            //    foreach (var item in changeList.ChangingList)
+            //    {
+            //        SaleDetail _saleDetail = new SaleDetail()
+            //        {
+            //            PaySN = changeList.PaySn,
+            //            ScanBarcode = item.CurrentBarcode.CurrentString,
+            //            ProductCode = item.CurrentBarcode.ProductCode,
+            //            AveragePrice = 0,//均价
+            //            CompanyId = machineInformation.CompanyToken,
+            //            Total = item.ChangePrice * item.ChangeNumber,
+            //            Barcode = item.CurrentBarcode.MainBarcode,
+            //            PurchaseNumber = item.ChangeNumber,
+            //            BuyPrice = 0,//进价
+            //            SysPrice = item.SysPrice,
+            //            ActualPrice = item.ChangePrice,
+            //            SalesClassifyId = (int)item.SaleStatus,
+            //            Title = item.CurrentBarcode.Details.Title
+            //        };
+            //        SaleDetailService.CurrentRepository.Add(_saleDetail, false);
+            //    }
+            //    SaleOrdersService.CurrentRepository.Update(_saleOrder);
+            //}
+            //catch (Exception ex)
+            //{
+            //    throw ex;
+            //}
+        }
+
+        public void RecordPayment(string paySn, decimal amount, int apiCode, decimal change, decimal receive, string apiOrderSN = null, string cardNo = null)
+        {
+            ConsumptionPaymentService.Save(paySn, amount, apiCode, change, receive, apiOrderSN, cardNo, CompanyToken);
+        }
+
+        public Logic.Entity.ApiLibrary GetApiSettings(int apiCode)
+        {
+            return ApiLibraryService.GetApiSettings(apiCode);
+        }
+
+        public IEnumerable<ValueObject.BillListItem> GetBills(DateTime date, Sale.Range range)
+        {
+            return SaleOrdersService.GetBills(StoreId, MachineSN, date, CompanyToken, range, IsSalesclerkTest);
+        }
+
+        public void RegisterDevice(string deviceSn, ValueObject.DeviceType type)
+        {
+            DeviceRegInfoService.RegisterDevice(StoreId, MachineSN, deviceSn, type, CompanyToken);
+        }
+
+        public bool HasRegister(string deviceSn, ValueObject.DeviceType type)
+        {
+            return DeviceRegInfoService.HasRegister(StoreId, MachineSN, deviceSn, type, CompanyToken);
+        }
+
+        public IEnumerable<ValueObject.Announcement> Announcements()
+        {
+            return NoticeService.Announcements(StoreId, MachineSN, CompanyToken);
+        }
+
+        public IEnumerable<KeyValuePair<Sale.Marketings.MarketingTimelinessLimit, Sale.Marketings.MarketingRule>> GetMarketingRules()
+        {
+            List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>> result = new List<KeyValuePair<MarketingTimelinessLimit, MarketingRule>>();
+            //result = GetDiscountForMarketing(result);
+            //result = GetFreeGiftPurchaseForMarketing(result);
+            //result = GetCollectionPromotionForMarketing(result);
+
+            return result;
+        }
+
+        public decimal GetMarketingRecordNumber(string marketingId, Sale.Marketings.MarketingQuotaMode mode)
+        {
+            var result = 0m;
+            try
+            {
+                switch (mode)
+                {
+                    case MarketingQuotaMode.EveryDay:
+                        var start = DateTime.Now.Date;
+                        result = MarketingRecordService.CurrentRepository.Entities.Where(o => o.StoreId == StoreId && o.CompanyId == CompanyToken && o.MarketingId == marketingId && o.CreateDT >= start).Sum(o => o.Number);
+                        break;
+                    case MarketingQuotaMode.TotalQuota:
+                        result = MarketingRecordService.CurrentRepository.Entities.Where(o => o.StoreId == StoreId && o.CompanyId == CompanyToken && o.MarketingId == marketingId).Sum(o => o.Number);
+                        break;
+                }
+            }
+            catch
+            {
+            }
+            return result;
+        }
+
+        public void SaveMarketingRecord(string marketingId, decimal number)
+        {
+            //MarketingRecordService.CurrentRepository.Add(new SalesRecord()
+            //{
+            //    MarketingId = marketingId,
+            //    CompanyId = CompanyToken,
+            //    CreateDT = DateTime.Now,
+            //    Number = number,
+            //    StoreId = StoreId
+            //});
+        }
+
+        public void SaveOrder(Sale.ShoppingCart shoppingCart, string apiCodes)
+        {
+            try
+            {
+                //SaleOrders SaleDetail SaleDetailsTotal 
+                var saleOrders = shoppingCart.GetSaleStatistics();//销售清单
+                SaleOrders _saleOrder = new SaleOrders()
+                {
+                    StoreId = shoppingCart.MachineInformation.StoreId,//门店id
+                    MachineSN = shoppingCart.MachineInformation.MachineSn,//pos机号
+                    PaySN = shoppingCart.OrderSN,//订单流水号
+                    TotalAmount = saleOrders.Receivable,//优惠后金额
+                    PreferentialPrice = saleOrders.Preferential,//优惠金额
+                    ApiCode = apiCodes,//支付方式  TODO:
+                    CreateUID = shoppingCart.MachineInformation.CashierUid,//收银员工号
+                    CreateDT = DateTime.Now,
+                    CompanyId = CompanyToken,
+                    ProductCount = saleOrders.Num,
+                    Type = 0,
+                    State = 0,
+                    MemberId = shoppingCart.MemberId,
+                    ActivityId = shoppingCart.ActivityId,
+                    Salesman = shoppingCart.SaleMan
+                    //Receive = shoppingCart.WipeZeroAfter,
+                    //IsTest = IsSalesclerkTest,
+                    //InInventory = 0,
+                    //IsProcess = false
+                };
+                //SaleOrdersService.CurrentRepository.Add(_saleOrder, false);
+
+                var saleOrdersDetails = shoppingCart.GetOrdeList();//订单信息
+                foreach (var item in saleOrdersDetails)
+                {
+                    SaleDetail _saleDetail = new SaleDetail()
+                    {
+                        PaySN = _saleOrder.PaySN,
+                        ProductCode = item.ProductCode,
+                        AveragePrice = item.AveragePrice,//均价
+                        CompanyId = CompanyToken,
+                        Total = item.Details.Total,
+                        Barcode = item.MainBarcode,//商品条码
+                        PurchaseNumber = item.SaleNumber,//销售数量
+                        BuyPrice = item.Details.BuyPrice, //系统进价
+                        SysPrice = item.Details.SystemPrice,//系统售价
+                        ActualPrice = item.MarketingPrice,//销售价
+                        //Title = item.Details.Title,
+                        //ScanBarcode = item.CurrentString,
+                        SalesClassifyId = (int)item.Details.SaleStatus,//销售分类id
+                    };
+                    //SaleDetailService.CurrentRepository.Add(_saleDetail, false);
+                }
+                //SaleOrdersService.CurrentRepository.Update(_saleOrder);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public ValueObject.DayReportResult DayMonthReport(DateTime from, DateTime to, Sale.Range range)
+        {
+            DayReportResult result = new DayReportResult();
+            result.Summary = new List<DayReportDetailItem>();
+            result.SalesmanRecords = new List<SalesmanDayReportResult>();
+            //var machineParams = range == Range.Local ? MachineSN : "";
+            var machineParams = "";
+            SaleOrdersService.DayMonthReport(from, to, ref result, StoreId, machineParams, CompanyToken, IsSalesclerkTest);
+            SaleDetailService.DayMonthReport(from, to, ref result, StoreId, machineParams, CompanyToken, IsSalesclerkTest);
+            PosIncomePayoutService.DayMonthReport(from, to, ref result, StoreId, machineParams, CompanyToken, IsSalesclerkTest);
+            return result;
+        }
+
+        public IEnumerable<ValueObject.WarehouseInformations> GetWarehouseInformations()
+        {
+            var result = WarehouseService.CurrentRepository.Entities.Where(o => o.State == 1).Select(o => new WarehouseInformations()
+            {
+                CompanyToken = o.CompanyId,
+                StoreId = o.StoreId
+            }).ToList();
+            return result;
+        }
+
+        public IEnumerable<ValueObject.Activity> Activities()
+        {
+            return NoticeService.Activities(StoreId, MachineSN, CompanyToken);
+        }
+
+        public void AddWipeZero(int companyId, string paySn, decimal money)
+        {
+            //if (money > 0)//只保存有抹除的数据
+            //{
+            //    WipeZero _wipe = new WipeZero()
+            //    {
+            //        CompanyId = companyId,
+            //        PaySN = paySn,
+            //        Number = money
+            //    };
+            //    WipeZeroService.CurrentRepository.Add(_wipe);
+            //}
+        }
+    }
+}

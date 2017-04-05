@@ -1,0 +1,80 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Logic.Entity.Views;
+using Pharos.Sys.Entity;
+using Pharos.Utility.Helpers;
+
+
+namespace Pharos.Logic.BLL
+{
+    public class IntegralRecordsService : BaseService<IntegralRecords>
+    {
+        public List<IntegralRecordViewModel> GetIntegralRecordPageList(out int count)
+        {
+            var basequery = CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId).OrderByDescending(o => o.CreateDt);
+            var dicquery = BaseService<SysDataDictionary>.CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            count = basequery.Count();
+            //积分记录  返赠方案 字典 会员 用户
+            var result = (from integral in basequery
+                          join rule in BaseService<ReturnRules>.CurrentRepository.QueryEntity
+                              //on integral.IntegralRuleId equals rule.Id
+                          on new { a = integral.IntegralRuleId, companyid = integral.CompanyId } equals new { a = rule.Id, companyid = rule.CompanyId }
+                          join member in BaseService<Members>.CurrentRepository.QueryEntity
+                              //on integral.MemberId equals member.MemberId
+                          on new { a = integral.MemberId, companyid = integral.CompanyId } equals new { a = member.MemberId, companyid = member.CompanyId }
+                          join u in BaseService<SysUserInfo>.CurrentRepository.QueryEntity
+                              //on integral.OperatorUid equals u.UID into users
+                          on new { a = integral.OperatorUid, companyid = integral.CompanyId } equals new { a = u.UID, companyid = u.CompanyId } into users
+                          from userinfo in users.DefaultIfEmpty()
+                          join dic in dicquery
+                              //on rule.OperationType equals dic.DicSN
+                          on new { a = (int)rule.OperationType, companyid = rule.CompanyId } equals new { a = dic.DicSN, companyid = dic.CompanyId }
+                          join dicadapter in dicquery
+                              //on rule.Adapters equals dicadapter.DicSN
+                          on new { a = rule.Adapters, companyid = rule.CompanyId } equals new { a = dicadapter.DicSN, companyid = dicadapter.CompanyId }
+
+                          join left in dicquery
+                              //on rule.LeftSign equals left.DicSN
+                          on new { a = rule.LeftSign, companyid = rule.CompanyId } equals new { a = left.DicSN, companyid = left.CompanyId }
+
+                          join right in dicquery
+                              //on rule.RightSign equals right.DicSN into r
+                          on new { a = rule.LeftSign, companyid = rule.CompanyId } equals new { a = right.DicSN, companyid = right.CompanyId } into r
+                          from rightsign in r.DefaultIfEmpty()
+                          join givetype in dicquery
+                              //on rule.GivenType equals givetype.DicSN
+                          on new { a = (int)rule.GivenType, companyid = rule.CompanyId } equals new { a = givetype.DicSN, companyid = givetype.CompanyId }
+                          select new IntegralRecordViewModel
+                          {
+                              Id = integral.Id,
+                              Adapter = dicadapter.Title,
+                              CID = rule.CompanyId,
+                              Condition = left.Title + rule.Number1 + "," + (rule.Number2 == null ? "" : rightsign.Title + rule.Number2) + dic.Title + givetype.Title + rule.Expression,
+                              CreateDT = integral.CreateDt,
+                              Intergal = integral.Integral,
+                              Member = member.RealName + (member.MobilePhone == "" ? "" : "(" + member.MobilePhone + ")"),
+                              Memo = "",
+                              OrderSn = (integral.SourceType == 1 ? BaseService<SaleOrders>.CurrentRepository.QueryEntity.FirstOrDefault(o => o.PaySN == integral.Source).CustomOrderSn :
+                                        integral.SourceType == 2 ? BaseService<MemberRecharge>.CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId).ToList().FirstOrDefault(o => o.Id.ToString() == integral.Source).RechargeSN : ""),
+                              ReturnType = BaseService<InstalmentRecord>.CurrentRepository.QueryEntity.Where(o => o.IntegralRecordId == integral.Id).Count() > 0 ? "分期" : "即时",
+                              State = "",
+                              Store = "",
+                              Type = "",
+                              Unit = dic.Title,
+                              User = userinfo.FullName
+                          }).ToPageList();
+            return result;
+        }
+
+        public object GetIntegralRecordDetailPageList(string id, out int count)
+        {
+            var query = BaseService<InstalmentRecord>.CurrentRepository.QueryEntity.Where(o => o.IntegralRecordId == id).OrderByDescending(o => o.InstalmentDT);
+            count = query.Count();
+            var result = query.ToPageList();
+            return result;
+        }
+    }
+}

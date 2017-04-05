@@ -1,0 +1,241 @@
+﻿using Pharos.POS.Retailing.ObjectModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Management;
+using System.Security.AccessControl;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Xml.Serialization;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    public class MachineInformations : BaseViewModel, ISettingsItem, IMachineInformations
+    {
+        public MachineInformations()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                var mac = GetMACID(); ;
+                Application.Current.Dispatcher.Invoke(new Action(() =>
+                {
+                    DeviceId = mac;
+                }));
+            });
+        }
+        private string GetMACID()
+        {
+            string mac = "";
+            ManagementClass mc = new ManagementClass("Win32_NetworkAdapterConfiguration");
+            ManagementObjectCollection moc = mc.GetInstances();
+            foreach (ManagementObject mo in moc)
+            {
+                if ((bool)mo["IPEnabled"])
+                {
+                    mac = mo["MacAddress"].ToString();
+                    break;
+                }
+            }
+            return mac.Replace(":", "");
+        }
+
+        internal void Reload(IMachineInformations machineInformations)
+        {
+            MachineSn = machineInformations.MachineSn;
+            StoreId = machineInformations.StoreId;
+            StoreName = machineInformations.StoreName;
+            Phone = machineInformations.Phone;
+            Company = machineInformations.Company;
+        }
+
+
+        string headerXamlPath = "Templates/DefaultTabControlHeaderTemplate.xaml";
+        [XmlIgnore]
+        public string HeaderXamlPath
+        {
+            get
+            {
+                return headerXamlPath;
+            }
+            set
+            {
+                headerXamlPath = value;
+                this.OnPropertyChanged(o => o.HeaderXamlPath);
+            }
+        }
+
+        string xamlPath = "Templates/MachineInformationsTemplate.xaml";
+        [XmlIgnore]
+        public string XamlPath
+        {
+            get
+            {
+                return xamlPath;
+            }
+            set
+            {
+                xamlPath = value;
+                this.OnPropertyChanged(o => o.XamlPath);
+            }
+        }
+
+        string header = "设备配置";
+        [XmlIgnore]
+        public string Header
+        {
+            get
+            {
+                return header;
+            }
+            set
+            {
+                header = value;
+                this.OnPropertyChanged(o => o.Header);
+            }
+        }
+
+        string machineSn;
+        public string MachineSn
+        {
+            get
+            {
+                return machineSn;
+            }
+            set
+            {
+                machineSn = value;
+                this.OnPropertyChanged(o => o.MachineSn);
+            }
+        }
+
+        string deviceId;
+        [XmlIgnore]
+        public string DeviceId
+        {
+            get
+            {
+                return deviceId;
+            }
+            set
+            {
+                deviceId = value.ToUpper();
+                this.OnPropertyChanged(o => o.DeviceId);
+            }
+        }
+
+        string storeId;
+        public string StoreId
+        {
+            get
+            {
+                return storeId;
+            }
+            set
+            {
+                storeId = value;
+                this.OnPropertyChanged(o => o.StoreId);
+            }
+        }
+
+        string company;
+        public string Company
+        {
+            get
+            {
+                return company;
+            }
+            set
+            {
+                company = value;
+                this.OnPropertyChanged(o => o.Company);
+            }
+        }
+
+        string storeName;
+        public string StoreName
+        {
+            get
+            {
+                return storeName;
+            }
+            set
+            {
+                storeName = value;
+                this.OnPropertyChanged(o => o.StoreName);
+            }
+        }
+        string phone;
+        public string Phone
+        {
+            get
+            {
+                return phone;
+            }
+            set
+            {
+                phone = value;
+                this.OnPropertyChanged(o => o.Phone);
+            }
+        }
+
+        /// <summary>
+        /// 设备注册
+        /// </summary>
+        [XmlIgnore]
+        public GeneralCommand<object> DeviceRegisterCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    DeviceRegInfo _deviceInfo = new DeviceRegInfo() { MachineSN = machineSn, DeviceSN = deviceId, StoreId = storeId };
+
+                    var result = ApiManager.Post<object, ApiRetrunResult<object>>(@"api/RegisterDevice", _deviceInfo);
+                    if (result.Code == "200")
+                    {
+                        //todo msg;
+                    }
+                    else
+                    {
+                        //todo msg
+                    }
+                });
+            }
+        }
+
+        [XmlIgnore]
+        public GeneralCommand<object> SaveCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    try
+                    {
+                        Global.MachineSettings.Save();
+                    }
+                    catch (Exception ex)
+                    {
+                        throw ex;
+                    }
+                });
+            }
+        }
+        [XmlIgnore]
+        public GeneralCommand<object> CopyCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (!string.IsNullOrEmpty(DeviceId))
+                        Clipboard.SetText(DeviceId);
+                });
+            }
+        }
+
+    }
+}

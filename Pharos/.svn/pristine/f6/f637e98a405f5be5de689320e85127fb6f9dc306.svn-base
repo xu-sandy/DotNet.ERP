@@ -1,0 +1,78 @@
+GO
+/****** Object:  UserDefinedFunction [dbo].[F_GetIsRelationship]    Script Date: 01/14/2016 18:01:47 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		陈雅宾
+-- Create date: 2016-01-12
+-- Description:	根据条码查询该产品是否存在业务关系
+-- =============================================
+CREATE FUNCTION [dbo].[F_GetIsRelationship]
+(
+	@barcode VARCHAR(30)
+)
+RETURNS INT
+AS
+BEGIN	
+	DECLARE @count INT=0;
+	DECLARE @isRelationship BIT =0;
+	
+	SELECT @isRelationship=IsRelationship FROM dbo.ProductRecord WHERE Barcode=@barcode
+	IF(@isRelationship=1)
+	BEGIN
+		RETURN 1;
+	END	
+	
+	--下订单
+	SELECT @count= COUNT(*) FROM dbo.IndentOrderList a,dbo.IndentOrder b WHERE a.IndentOrderId=b.IndentOrderId AND a.Barcode=@barcode;
+	--拆分
+	IF(@count=0)
+	BEGIN
+	  SELECT @count= COUNT(*) FROM dbo.ProductRecord a WHERE a.Barcode IN (SELECT DISTINCT(OldBarcode) FROM dbo.ProductRecord) AND a.Barcode=@barcode;
+	END 
+	--组合
+	IF(@count=0)
+	BEGIN
+		SELECT @count=COUNT(*) FROM dbo.ProductRecord a WHERE a.Barcode IN (SELECT DISTINCT(GroupBarcode) FROM dbo.ProductGroup ) AND a.Barcode=@barcode;
+	END 
+	--产品变价
+	IF(@count=0)
+	BEGIN
+	  --SELECT @count= COUNT(*) FROM dbo.ProductChangePriceList a, dbo.ProductChangePrice b WHERE b.Id=a.ChangePriceId AND (b.State=1 a.StartDate<=GETDATE() AND a.EndDate>=GETDATE()-1) AND a.Barcode=@barcode;
+	  SELECT @count= COUNT(*) FROM dbo.ProductChangePriceList a, dbo.ProductChangePrice b WHERE b.Id=a.ChangePriceId AND a.Barcode=@barcode;
+	END 
+	--批发价
+	IF(@count=0)
+	BEGIN
+	  SELECT @count= COUNT(*) FROM dbo.ProductTradePriceList a, dbo.ProductTradePrice b WHERE b.Id=a.TradePriceId AND b.State<2 AND a.StartDate<GETDATE() AND a.EndDate>GETDATE() AND a.Barcode=@barcode;
+	END 
+	--报损
+	IF(@count=0)
+	BEGIN
+	  SELECT @count= COUNT(*) FROM dbo.BreakageList a, dbo.BreakageGoods b WHERE b.BreakageGoodsId=a.BreakageGoodsId AND b.State<2 AND a.Barcode=@barcode;
+	END 
+	--正常入库
+	IF(@count=0)
+	BEGIN
+		SELECT @count= COUNT(*) FROM InboundList a,dbo.InboundGoods b WHERE a.InboundGoodsId=b.InboundGoodsId AND a.Barcode=@barcode;
+	end	
+	--正常出库，批发出库
+	IF(@count=0)
+	BEGIN
+		SELECT @count=COUNT(*) FROM dbo.OutboundList a,dbo.OutboundGoods b WHERE a.OutboundId=b.OutboundId AND a.Barcode=@barcode;
+	END
+	--调入调出
+	IF(@count=0)
+	BEGIN
+		SELECT @count=COUNT(*) FROM dbo.HouseMoveList a,dbo.HouseMove b WHERE a.MoveId=b.MoveId AND a.Barcode=@barcode;
+	END
+	--销售
+	IF(@count=0)
+	BEGIN
+		SELECT @count=COUNT(*) FROM dbo.SaleDetail WHERE Barcode=@barcode;
+	END
+	
+	RETURN @count;
+END

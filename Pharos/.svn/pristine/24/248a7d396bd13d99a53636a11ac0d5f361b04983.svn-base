@@ -1,0 +1,54 @@
+--2015-11-24 捆绑加入售价和进价
+ALTER TABLE dbo.Bundling ADD SysPrices MONEY
+ALTER TABLE dbo.Bundling ADD BuyPrices MONEY
+UPDATE dbo.Bundling SET sysprices=0,buyprices=0
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'进价合计' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bundling', @level2type=N'COLUMN',@level2name=N'BuyPrices'
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'售价合计' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bundling', @level2type=N'COLUMN',@level2name=N'SysPrices'
+
+--2015-11-24 会员加入地址和消费额度
+ALTER TABLE dbo.Members ADD Sex NCHAR(1)
+ALTER TABLE dbo.Members ADD QQ VARCHAR(20)
+ALTER TABLE dbo.Members ADD Address VARCHAR(200)
+ALTER TABLE dbo.Members ADD ConsumerCredit MONEY
+ALTER table dbo.Members add Insider NCHAR(1)
+ALTER TABLE dbo.Members ADD Status SMALLINT DEFAULT 1
+ALTER TABLE dbo.Members DROP COLUMN InsiderUID
+UPDATE Members SET status=1
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'消费额度' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Members', @level2type=N'COLUMN',@level2name=N'ConsumerCredit'
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'联系地址' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Members', @level2type=N'COLUMN',@level2name=N'Address'
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'状态  1－可用 0－禁用' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Members', @level2type=N'COLUMN',@level2name=N'Status'
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'是否内容人员' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Members', @level2type=N'COLUMN',@level2name=N'Insider'
+
+--2015-12-4
+ ALTER TABLE dbo.ProductMultSupplier ADD BuyPrice MONEY
+ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'进价' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductMultSupplier', @level2type=N'COLUMN',@level2name=N'BuyPrice'
+
+ ALTER TABLE dbo.ProductMultPrice ADD SupplierId VARCHAR(40)
+ ALTER TABLE dbo.ProductMultPrice ADD BuyPrice MONEY
+ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'进价' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductMultPrice', @level2type=N'COLUMN',@level2name=N'BuyPrice'
+ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'供应商' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductMultPrice', @level2type=N'COLUMN',@level2name=N'SupplierId'
+
+ ALTER TABLE dbo.ProductRecord ADD Barcodes VARCHAR(150)
+ ALTER TABLE dbo.ProductRecord ADD BarcodeMult VARCHAR(1000)
+ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'一品多码' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductRecord', @level2type=N'COLUMN',@level2name=N'Barcodes'
+ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'多条码串' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductRecord', @level2type=N'COLUMN',@level2name=N'BarcodeMult'
+ ALTER TABLE dbo.ProductRecord ADD StockRate MONEY
+ALTER TABLE dbo.ProductRecord ADD SaleRate MONEY
+ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'进项税率' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductRecord', @level2type=N'COLUMN',@level2name=N'StockRate'
+ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'销售税率' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'ProductRecord', @level2type=N'COLUMN',@level2name=N'SaleRate'
+ 
+ --执行Vw_Product
+
+--采购单
+ALTER TABLE dbo.IndentOrderList ADD SysPrice MONEY
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'系统售价' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'IndentOrderList', @level2type=N'COLUMN',@level2name=N'SysPrice'
+
+--更新[F_SysPriceByBarcode]
+--创建[Rpt_InvoicingSummary]
+
+ALTER TABLE dbo.SysUserInfo ADD Handsign VARCHAR(20)
+  ALTER TABLE dbo.Supplier ADD Handsign VARCHAR(20)
+ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'手势密码(手机端)' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'SysUserInfo', @level2type=N'COLUMN',@level2name=N'Handsign'
+ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'手势密码(手机端)' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Supplier', @level2type=N'COLUMN',@level2name=N'Handsign'
+
+ALTER TABLE dbo.OutboundList ADD BuyPrice MONEY

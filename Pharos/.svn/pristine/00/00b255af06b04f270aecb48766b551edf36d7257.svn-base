@@ -1,0 +1,96 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+using Pharos.Utility;
+
+namespace Pharos.Sys.Entity
+{
+    public class OMS_CompanyAuthorize
+    {
+        short _Category = 1;
+        string _StoreProper = "Y";
+        string _AppProper = "Y";
+        string _PosMinorDisp = "Y";
+        string _SupplierProper = "Y";
+        string _WholesalerProper = "Y";
+        string _Useable = "Y";
+        [System.ComponentModel.DataAnnotations.Key]
+        public int Id { get; set; }
+        /// <summary>
+        /// 编号
+        /// </summary>
+        public string Code { get; set; }
+        /// <summary>
+        /// 审核状态(0-未审、1-已审、2-注销)
+        /// </summary>
+        public short State { get; set; }
+        /// <summary>
+        /// 类别(在线/独立)
+        /// </summary>
+        public short Category { get { return _Category; } set { _Category = value; } }
+        /// <summary>
+        /// 单位简称
+        /// </summary>
+        public string Title { get; set; }
+        /// <summary>
+        /// 单位全称
+        /// </summary>
+        public string FullTitle { get; set; }
+        /// <summary>
+        /// 用户数
+        /// </summary>
+        public short UserNum { get; set; }
+        /// <summary>
+        /// 门店数
+        /// </summary>
+        public short StoreNum { get; set; }
+        /// <summary>
+        /// 分店专属后台(Y/N)
+        /// </summary>
+        public string StoreProper { get { return _StoreProper; } set { _StoreProper = value; } }
+        /// <summary>
+        /// APP手机端(Y/N)
+        /// </summary>
+        public string AppProper { get { return _AppProper; } set { _AppProper = value; } }
+        /// <summary>
+        /// POS次屏显示(Y/N)
+        /// </summary>
+        public string PosMinorDisp { get { return _PosMinorDisp; } set { _PosMinorDisp = value; } }
+        /// <summary>
+        /// 供应商专属后台(Y/N)
+        /// </summary>
+        public string SupplierProper { get { return _SupplierProper; } set { _SupplierProper = value; } }
+        /// <summary>
+        /// 批发商专属后台(Y/N)
+        /// </summary>
+        public string WholesalerProper { get { return _WholesalerProper; } set { _WholesalerProper = value; } }
+        /// <summary>
+        /// 开通时间
+        /// </summary>
+        public DateTime CreateDT { get; set; }
+        /// <summary>
+        /// 生效日期
+        /// </summary>
+        [JsonConverter(typeof(JsonShortDate))]
+        public DateTime? EffectiveDT { get; set; }
+        /// <summary>
+        /// 有效期(年)
+        /// </summary>
+        public short ValidityYear { get; set; }
+        /// <summary>
+        /// 截止日期
+        /// </summary>
+        [JsonConverter(typeof(JsonShortDate))]
+        public DateTime? ExpirationDT { get { return EffectiveDT.HasValue ? EffectiveDT.Value.AddYears(ValidityYear) : new Nullable<DateTime>(); } }
+        /// <summary>
+        /// 可用状态(Y/N)
+        /// </summary>
+        public string Useable { get { return _Useable; } set { _Useable = value; } }
+        /// <summary>
+        /// 序列号
+        /// </summary>
+        public string SerialNo { get; set; }
+    }
+}

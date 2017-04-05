@@ -1,0 +1,72 @@
+﻿using Pharos.Logic.ApiData.Pos.Sale.Members;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class MembersService : BaseGeneralService<Pharos.Logic.Entity.Members, EFDbContext>
+    {
+        public static MemberInfo GetMemberInfo(string storeId, string machinSn, int token, string phone, string uid, string cardNo)
+        {
+            var memberInfo = new MemberInfo();
+            var member = new Members();
+            if (!string.IsNullOrEmpty(phone) && !string.IsNullOrEmpty(cardNo))
+            {
+                member = CurrentRepository.Find(o => o.MobilePhone == phone && o.CompanyId == token && o.MemberCardNum == cardNo);
+            }
+            else if (!string.IsNullOrEmpty(phone))
+            {
+                member = CurrentRepository.Find(o => o.MobilePhone == phone && o.CompanyId == token);
+            }
+            else if (!string.IsNullOrEmpty(cardNo))
+            {
+                member = CurrentRepository.Find(o => o.CompanyId == token && o.MemberCardNum == cardNo);
+            }
+
+            if (member != null)
+            {
+                memberInfo.MemberId = member.MemberId;
+                memberInfo.MobilePhone = member.MobilePhone;
+                memberInfo.RealName = member.RealName;
+                memberInfo.MemberCardNum = member.MemberCardNum;
+                memberInfo.UsableIntegral = member.UsableIntegral;
+                return memberInfo;
+            }
+            else
+            {
+                var memberId = Guid.NewGuid().ToString("N");
+                member = new Members()
+                {
+                    MemberId = memberId,
+                    MobilePhone = phone,
+                    MemberCardNum = cardNo,
+                    StoreId = storeId,
+                    CreateDT = DateTime.Now,
+                    CreateUID = uid,
+                    CompanyId = token
+                };
+                CurrentRepository.Add(member);
+                memberInfo.MemberId = member.MemberId;
+                memberInfo.MobilePhone = member.MobilePhone;
+                memberInfo.RealName = member.RealName;
+                memberInfo.MemberCardNum = member.MemberCardNum;
+                memberInfo.UsableIntegral = member.UsableIntegral;
+                if (member.Insider)
+                {
+                    memberInfo.Type = Sale.Members.CustomerType.Insider;
+                }
+                else
+                {
+                    memberInfo.Type = Sale.Members.CustomerType.VIP;
+                }
+                return memberInfo;
+            }
+        }
+    }
+}

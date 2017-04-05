@@ -1,0 +1,63 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: false, hideDel: true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" value="@DateTime.Now.ToString("yyyy-MM-dd")" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd'})" />
+            </td>
+            <td>-</td>
+            <td class="input-toolbar">
+                <input name="date2" value="@DateTime.Now.ToString("yyyy-MM-dd")" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd'})" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datecontrol", data_options = (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelHeight:'auto',panelMaxHeight:200" })
+            </td>
+            <td class="label-toolbar">
+                <label>导购员：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="memberKeyword" class="datacontrol easyui-textbox font-12" data-options="prompt:'工号/姓名'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = '@Url.Action("QueryShoppingGuideSaleDetailDayPageList")';
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = true;
+    pharos.manager.columns = [[
+        { field: 'SalesManName', title: '导购员', width: 150 },
+        { field: 'SaleDate', title: '销售时间', width: 150 },
+        { field: 'PaySN', title: '流水号', width: 150 },
+        { field: 'Quantity', title: '件数', width: 100 },
+        { field: 'Weigh', title: '称重', width: 100 },
+        { field: 'SaleTotal', title: '销售额', width: 100 },
+        { field: 'PreferentialPrice', title: '优惠额', width: 100 },
+        { field: 'PayTitle', title: '结算方式', width: 150 },
+    ]];
+    pharos.manager.editItem = function (id,row) {
+        openDialog("订单明细", "@Url.Action("SaleOrderDetail")?paySN=" + row.PaySN, 1000, 560, true);
+    }
+    function Export() {
+        var date=$("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        window.location.href = '@Url.Action("ShoppingGuideSaleDetailDayExport")?' + $('#frmsearch').serialize();
+    }
+</script>

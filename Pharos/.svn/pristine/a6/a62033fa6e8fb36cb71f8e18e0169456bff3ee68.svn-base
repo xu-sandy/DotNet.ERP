@@ -1,0 +1,241 @@
+﻿using Microsoft.Win32;
+using Pharos.Logic.BLL.DataSynchronism;
+using Pharos.Logic.BLL.LocalServices.DataSync;
+using Pharos.POS.Retailing.ChildPages;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Windows.Controls;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models.DataSync
+{
+    /// <summary>
+    /// 手动同步
+    /// </summary>
+    public class ManualSynchronization : BaseObservable
+    {
+        public bool EnableManual { get; set; }
+        private static ManualSynchronization current;
+        public static ManualSynchronization Current
+        {
+            get
+            {
+                if (current == null)
+                {
+                    current = new ManualSynchronization();
+                }
+                return current;
+            }
+        }
+        OperatType type = OperatType.Online;
+        public OperatType Type
+        {
+            get { return type; }
+            set
+            {
+                type = value;
+                if (value == OperatType.OfflineExport)
+                {
+                    for (var i = 0; i < SelectItems.Count; i++)
+                    {
+                        if (!SelectItems[i].IsUpload)
+                        {
+                            SelectItems[i].IsEnabled = false;
+                            SelectItems[i].IsChecked = false;
+                        }
+                        else
+                        {
+                            SelectItems[i].IsEnabled = true;
+                            SelectItems[i].IsChecked = true;
+                        }
+                        SelectItems[i].OnPropertyChanged("IsEnabled");
+                        SelectItems[i].OnPropertyChanged("IsChecked");
+                    }
+
+                }
+                else if (value == OperatType.OfflineImport)
+                {
+                    for (var i = 0; i < SelectItems.Count; i++)
+                    {
+                        if (SelectItems[i].IsUpload)
+                        {
+                            SelectItems[i].IsEnabled = false;
+                            SelectItems[i].IsChecked = false;
+
+
+                        }
+                        else
+                        {
+                            SelectItems[i].IsEnabled = true;
+                            SelectItems[i].IsChecked = true;
+                        }
+                        SelectItems[i].OnPropertyChanged("IsEnabled");
+                        SelectItems[i].OnPropertyChanged("IsChecked");
+                    }
+                }
+                else
+                {
+                    for (var i = 0; i < SelectItems.Count; i++)
+                    {
+                        SelectItems[i].IsEnabled = true;
+                        SelectItems[i].IsChecked = true;
+
+                        SelectItems[i].OnPropertyChanged("IsEnabled");
+                        SelectItems[i].OnPropertyChanged("IsChecked");
+                    }
+                }
+            }
+        }
+
+        public GeneralCommand DataSync
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    if (!UserModel.Current.VerifyCurrentOperateAuth(UserAuth.DataManager))
+                    {
+                        Toast.DoShow("数据维护员才能进行数据同步！");
+                        return;
+                    }
+                    var progressBar = o as ProgressBar;
+                    progressBar.Dispatcher.Invoke(new Action(() =>
+                    {
+                        progressBar.Visibility = System.Windows.Visibility.Visible;
+                        progressBar.Maximum = SelectItems.Where(p => p.IsChecked).Count();
+                        progressBar.Minimum = 0;
+                        progressBar.Value = 0;
+                    }), null);
+
+                    if (Type == OperatType.Online)//在线同步
+                    {
+                        DataSynchronization.GetProgressInfo = () =>
+                        {
+                            progressBar.Dispatcher.Invoke(new Action(() =>
+                            {
+                                progressBar.Value++;
+                            }), null);
+                        };
+                        DataSynchronization.DataAsyn();
+                    }
+                    else if (Type == OperatType.OfflineExport)
+                    {//离线更新导出
+                        try
+                        {
+                            progressBar.Maximum++;
+                            List<UpdateFormData> result = new List<UpdateFormData>();
+                            var items = SelectItems.Where(p => p.IsChecked);
+                            foreach (var item in items)
+                            {
+                                result.Add(item.Datas());
+                                progressBar.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    progressBar.Value++;
+                                }), null);
+                            }
+
+                            System.Windows.Forms.FolderBrowserDialog dialog = new System.Windows.Forms.FolderBrowserDialog();
+                            var dialogReturn = dialog.ShowDialog();
+                            var savePath = dialog.SelectedPath.Trim();
+                            if (dialogReturn == System.Windows.Forms.DialogResult.OK)
+                            {
+                                foreach (var item in result)
+                                {
+                                    foreach (var data in item.Datas)
+                                    {
+                                        ExportExcelForCS.ToExcel(LocalDataSyncContext.Entities[data.Key], string.Format("{0}.xls", LocalDataSyncContext.TableNames[data.Key]), savePath, data.Value);
+                                    }
+                                }
+                                Toast.DoShow("导出成功！");
+
+                            }
+                            progressBar.Dispatcher.Invoke(new Action(() =>
+                            {
+                                progressBar.Value++;
+                            }), null);
+
+                        }
+                        catch (Exception)
+                        {
+                            Toast.DoShow("导出失败！");
+
+                        }
+
+                    }
+                    else if (Type == OperatType.OfflineImport)
+                    {
+                        try
+                        {
+                            progressBar.Maximum++;
+                            OpenFileDialog dialog = new OpenFileDialog();
+                            dialog.FileName = "DataSync"; // Default file name
+                            dialog.DefaultExt = ".xls"; // Default file extension
+                            dialog.Filter = "Excel documents (.xls)|*.xls";
+                            dialog.Multiselect = true;
+                            var items = SelectItems.Where(p => p.IsChecked);
+
+                            var dialogReturn = dialog.ShowDialog();
+                            if (dialogReturn == true)
+                            {
+                                var infos = new UpdateFormData();
+                                infos.StoreId = PosMachine.Current.Infos.StoreId;
+
+                                foreach (var file in dialog.FileNames)
+                                {
+                                    using (StreamReader sr = new StreamReader(file))
+                                    {
+                                        var workbook = ExportExcelForCS.InitWorkbook(file, sr.BaseStream);
+                                        var title = ExportExcelForCS.GetHeader(file, sr.BaseStream, workbook);
+                                        var key = LocalDataSyncContext.TableNames.FirstOrDefault(p => p.Value == title).Key;
+                                        if (items.Where(j => j.Keys.Contains(key)).Count() == 1)
+                                        {
+                                            try
+                                            {
+                                                var result = ExportExcelForCS.ReadListFromStream(LocalDataSyncContext.Entities[key], workbook, false);
+                                                infos.Datas.Add(key, result);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                UMessageBox.Show("警告", ex.Message + "文件：" + file);
+                                                return;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (infos.Datas.Count > 0)
+                                {
+                                    BaseLocalDataSyncService.UpdateFromServer(infos, () =>
+                                    {
+
+                                        Application.Current.Dispatcher.Invoke(new Action(() =>
+                                        {
+                                            Toast.DoShow("导入成功！");
+                                        }));
+
+                                    });
+                                }
+                                else
+                                {
+                                    Toast.DoShow("未找到限定的导入文件或者内容！");
+
+                                }
+                            }
+
+
+                        }
+                        catch
+                        {
+                            Toast.DoShow("导入失败！");
+
+                        }
+                    }
+                });
+            }
+        }
+
+        public List<DataSyncItem> SelectItems { get { return DataSyncResources.UpdateRanges; } }
+    }
+}

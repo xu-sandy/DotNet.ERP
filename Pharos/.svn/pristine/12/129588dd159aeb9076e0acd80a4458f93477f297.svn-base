@@ -1,0 +1,51 @@
+﻿using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.DAL
+{
+    /// <summary>
+    /// 销售订单 数据访问
+    /// </summary>
+    internal class SaleOrderDAL : BaseDAL
+    {
+        public DataTable QuerySaleOrdersPageList(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var startDate = nvl["date"];
+            var endDate = nvl["date2"];
+            var cashier = nvl["cashier"];
+            var saler = nvl["saler"];
+            var store = nvl["store"];
+            var apiCodes = nvl["apiCodes"];
+            var searchText = nvl["searchText"].Trim();
+            var ispage = nvl["ispage"].IsNullOrEmpty() ? 1 : int.Parse(nvl["ispage"]);
+            var tuihuan = nvl["tuihuan"].IsNullOrEmpty()?0:1;
+            var pageIndex = 1;
+            var pageSize = 30;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+            var pmrs = new SqlParameter[] { 
+                new SqlParameter("@companyId",Sys.SysCommonRules.CompanyId),
+                new SqlParameter("@startDate",startDate),
+                new SqlParameter("@endDate",endDate),
+                new SqlParameter("@storeIds",store),
+                new SqlParameter("@title",searchText),
+                new SqlParameter("@cashiers",cashier),
+                new SqlParameter("@salers",saler),
+                new SqlParameter("@apicodes",apiCodes),
+                new SqlParameter("@tuihuan",tuihuan),
+                new SqlParameter("@CurrentPage",pageIndex),
+                new SqlParameter("@PageSize",pageSize),
+                new SqlParameter("@ispage",ispage)
+            };
+            
+            return _db.DataTable("Rpt_BeforeProductSaleDetails", pmrs,120);
+        }
+    }
+}

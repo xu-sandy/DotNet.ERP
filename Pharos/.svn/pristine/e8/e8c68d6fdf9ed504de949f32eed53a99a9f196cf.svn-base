@@ -1,0 +1,117 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideEdit: true, hideDel: true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <div style="line-height:28px;">
+                    <input type="radio" name="typeField" value="AverageDaily" checked="checked" />日
+                    <input type="radio" name="typeField" value="AverageMonthly" />月
+                    <input type="radio" name="typeField" value="AverageAnnual" />年
+                    <div id="dateInput_td" style="display:inline-block">
+                        <input id="searchdate" name="date" value="@DateTime.Now.ToString("yyyy-MM-dd")" class="datacontrol Wdate" style="width:120px;" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd'})" />
+                    </div>
+                </div>
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("store", ViewBag.stores as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelHeight:'auto',panelMaxHeight:200")
+            </td>
+            @*<td id="dateTitle_td" class="label-toolbar">
+                <label>月份：</label>
+            </td>
+            <td id="dateInput_td" class="input-toolbar">
+
+            </td>*@
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = '@Url.Action("QuerySalesSummaryPageList")';
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = false;
+    pharos.manager.columns = [[
+        { field: 'StoreTitle', title: '门店', width: 150 },
+        { field: 'Type', title: '项目', width: 150 },
+        { field: 'SameMonth', title: '@ViewBag.SameMonthTitle', width: 150 },
+        { field: 'CurrentMonth', title: '@ViewBag.CurrentMonthTitle', width: 150 },
+        { field: 'YOY', title: '同比', width: 150 },
+    ]];
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'StoreId', columns: ['StoreTitle'] });
+    }
+    function Export() {
+        window.location.href = '@Url.Action("SalesSummaryExport")?' + $('#frmsearch').serialize();
+    }
+    $(function () {
+        $("#searchBtn").click(function () {
+            var searchDate = $("#searchdate").val();
+            if ($("input[name=typeField]:checked ").val() == "AverageAnnual") {
+                var year = Number(searchDate);
+                $('#grid').datagrid({
+                    columns: [[
+                        { field: 'StoreTitle', title: '门店', width: 150 },
+                        { field: 'Type', title: '项目', width: 150 },
+                        { field: 'SameMonth', title: (year - 1) + "年", width: 150 },
+                        { field: 'CurrentMonth', title: year + "年", width: 150 },
+                        { field: 'YOY', title: '同比', width: 150 },
+                    ]]
+                });
+            } else if ($("input[name=typeField]:checked ").val() == "AverageMonthly") {
+                var searchDateArr = searchDate.split('-');
+                var year = Number(searchDateArr[0]);
+                var month = Number(searchDateArr[1]);
+                $('#grid').datagrid({
+                    columns: [[
+                        { field: 'StoreTitle', title: '门店', width: 150 },
+                        { field: 'Type', title: '项目', width: 150 },
+                        { field: 'SameMonth', title: (year - 1) + "年" + month + "月", width: 150 },
+                        { field: 'CurrentMonth', title: year + "年" + month + "月", width: 150 },
+                        { field: 'YOY', title: '同比', width: 150 },
+                    ]]
+                });
+            } else if ($("input[name=typeField]:checked ").val() == "AverageDaily") {
+                var searchDateArr = searchDate.split('-');
+                var year = Number(searchDateArr[0]);
+                var month = Number(searchDateArr[1]);
+                var tempDate = Number(searchDateArr[2]);
+                $('#grid').datagrid({
+                    columns: [[
+                        { field: 'StoreTitle', title: '门店', width: 150 },
+                        { field: 'Type', title: '项目', width: 150 },
+                        { field: 'SameMonth', title: (year - 1) + "年" + month + "月" + tempDate + "日", width: 150 },
+                        { field: 'CurrentMonth', title: year + "年" + month + "月" + tempDate + "日", width: 150 },
+                        { field: 'YOY', title: '同比', width: 150 },
+                    ]]
+                });
+            }
+        });
+
+
+        $("input[name=typeField]").change(function () {
+            if ($(this).val() == "AverageAnnual") {
+                $("#dateInput_td").html('<input id="searchdate" name="date" value="@DateTime.Now.ToString("yyyy")" class="datacontrol Wdate" style="width:120px;" onclick="WdatePicker({dateFmt: \'yyyy\'})" />');
+            } else if ($(this).val() == "AverageMonthly") {
+                $("#dateInput_td").html('<input id="searchdate" name="date" value="@DateTime.Now.ToString("yyyy-MM")" class="datacontrol Wdate" style="width:120px;" onclick="WdatePicker({dateFmt: \'yyyy-MM\'})" />');
+            } else {
+                $("#dateInput_td").html('<input id="searchdate" name="date" value="@DateTime.Now.ToString("yyyy-MM-dd")" class="datacontrol Wdate" style="width:120px;" onclick="WdatePicker({dateFmt: \'yyyy-MM-dd\'})" />');
+            }
+
+        })
+
+
+    })
+</script>

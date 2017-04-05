@@ -1,0 +1,51 @@
+﻿@model Pharos.Logic.OMS.Entity.ProductMenuLimit
+@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.ProductId)
+        @Html.HiddenFor(o => o.PMenuId)
+        @Html.HiddenFor(o => o.ModuleId)
+        @Html.HiddenFor(o => o.Type)
+        <div class="content">
+            <table class="table-form" width="100%" height="200px">
+                <tr>
+                    <td class="name">隶属菜单：</td>
+                    <td class="input">@Html.DisplayText("ParentMenu")</td>
+                </tr>
+                <tr>
+                    <td class="name">权限名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:['length[1,50]','nointeger']" })</td>
+                </tr>
+                <tr>
+                    <td class="name">备注：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.Memo, new { @class = "easyui-textbox", data_options = "novalidate:true,validType:'length[1,100]'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">状态：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.Status, new List<SelectListItem>() { new SelectListItem() { Text = "显示", Value = "True" }, new SelectListItem() { Text = "隐藏", Value = "False" } })</td>
+                </tr>
+            </table>
+        </div>
+        
+    }
+</div>
+<script type="text/javascript">
+    function Refresh() {
+        if ($("#hidadd").val() == "1") {
+            pharos.easyui.dialog.curJquery("formDiv")("#treegrid").treegrid("reload").treegrid("clearSelections").treegrid("clearChecked");
+            var src = window.top.$('.formDiv:last iframe').attr("src");
+            window.location.href = src;
+        } else {
+            pharos.easyui.dialog.curJquery("formDiv")("#treegrid").treegrid("reload").treegrid("clearSelections").treegrid("clearChecked");
+            pharos.easyui.dialog.topClose("formDiv");
+        }
+    }
+    function SaveBefore() {
+        return true;
+    }
+</script>

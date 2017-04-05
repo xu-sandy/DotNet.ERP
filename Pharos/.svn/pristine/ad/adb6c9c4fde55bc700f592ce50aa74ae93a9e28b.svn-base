@@ -1,0 +1,98 @@
+﻿@model Pharos.Logic.OMS.Entity.PayApi
+@{
+    ViewBag.Title = "新增收单渠道";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+
+<style type="text/css">
+    .name {
+        width: 150px;
+    }
+
+    .table-form td {
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm("SavePayChannel", "Finance", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-form" style="width:700px;">
+                @if (Model.Id > 0)
+                {
+                    <tr>
+                        <td class="name">渠道编号：</td>
+                        <td class="input"></td>
+                        
+                        <td class="input">审核信息：</td>
+                        <td class="input" >蔡少发 审核于2016-12-27</td>
+                    </tr>
+                }
+
+                <tr>
+                    <td class="name">收单渠道：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.ApiName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'2-20个字符',validType: 'length[2,20]',width:160" })</td>
+                    <td class="name">名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.ApiAlias, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'2-20个字符',validType: 'length[2,20]',width:160" })</td>
+                </tr>
+                <tr>
+                    <td class="name">支付方式：</td>
+                    <td class="input">
+                        @*@Html.RadioButtonListFor(o => o.PayMode, ViewBag.payModes as List<SelectListItem>)*@
+                        <input id="PayApiMode" name="PayApiMode" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text',value:'@(Model.PayApiMode == 0 ? "" : Model.PayApiMode.ToString())', onSelect:selectModel, data:window.drpdata['payApiMode'],prompt:'请选择支付方式',required:true, panelHeight: 'auto', editable: false,width:160" />
+                    </td>
+                    <td class="name">支付通道：</td>
+                    <td class="input">
+                        @*<input class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text', data:'', panelHeight: 'auto', editable: false,width:80" />*@
+                        <select id="PayApiMethod" name="PayApiMethod" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text',value:'@(Model.PayApiMethod == 0 ? "" : Model.PayApiMethod.ToString())',data:window.drpdata['payApiMethodCurrent'],prompt:'请选择支付通道',width:160,editable:false,required:true"><option value="">请选择</option></select>
+                        @*@Html.RadioButtonListFor(o => o.PayType, ViewBag.payTypes as List<SelectListItem>)*@
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">状态：</td>
+                    <td class="input" data-options="width:160,editable:true,required:true" colspan="3">
+                        @Html.RadioButtonListFor(o => o.Status, ViewBag.PayApiStatusList as List<SelectListItem>)
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td class="name">备注：</td>
+                    <td class="input" colspan="3">
+                        @Html.TextAreaFor(o => o.Memo, new { @class = "easyui-validatebox", data_options = "required:false,validType: 'length[0,500]',", style = "width:496px;height:120px;", maxlength = 500 })
+                        <div>限长500个字</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    window.drpdata = window.drpdata || {};
+    window.drpdata['payApiMode'] = @Html.Raw(ViewBag.PayApiModeList);
+    window.drpdata['payApiMethod'] = @Html.Raw(ViewBag.PayApiMethodList);
+    window.drpdata['payApiMethodCurrent'] = [];
+    window.drpdata['payApiMethodCurrent'] = getMethodByMode('@Model.PayApiMode');
+    function getMethodByMode(mode){
+        var data = window.drpdata['payApiMethod'];
+        return $(data).filter(function(index,value){ return $(this).attr("groupId")==mode; });
+    };
+    $(function () {
+
+    });
+
+    function selectModel(obj) {
+        //fishtodo: 1待完成支付通道Change事件 2 备注字数控制方法 3 样式调整 4 保存成功提示，名称重复提示 5 类型等必输字段提示
+        $("#PayApiMethod").combobox("setValue", "");
+        var data = window.drpdata['payApiMethod'];
+        //var thisData = [{text:"请选择",value:"",select:true}];
+        //for (var i = 0; i < data.length; i++) {
+        //    if(data[i].groupId == obj.value){
+        //        thisData.push(data[i]);
+        //    }
+        //}
+        var filterData = $(data).filter(function(index,value){ return $(this).attr("groupId")==obj.value; });
+        $("#PayApiMethod").combobox({data:filterData,valueField:"value",textField:"text",value:""});
+    }
+</script>

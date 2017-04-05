@@ -1,0 +1,190 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.PosModels;
+using System.IO;
+
+namespace Pharos.POS.Retailing.Devices.POSDevices
+{
+    /// <summary>
+    /// ME31
+    /// </summary>
+    public class NewLandPOSDevice : IPOSDevice
+    {
+        private int interval = 50;
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int OpenComm(int lPComPort, long lPBaudRate, int timeout);
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int CloseComm();
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int SendReq(int nReqInfoLen, string ReqInfo);
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int RecvResp([MarshalAs(UnmanagedType.LPStr)] StringBuilder RecvInfo);
+
+        private static CancellationToken Token { get; set; }
+        public bool DoPay(CancellationToken token, POSDevicePayRequest request, out POSDevicePayResponse response, out string msg)
+        {
+            return CallDevice(token, request, out response, out msg);
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="token"></param>
+        /// <param name="request"></param>
+        /// <param name="response"></param>
+        /// <param name="msg"></param>
+        /// <param name="code"></param>
+        /// <param name="qrcode">二维码最大限制250个</param>
+        /// <returns></returns>
+        internal bool CallDevice(CancellationToken token, POSDevicePayRequest request, out POSDevicePayResponse response, out string msg, string code = "", string qrcode = "")
+        {
+            try
+            {
+                response = null;
+                Token = token;
+                var result = 0;
+                result = OpenComm(Global.MachineSettings.DevicesSettingsConfiguration.POSCOM, Global.MachineSettings.DevicesSettingsConfiguration.POSCOMRate, 60);
+                if (result < 0)
+                {
+                    msg = "未能打开设备！";
+                    return false;
+                }
+                var machineSn = Global.MachineSettings.MachineInformations.MachineSn;
+                if (string.IsNullOrEmpty(code))
+                {
+                    switch (request.Type)
+                    {
+                        case TransactionType.Consumption:
+                            code = "00";
+                            break;
+                        case TransactionType.Refund:
+                            code = "20";
+                            break;
+                    }
+                }
+                var userCode = "0000" + request.CashierId;
+                userCode = userCode.Substring(userCode.Length - 4, 4);
+                var orderSn = "00000000000000000000" + request.OrderSn;
+                orderSn = orderSn.Substring(orderSn.Length - 20, 20);
+
+                var reqInfo = string.Format("{10}{0:000000000000}{1,8}{2:0000}{3:MMddHHmmss}{4:00000000000000000000}{5,6}{6,10}{7,6}{8,12}{11}{9}", Math.Round(request.Amount * 100), machineSn, userCode, DateTime.Now, orderSn, request.OldTransactionCode, "", "", "", "", code, qrcode);
+
+                result = SendReq(reqInfo.Length, reqInfo);
+                if (result < 0)
+                {
+                    msg = "请求设备操作失败！";
+                    CloseComm();
+                    return false;
+                }
+                if (!string.IsNullOrEmpty(qrcode))
+                {
+                    msg = "成功调用二维码！";
+                    CloseComm();
+                    return true;
+                }
+                var timeoutCounter = 0;
+                int timeout = Global.MachineSettings.DevicesSettingsConfiguration.POSTimeout;
+                StringBuilder info = new StringBuilder(200);
+
+                while (true)
+                {
+                    try
+                    {
+                        if (token.IsCancellationRequested)
+                        {
+                            if (code == "12")
+                            {
+                                msg = "读卡失败或者取消读卡！";
+                            }
+                            else
+                            {
+                                msg = "支付失败或者支付取消！";
+                            }
+                            CloseComm();
+                            return false;
+                        }
+                        result = RecvResp(info);
+                        if (result > 0)
+                        {
+
+                            var returnStr = info.ToString();
+                            var isSuccessCode = returnStr.Substring(2, 2);
+                            if (isSuccessCode == "00")
+                            {
+                                response = new POSDevicePayResponse();
+                                var cardKind = returnStr.Substring(4, 1);
+                                if (cardKind == "0" || (cardKind == " "))
+                                {
+                                    var cardno = returnStr.Substring(252, 20).Trim();
+                                    response.CardNo = cardno;
+                                }
+                                else if (cardKind == "1")
+                                {
+                                    var cardno = returnStr.Substring(8, 244);
+                                    response.CardNo = cardno.Replace(" ", "").Replace("~", "");
+                                }
+                                response.CardPin = returnStr.Substring(272, 12).Trim();
+                                response.CardName = returnStr.Substring(284, 10).Trim();
+                                response.DeviceTranDate = returnStr.Substring(294, 10).Trim();
+                                response.BankTransactionCode = returnStr.Substring(304, 12).Trim();
+                                response.TransactionCode = returnStr.Substring(328, 6).Trim();
+                                response.AuthCode = returnStr.Substring(334, 6).Trim();
+                            }
+                            else
+                            {
+                                if (code == "12")
+                                {
+                                    msg = "读卡失败或者取消读卡！";
+                                }
+                                else
+                                {
+                                    msg = "支付失败或者支付取消！";
+                                }
+                                CloseComm();
+                                return false;
+                            }
+                            break;
+                        }
+                        else if (timeoutCounter * interval >= timeout)
+                        {
+                            msg = "等待设备回发数据超时！";
+                            CloseComm();
+                            return false;
+                        }
+                        Thread.Sleep(interval);
+                        timeoutCounter++;
+                    }
+                    catch (Exception ex)
+                    {
+                    }
+                }
+                CloseComm();
+                if (code == "12")
+                {
+                    msg = "读卡成功！";
+                }
+                else
+                {
+                    msg = string.Format("成功支付{0:N}元！", request.Amount);
+                }
+                return true;
+            }
+            catch
+            {
+                CloseComm();
+                msg = "请求操作银联机失败！";
+                response = null;
+                return false;
+            }
+        }
+        public POSDeviceType POSDeviceType
+        {
+            get { return POSDeviceType.NewLandPOSDevice; }
+        }
+    }
+}

@@ -1,0 +1,37 @@
+﻿using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.AfterSale
+{
+    public class RefundSale
+    {
+        public static void Refund(string storeId, string machineSn, string token, List<ChangeRefundItem> refundList, int reason, string paySn, decimal amount)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            var shoppingcart = ShoppingCartFactory.Factory(storeId, machineSn, token);
+            var uid = shoppingcart.MachineInformation.CashierUid;
+
+            dataAdapter.Refund(refundList, reason, paySn, amount, uid);
+        }
+
+        public static void RefundAll(string storeId, string machineSn, string token, int reason, string paySn, decimal amount)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            var shoppingcart = ShoppingCartFactory.Factory(storeId, machineSn, token);
+            var uid = shoppingcart.MachineInformation.CashierUid;
+
+            dataAdapter.RefundAll(reason, paySn, amount, uid);
+        }
+
+        public static IEnumerable<ReasonItem> GetReason(string storeId, string machineSn, string token)
+        {
+            var dataAdapter = DataAdapterFactory.Factory(MachinesSettings.Mode, storeId, machineSn, token);
+            return dataAdapter.GetReason(2);
+        }
+    }
+}

@@ -1,0 +1,63 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using Pharos.POS.Retailing.Extensions;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// MachineSettings.xaml 的交互逻辑
+    /// </summary>
+    public partial class MachineSettings : DialogWindow
+    {
+        public MachineSettings()
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+
+            var collections = new ObservableCollection<ISettingsItem>();
+            var machineInformations = Global.MachineSettings.MachineInformations;
+            machineInformations.CurrentWindow = this;
+            machineInformations.CurrentBindingElement = tabControl;
+
+            var servicesConfiguration = Global.MachineSettings.ServicesConfiguration;
+            servicesConfiguration.CurrentWindow = this;
+            servicesConfiguration.CurrentBindingElement = tabControl;
+
+            collections.Add(machineInformations);
+            collections.Add(servicesConfiguration);
+            tabControl.ItemsSource = collections;
+            this.Closing += MachineSettings_Closing;
+            this.Loaded += MachineSettings_Loaded;
+        }
+
+        void MachineSettings_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (this.Owner == null)
+                Application.Current.MainWindow = this;
+        }
+
+        void MachineSettings_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (Global.MachineSettings.Enable && this.Owner == null)
+            {
+                Login win = new Login();
+                win.Show();
+            }
+        }
+    }
+}

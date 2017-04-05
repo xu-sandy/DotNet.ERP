@@ -1,0 +1,76 @@
+﻿using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using System;
+using System.Windows;
+using System.Windows.Input;
+using Pharos.Wpf.Extensions;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// Confirm.xaml 的交互逻辑
+    /// </summary>
+    public partial class Confirm : ToastWindow
+    {
+        public Confirm(ConfirmMessage message)
+        {
+            InitializeComponent();
+            this.PreviewKeyDown += Confirm_PreviewKeyDown;
+            CurrrentModel = message;
+            this.ApplyBindings(this, CurrrentModel);
+        }
+        ConfirmMessage CurrrentModel { get; set; }
+        void Confirm_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.Y:
+                    Confirm_Click(null, null);
+                    break;
+                case Key.N:
+                case Key.Escape:
+                    Cancel_Click(null, null);
+                    break;
+            }
+            e.Handled = true;
+        }
+
+        private void Confirm_Click(object sender, RoutedEventArgs e)
+        {
+            if (CurrrentModel.CallBack != null)
+            {
+                CurrrentModel.CallBack(ConfirmMode.Confirmed);
+            }
+            this.Close();
+        }
+
+        private void Cancel_Click(object sender, RoutedEventArgs e)
+        {
+            if (CurrrentModel.CallBack != null)
+            {
+                CurrrentModel.CallBack(ConfirmMode.Cancelled);
+            }
+            this.Close();
+        }
+
+
+        public static void ShowMessage(ConfirmMessage model, Window owner)
+        {
+            Confirm win = new Confirm(model);
+            if (owner != null && owner.Visibility == Visibility.Visible)
+            {
+                win.Owner = owner;
+            }
+            win.ShowDialog();
+        }
+        public static void ShowMessage(string msg, Window owner, Action<ConfirmMode> callback)
+        {
+            ConfirmMessage model = new ConfirmMessage()
+            {
+                Message = msg,
+                CallBack = callback
+            };
+            ShowMessage(model, owner);
+        }
+    }
+}

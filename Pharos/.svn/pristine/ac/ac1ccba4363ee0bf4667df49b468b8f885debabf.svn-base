@@ -1,0 +1,199 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Models.ChildPagesModels
+{
+    public class MultiModePayModel : BaseObservable
+    {
+        private decimal receivable;
+        /// <summary>
+        /// 应收
+        /// </summary>
+        public decimal Receivable
+        {
+            get
+            {
+
+                return receivable;
+            }
+            set
+            {
+                receivable = value;
+                OnPropertyChanged("Receivable");
+            }
+        }
+
+
+        private string cashPayStr;
+        /// <summary>
+        /// 现金收款
+        /// </summary>
+        public string CashPayStr
+        {
+            get { return cashPayStr; }
+            set
+            {
+                try
+                {
+                    var cashPay = Convert.ToDecimal(value);
+                    if (cashPay < 0)
+                    {
+                        Toast.DoShow("支付不能小于0");
+                        return;
+                    }
+                    CashPay = cashPay;
+                }
+                catch (Exception)
+                {
+                    Toast.DoShow("请输入正确现金收款金额！");
+                    cashPayStr = string.Empty;
+                    CashPay = 0;
+                }
+                OnPropertyChanged("CashPayStr");
+                Reset();
+
+            }
+
+        }
+        public decimal CashPay { get; set; }
+
+
+        private string unionPayStr;
+        /// <summary>
+        /// 银联支付
+        /// </summary>
+        public string UnionPayStr
+        {
+            get { return unionPayStr; }
+            set
+            {
+                try
+                {
+                    var unionPay = Convert.ToDecimal(value);
+                    if (unionPay < 0)
+                    {
+                        Toast.DoShow("支付不能小于0");
+                        return;
+                    }
+                    UnionPay = unionPay;
+                }
+                catch (Exception)
+                {
+                    Toast.DoShow("请输入正确银联支付金额！");
+                    unionPayStr = string.Empty;
+                    UnionPay = 0;
+                }
+                OnPropertyChanged("UnionPay");
+                Reset();
+            }
+
+        }
+        public decimal UnionPay { get; set; }
+
+        private string backCard;
+        public string BackCard
+        {
+            get { return backCard; }
+            set
+            {
+                backCard = value;
+                OnPropertyChanged("BackCard");
+            }
+
+        }
+
+
+        public string SalesmanUid { get; set; }
+
+
+        string salesmanUserCode = string.Empty;
+        public string SalesmanUserCode
+        {
+            get { return salesmanUserCode; }
+            set
+            {
+
+                salesmanUserCode = value.Trim();
+                VerifySaleMan();
+                OnPropertyChanged("SalesmanUserCode");
+            }
+        }
+
+        public bool VerifySaleMan()
+        {
+            if (!string.IsNullOrEmpty(SalesmanUserCode))
+            {
+                var result = SysStoreUserInfoLocalService.IsSaleMan(SalesmanUserCode, PosMachineInfo.Infos.StoreId);
+                if (string.IsNullOrEmpty(result) && !string.IsNullOrEmpty(SalesmanUserCode))
+                {
+                    Toast.DoShow("输入导购员无效！");
+                    SalesmanUid = string.Empty;
+                    salesmanUserCode = string.Empty;
+                    OnPropertyChanged("SalesmanUserCode");
+                    return false;
+                }
+                SalesmanUid = result;
+            }
+            return true;
+        }
+
+        private decimal receipt = 0;
+        /// <summary>
+        /// 收款
+        /// </summary>
+        public decimal Receipt
+        {
+            get { return receipt; }
+            set
+            {
+                receipt = value;
+                OnPropertyChanged("Receipt");
+            }
+        }
+        private decimal outstandingPayment;
+        /// <summary>
+        /// 尚欠
+        /// </summary>
+        public decimal OutstandingPayment
+        {
+            get { return outstandingPayment; }
+            set
+            {
+                outstandingPayment = value;
+                OnPropertyChanged("OutstandingPayment");
+            }
+        }
+
+        private decimal change;
+        /// <summary>
+        /// 找零
+        /// </summary>
+        public decimal Change
+        {
+            get { return change; }
+            set
+            {
+                change = value;
+                OnPropertyChanged("Change");
+            }
+        }
+
+        private void Reset()
+        {
+            Receipt = UnionPay + CashPay;
+            if (Receipt < Receivable)
+                OutstandingPayment = Receivable - Receipt;
+            else
+                OutstandingPayment = 0;
+
+            if (Receipt >= Receivable)
+                Change = Receipt - Receivable;
+            else
+                Change = 0;
+        }
+    }
+}

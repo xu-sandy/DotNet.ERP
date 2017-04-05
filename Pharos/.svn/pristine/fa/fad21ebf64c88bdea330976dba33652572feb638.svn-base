@@ -1,0 +1,77 @@
+﻿@{
+    ViewBag.Title = "TakeCouponIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增积分规则", delText: "移除", hideDel: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>规则方式：</label>
+            </td>
+            <td class="input-toolbar">
+                <select name="ruleTypeId" class="easyui-combobox">
+                    <option value="-1">全部</option>
+                    <option value="1">按消费金额</option>
+                    <option value="2">按付款方式</option>
+                    <option value="3">按指定品类</option>
+                    <option value="4">按具体商品</option>
+                    <option value="5">按消费次数</option>
+                </select>
+            </td>
+            <td class="input-toolbar">
+                &nbsp;<input type="text" name="value" class="easyui-textbox" data-options="prompt:''" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="SetIntegralRuleState(1)">设为无效</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindIntegralRulePageList")";
+    pharos.manager.editurl = "@Url.Action("CreateIntegralRule")";
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog1000(this.addText, this.editurlNocache(), true);
+    }
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        {
+            field: 'State', title: '状态', width: 80, formatter: function (value, row, index) {
+                if (value == 0) {
+                    return "生效";
+                } else {
+                    return "无效";
+                }
+            }
+        },
+        { field: 'ExpiryStart', title: '有效期-开始', width: 80 },
+        { field: 'ExpiryEnd', title: '有效期-截止', width: 80 },
+        { field: 'UseUsers', title: '适用客户群', width: 80 },
+        { field: 'StateTitle4', title: '转换比例', width: 80 },
+        { field: 'InContainsPromotion', title: '包含促销', width: 80, formatter: function (value, row, index) { if (value == false) { return "否" } else { return "是" } } },
+        { field: 'RuleTypeId', title: '规则方式', width: 80 },
+        { field: 'RuleTypeValue', title: '适用范围', width: 80 },
+        { field: 'CreateDT', title: '创建时间', width: 80 },
+        { field: 'CreateUID', title: '创建人', width: 80 },
+    ]];
+
+    function SetIntegralRuleState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("UpdateIntegralRuleState")", { state: state, ids: ids }, function (result) {
+            if (result.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+</script>

@@ -1,0 +1,56 @@
+﻿using Pharos.SocketClient.Retailing.Protocol.Clients;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+using System.IO;
+using System.Net;
+using System.Threading;
+using System.Net.Sockets;
+
+
+namespace Pharos.SocketClient.Retailing
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            PosStoreClient client = new PosStoreClient();
+            var connected = client.ConnectAsync(new IPEndPoint(IPAddress.Parse("192.168.10.60"), 2020));
+            connected.Wait();
+            if (client.IsConnected)
+            {
+            JsonSerializer serializer = new JsonSerializer();
+            serializer.NullValueHandling = NullValueHandling.Ignore;
+
+            MemoryStream s = new MemoryStream();
+            StreamWriter sw = new StreamWriter(s);
+            using (JsonWriter writer = new JsonTextWriter(sw))
+            {
+                serializer.Serialize(writer, new StoreInfo { CompanyId = 1, StoreId = "16" });
+            }
+            var body = s.ToArray();
+            sw.Close();
+            s.Close();
+            // Send data to the server
+            var content = client.Format(new byte[4] { 0x00, 0x00, 0x00, 0x01 }, body);
+            client.Send(new ArraySegment<byte>(content));
+            while (true)
+            {
+
+                client.Send(new ArraySegment<byte>(content));
+                Console.WriteLine("已发送一次数据！");
+                Thread.Sleep(1000);
+
+            }
+            }
+        }
+    }
+    public class StoreInfo
+    {
+        public string StoreId { get; set; }
+
+        public int CompanyId { get; set; }
+    }
+}

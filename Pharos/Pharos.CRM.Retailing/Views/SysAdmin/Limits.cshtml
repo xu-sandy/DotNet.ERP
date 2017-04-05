@@ -1,0 +1,207 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+}
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'center',split:false,border:false">
+        <table id="treegrid"></table>
+        <div id="toolbar">
+            <a class="easyui-linkbutton  cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="addLimits(); return false;">新增权限</a>
+        </div>
+    </div>
+</div>
+<script src="~/Scripts/managerlist.js"></script>
+
+<script type="text/javascript">
+    var $treegrid = $('#treegrid');
+    $treegrid.treegrid({
+        toolbar: '#toolbar',
+        border: false,
+        fit: true,
+        fitColumns: true,
+        url: "@Url.Action("GetLimits")",
+        rownumbers: true,
+        nowarp: false,
+        idField: 'Id',
+        singleSelect: true,
+        treeField: 'Title',
+        columns: [[
+            {
+                title: '功能名称', field: 'Title', width: 120, formatter: function (value, row) {
+                    return "[" + row.LimitId + "]" + value;
+                }
+            },
+            {
+                title: '子项', field: 'LimitId', width: 400, formatter: function (value, row) {
+                    var str = "";
+                    if (row.LastChildren != null && row.LastChildren != undefined && row.LastChildren.length > 0) {
+                        for (var i = 0; i < row.LastChildren.length; i++) {
+                            str += "、[" + row.LastChildren[i].LimitId + "]" + row.LastChildren[i].Title;
+                        }
+                        return "<div style='white-space: normal'>" + str.substr(1, str.length - 1) + "</div>";
+                    } else {
+                        //return value;
+                        return "";
+                    }
+                }
+            },
+            {
+                title: '状态', field: 'Status', align: 'center', formatter: function (value, row) {
+                    return DealWithStatus(value);
+                }, width: 60
+            },
+            {
+                title: '操作', field: 'Id', align: 'center', formatter: function (value, row) {
+                    var operat = "";
+                    if (row.Depth > 3) {
+                        operat += "<a style='color:#555'>[添加]</a>&nbsp;&nbsp;&nbsp;";
+                    } else {
+                        operat += "<a href='javascript:addLimits(\"" + value + "\",\"" + row.LimitId + "\")'>[添加]</a>&nbsp;&nbsp;&nbsp;";
+                    }
+                    if (!((row.children != null && row.children.length > 0) || (row.LastChildren != null && row.LastChildren != undefined && row.LastChildren.length > 0))) {
+                        operat += '<a href=\'javascript:removeLimit("' + value + '")\'>[移除]</a>&nbsp;&nbsp;&nbsp;';
+                    } else {
+                        operat += '<a  style="color:#a3a3a3">[移除]</a>&nbsp;&nbsp;&nbsp;';
+
+                    }
+                    if (row.LastChildren != null && row.LastChildren != undefined && row.LastChildren.length > 0) {
+                        operat += '<a href=\'javascript:editLimitChildItems("' + value + '",' + (row.Depth+1) + ')\'>[操作子项]</a>&nbsp;&nbsp;&nbsp;';
+
+                    } else {
+                        operat += '<a  style="color:#a3a3a3">[操作子项]</a>&nbsp;&nbsp;&nbsp;';
+
+                    }
+
+                    return operat;
+                }, width: 150
+            },
+
+        ]],
+        onClickCell: function (field, row) {
+            if (field == 'Title') {
+                openWin({ 'title': '编辑权限信息', 'width': 550, 'height': 350, 'url': "@Url.Action("LimitsSave")?id=" + row.Id + "&pobjid=" + row.PLimitId });
+            }
+        },
+        onBeforeExpand: function (row) {
+            if (row.children == null && row.children == undefined && row.children.length == 0) {
+                return false;
+            }
+            return true;
+        }
+    });
+    function changeStatus(status) {
+        return status > 0 ? "关闭" : "显示";
+    }
+    function DealWithStatus(status) {
+        switch (status) {
+            case 0:
+                return "关闭";
+            case 1:
+                return "显示";
+            case 2:
+                return "可选";
+            default:
+                return "未知";
+        }
+    }
+    function closeDialog() {
+        $treegrid.treegrid('reload');
+    }
+    function addLimits(id, pobjid) {
+        var level = $treegrid.treegrid("getLevel", id);
+        if (id) {
+            openWin({ 'title': level == 1 ? '新增权限' : "新增子权限", 'width': 550, 'height': 240, 'url': "@Url.Action("LimitsSave")?pobjid=" + pobjid + "&id=0" });
+        } else {
+            openWin({ 'title': '新增权限', 'width': 550, 'height': 240, 'url': "@Url.Action("LimitsSave")?id=0&pobjid=0" });
+        }
+    }
+    function editLimitChildItems(id, depth) {
+        openCustemWin({ 'title': '操作子项', 'width': 900, 'height': 600, 'hideSave': true, 'url': "@Url.Action("EditChildren")?id=" + id + "&depth=" + depth });
+    }
+    function openCustemWin(parms) {
+        if (parms != null) {
+            if (!parms.width) { parms.width = 600; }
+            if (!parms.height) { parms.height = 350; }
+            var btns = [{
+                text: '保存',
+                iconCls: 'icon-ok',
+                id: "lbsave",
+                handler: function () {
+                    window.top.$('#formCustemDiv iframe')[0].contentWindow.$('.default-form form').submit();
+                }
+            }, {
+                text: '关闭',
+                iconCls: 'icon-cancel',
+                handler: function () { pharos.easyui.dialog.topClose("formCustemDiv"); }
+            }];
+            if (parms.hideSave == true) { btns.shift(); }
+            if (parms.buttons) btns = parms.buttons;
+            var cont = "<iframe src='" + parms.url + "' width='100%' height='99%' frameborder='0'/>";
+            $("body").openTopDialog({
+                id: "formCustemDiv",
+                title: parms.title,
+                width: parms.width,
+                height: parms.height,
+                content: cont,
+                //href: url,
+                modal: true,
+                cache: false,
+                buttons: btns,
+                tools: dialogTools(),
+                onClose: closeDialog
+            });
+        }
+    }
+
+
+
+    function removeLimit(id) {
+        id = getId(id);
+        if (!id) { return; }
+        $.messager.confirm('提示', "是否确定更改权限状态?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { id: id },
+                url: "@Url.Action("ChangeLimitStatusById")",
+                success: function (data) {
+                    $treegrid.treegrid('reload');
+
+                }, error: function (data) {
+                    $.messager.alert("提示", "权限状态更改失败！", "info");
+                }
+            });
+        });
+    }
+    @*function removeLimit(id) {
+        id = getId(id);
+        if (!id) { return; }
+        $.messager.confirm('提示', "是否确定移除该权限?", function (r) {
+            if (!r) {
+                return r;
+            }
+
+            $.ajax({
+                type: 'post',
+                data: { id: id },
+                url: "@Url.Action("RemoveLimitById")",
+                success: function (data) {
+                    //     $.messager.alert("提示", "移除机构（或部门）成功！", "info");
+                    $treegrid.treegrid('reload');
+
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除权限失败！", "info");
+
+                }
+            });
+        });
+    }*@
+    function getId(id) {
+        id = id || $treegrid.treegrid("getSelected").id;
+        if (!id) {
+            $.messager.alert("提示", "请选择一条数据！", "info");
+        }
+        return id;
+    }
+</script>

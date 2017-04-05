@@ -1,0 +1,86 @@
+﻿using Pharos.SocketService.Retailing.Models;
+using Pharos.SocketService.Retailing.Protocol;
+using SuperSocket.SocketBase.Command;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+using System.Collections;
+using Pharos.Logic.DataSynchronism;
+using Pharos.Logic.ApiData.DataSynchronism;
+
+namespace Pharos.SocketService.Retailing.Commands.DataAgent
+{
+    public class DownloadCommand : BaseDataAgentCommand
+    {
+        public DownloadCommand()
+            : base(new byte[] { 0x00, 0x01 })
+        {
+
+        }
+
+
+        public override void Execute(DataAgentParams _Params, SocketSession session, SocketRequestInfo requestInfo)
+        {
+            try
+            {
+                var json = SocketSession.defaultEncoding.GetString(_Params.Datas);
+                List<byte[]> oldRowVersions = JsonConvert.DeserializeObject<List<byte[]>>(json);
+                if (oldRowVersions == null)
+                {
+                    WriteErrorMessage(session, requestInfo, "源RowVersions为Null,请确认是否正确!");
+                    return;
+                }
+                DataSyncContext context = new DataSyncContext();
+                dynamic entity = context.Instance(_Params.EntityName);
+                var collections = context.Download(entity, _Params.EntityName, _Params.StoreId);
+                //计算过期数据
+                List<byte[]> deleteCollections = new List<byte[]>();
+                foreach (byte[] item in oldRowVersions)
+                {
+                    var hasRecord = false;
+                    foreach (ISource source in collections)
+                    {
+                        if (BitConverter.ToString(item) == BitConverter.ToString(source.RowVersion))
+                        {
+                            hasRecord = true;
+                            break;
+                        }
+                    }
+                    if (!hasRecord)
+                    {
+                        deleteCollections.Add(item);
+                    }
+                }
+                //通知删除过期数据
+                var deletesContent = JsonConvert.SerializeObject(deleteCollections);
+                WriteDataSyncDeleteAction(session, requestInfo, deletesContent);
+
+                //计算下载数据
+                var downloadCollections = DownloadDatasFilter(collections, oldRowVersions);
+                //下载数据
+                var downloadsContent = JsonConvert.SerializeObject(downloadCollections);
+                WriteDataSyncDownloadAction(session, requestInfo, downloadsContent);
+            }
+            catch (Exception ex)
+            {
+                WriteErrorMessage(session, requestInfo, string.Format("数据同步，下载失败！服务器异常【{0}】", ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// 过滤下载数据
+        /// </summary>
+        /// <typeparam name="TEntity">接收类型</typeparam>
+        /// <param name="datas">源数据</param>
+        /// <param name="oldRowVersions">旧记录RowVersions</param>
+        /// <returns>下载数据集</returns>
+        private IEnumerable<TEntity> DownloadDatasFilter<TEntity>(IEnumerable<TEntity> datas, List<byte[]> oldRowVersions)
+            where TEntity : ISource
+        {
+            return datas.Where(o => !oldRowVersions.Exists(p => BitConverter.ToString(p) == BitConverter.ToString(o.RowVersion))).ToList();
+        }
+
+    }
+}

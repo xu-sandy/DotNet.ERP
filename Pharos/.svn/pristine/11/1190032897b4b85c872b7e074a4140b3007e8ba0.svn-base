@@ -1,0 +1,201 @@
+﻿using Pharos.POS.Retailing.ObjectModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Xml.Serialization;
+
+namespace Pharos.POS.Retailing.ViewModels
+{
+    public class ServicesConfiguration : BaseViewModel, ISettingsItem, IServicesConfiguration
+    {
+        string headerXamlPath = "Templates/DefaultTabControlHeaderTemplate.xaml";
+        [XmlIgnore]
+        public string HeaderXamlPath
+        {
+            get
+            {
+                return headerXamlPath;
+            }
+            set
+            {
+                headerXamlPath = value;
+                this.OnPropertyChanged(o => o.HeaderXamlPath);
+            }
+        }
+
+        string xamlPath = "Templates/ServicesConfigurationTemplate.xaml";
+        [XmlIgnore]
+        public string XamlPath
+        {
+            get
+            {
+                return xamlPath;
+            }
+            set
+            {
+                xamlPath = value;
+                this.OnPropertyChanged(o => o.XamlPath);
+            }
+        }
+
+        string header = "系统配置";
+        [XmlIgnore]
+        public string Header
+        {
+            get
+            {
+                return header;
+            }
+            set
+            {
+                header = value;
+                this.OnPropertyChanged(o => o.Header);
+            }
+        }
+
+
+        bool enableAutoDataSync = true;
+        public bool EnableAutoDataSync
+        {
+            get
+            {
+                if (EnableDataSync)
+                    return enableAutoDataSync;
+                return EnableDataSync;
+            }
+            set
+            {
+                enableAutoDataSync = value;
+                this.OnPropertyChanged(o => o.EnableAutoDataSync);
+            }
+        }
+
+        bool enableDataSync = true;
+        public bool EnableDataSync
+        {
+            get
+            {
+                return enableDataSync;
+            }
+            set
+            {
+                enableDataSync = value;
+                this.OnPropertyChanged(o => o.EnableDataSync);
+                this.OnPropertyChanged(o => o.EnableAutoDataSync);
+            }
+        }
+
+
+        string dataSyncServerIp = "127.0.0.1";
+        public string DataSyncServerIp
+        {
+            get
+            {
+                return dataSyncServerIp;
+            }
+            set
+            {
+                dataSyncServerIp = value;
+                this.OnPropertyChanged(o => o.DataSyncServerIp);
+            }
+        }
+
+        int dataSyncServerPort = 2020;
+        public int DataSyncServerPort
+        {
+            get
+            {
+                return dataSyncServerPort;
+            }
+            set
+            {
+                dataSyncServerPort = value;
+                this.OnPropertyChanged(o => o.DataSyncServerPort);
+            }
+        }
+
+        [XmlIgnore]
+        public GeneralCommand<object> OnceDataSyncCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                });
+            }
+        }
+
+        bool serverPreferred;
+        public bool ServerPreferred
+        {
+            get
+            {
+                return serverPreferred;
+            }
+            set
+            {
+                serverPreferred = value;
+                this.OnPropertyChanged(o => o.ServerPreferred);
+            }
+        }
+
+        string localHost = "http://localhost:4588";
+        public string LocalHost
+        {
+            get
+            {
+                return localHost;
+            }
+            set
+            {
+                localHost = value;
+                this.OnPropertyChanged(o => o.LocalHost);
+            }
+        }
+
+        string serverHost = "http://192.168.10.122:8012";
+        public string ServerHost
+        {
+            get
+            {
+                return serverHost;
+            }
+            set
+            {
+                serverHost = value;
+                this.OnPropertyChanged(o => o.ServerHost);
+            }
+        }
+
+        [XmlIgnore]
+        public GeneralCommand<object> SaveCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    try
+                    {
+                        Global.MachineSettings.Save();
+                        Toast.ShowMessage("保存成功！", CurrentWindow);
+                    }
+                    catch (Exception ex)
+                    {
+                        Toast.ShowMessage(ex.Message, CurrentWindow);
+                        throw ex;
+                    }
+                });
+            }
+        }
+
+        internal void Reload(ServicesConfiguration servicesConfiguration)
+        {
+            LocalHost = servicesConfiguration.LocalHost;
+            ServerHost = servicesConfiguration.ServerHost;
+            ServerPreferred = servicesConfiguration.ServerPreferred;
+            DataSyncServerPort = servicesConfiguration.DataSyncServerPort;
+            DataSyncServerIp = servicesConfiguration.DataSyncServerIp;
+            EnableDataSync = servicesConfiguration.EnableDataSync;
+            EnableAutoDataSync = servicesConfiguration.EnableAutoDataSync;
+        }
+    }
+}

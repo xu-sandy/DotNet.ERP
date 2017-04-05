@@ -1,0 +1,95 @@
+﻿@{
+    ViewBag.Title = "Menus";
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增主菜单", delText: "删除产品", editText: "修改主菜单", hideDel: true, hideSearch: true, hideAdd: true, hideEdit: !CurrentUser.HasPermiss(239)));
+}
+<style type="text/css">
+    .tree-title {
+        white-space: normal;
+    }
+</style>
+<script type="text/javascript">
+    $(function(){
+        $dg=pharos.managertree.$dg;
+    });
+    pharos.managertree.sortName = "Id";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "Title";
+    pharos.managertree.pagination = false;
+    pharos.managertree.columns = [[
+        { field: 'Id',hidden:true },
+        { field: 'DicSN', title: '编号', width: 60,hidden:true },
+        { field: 'Title', title: '分类', width: 200,editor:{type:'textbox',options:{disabled:false}} },
+        { field: 'ChildTitle', title: '子项', width: 350 },
+        { field: 'Status', title: '状态', width: 60,formatter: function (value, row, index) { return value == 1 ? "显示" : "隐藏"; } },
+        {
+            field: 'Editor', title: '操作', width: 200,formatter: function (value, row, index) {
+                var operat = "";
+                operat += String.format("<div editsn='{0}'>", [row.id]);
+                @if(CurrentUser.HasPermiss(239))
+                {
+                    <text>
+                    if (row.Status==1)
+                        operat += "<a href='javascript:setState(\"" + row.DicSN + "\",0)'>[关闭]</a>&nbsp;";
+                    else
+                        operat += "<a href='javascript:setState(\"" + row.DicSN + "\",1)'>[显示]</a>&nbsp;";
+                    </text>
+                }
+                @if(CurrentUser.HasPermiss(238))
+                {
+                    <text>
+                    if (row._parentId || row.HasChild)
+                        operat += "<a style='color:#555'>[移除]</a>&nbsp;&nbsp;";
+                    else
+                        operat += "<a href='javascript:removeData(\"" + row.DicSN + "\")'>[移除]</a>&nbsp;";
+                   </text>
+                    @:operat += "<a href='javascript:editMenu(\"" + row.DicSN + "\",\"" + row.Title + "\")'>[编辑子项]</a>&nbsp;</div>";
+                 }
+                return operat;
+            }
+        }
+    ]];
+
+    pharos.managertree.loadSuccess=function(row,data){
+
+    }
+    pharos.managertree.editItem = function (id, row) {
+        openDialog420(this.editText, this.editurlNocache() + "&sn=" + row.DicSN +  (row.DicPSN>0?"&psn=" + row.DicPSN:""));
+    }
+    function removeData(id) {
+        $.messager.confirm('提示', "移除后将无法恢复,是否继续?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { sn: id,t:Math.random() },
+                url: "@Url.Action("RemoveData")",
+                success: function (data) {
+                    pharos.managertree.gridReload();
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除字典失败！", "info");
+                }
+            });
+        });
+    }
+    function setState(id,state) {
+        $.ajax({
+            type: 'post',
+            data: { sn: id,state:state,t:Math.random() },
+            url: "@Url.Action("SetState")",
+            success: function (data) {
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "状态修改失败！", "info");
+            }
+        });
+    }
+    function editMenu(pid,ptitle) {
+        var url= "@Url.Action("Edit")" + "?psn=" +pid +"&PTitle="+ptitle;
+        openDialogNew("编辑子项", url, 800, 450, true,true);
+    }
+    function closeDialog() {
+        pharos.managertree.gridReload();
+    }
+</script>

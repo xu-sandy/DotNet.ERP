@@ -1,0 +1,117 @@
+﻿using Newtonsoft.Json;
+using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Collections.Generic;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.Models
+{
+    /// <summary>
+    /// 挂单信息
+    /// </summary>
+    public class HangBill : BaseObservable
+    {
+        private int id;
+        public int Id
+        {
+            get { return id; }
+            set
+            {
+                id = value;
+                OnPropertyChanged("Id");
+            }
+        }
+
+        private DateTime date;
+        public DateTime Date
+        {
+            get { return date; }
+            set
+            {
+                date = value;
+                OnPropertyChanged("Date");
+            }
+        }
+        private int num;
+        public int Num
+        {
+            get { return num; }
+            set
+            {
+                num = value;
+                OnPropertyChanged("Num");
+            }
+        }
+
+        private decimal total;
+        public decimal Total
+        {
+            get { return total; }
+            set
+            {
+                total = value;
+                OnPropertyChanged("Total");
+            }
+        }
+        private IEnumerable<Product> items;
+        public IEnumerable<Product> Items
+        {
+            get { return items; }
+            set
+            {
+                items = value;
+                OnPropertyChanged("Items");
+            }
+        }
+        [JsonIgnore]
+        public GeneralCommand RemoveBill
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    if (UMessageBox.Show("提示", "是否移除挂单？", MessageBoxButton.OKCancel))
+                    {
+                        PosMachine.Current.LocalBills.RemoveBill(this);
+                    }
+                });
+            }
+        }
+        [JsonIgnore]
+        public GeneralCommand ReadBill
+        {
+            get
+            {
+                return new GeneralCommand((o) =>
+                {
+                    if (UMessageBox.Show("提示", "是否读单？", MessageBoxButton.OKCancel))
+                    {
+                        if (o != null && o is GuaDanList)
+                        {
+                            var win = o as Window;
+                            win.Hide();
+                            PosMachine.Current.BillList.Clear();
+                            foreach (var item in this.Items)
+                            {
+                                if (item.Status == ProductStatus.POSGift || item.Status == ProductStatus.POSWeighGift)
+                                {
+                                    PosMachine.Current.Status = PosStatus.Gift;
+                                }
+                                else
+                                {
+                                    PosMachine.Current.Status = PosStatus.Market;
+                                }
+                                item.CurrentBarcode.WeightOrNum = item.Num;
+                                PosMachine.Current.BillList.Add(item.CurrentBarcode, item.Status);
+                            }
+                            PosMachine.Current.LocalBills.RemoveBill(this);
+                            PosMachine.Current.Status = PosStatus.Market;
+
+                            win.Close();
+                        }
+                    }
+                });
+            }
+        }
+    }
+}

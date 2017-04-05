@@ -1,0 +1,100 @@
+﻿@{
+    ViewBag.Title = "RechargeIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "发卡", delText: "移除", hideDel: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类型：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("type", ViewBag.CardType as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "" })
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select name="state" class="easyui-combobox">
+                    <option value="-1">全部</option>
+                    <option value="0">未激活</option>
+                    <option value="1">正常</option>
+                    <option value="2">已挂失</option>
+                    <option value="3">已作废</option>
+                    <option value="4">已退卡</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>使用到期：</label>
+            </td>
+            <td class="input-toolbar">
+                <select name="beOverdue" class="easyui-combobox">
+                    <option value="0">全部</option>
+                    <option value="1">1个月</option>
+                    <option value="2">2个月</option>
+                    <option value="3">3个月</option>
+                    <option value="6">4/5/6个月</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>领用日期:</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="dueTimeStart" class="datacontrol Wdate" style="width:100px" />
+            </td>
+            <td style="float:left;margin-left:7px;margin-right:7px;line-height:28px;">-</td>
+            <td class="input-toolbar">
+                <input name="dueTimeEnd" class="datacontrol Wdate" style="width:100px" />
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="keyWord" name="keyWord" class="datacontrol easyui-textbox" data-options="prompt:'卡号或持卡人',width:140" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-menubutton" data-options="menu:'#mm2',iconCls:'icon-edit'">类型变更</a>
+    <a href="#" class="easyui-menubutton" style="margin-left:0px;" data-options="menu:'#mm1',iconCls:'icon-edit'">设置状态</a>
+    <div id="mm1" style="width:150px;">
+        <div data-options="iconCls:''" onclick="">激活</div>
+        <div data-options="iconCls:''" onclick="">挂失</div>
+        <div data-options="iconCls:''" onclick="">作废</div>
+        <div data-options="iconCls:''" onclick="setEnable(2)">退卡</div>
+    </div>
+    <div id="mm2" style="width:150px;">
+        <div data-options="iconCls:''" onclick="">类型1</div>
+        <div data-options="iconCls:''" onclick="">类型2</div>
+    </div>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindMemberCardPageList")";
+    pharos.manager.editurl = "@Url.Action("DispatchMemberCard")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'BatchSN', title: '批次', width: 80 },
+        { field: 'CardSN', title: '卡号', width: 80 },
+        { field: 'CardType', title: '类型', width: 80 },
+        { field: 'UserUID', title: '持卡人', width: 80 },
+        { field: 'StateTitle5', title: '允许充值', width: 80 },
+        { field: 'StateTitle6', title: '最低充值', width: 80 },
+        { field: 'Deposit', title: '押金', width: 80 },
+        { field: 'StateTitle8', title: '优惠方式', width: 80 },
+        { field: 'StateTitle9', title: '积分方式', width: 80 },
+        { field: 'ReChargeTotal', title: '累积充值', width: 80 },
+        { field: 'GiveTotal', title: '累积赠送金额', width: 80 },
+        { field: 'Balance', title: '可用金额', width: 80 },
+        { field: 'Integer', title: '可用积分', width: 80 },
+        { field: 'State', title: '状态', width: 80 },
+        { field: 'LeadTime', title: '领用时间', width: 80 },
+        { field: 'ExpiryStart', title: '有效期限', width: 80 },
+        { field: 'ExpiryEnd', hidden: true },
+        { field: 'CreateDT', title: '创建时间', width: 80 },
+        { field: 'CreateUID', title: '创建人', width: 80 },
+    ]];
+</script>

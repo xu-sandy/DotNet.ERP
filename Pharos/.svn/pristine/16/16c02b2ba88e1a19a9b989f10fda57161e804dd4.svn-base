@@ -1,0 +1,94 @@
+﻿
+using Pharos.Infrastructure.Data.Cache;
+using Pharos.Infrastructure.Data.Normalize;
+using Pharos.Logic.DAL;
+using Pharos.ObjectModels;
+using Pharos.ObjectModels.DTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic
+{
+    public class ProductCache : RedisCacheWrapper<ProductInfo>
+    {
+        public ProductCache()
+            : base("ProductCache", new TimeSpan(2, 0, 0), true)
+        {
+        }
+
+
+        public void RefreshProduct(int companyId, IEnumerable<MemoryCacheRefreshQuery> _params)
+        {
+            foreach (var item in _params)
+            {
+                var storeIds = item.StoreId.Split(",".ToArray(), StringSplitOptions.RemoveEmptyEntries);
+                foreach (var storeId in storeIds)
+                {
+                    var key = KeyFactory.ProductKeyFactory(companyId, storeId, item.Barcode);
+                    if (ContainsKey(key))
+                        RefreshProduct(key, companyId, item, item.StoreId, Get(key));
+                }
+            }
+        }
+        /// <summary>
+        /// 重置缓存中的产品信息
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="companyId"></param>
+        /// <param name="barcode"></param>
+        /// <param name="storeId"></param>
+        private void RefreshProduct(string key, int companyId, MemoryCacheRefreshQuery _params, string storeId, ProductInfo info)
+        {
+            try
+            {
+                ProductInfo result = null;
+                switch (_params.ProductType)
+                {
+                    case ProductType.Bundling:
+                        {
+                            var db = ContextFactory.GetCurrentContext<EFDbContext>();
+                            var query = (from a in db.Bundlings
+                                         where a.NewBarcode == _params.Barcode && a.CompanyId == companyId
+                                         select new ProductInfo()
+                                         {
+                                             Brand = "",
+                                             Category = "",
+                                             EnableEditNum = true,
+                                             EnableEditPrice = false,
+                                             ProductCode = "",
+                                             ProductType = ProductType.Bundling,
+                                             Size = "",
+                                             SystemPrice = a.BundledPrice,
+                                             BuyPrice = a.BuyPrices,
+                                             Title = a.Title,
+                                             Unit = "件"
+                                         });
+                            result = query.FirstOrDefault();
+                        }
+                        break;
+                    default:
+                        {
+                            var db = ContextFactory.GetCurrentContext<EFDbContext>().Database;
+                            var query = db.SqlQuery<ProductInfo>("exec CheckedStoreProductInfo @p0,@p1,@p2", storeId, companyId, _params.Barcode);
+                            result = query.FirstOrDefault();
+
+                            if (result != null && !string.IsNullOrEmpty(result.MultiCodes))
+                            {
+                                result.MultiCode = result.MultiCodes.Split(",".ToArray(), StringSplitOptions.RemoveEmptyEntries);
+                            }
+                        }
+                        break;
+                }
+                //加到缓存中
+                if (result != null)
+                    this.Set(key, result);
+            }
+            catch { }
+        }
+    }
+}

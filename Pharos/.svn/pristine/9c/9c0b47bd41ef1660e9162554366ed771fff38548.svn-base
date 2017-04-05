@@ -1,0 +1,370 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Sys.Entity;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+using Pharos.Logic.ApiData.Mobile.Exceptions;
+using System.Collections;
+using Pharos.Utility;
+
+namespace Pharos.Logic.BLL
+{
+    public class UserInfoService : BaseService<SysUserInfo>
+    {
+        public static SysUserInfo GetUserInfo(string id)
+        {
+            return UserInfoService.Find(o => o.UID == id);
+        }
+        public static int GetUserCount(int companyId)
+        {
+            return CurrentRepository.QueryEntity.Count(o => o.CompanyId == companyId);
+        }
+        public static object GetUsers(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var result = UserInfoService.CurrentRepository.QueryEntity.Where(o => o.CompanyId == CommonService.CompanyId);
+            var organizationId = nvl["organizationId"].IsNullOrEmpty() ? -1 : int.Parse(nvl["organizationId"]);
+            var departmentId = nvl["departmentId"].IsNullOrEmpty() ? -1 : int.Parse(nvl["departmentId"]);
+            var roleGroupsId = nvl["roleGroupsId"];
+            var searchText = nvl["searchText"];
+            var express = DynamicallyLinqHelper.True<SysUserInfo>().And(o => o.BranchId == organizationId, organizationId == -1).And(o => o.BumenId == departmentId, departmentId == -1)
+                .And(o => o.RoleIds != null && o.RoleIds.Contains(roleGroupsId), roleGroupsId.IsNullOrEmpty()).And(o => (o.FullName.Contains(searchText) || o.LoginName.Contains(searchText)), searchText.IsNullOrEmpty());
+            result = result.Where(express);
+            recordCount = result.Count();
+            var list = result.ToPageList();
+            var orgIds = list.Select(o => o.BranchId).Distinct().ToList();
+            var deptIds = list.Select(o => o.BumenId).Distinct().ToList();
+            var roleIds = list.Where(o => o.RoleIds != null).SelectMany(o => o.RoleIds.Split(',')).Select(o => int.Parse(o)).Distinct().ToList();
+            var orgs = DepartmentInfoService.FindList(o => orgIds.Contains(o.Id));
+            var depts = DepartmentInfoService.FindList(o => deptIds.Contains(o.Id));
+            var roles = RoleInfoService.FindList(o => roleIds.Contains(o.Id));
+            return list.Select(o => new
+            {
+                o.Id,
+                o.FullName,
+                o.LoginName,
+                o.BranchId,
+                o.BumenId,
+                o.RoleIds,
+                o.PositionId,
+                Sex = o.Sex ? "男" : "女",
+                PositionName = o.PositionId,
+                OrganizationName = OrganizationName(o.BranchId, orgs),
+                DepartmentName = DepartmentName(o.BumenId, orgs),
+                RolesName = RolesName(o.RoleIds, roles),
+            });
+        }
+        public static SysStoreUserInfo GetStoreUserBy(string loginname, string password, string storeid)
+        {
+            //var query = from x in CurrentRepository.Entities
+            //            join y in BaseService<SysStoreUserInfo>.CurrentRepository.Entities on x.UID equals y.UID
+            //            where x.CompanyId == Sys.SysCommonRules.CompanyId && x.Status == 1 && y.OperateAuth != null && y.OperateAuth.Contains(storeid + ",1") && x.LoginName == loginname && y.LoginPwd == password
+            //            select x;
+            return BaseService<SysStoreUserInfo>.CurrentRepository.Entities.FirstOrDefault(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.Status == 1 && o.OperateAuth.Contains(storeid + ",1") && o.LoginName == loginname && o.LoginPwd == password);
+        }
+        public static List<SysUserInfo> GetList()
+        {
+            return FindList(o => o.CompanyId == CommonService.CompanyId);
+        }
+        public static object GetUserAndSup(int companyId, string loginName, string password = "")
+        {
+            var qu = CurrentRepository.QueryEntity.Where(o => o.CompanyId == companyId);
+            var qs = SupplierService.CurrentRepository.QueryEntity.Where(o => o.CompanyId == companyId);
+            var pwd = Security.MD5_Encrypt(password);
+            if (!loginName.IsNullOrEmpty() && !password.IsNullOrEmpty())
+            {
+                qu = qu.Where(o => o.LoginName == loginName && o.LoginPwd == pwd);
+            }
+            var query = from x in qu
+                        join y in DepartmentInfoService.CurrentRepository.QueryEntity on x.BumenId equals y.DepId
+                        where y.Type == 2 && x.Status == 1
+                        select new
+                        {
+                            x.UserCode,
+                            Account = x.LoginName,
+                            x.FullName,
+                            Sex = x.Sex ? "男" : "女",
+                            x.Signature,
+                            x.PhotoUrl,
+                            Department = y.Title,
+                            Type = "职员",
+                            x.RoleIds,
+                            x.Mobile,
+                            x.UID
+                        };
+            if (!loginName.IsNullOrEmpty() && !password.IsNullOrEmpty())
+            {
+                qs = qs.Where(o => o.MasterAccount == loginName && o.MasterPwd == pwd);
+            }
+            var query2 = from x in qs
+                         where x.MasterAccount != null && x.MasterAccount != "" && x.BusinessType == 1 && x.MasterState == 1
+                         select new
+                         {
+                             UserCode = x.Id,
+                             Account = x.MasterAccount,
+                             FullName = x.Title,
+                             Sex = "",
+                             x.Signature,
+                             PhotoUrl = "",
+                             Department = "",
+                             Type = "供应商",
+                             RoleIds = "",
+                             Mobile = x.MobilePhone,
+                             UID = ""
+                         };
+            var q = query.Union(query2);
+            if (!loginName.IsNullOrEmpty() && password.IsNullOrEmpty())
+            {
+                return q.FirstOrDefault(o => o.Account == loginName);
+            }
+            return q.FirstOrDefault();
+        }
+        public static void UpdatePassword(string loginName, string oldpassword, string newpassword)
+        {
+            if (loginName.IsNullOrEmpty())
+                throw new MessageException("帐号为空!");
+            if (oldpassword.IsNullOrEmpty())
+                throw new MessageException("原密码为空!");
+            if (newpassword.IsNullOrEmpty())
+                throw new MessageException("新密码为空!");
+            var old = Security.MD5_Encrypt(oldpassword);
+            var user = Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.LoginName == loginName && o.LoginPwd == old);
+            if (user != null)
+            {
+                user.LoginPwd = Security.MD5_Encrypt(newpassword);
+                Update(user);
+            }
+            else
+            {
+                var supp = SupplierService.Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.MasterAccount == loginName && o.MasterPwd == old);
+                if (supp != null)
+                {
+                    supp.MasterPwd = Security.MD5_Encrypt(newpassword);
+                    SupplierService.Update(supp);
+                }
+                else
+                    throw new MessageException("帐号或密码错误!");
+            }
+
+        }
+        public static void UpdateHandsign(string loginName, string oldpassword, string newpassword)
+        {
+            if (loginName.IsNullOrEmpty())
+                throw new MessageException("帐号为空!");
+            if (newpassword.IsNullOrEmpty())
+                throw new MessageException("新密码为空!");
+            var user = Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.LoginName == loginName && (o.Handsign == oldpassword || o.Handsign == null || o.Handsign == ""));
+            if (user != null)
+            {
+                user.Handsign = newpassword;
+                Update(user);
+            }
+            else
+            {
+                var supp = SupplierService.Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.MasterAccount == loginName && (o.Handsign == oldpassword || o.Handsign == null || o.Handsign == ""));
+                if (supp != null)
+                {
+                    supp.Handsign = newpassword;
+                    SupplierService.Update(supp);
+                }
+                else
+                    throw new MessageException("帐号或密码错误!");
+            }
+
+        }
+        public static void UpdateHandsignOff(string loginName, string password)
+        {
+            if (loginName.IsNullOrEmpty())
+                throw new MessageException("帐号为空!");
+            if (password.IsNullOrEmpty())
+                throw new MessageException("手势密码为空!");
+            var user = Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.LoginName == loginName && o.Handsign == password);
+            if (user != null)
+            {
+                user.Handsign = "";
+                Update(user);
+            }
+            else
+            {
+                var supp = SupplierService.Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.MasterAccount == loginName && o.Handsign == password);
+                if (supp != null)
+                {
+                    supp.Handsign = "";
+                    SupplierService.Update(supp);
+                }
+                else
+                    throw new MessageException("帐号或密码错误!");
+            }
+
+        }
+        public static string GetHandsign(string loginName, string password, ref bool isopen)
+        {
+            if (loginName.IsNullOrEmpty())
+                throw new MessageException("帐号为空!");
+            var user = Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.LoginName == loginName);
+            if (user != null && !user.Handsign.IsNullOrEmpty())
+            {
+                isopen = true;
+                if (!password.IsNullOrEmpty() && Security.MD5_Encrypt(password) != user.LoginPwd)
+                    throw new MessageException("密码不正确!");
+                return user.Handsign;
+            }
+            else
+            {
+                var supp = SupplierService.Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.MasterAccount == loginName);
+                if (supp != null && !supp.Handsign.IsNullOrEmpty())
+                {
+                    isopen = true;
+                    if (!password.IsNullOrEmpty() && password != user.LoginPwd)
+                        throw new MessageException("密码不正确!");
+                    return supp.Handsign;
+                }
+            }
+            return "";
+        }
+        static string OrganizationName(int id, List<SysDepartments> list)
+        {
+            if (id == 0) return "";
+            var obj = list.FirstOrDefault(o => o.Id == id);
+            if (obj == null) return "";
+            return obj.Title;
+        }
+        static string DepartmentName(int id, List<SysDepartments> list)
+        {
+            if (id.IsNullOrEmpty()) return "";
+            var obj = list.FirstOrDefault(o => o.Id == id);
+            if (obj == null) return "";
+            return obj.Title;
+        }
+        static string RolesName(string ids, List<Entity.SysRoles> list)
+        {
+            if (ids.IsNullOrEmpty()) return "";
+            var roleIds = ids.Split(',').Select(o => int.Parse(o));
+            var sels = list.Where(o => roleIds.Contains(o.Id)).Select(o => o.Title);
+            if (!sels.Any()) return ids;
+            return string.Join(",", sels);
+        }
+
+        /// <summary>
+        /// 获取IM联系人列表
+        /// </summary>
+        /// <param name="loginName">用户APP登录账号</param>
+        /// <returns>联系人列表（包含IMUserName，FullName，PhotoUrl）</returns>
+        public static object GetUsersInfoForIMContacts(string loginName)
+        {
+            var users = CurrentRepository.QueryEntity.Where(o => o.CompanyId == Sys.SysCommonRules.CompanyId);
+            if (!loginName.IsNullOrEmpty())
+            {
+                users = users.Where(a => !a.LoginName.Equals(loginName, StringComparison.OrdinalIgnoreCase));
+            }
+            var query = from u in users
+                        join d in DepartmentInfoService.CurrentRepository.QueryEntity on u.BumenId equals d.DepId
+                        where d.Type == 2 && u.Status == 1 && u.HuanXinUUID.Length > 0
+                        select new
+                        {
+                            IMUserName = u.UID,
+                            u.FullName,
+                            u.PhotoUrl,
+                            //Sex = u.Sex ? "男" : "女",
+                            //u.UserCode,
+                            //Account = u.LoginName,
+                            //u.Signature,
+                            //Department = d.Title,
+                            //Type = "职员",
+                            //u.RoleIds,
+                        };
+            return query.ToList();
+        }
+        /// <summary>
+        /// 获取IM单个联系人信息
+        /// </summary>
+        /// <param name="uid">用户UID</param>
+        /// <returns></returns>
+        public static object GetUserInfoForIM(string uid)
+        {
+            var user = CurrentRepository.QueryEntity.FirstOrDefault(a => a.UID.Equals(uid, StringComparison.OrdinalIgnoreCase) && a.Status == 1);
+            if (user == null)
+                throw new MessageException("联系人不存在！");
+            var department = DepartmentInfoService.CurrentRepository.QueryEntity.FirstOrDefault(d => d.Type == 2 && d.DepId == user.BumenId);
+            return new
+            {
+                IMUserName = user.UID,
+                user.PhotoUrl,
+                user.FullName,
+                user.UserCode,
+                Sex = user.Sex ? "男" : "女",
+                Department = department == null ? "" : department.Title,
+                user.Signature,
+                user.Mobile
+            };
+        }
+        /// <summary>
+        /// 设置手机号
+        /// </summary>
+        /// <param name="loginName">登录名</param>
+        /// <param name="mobile">手机号</param>
+        /// <returns></returns>
+        public static OpResult SetMobile(string loginName, string mobile)
+        {
+            var user = Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.LoginName.Equals(loginName, StringComparison.OrdinalIgnoreCase));
+            if (user != null)
+            {
+                user.Mobile = mobile;
+                var result = Update(user);
+                if (!result.Successed)
+                    throw new MessageException("保存失败!");
+                result.Data = user;
+                return result;
+            }
+            else
+            {
+                var supp = SupplierService.Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.MasterAccount == loginName);
+                if (supp != null)
+                {
+                    supp.MobilePhone = mobile;
+                    var result = SupplierService.Update(supp);
+                    if (!result.Successed)
+                        throw new MessageException("保存失败!");
+                    result.Data = supp;
+                    return result;
+                }
+            }
+            throw new MessageException("登录用户不存在！");
+        }
+        /// <summary>
+        /// 设置个性签名
+        /// </summary>
+        /// <param name="loginName">登录名</param>
+        /// <param name="signature">手机号</param>
+        /// <returns></returns>
+        public static OpResult SetSignature(string loginName, string signature)
+        {
+            var user = Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.LoginName.Equals(loginName, StringComparison.OrdinalIgnoreCase));
+            if (user != null)
+            {
+                user.Signature = signature;
+                var result = Update(user);
+                if (!result.Successed)
+                    throw new MessageException("保存失败!");
+                result.Data = user;
+                return result;
+            }
+            else
+            {
+                var supp = SupplierService.Find(o => o.CompanyId == Sys.SysCommonRules.CompanyId && o.MasterAccount == loginName);
+                if (supp != null)
+                {
+                    supp.Signature = signature;
+                    var result = SupplierService.Update(supp);
+                    if (!result.Successed)
+                        throw new MessageException("保存失败!");
+                    result.Data = supp;
+                    return result;
+                }
+            }
+            throw new MessageException("登录用户不存在！");
+        }
+    }
+}

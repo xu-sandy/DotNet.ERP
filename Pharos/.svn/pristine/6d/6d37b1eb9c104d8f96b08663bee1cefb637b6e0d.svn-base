@@ -1,0 +1,203 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.POS.Retailing.RawInput;
+using Pharos.Wpf.HotKeyHelper;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Extensions
+{
+    public static class WindowExtensions
+    {
+        public static void InitDefualtSettings(this Window _this)
+        {
+            _this.PreviewKeyDown += _this_PreviewKeyDown;
+            _this.Loaded += _this_Loaded;
+            _this.Activated += _this_Activated;
+
+            _this.ApplyHotKeyBindings();
+        }
+
+        private static void _this_Activated(object sender, EventArgs e)
+        {
+            (sender as Window).MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+        }
+
+        static void _this_Loaded(object sender, RoutedEventArgs e)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                Thread.Sleep(150);
+                Application.Current.Dispatcher.Invoke(new Action(() =>
+                {
+                    (sender as Window).MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                    if (Keyboard.FocusedElement is TextBox)
+                    {
+                        (Keyboard.FocusedElement as TextBox).SelectAll();
+                    }
+                }));
+            });
+        }
+
+
+        public static void _this_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            var win = sender as Window;
+            switch (e.Key)
+            {
+                case Key.Escape:
+                    win.Close();
+                    break;
+            }
+        }
+        static List<ThreadMessageEventHandler> queueEvent = new List<ThreadMessageEventHandler>();
+
+        public static void ThreadFilterMessage(this Window _this)
+        {
+            var barcodeControl = (IBarcodeControl)_this;
+            _this.Closed += (s, e) =>
+            {
+                if (_this != PosViewModel.Current.CurrentWindow)
+                {
+                    PosViewModel.Current.CurrentWindow.ThreadFilterMessage();
+                }
+            };
+            barcodeControl.EventQueue = new System.Collections.Generic.Queue<RawInput.Win32.KeyAndState>();
+            barcodeControl.IsMonitoring = true;
+
+            WindowInteropHelper wndHelper = new WindowInteropHelper(_this);
+            var _wpfHwnd = wndHelper.Handle;
+
+            barcodeControl.KeyboardDriver = new RawKeyboard(_wpfHwnd);
+            barcodeControl.KeyboardDriver.CaptureOnlyIfTopMostWindow = false;
+            barcodeControl.KeyboardDriver.EnumerateDevices();
+
+            foreach (var item in queueEvent)
+            {
+                System.Windows.Interop.ComponentDispatcher.ThreadFilterMessage -= item;
+
+            }
+            queueEvent.Clear();
+            var msg = new System.Windows.Interop.ThreadMessageEventHandler(_this.ComponentDispatcher_ThreadFilterMessage);
+
+            queueEvent.Add(msg);
+            System.Windows.Interop.ComponentDispatcher.ThreadFilterMessage += msg;
+        }
+
+        internal static IntPtr WndProc(this Window _this, IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            handled = false;
+            var barcodeControl = (IBarcodeControl)_this;
+
+            //如果 handled 返回真,那么就已经处理这个消息,就不往下传递
+            switch (msg)
+            {
+                case Win32.WM_USB_DEVICECHANGE:
+                    {
+                        //如果有设备变动,那么就重新枚举一次设备
+                        barcodeControl.KeyboardDriver.EnumerateDevices();
+                    }
+                    break;
+            }
+
+            return IntPtr.Zero;
+        }
+        internal static void ComponentDispatcher_ThreadFilterMessage(this Window _this, ref System.Windows.Interop.MSG msg, ref bool handled)
+        {
+            var barcodeControl = (IBarcodeControl)_this;
+            var txt = (barcodeControl.CurrentIInputElement as TextBox);
+
+            switch (msg.message)
+            {
+                //这里只能以 INPUT 来截取,不支持 KEYDOWN 来截取,不然后面的 RawInput 获取值的时候无效
+                case Win32.WM_INPUT:
+                    {
+
+                        // Should never get here if you are using PreMessageFiltering
+                        KeyPressEvent keyPressEvent;
+                        barcodeControl.KeyboardDriver.ProcessRawInput(msg.lParam, out keyPressEvent);
+
+                        // textBox_ScanGunInfoNow.Text = keyPressEvent.DeviceName;
+                        //只处理一次事件,不然有按下和弹起事件
+                        if (keyPressEvent.KeyPressState == "MAKE"
+                            && keyPressEvent.DeviceName == Global.MachineSettings.DevicesSettingsConfiguration.ScanDeviceId
+                            && !string.IsNullOrEmpty(Global.MachineSettings.DevicesSettingsConfiguration.ScanDeviceId) && _this.IsActive)
+                        {
+                            txt.IsReadOnly = true;
+                            // txt.Text = string.Empty;
+                            barcodeControl.CurrentIInputElement.Focus();
+
+                            //找到结尾标志的时候,就不加入队列了,然后就发送到界面上赋值
+                            if (KeyInterop.KeyFromVirtualKey(keyPressEvent.VKey) == Key.Enter)
+                            {
+                                barcodeControl.IsMonitoring = false;
+
+                                string str_Out = string.Empty;
+
+                                ThreadPool.QueueUserWorkItem((o) =>
+                                {
+                                    while (barcodeControl.EventQueue.Count > 0)
+                                    {
+                                        Win32.KeyAndState keyAndState = barcodeControl.EventQueue.Dequeue();
+
+                                        str_Out += Chr(keyAndState.Key).ToString();
+
+                                        System.Threading.Thread.Sleep(5); // might need adjustment
+                                    }
+
+                                    Application.Current.Dispatcher.BeginInvoke((Action)(() =>
+                                    {
+                                        txt.Text = str_Out;
+                                        txt.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                                        txt.IsReadOnly = false;
+                                        txt.Focus();
+                                    }));
+
+                                    barcodeControl.EventQueue.Clear();
+                                    barcodeControl.IsMonitoring = true;
+                                });
+                            }
+
+                            // 回车 作为结束标志
+                            if (barcodeControl.IsMonitoring)
+                            {
+                                //存储 Win32 按键的int值
+                                int key = keyPressEvent.VKey;
+                                byte[] state = new byte[256];
+                                Win32.GetKeyboardState(state);
+                                barcodeControl.EventQueue.Enqueue(new Win32.KeyAndState(key, state));
+                            }
+                            handled = true;
+                        }
+                    }
+                    break;
+            }
+            return;
+        }
+        public static string Chr(int asciiCode)
+        {
+            int[] enableChar = new int[] { 
+                48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+                65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
+                97, 98, 99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122
+            };
+            if (enableChar.Contains(asciiCode))
+            {
+                var asciiEncoding = System.Text.Encoding.Default;// asciiEncoding = new System.Text.ASCIIEncoding();
+                byte[] byteArray = new byte[] { (byte)asciiCode };
+                string strCharacter = asciiEncoding.GetString(byteArray);
+                return (strCharacter);
+            }
+            return string.Empty;
+        }
+
+    }
+}

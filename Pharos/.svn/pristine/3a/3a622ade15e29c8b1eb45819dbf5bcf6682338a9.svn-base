@@ -1,0 +1,97 @@
+﻿using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.IO;
+using System.Xml.Serialization;
+
+namespace Pharos.POS.Retailing.Models
+{
+    public class PosMachineInfo
+    {
+        private const string FILEPATH = "PharosPosMachineInfo.Config";
+
+        public PosMachineInfo() 
+        {
+            AutoDataSync = true;
+            MaxResponseContentBufferSize = 50 * 1024 * 1024;
+        }
+
+        public string MachineId { get; set; }
+        public string StoreId { get; set; }
+        public string StoreName { get; set; }
+
+        public string StorePhone { get; set; }
+        public string CompanyName { get; set; }
+
+        public string ServerUrl { get; set; }
+        public int MaxResponseContentBufferSize { get; set; }
+        public int MachineType { get; set; }
+        /// <summary>
+        /// 是否自动同步
+        /// </summary>
+        public bool AutoDataSync { get; set; }
+
+        private static PosMachineInfo infos;
+        public static PosMachineInfo Infos
+        {
+            get
+            {
+                if (infos == null)
+                {
+                    infos = new PosMachineInfo();
+                    //infos.AutoDataSync = true;
+                }
+                return infos;
+            }
+        }
+
+        public static bool ReadConfig()
+        {
+            try
+            {
+                using (FileStream fs = new FileStream(FILEPATH, FileMode.OpenOrCreate))
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof(PosMachineInfo));
+                    var result = serializer.Deserialize(fs) as PosMachineInfo;
+                    fs.Close();
+                    fs.Dispose();
+                    infos = result;
+                    if (infos == null)
+                    {
+                        var page = new SettingPages.SetMachineInfo();
+                        page.ShowDialogInScreen();
+                        return false;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                var page = new SettingPages.SetMachineInfo();
+                page.ShowDialogInScreen();
+                return false;
+            }
+            return true;
+        }
+
+        public bool WriteConfig()
+        {
+            try
+            {
+                if (!File.Exists(FILEPATH))
+                    File.Create(FILEPATH);
+                using (FileStream fs = new FileStream(FILEPATH, FileMode.Create))
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof(PosMachineInfo));
+                    serializer.Serialize(fs, this);
+                    fs.Close();
+                    fs.Dispose();
+                }
+            }
+            catch (Exception)
+            {
+                Toast.DoShow("配置失败，请联系软件提供商！");
+                return false;
+            }
+            return true;
+        }
+    }
+}

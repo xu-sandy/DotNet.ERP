@@ -1,0 +1,1247 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Text.RegularExpressions;
+using Pharos.Logic.OMS.Cache;
+using Pharos.Infrastructure.Data.Normalize;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL-----商户资料
+    /// </summary>
+    public class TradersService : BaseService
+    {
+        [Ninject.Inject]
+        // 商户资料
+        IBaseRepository<Traders> TradersRepository { get; set; }
+
+        // 商户资料
+        [Ninject.Inject]
+        ITradersRepository tRepository { get; set; }
+
+        [Ninject.Inject]
+        // 商户分类
+        IBaseRepository<TraderType> TraderTypeRepository { get; set; }
+
+        [Ninject.Inject]
+        //区域管理信息
+        public IBaseRepository<Area> AreaRepository { get; set; }
+
+        [Ninject.Inject]
+        //数据字典信息
+        public IBaseRepository<SysDataDictionary> SysDataDictionaryRepository { get; set; }
+
+        [Ninject.Inject]
+        //行业管理信息
+        public IBaseRepository<Business> BusinessRepository { get; set; }
+
+        [Ninject.Inject]
+        //帐户管理
+        public IBaseRepository<SysUserInfo> SysUserInfoRepository { get; set; }
+
+        [Ninject.Inject]
+        //采购意向清单
+        public IBaseRepository<OrderList> OrderListRepository { get; set; }
+
+        [Ninject.Inject]
+        //回访跟踪记录
+        public IBaseRepository<VisitTrack> VisitTrackRepository { get; set; }
+
+        //BLL-----回访跟踪记录
+        [Ninject.Inject]
+        VisitTrackService visitTrackService { get; set; }
+
+         //BLL-----采购意向清单
+        [Ninject.Inject]
+         OrderListService  orderListService { get; set; }
+
+        [Ninject.Inject]
+        
+        public IBaseRepository<CompanyAuthorize> CompanyAuthorizeRepository { get; set; }
+        [Ninject.Inject]
+
+        public CompAuthorService CompAuthorService { get; set; }
+
+        [Ninject.Inject]
+        //设备授权信息
+        public IBaseRepository<DeviceAuthorize> DeviceAuthorizeRepository { get; set; }
+        [Ninject.Inject]
+        ImportSetService ImportSetService { get; set; }
+        public List<ViewTrader> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+
+            //省份
+            var CurrentProvinceId = (nvl["CurrentProvinceId"] ?? "").Trim();
+            //城市
+            var CurrentCityId = (nvl["CurrentCityId"] ?? "").Trim();
+            //登记日期（开始）
+            var CreateDT_begin = (nvl["CreateDT_begin"] ?? "").Trim();
+            //登记日期（结束）
+            var CreateDT_end = (nvl["CreateDT_end"] ?? "").Trim();
+            //跟踪状态
+            var TrackStautsId = (nvl["TrackStautsId"] ?? "").Trim();
+            //业务员
+            var AssignerUID = (nvl["AssignerUID"] ?? "").Trim();
+            //客户类型
+            var BusinessModeId = (nvl["BusinessModeId"] ?? "").Trim();
+            //经营范围
+            var BusinessScopeId = (nvl["BusinessScopeId"] ?? "").Trim();
+            //关键字类型
+            var keywordType = (nvl["keywordType"] ?? "").Trim();
+            //关键字
+            var keyword = (nvl["keyword"] ?? "").Trim();
+            //支付类型
+            var pay = (nvl["pay"] ?? "").Trim();
+
+            var pageIndex = 1;
+            var pageSize = 20;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+
+            string strw = "";
+            if (!CurrentProvinceId.IsNullOrEmpty() && CurrentProvinceId != "0")
+            {
+                strw = strw + " and t.CurrentProvinceId=" + CurrentProvinceId;
+            }
+            if (!CurrentCityId.IsNullOrEmpty() && CurrentCityId != "0")
+            {
+                strw = strw + " and t.CurrentCityId=" + CurrentCityId;
+            }
+            if (!CreateDT_begin.IsNullOrEmpty())
+            {
+                string c = CreateDT_begin + " " + "00:00:00";
+                strw = strw + " and t.CreateDT >='"+c+"'";
+            }
+            if (!CreateDT_end.IsNullOrEmpty())
+            {
+                var c = CreateDT_end + " " + "23:59:59";
+                strw = strw + " and t.CreateDT <='"+c+"'";
+            }
+            if (!TrackStautsId.IsNullOrEmpty())
+            {
+                strw = strw + " and t.TrackStautsId=" + TrackStautsId;
+            }
+            if (!AssignerUID.IsNullOrEmpty())
+            {
+                string[] aUID = AssignerUID.Split(',');
+                string newAUID = "";
+                if (aUID.Length > 0)
+                {
+                    for (int i = 0; i < aUID.Length; i++)
+                    {
+                        if (newAUID == "")
+                        {
+                            newAUID = "'" + aUID[i] + "'";
+                        }
+                        else
+                        {
+                            newAUID =newAUID+ ",'" + aUID[i] + "'";
+                        }
+                    }
+                    strw = strw + " and t.AssignerUID in ("+newAUID+")";
+                }
+                
+            }
+            if (!BusinessModeId.IsNullOrEmpty())
+            {
+                strw = strw + " and t.BusinessModeId=" + BusinessModeId;
+            }
+            if (!BusinessScopeId.IsNullOrEmpty())
+            {
+                strw = strw + " and t.BusinessScopeId like '%" + BusinessScopeId + "%'";
+            }
+
+            if (!keywordType.IsNullOrEmpty()&&!keyword.IsNullOrEmpty())
+            {
+                if (keywordType == "0")
+                {
+                    if (!IsNumber(keyword) || keyword.Length > 9)
+                    {
+                        keyword = "0";
+                    }
+                    strw = strw + " and t.CID=" + keyword;
+                }
+                if (keywordType == "1")
+                {
+                    strw = strw + " and t.Title like '%" + keyword + "%'";
+                }
+                if (keywordType == "2")
+                {
+                    strw = strw + " and t.LinkMan like '%" + keyword + "%'";
+                }
+                if (keywordType == "3")
+                {
+                    strw = strw + " and t.MobilePhone like '%" + keyword + "%'";
+                }
+            }
+
+            if (!pay.IsNullOrEmpty())
+            {
+                strw = strw + " and CHARINDEX('"+pay+"',t.Pay)>0";
+            }
+
+            //recordCount = q.Count();
+            //var list = q.ToPageList();
+            //recordCount = 0;
+            //var bussineScopeids= list.Where(o => !o.BusinessScopeId.IsNullOrEmpty()).SelectMany(o => o.BusinessScopeId.Split(',')).Distinct().ToList();
+            //var bussines= BusinessRepository.GetQuery(o => bussineScopeids.Contains(o.ById)).ToList();
+
+            //return list.Select(o=>new{
+            //    bussineTitle = GetBussinTitle(bussines,o.BusinessScopeId),
+
+            //});
+
+           List<ViewTrader> list=  tRepository.getPageList(pageIndex, pageSize, strw, out recordCount);
+           return list;  
+        }
+
+        //string GetBussinTitle(List<Business> list,string bussinScopeId)
+        //{
+        //    if (bussinScopeId.IsNullOrEmpty()) return "";
+        //    var ids = bussinScopeId.Split(',');
+        //    return string.Join(",", list.Where(o=>ids.Contains(o.ById)).Select(o=>o.Title));
+        //}
+
+
+        /// <summary>
+        /// 获取最大CID
+        /// </summary>
+        /// <returns></returns>
+        public int getMaxCID()
+        {
+            //return TradersRepository.GetQuery().Max(o => (int?)o.CID).GetValueOrDefault() + 1;
+            int cid = 0;
+            cid = TradersRepository.GetQuery().Max(o => (int?)o.CID).GetValueOrDefault();
+            if (cid < 101)
+            {
+                cid = 101;
+            }
+            else
+            {
+                cid = cid + 1;
+                if (cid > 9999900)
+                {
+                    cid= -1;
+                }
+            }
+            return cid;
+        }
+
+        public Traders GetOne(object id)
+        {
+            return TradersRepository.Get(id);
+        }
+        public object GetOneByCID(int cid)
+        {
+            if (cid <= 0) return null;
+            var queryTrader= TradersRepository.GetQuery(o=>o.CID==cid);
+            var queryAuth = CompanyAuthorizeRepository.GetQuery();
+            var query = from x in queryTrader
+                        join y in queryAuth on x.CID equals y.CID into tmp
+                        from z in tmp.DefaultIfEmpty()
+                        select new
+                        {
+                            x.CID,
+                            x.Title,
+                            x.FullTitle,
+                            x.Address,
+                            x.BusinessModeId,
+                            x.BusinessScopeId,
+                            x.CurrentCityId,
+                            x.CurrentCounty,
+                            x.CurrentProvinceId,
+                            x.EachStorePersonNum,
+                            x.EachStorePosNum,
+                            x.ExistDeviceName,
+                            x.ExistStoreNum,
+                            x.ExistsystemName,
+                            x.LinkMan,
+                            x.Memo,
+                            x.MobilePhone,
+                            x.PlanExpandStoreNum,
+                            x.Status,
+                            x.TakeStockDates,
+                            x.TraderTypeId,
+                            z.AppProper,
+                            z.PosMinorDisp,
+                            z.StoreProper,
+                            z.OpenVersionId,
+                            z.Way,
+                            z.CreateDT
+                        };
+
+            return query.OrderByDescending(o => o.CreateDT).FirstOrDefault();
+        }
+        /// <summary>
+        /// 增加、修改
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public OpResult SaveOrUpdate(Traders model, string[] BusinessScopeId, string[] Pay)
+        {
+            //客户简称是否存在
+            IQueryable<Traders> isExistTitle = null;
+            if (model.Id == 0)
+            {
+                isExistTitle = TradersRepository.GetQuery(o => o.Title == model.Title);
+            }
+            else
+            {
+                isExistTitle = TradersRepository.GetQuery(o =>  o.Title == model.Title && o.Id != model.Id);
+            }
+            if (isExistTitle.Any())
+            {
+                return OpResult.Fail("该客户简称已经存在");
+            }
+
+            //客户全称是否存在
+            IQueryable<Traders> isExistFullTitle = null;
+            if (model.Id == 0)
+            {
+                isExistFullTitle = TradersRepository.GetQuery(o => o.FullTitle == model.FullTitle);
+            }
+            else
+            {
+                isExistFullTitle = TradersRepository.GetQuery(o => o.FullTitle == model.FullTitle && o.Id != model.Id);
+            }
+            if (isExistFullTitle.Any())
+            {
+                return OpResult.Fail("该客户全称已经存在");
+            }
+
+            model.BusinessScopeId = "";
+            
+            if (BusinessScopeId!=null && BusinessScopeId.Length > 0)
+            {
+                foreach (var v in BusinessScopeId)
+                {
+                    if (model.BusinessScopeId == "")
+                    {
+                        model.BusinessScopeId = v;
+                    }
+                    else
+                    {
+                        model.BusinessScopeId = model.BusinessScopeId + "," + v;
+                    }
+
+                }
+            }
+
+            model.Pay = "";
+            if (Pay != null && Pay.Length > 0)
+            {
+                foreach (var v in Pay)
+                {
+                    if (model.Pay == "")
+                    {
+                        model.Pay = v;
+                    }
+                    else
+                    {
+                        model.Pay = model.Pay + "," + v;
+                    }
+
+                }
+            }
+            
+            if (model.Id == 0)
+            {
+                model.AddType = 0;
+                model.CreateUID = CurrentUser.UID;
+                model.CreateDT = DateTime.Now;
+                model.UpdateDT = DateTime.Now;
+                model.CID = getMaxCID();
+                TradersRepository.Add(model);
+            }
+            else
+            {
+                model.UpdateDT = DateTime.Now;
+                var source = TradersRepository.Get(model.Id);
+                model.CID = source.CID;
+                model.ToCopyProperty(source, new List<string>() { "CreateUID", "CreateDT", "CID", "Status", "AddType" });
+                var auths= CompanyAuthorizeRepository.GetQuery(o => o.CID == model.CID && o.Status != 3).ToList();
+                auths.Each(o => o.Title = model.FullTitle);
+            }
+
+            if (TradersRepository.SaveChanges())
+            {
+                LogEngine.WriteUpdate(model.Id + "," + model.Title, LogModule.商户资料);
+            }
+
+            return OpResult.Success(model.CID.ToString());
+        }
+
+        /// <summary>
+        /// 获取省
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getProvince(string defaultTitle = "请选择")
+        {
+            var province = AreaRepository.GetQuery(o => o.Type == 2).ToList();
+            province.Insert(0, new Area() { AreaID = 0, Title = defaultTitle });
+            return province;
+        }
+
+        /// <summary>
+        /// 获取城市
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getCity(int ProvinceID, string defaultTitle = "请选择")
+        {
+            List<Area> list = new List<Area>();
+            if (ProvinceID > 0)
+            {
+                list = AreaRepository.GetQuery(o => o.AreaPID == ProvinceID).ToList();
+            }
+            list.Insert(0, new Area() { AreaID = 0, Title = defaultTitle });
+            return list;
+        }
+
+        /// <summary>
+        /// 获取区县
+        /// </summary>
+        /// <returns></returns>
+        public List<Area> getDistrict(int CityID)
+        {
+            List<Area> list = new List<Area>();
+            if (CityID > 0)
+            {
+                list = AreaRepository.GetQuery(o => o.AreaPID == CityID).ToList();
+            }
+            list.Insert(0, new Area() { AreaID = 0, Title = "请选择" });
+            return list;
+        }
+        public List<Traders> GetTraderInput(string searchName)
+        {
+            if (searchName.IsNullOrEmpty()) return null;
+            int cid = 0;
+            int.TryParse(searchName, out cid);
+            var query= TradersRepository.GetQuery(o=>o.Status!=2);
+            //if (cid > 0) query = query.Where(o => o.CID == cid);
+            query = query.Where(o =>  o.CID == cid || o.Title.Contains(searchName) || o.FullTitle.Contains(searchName));
+            return query.Take(20).ToList();
+        }
+
+        /// <summary>
+        /// 获取商户分类
+        /// </summary>
+        /// <returns></returns>
+        public List<TraderType> getTraderTypeList()
+        {
+            return TraderTypeRepository.GetQuery().ToList();
+        }
+
+        /// <summary>
+        /// 获取经营模式
+        /// </summary>
+        /// <returns></returns>
+        public List<SysDataDictionary> getDataList()
+        {
+            return SysDataDictionaryRepository.GetQuery(w => w.DicPSN == 221&&w.Status).OrderBy(o => o.SortOrder).ToList();
+        }
+
+        /// <summary>
+        /// 获取字典
+        /// </summary>
+        /// <returns></returns>
+        public List<SysDataDictionary> getDataList(int DicPSN)
+        {
+            return SysDataDictionaryRepository.GetQuery(w => w.DicPSN == DicPSN&&w.Status).OrderBy(o => o.SortOrder).ToList();
+        }
+
+        /// <summary>
+        /// 获取经营类目
+        /// </summary>
+        /// <returns></returns>
+        public List<Business> getBusinessList()
+        {
+            //var  dd= BusinessRepository.GetQuery().ToList();
+            //return null;
+            return BusinessRepository.GetQuery().ToList();
+        }
+        public bool ExistsTitle(string title,string fullTitle)
+        {
+            return TradersRepository.GetQuery(o => o.Title == title || o.FullTitle == fullTitle).Any();
+        }
+        /// <summary>
+        /// 获取登记人
+        /// </summary>
+        /// <returns></returns>
+        public string getFullName(string UserId)
+        {
+            string uid = "";
+            if (UserId.IsNullOrEmpty())
+            {
+                uid = CurrentUser.UID;
+            }
+            else
+            {
+                uid = UserId;
+            }
+            return SysUserInfoRepository.GetQuery(o => o.UserId == uid).Select(o=>o.FullName).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// 获取上级领导
+        /// </summary>
+        /// <returns></returns>
+        public string getLeaderFullName(string UserId)
+        {
+            if (!UserId.IsNullOrEmpty())
+            {
+                return SysUserInfoRepository.GetQuery(o => o.UserId == UserId).Select(o => o.FullName).FirstOrDefault();
+            }
+            else
+            {
+                return "";
+            }
+        }
+
+        /// <summary>
+        /// 获取采购意向清单
+        /// </summary>
+        /// <param name="TradersCID">企业ID</param>
+        /// <returns></returns>
+        public List<ViewOrderList> getOrderList(int TradersCID)
+        {
+            //数据字典信息
+            var data = SysDataDictionaryRepository.GetQuery();
+            //采购意向清单
+            var orderList = OrderListRepository.GetQuery(o=>o.CID==TradersCID);
+
+            var order = from o in orderList
+                        join d in data on o.DeviceId equals d.DicSN
+                        into dd
+                        from ddd in dd.DefaultIfEmpty()
+                        join d2 in data on o.UnitID equals d2.DicSN
+                        into dd2
+                        from ddd2 in dd2.DefaultIfEmpty()
+                        select new ViewOrderList
+                        {
+                            pName=ddd==null?"":ddd.Title,
+                            OrderNum=o.OrderNum,
+                            uName = ddd2 == null ? "" : ddd2.Title,
+                            Remark=o.Remark,
+                            DeviceId=o.DeviceId,
+                            UnitID=o.UnitID
+                        };
+            //测试
+            string ssss = order.ToString();
+
+            return order.ToList();
+        }
+
+        /// <summary>
+        /// 获取业务员
+        /// </summary>
+        /// <param name="TradersCID">企业ID</param>
+        /// <returns></returns>
+        public List<SysUserInfo> getUserList()
+        {
+            var uer = SysUserInfoRepository.GetQuery(o=>o.Status==1);
+            return uer.ToList();
+        }
+
+        
+
+        /// <summary>
+        /// 保存
+        /// </summary>
+        /// <param name="traders">商户资料</param>
+        /// <param name="h_OrderList">采购意向清单</param>
+        /// <param name="h_VisitTrack">回访小结</param>
+        /// <param name="h_VisitTrack">经营类目</param>
+        /// <param name="Pay">支付方式</param>
+        /// <returns></returns>
+        public OpResult Save(Traders traders, string h_OrderList, string h_VisitTrack, string[] BusinessScopeId, string[] Pay)
+        {
+            OpResult op = SaveOrUpdate(traders, BusinessScopeId, Pay);
+            if (op.Successed)
+            {
+                int CID = Convert.ToInt32(op.Message);
+                if (CID > 0)
+                {
+                    if (!h_OrderList.IsNullOrEmpty())
+                    {
+                        //采购意向清单
+                        JObject jObj = null;
+                        jObj = JObject.Parse(h_OrderList);
+                        JArray jlist = JArray.Parse(jObj["OrderList"].ToString());
+                        orderListService.Deletes(CID);
+                        foreach (JObject item in jlist)
+                        {
+                            short Id = Convert.ToInt16(item["Id"]);
+                            string Title = item["Title"].ToString();
+                            short OrderNum = Convert.ToInt16(item["OrderNum"]);
+                            string uName = item["uName"].ToString();
+                            int uId = Convert.ToInt32(item["uId"]);
+                            string remark = item["remark"].ToString();
+
+                            OrderList orderList = new OrderList();
+                            orderList.CID = CID;
+                            orderList.DeviceId = Id;
+                            orderList.Title = Title;
+                            orderList.OrderNum = OrderNum;
+                            orderList.UnitName = uName;
+                            orderList.UnitID = uId;
+                            orderList.Remark = remark;
+                            orderListService.SaveOrUpdate(orderList);
+                        }
+                    }
+                    if (!h_VisitTrack.IsNullOrEmpty())
+                    {
+                        //回访小结
+                        JObject jVisitTrack = null;
+                        jVisitTrack = JObject.Parse(h_VisitTrack);
+                        JArray jVisitTrackList = JArray.Parse(jVisitTrack["VisitTrack"].ToString());
+                        visitTrackService.Deletes(CID);
+                        foreach (JObject item in jVisitTrackList)
+                        {
+                            string content = item["content"].ToString();
+                            string VisitDT = item["VisitDT"].ToString();
+                            string CreateUID = item["CreateUID"].ToString();
+                            DateTime addDT = Convert.ToDateTime(item["addDT"]);
+                            DateTime upDT = Convert.ToDateTime(item["upDT"]);
+
+                            VisitTrack visitTrack = new VisitTrack();
+                            visitTrack.CID = CID;
+                            visitTrack.Content = content;
+                            visitTrack.VisitDT = VisitDT;
+                            visitTrack.CreateUID = CreateUID;
+                            visitTrack.CreateDT = addDT;
+                            visitTrack.UpdateDT = upDT;
+                            visitTrackService.SaveOrUpdate(visitTrack);
+                        }
+                    }
+                    return OpResult.Success();
+                }
+                else
+                {
+                    return OpResult.Fail("保存失败");
+                }  
+            }
+            else
+            {
+                return op;
+            }
+        }
+        /// <summary>
+        /// webapp保存
+        /// </summary>
+        /// <param name="traders"></param>
+        /// <param name="orders"></param>
+        /// <returns></returns>
+        public OpResult AddTrader(Traders traders,List<OrderList> orders)
+        {
+            if (traders == null) return OpResult.Success("操作时间过长，请重新添加！");
+            var user = SysUserInfoRepository.Find(o => o.LoginName == traders.Assigner);
+            if (user == null) return OpResult.Fail("业务员不存在！");
+            traders.AddType = 1;
+            traders.CreateUID = user.UserId;
+            traders.AssignerUID = traders.CreateUID;
+            traders.CreateDT = DateTime.Now;
+            traders.UpdateDT = DateTime.Now;
+            traders.CID = getMaxCID();
+            orders.Each(o =>
+            {
+                o.CID = traders.CID;
+                o.CreateDT = traders.CreateDT;
+                o.CreateUID = traders.CreateUID;
+            });
+            TradersRepository.Add(traders,false);
+            try
+            {
+                orderListService.OrderListRepository.AddRange(orders);
+            }
+            catch(Exception ex)
+            {
+                LogEngine.WriteError(ex);
+                return OpResult.Fail("保存出现异常！");
+            }
+            return OpResult.Success("添加成功！");
+        }
+        public OpResult Save(Traders traders, string h_OrderList, short way, short openVersionId, string storeProper, string posMinorDisp, string appProper, string machine)
+        {
+            if(traders.CID>0)
+            {
+                var td = TradersRepository.Find(o => o.CID == traders.CID);
+                if (td != null)
+                {
+                    traders.Id = td.Id;
+                    traders.TrackStautsId = td.TrackStautsId;
+                    traders.Source = td.Source;
+                }
+            }
+            var op = Save(traders, h_OrderList, "", traders.BusinessScopeId.IsNullOrEmpty() ? new string[] { } : traders.BusinessScopeId.Split(','), new string[] { });
+            if(op.Successed)
+            {
+                op= CompAuthorService.SaveOrUpdate(new CompanyAuthorize()
+                {
+                    CID=traders.CID,
+                    Title=traders.FullTitle,
+                    Way=way,
+                    StoreProper=storeProper,
+                    PosMinorDisp=posMinorDisp,
+                    AppProper=appProper,
+                    StoreNum=Convert.ToInt16(traders.ExistStoreNum),
+                    UserNum = Convert.ToInt16(traders.EachStorePersonNum),
+                    BusinessMode=traders.BusinessModeId,
+                    OpenScopeId=traders.BusinessScopeId,
+                    OpenVersionId=openVersionId,
+                    SupperAccount="",
+                    SupperPassword="",
+                    ContractNo="",
+                    EffectiveDT=DateTime.Now.ToString("yyyy-MM-dd"),
+                    ValidityNum=12,
+                    MachineSN = machine
+                });
+            }
+            return op;
+        }
+        /// <summary>
+        /// 商户审核通过、设为无效商户
+        /// </summary>
+        public OpResult setStatus(string ids, short status)
+        {
+            var sId = ids.Split(',').Select(o => int.Parse(o));
+            var olist = TradersRepository.GetQuery(o => sId.Contains(o.Id)).ToList();
+            olist.Each(o => o.Status = status);
+            return OpResult.Result(TradersRepository.SaveChanges());
+        }
+
+        /// <summary>
+        /// 更新客户分类
+        /// </summary>
+        public OpResult upType(string ids, string TraderTypeId)
+        {
+            var sId = ids.Split(',').Select(o => int.Parse(o));
+            var olist = TradersRepository.GetQuery(o => sId.Contains(o.Id)).ToList();
+            olist.Each(o => o.TraderTypeId = TraderTypeId);
+            return OpResult.Result(TradersRepository.SaveChanges());
+        }
+
+
+        /// <summary>
+        /// 删除
+        /// </summary>
+        public Utility.OpResult Deletes(int[] ids)
+        {
+            var op = new OpResult();
+            try
+            {
+                var tra = TradersRepository.GetQuery(o => ids.Contains(o.Id));
+                var cid = tra.Select(o => o.CID).ToArray();
+                var CompanyAuthorize = CompanyAuthorizeRepository.GetQuery(o => cid.Contains(o.CID ?? 0));
+                if (CompanyAuthorize.Any())
+                {
+                    op.Message = "无法删除，软件服务包含了选择的商户";
+                    return op;
+                }
+
+                var DAuthorize = DeviceAuthorizeRepository.GetQuery(o => cid.Contains(o.CID ?? 0));
+                if (DAuthorize.Any())
+                {
+                    op.Message = "无法删除，设备服务包含了选择的商户";
+                    return op;
+                }
+
+                var oList = OrderListRepository.GetQuery(o => cid.Contains(o.CID));
+                var vList = VisitTrackRepository.GetQuery(o => cid.Contains(o.CID));
+                
+
+                OrderListRepository.RemoveRange(oList.ToList());
+                VisitTrackRepository.RemoveRange(vList.ToList());
+                TradersRepository.RemoveRange(tra.ToList());
+
+                op.Successed = true;
+                LogEngine.WriteDelete("删除商户", LogModule.商户资料);
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                LogEngine.WriteError(ex);
+            }
+            return op;
+        }
+
+        /// <summary> 
+        /// 判断给定的字符串(strNumber)是否是数值型 
+        /// </summary> 
+        /// <param name="strNumber">要确认的字符串</param> 
+        /// <returns>是则返加true 不是则返回 false</returns> 
+        public bool IsNumber(string strNumber)
+        {
+            return new Regex(@"^([0-9])[0-9]*(\.\w*)?$").IsMatch(strNumber);
+        }
+
+        readonly TraderCache traderCache = new TraderCache();
+        public DataView ImportList(string type, string apiTitle, string searchText, string searchField, ref object foots)
+        {
+            var dt = traderCache.Get(CacheKey);
+            DataView dv = null;
+            if (dt != null && dt.Rows.Count > 0)
+            {
+                dv = dt.DefaultView;
+                //dv.Sort = "SaleDate asc";
+                dv.RowFilter = "1=1";
+                if (!type.IsNullOrEmpty())
+                    dv.RowFilter += " and type=" + type;
+                if (!apiTitle.IsNullOrEmpty())
+                    dv.RowFilter += " and apiTitle like '%" + apiTitle + "%'";
+                if (!searchText.IsNullOrEmpty())
+                    dv.RowFilter += " and " + searchField + " like '%" + searchText + "%'";
+                var saleList = dv.ToTable().AsEnumerable().GroupBy(o => new
+                {
+                    ApiOrderSN = o["ApiOrderSN"].ToString()
+                }).ToList();
+                decimal ApiCode_11 = 0, ApiCode_12 = 0, ApiCode_20 = 0, ApiCode_21 = 0, ApiCode_19 = 0, ApiCode_15 = 0, Change = 0, OrderDiscount = 0, WipeZero = 0, TotalAmount = 0, Receive = 0, SubTotal = 0, PurchaseNumber = 0;
+                foreach (var sale in saleList)
+                {
+                    ApiCode_11 += sale.Max(o => o.GetValue("ApiCode_11").ToType<decimal>());
+                    ApiCode_12 += sale.Max(o => o.GetValue("ApiCode_12").ToType<decimal>());
+                    ApiCode_20 += sale.Max(o => o.GetValue("ApiCode_20").ToType<decimal>());
+                    ApiCode_21 += sale.Max(o => o.GetValue("ApiCode_21").ToType<decimal>());
+                    ApiCode_19 += sale.Max(o => o.GetValue("ApiCode_19").ToType<decimal>());
+                    ApiCode_15 += sale.Max(o => o.GetValue("ApiCode_15").ToType<decimal>());
+                    Change += sale.Max(o => o.GetValue("Change").ToType<decimal>());
+                    OrderDiscount += sale.Max(o => o.GetValue("OrderDiscount").ToType<decimal>());
+                    WipeZero += sale.Max(o => o.GetValue("OrderDiscount").ToType<decimal>());
+                    TotalAmount += sale.Max(o => o.GetValue("TotalAmount").ToType<decimal>());
+                    Receive += sale.Max(o => o.GetValue("Receive").ToType<decimal>());
+                    SubTotal += sale.Sum(o => o.GetValue("SubTotal").ToType<decimal>());
+                    PurchaseNumber += sale.Sum(o => o.GetValue("PurchaseNumber").ToType<decimal>());
+                }
+                foots = new List<object>(){new { ApiCode_11 = ApiCode_11, ApiCode_12 = ApiCode_12, ApiCode_20 = ApiCode_20, ApiCode_21 = ApiCode_21, ApiCode_19 = ApiCode_19, ApiCode_15 = ApiCode_15, PurchaseNumber=PurchaseNumber,
+                    Change=Change, OrderDiscount=OrderDiscount, WipeZero=WipeZero, TotalAmount=TotalAmount,Receive=Receive,SubTotal=SubTotal,Type="-1",ApiTitle="合 计：" }};
+            }
+            return dv;
+        }
+        public OpResult Import(ImportSet obj, System.Web.HttpFileCollectionBase httpFiles, string fieldName, string columnName)
+        {
+            var op = new OpResult();
+            var errLs = new List<string>();
+            int count = 0, rowno = 0;
+            var dt = new DataTable();
+            try
+            {
+                Dictionary<string, char> fieldCols = null;
+                op = ImportSetService.ImportSet(obj, httpFiles, fieldName, columnName, ref fieldCols, ref dt);
+                if (!op.Successed) return op;
+                var users = SysUserInfoRepository.GetQuery().ToList();
+                var barcodeIdx = Convert.ToInt32(fieldCols["Barcode"]) - 65;
+                var barcodes = dt.AsEnumerable().Select(o => o[barcodeIdx].ToString()).Distinct().ToList();
+                foreach (var de in fieldCols)
+                {
+                    var idx = Convert.ToInt32(de.Value) - 65;
+                    var col = dt.Columns[idx];
+                    if (!dt.Columns.Contains(de.Key))
+                        col.ColumnName = de.Key;
+                }
+                dt.Columns.Add("ApiTitle");
+                dt.Columns.Add("ValuationType");
+                dt.Columns.Add("ProductCode");
+                dt.Columns.Add("BuyPrice");
+                dt.Columns.Add("StoreId");
+                dt.Columns.Add("SalesClassifyId2");
+                dt.Columns.Add("CreateUID2");
+                dt.Columns.Add("Salesman2");
+                dt.Columns.Add("InInventory");
+                dt.Columns.Add("Sort", typeof(int));
+                object ApiOrderSN = "", ApiTitle = "", ApiCode_11 = 0, ApiCode_12 = 0, ApiCode_20 = 0, ApiCode_21 = 0, ApiCode_19 = 0, PreferentialPrice = 0, Change = 0, WipeZero = 0, TotalAmount = 0, Type = 0;
+                int sort = 1;
+                if (!dt.Columns.Contains("ApiOrderSN"))
+                {
+                    dt.Rows.Clear();
+                    errLs.Add("销售流水号位置未指定!");
+                }
+                else
+                {
+                    var apiOrderSns = dt.AsEnumerable().Select(o => o["ApiOrderSN"].ToString()).Distinct().Where(o => !o.IsNullOrEmpty()).ToList();
+                }
+                if (!dt.Columns.Contains("SaleDate"))
+                {
+                    dt.Columns.Add("SaleDate", typeof(DateTime));
+                    foreach (DataRow dr in dt.Rows)
+                        dr["SaleDate"] = DateTime.Now;
+                }
+
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    var dr = dt.Rows[i];
+                    var ApiOrderSNCur = dr.GetValue("ApiOrderSN"); var ChangeCur = dr.GetValue("Change");
+                    var ApiCode_11Cur = dr.GetValue("ApiCode_11"); var ApiCode_12Cur = dr.GetValue("ApiCode_12");
+                    var ApiCode_20Cur = dr.GetValue("ApiCode_20"); var ApiCode_21Cur = dr.GetValue("ApiCode_21");
+                    var ApiCode_19Cur = dr.GetValue("ApiCode_19"); var PreferentialPriceCur = dr.GetValue("PreferentialPrice");
+                    var WipeZeroCur = dr.GetValue("WipeZero"); var TotalAmountCur = dr.GetValue("TotalAmount");
+                    var TypeCur = dr.GetValue("Type");
+                    var apiTitleCur = "";
+                    if (!(ApiCode_11Cur is DBNull))
+                        apiTitleCur += "现金,";
+                    if (!(ApiCode_12Cur is DBNull))
+                        apiTitleCur += "银联,";
+                    if (!(ApiCode_20Cur is DBNull))
+                        apiTitleCur += "支付宝,";
+                    if (!(ApiCode_21Cur is DBNull))
+                        apiTitleCur += "微信,";
+                    if (!(ApiCode_19Cur is DBNull))
+                        apiTitleCur += "即付宝,";
+                    if (dr.GetValue("ApiOrderSN") is DBNull)
+                    {
+                        dr["ApiOrderSN"] = ApiOrderSN; dr.SetValue("Change", Change);
+                        dr.SetValue("ApiCode_11", ApiCode_11); dr.SetValue("ApiCode_12", ApiCode_12);
+                        dr.SetValue("ApiCode_20", ApiCode_20); dr.SetValue("ApiCode_21", ApiCode_21);
+                        dr.SetValue("ApiCode_19", ApiCode_19); dr.SetValue("PreferentialPrice", PreferentialPrice);
+                        dr.SetValue("WipeZero", WipeZero); dr.SetValue("TotalAmount", TotalAmount);
+                        dr.SetValue("ApiTitle", ApiTitle); dr.SetValue("Type", Type);
+                        sort++;
+                    }
+                    else
+                    {
+                        ApiOrderSN = ApiOrderSNCur; Change = ChangeCur;
+                        ApiCode_11 = ApiCode_11Cur; ApiCode_12 = ApiCode_12Cur;
+                        ApiCode_20 = ApiCode_20Cur; ApiCode_21 = ApiCode_21Cur;
+                        ApiCode_19 = ApiCode_19Cur; PreferentialPrice = PreferentialPriceCur;
+                        WipeZero = WipeZeroCur; TotalAmount = TotalAmountCur;
+                        dr["ApiTitle"] = ApiTitle = apiTitleCur.TrimEnd(',');
+                        sort = 1; Type = TypeCur;
+                    }
+                    //dr["Receive"] = (ApiCode_11Cur is DBNull ? 0 : ApiCode_11Cur.ToType<decimal>()) +
+                    //    (ApiCode_12Cur is DBNull ? 0 : ApiCode_12Cur.ToType<decimal>()) +
+                    //    (ApiCode_20Cur is DBNull ? 0 : ApiCode_20Cur.ToType<decimal>()) +
+                    //    (ApiCode_21Cur is DBNull ? 0 : ApiCode_21Cur.ToType<decimal>()) +
+                    //    (ApiCode_19Cur is DBNull ? 0 : ApiCode_19Cur.ToType<decimal>()) -
+                    //    (ChangeCur is DBNull ? 0 : ChangeCur.ToType<decimal>());
+
+                    dr["StoreId"] = System.Web.HttpContext.Current.Request["storeId"];
+                    dr["InInventory"] = System.Web.HttpContext.Current.Request["InInventory"];
+                    dr["Sort"] = sort;
+                }
+
+                var removeDrs = new List<DataRow>();
+                var apisns = dt.AsEnumerable().GroupBy(o => o["ApiOrderSN"].ToString()).Select(o => o.Key).ToList();
+                count = apisns.Count;
+                rowno = obj.MinRow;
+                for (int i = 0; i < apisns.Count; i++)
+                {
+                    var apiSn = apisns[i];
+                    var drs = dt.Select("ApiOrderSN='" + apiSn + "'");
+                    if (false)
+                    {
+                        errLs.Add("行号[" + rowno + "]&nbsp;流水号[" + apiSn + "]已存在!");
+                        removeDrs.AddRange(drs);
+                        rowno += drs.Length;
+                        continue;
+                    }
+                    var receive = drs.Max(o => o.GetValue("Receive").ToType<decimal>());
+                    int j = 0;
+                    decimal totalAmount = 0;
+                    bool haszs = false;
+                    foreach (DataRow dr in drs)
+                    {
+                        var text = dr["Barcode"].ToString();
+                        if (text.IsNullOrEmpty())
+                        {
+                            errLs.Add("行号[" + (rowno + j) + "]条码不存在!");
+                            removeDrs.AddRange(drs);
+                            break;
+                        }
+                        //var pro = products.FirstOrDefault(o => o.Barcode == text || ("," + o.Barcodes + ",").Contains("," + text + ","));
+                        if (false)
+                        {
+                            errLs.Add("行号[" + (rowno + j) + "]&nbsp;流水号[" + apiSn + "]&nbsp;条码[" + text + "]档案不存在!");
+                            removeDrs.AddRange(drs);
+                            break;
+                        }
+                        text = dr.GetValue("Type").ToString();
+                        dr.SetValue("Type", text == "换货" ? "1" : text == "退货" ? "2" : text == "退单" ? "3" : "0");
+                        text = dr.GetValue("CreateUID").ToString();
+                        if (!text.IsNullOrEmpty() && users.Any(o => o.FullName == text || o.UserCode == text))
+                        {
+                            var user = users.FirstOrDefault(o => o.FullName == text || o.UserCode == text);
+                            dr["CreateUID2"] = user == null ? "" : user.UserId;
+                            if (user == null) dr["CreateUID"] = "";
+                        }
+                        else
+                        {
+                            errLs.Add("行号[" + (rowno + j) + "]&nbsp;流水号[" + apiSn + "]&nbsp;收银员" + (text.IsNullOrEmpty() ? "为空" : "[" + text + "]档案不存在!"));
+                            removeDrs.AddRange(drs);
+                            break;
+                        }
+                        text = dr.GetValue("Salesman").ToString();
+                        if (!text.IsNullOrEmpty() && users.Any(o => o.FullName == text || o.UserCode == text))
+                        {
+                            var user = users.FirstOrDefault(o => o.FullName == text || o.UserCode == text);
+                            dr["Salesman2"] = user == null ? "" : user.UserId;
+                            if (user == null) dr["Salesman"] = "";
+                        }
+                        else
+                        {
+                            errLs.Add("行号[" + (rowno + j) + "]&nbsp;流水号[" + apiSn + "]&nbsp;导购员" + (text.IsNullOrEmpty() ? "为空" : "[" + text + "]档案不存在!"));
+                            removeDrs.AddRange(drs);
+                            break;
+                        }
+                        text = dr.GetValue("SalesClassifyId").ToString();
+                        dr["SalesClassifyId2"] = text == "赠送" ? "49" : "47";
+                        if (text == "赠送")
+                        {
+                            dr.SetValue("SubTotal", 0);
+                            dr.SetValue("ActualPrice", 0);
+                            if (receive == 0)
+                                dr.SetValue("TotalAmount", 0);
+                            haszs = true;
+                        }
+                        totalAmount += dr.GetValue("ActualPrice").ToType<decimal>() * dr.GetValue("PurchaseNumber").ToType<decimal>();
+                        j++;
+                    }
+                    if (receive > 0 && haszs)
+                    {
+                        drs.Each(dr =>
+                        {
+                            dr.SetValue("TotalAmount", totalAmount);//重算应付金额
+                        });
+                    }
+                    rowno += drs.Length;
+                }
+                foreach (var dr in removeDrs)
+                {
+                    try { dt.Rows.Remove(dr); }
+                    catch { }
+                }
+                traderCache.Set(CacheKey, dt);
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                op.Successed = false;
+                LogEngine.WriteError(ex);
+                errLs.Add("导入出现异常!");
+            }
+            return CommonService.GenerateImportHtml(errLs, count);
+        }
+        public OpResult SureImport()
+        {
+            var op = new OpResult();
+            try
+            {
+                /*
+                var dt = traderCache.Get(CacheKey);
+                if (dt == null || dt.Rows.Count <= 0) return OpResult.Fail("预览已过期，请重新选择导入！");
+                //var saleOrders = new List<SaleOrders>();
+                var salelist = dt.AsEnumerable().GroupBy(o => new { ApiOrderSN = o["ApiOrderSN"].ToString() }).ToList();
+                var dates = dt.AsEnumerable().GroupBy(o => o.GetValue("SaleDate").ToType<DateTime>().ToString("yyyy-MM-dd")).Select(o => o.Key).ToList();
+                //var dicts = saleOrderDal.GetMaxNumByDate(dates, CommonService.CompanyId);
+
+                foreach (var sl in salelist)
+                {
+                    var sn = sl.Key.ApiOrderSN;
+                    var datetime = sl.Max(o => Convert.ToDateTime(o["SaleDate"]));
+                    var pre = "00" + datetime.ToString("yyyyMMdd");
+                    //if (dicts.ContainsKey(pre))
+                        //dicts[pre] += 1;
+                    //else
+                        //dicts[pre] = 1;
+                    var sale = new SaleOrders();
+                    sale.CustomOrderSn = pre + dicts[pre].ToString("0000");
+                    sale.MachineSN = "00";
+                    sale.CompanyId = CommonService.CompanyId;
+                    sale.CreateDT = datetime;
+                    sale.PaySN = Pharos.Logic.CommonRules.GUID;
+                    sale.CreateUID = sl.Max(o => o.GetValue("CreateUID2").ToString());
+                    sale.Salesman = sl.Max(o => o.GetValue("Salesman2").ToString());
+                    sale.StoreId = sl.Max(o => o.GetValue("StoreId").ToString());
+                    sale.Receive = sl.Max(o => o.GetValue("Receive").ToType<decimal>());
+                    sale.TotalAmount = sl.Max(o => o.GetValue("TotalAmount").ToType<decimal>());
+                    sale.Type = sl.Max(o => o.GetValue("Type").ToType<short>());
+                    sale.OrderDiscount = sl.Max(o => o.GetValue("OrderDiscount").ToType<decimal>());
+                    if (sl.Max(o => o.GetValue("InInventory").ToType<short>()) == 0)
+                    {
+                        sale.InInventory = 1;
+                        sale.IsProcess = true;
+                    }
+                    sale.SaleDetails = new List<SaleDetail>();
+                    sale.ConsumptionPayments = new List<ConsumptionPayment>();
+                    sale.WipeZeros = new List<WipeZero>();
+                    var ApiCode_11 = sl.Max(o => o.GetValue("ApiCode_11").ToString());
+                    var ApiCode_12 = sl.Max(o => o.GetValue("ApiCode_12").ToString());
+                    var ApiCode_20 = sl.Max(o => o.GetValue("ApiCode_20").ToString());
+                    var ApiCode_21 = sl.Max(o => o.GetValue("ApiCode_21").ToString());
+                    var ApiCode_19 = sl.Max(o => o.GetValue("ApiCode_19").ToString());
+                    var ApiCode_15 = sl.Max(o => o.GetValue("ApiCode_15").ToString());
+                    var WipeZero = sl.Max(o => o.GetValue("WipeZero").ToString());
+                    if (!(ApiCode_11.IsNullOrEmpty() || ApiCode_11 == "0"))
+                    {
+                        var payment = new ConsumptionPayment()
+                        {
+                            ApiOrderSN = sn,
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            State = 1
+                        };
+                        payment.ApiCode = 11;
+                        payment.Change = sl.Max(o => o.GetValue("Change").ToType<decimal>());
+                        payment.Received = ApiCode_11.ToType<decimal>();
+                        payment.Amount = payment.Received - payment.Change;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(ApiCode_12.IsNullOrEmpty() || ApiCode_12 == "0"))
+                    {
+                        var payment = new ConsumptionPayment()
+                        {
+                            Amount = ApiCode_12.ToType<decimal>(),
+                            ApiOrderSN = sn,
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            State = 1
+                        };
+                        payment.ApiCode = 12;
+                        payment.Received = payment.Amount;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(ApiCode_20.IsNullOrEmpty() || ApiCode_20 == "0"))
+                    {
+                        var payment = new ConsumptionPayment()
+                        {
+                            Amount = ApiCode_20.ToType<decimal>(),
+                            ApiOrderSN = sn,
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            State = 1
+                        };
+                        payment.ApiCode = 20;
+                        payment.Received = payment.Amount;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(ApiCode_21.IsNullOrEmpty() || ApiCode_21 == "0"))
+                    {
+                        var payment = new ConsumptionPayment()
+                        {
+                            Amount = ApiCode_21.ToType<decimal>(),
+                            ApiOrderSN = sn,
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            State = 1
+                        };
+                        payment.ApiCode = 21;
+                        payment.Received = payment.Amount;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(ApiCode_19.IsNullOrEmpty() || ApiCode_19 == "0"))
+                    {
+                        var payment = new ConsumptionPayment()
+                        {
+                            Amount = ApiCode_19.ToType<decimal>(),
+                            ApiOrderSN = sn,
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            State = 1
+                        };
+                        payment.ApiCode = 19;
+                        payment.Received = payment.Amount;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(ApiCode_15.IsNullOrEmpty() || ApiCode_15 == "0"))
+                    {
+                        var payment = new ConsumptionPayment()
+                        {
+                            Amount = ApiCode_15.ToType<decimal>(),
+                            ApiOrderSN = sn,
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            State = 1
+                        };
+                        payment.ApiCode = 15;
+                        payment.Received = payment.Amount;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (sale.ConsumptionPayments.Count <= 0)
+                    {
+                        var payment = new ConsumptionPayment()
+                        {
+                            ApiOrderSN = sn,
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            State = 1
+                        };
+                        payment.ApiCode = 11;
+                        payment.Received = 0;
+                        payment.Amount = 0;
+                        payment.Change = 0;
+                        sale.ConsumptionPayments.Add(payment);
+                    }
+                    if (!(WipeZero.IsNullOrEmpty()))
+                    {
+                        sale.WipeZeros.Add(new WipeZero()
+                        {
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            Number = WipeZero.ToType<decimal>()
+                        });
+                    }
+                    foreach (DataRow dr in dt.Select("ApiOrderSN='" + sn + "'"))
+                    {
+                        var detail = new SaleDetail()
+                        {
+                            ActualPrice = dr.GetValue("ActualPrice").ToType<decimal>(),
+                            Barcode = dr.GetValue("Barcode").ToString(),
+                            BuyPrice = dr.GetValue("BuyPrice").ToType<decimal>(),
+                            CompanyId = sale.CompanyId,
+                            PaySN = sale.PaySN,
+                            ProductCode = dr.GetValue("ProductCode").ToString(),
+                            PurchaseNumber = dr.GetValue("PurchaseNumber").ToType<decimal>(),
+                            SalesClassifyId = dr.GetValue("SalesClassifyId2").ToType<int>(),
+                            ScanBarcode = dr.GetValue("Barcode").ToString(),
+                            SysPrice = dr.GetValue("SysPrice").ToType<decimal>(),
+                            Title = dr.GetValue("Title").ToString(),
+                        };
+                        sale.ProductCount += dr["ValuationType"].ToString() == "2" ? 1 : detail.PurchaseNumber;
+                        var subt = dr.GetValue("SubTotal");
+                        detail.Total = subt is DBNull ? detail.PurchaseNumber * detail.ActualPrice : subt.ToType<decimal>();
+                        detail.AveragePrice = detail.Total / detail.PurchaseNumber;
+                        sale.SaleDetails.Add(detail);
+                    }
+                    sale.ApiCode = string.Join(",", sale.ConsumptionPayments.Select(o => o.ApiCode));
+                    //var total = sale.SaleDetails.Sum(o => o.Total);
+                    //var rate =total==0?0: sale.Receive / total;
+                    //sale.SaleDetails.Each(o => o.AveragePrice = o.ActualPrice * rate);
+                    saleOrders.Add(sale);
+                }
+                op = AddRange(saleOrders);
+                if (op.Successed)
+                {
+                    saleOrderCache.Remove(CacheKey);
+                    Log.WriteInsert("销售数据导入", Sys.LogModule.其他);
+
+                    var stores = string.Join(",", saleOrders.Select(o => o.StoreId).Distinct());
+                    Pharos.Infrastructure.Data.Redis.RedisManager.Publish("SyncDatabase", new Pharos.ObjectModels.DTOs.DatabaseChanged() { CompanyId = Sys.SysCommonRules.CompanyId, StoreId = stores, Target = "SalePackage" });
+                }
+                */
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                op.Successed = false;
+                LogEngine.WriteError(ex);
+            }
+            return op;
+        }
+        public void ClearImport()
+        {
+            traderCache.Remove(CacheKey);
+        }
+        string CacheKey { get { return KeyFactory.UserKeyFactory(0, CurrentUser.UID) + "_"; } }
+    }
+}

@@ -1,0 +1,408 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using System.Collections.Specialized;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Sys.Entity;
+
+namespace Pharos.Logic.BLL
+{
+    public class CommodityReturnsBLL : BaseService<CommodityReturns>
+    {
+        /// <summary>
+        /// 保存或修改
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static OpResult SaveOrUpdate(CommodityReturns obj)
+        {
+            var re = new OpResult();
+            try
+            {
+                var details = new List<CommodityReturnsDetail>();
+                if (!string.IsNullOrWhiteSpace(obj.Rows))
+                {
+                    var commodityDetail = obj.Rows.ToObject<List<CommodityReturnsDetail>>();
+                    if (commodityDetail.Any())
+                        details.AddRange(commodityDetail.Where(o => !string.IsNullOrWhiteSpace(o.Barcode)));
+                }
+                //判断退货的商品在该出货仓是否有库存记录
+                var stockNums = CommodityService.GetStockNumsByStoreId(obj.StoreId);
+                foreach (var d in details)
+                {
+                    var stockNum = stockNums.FirstOrDefault(o => o.Key == d.Barcode);
+                    if (stockNum.Value == 0 && string.IsNullOrEmpty(stockNum.Key))
+                    {
+                        re.Successed = true;
+                        re.Message = string.Format("操作失败！当前选择的出货仓不存在条码为“{0}”的商品，无法退货!", d.Barcode);
+                        return re;
+                    }
+                }
+                if (obj.Id == 0)
+                {
+                    //生成退货单号
+                    string returnId = "";
+                    var firstReturnId = DateTime.Now.ToString("yyyyMM") + "0001";
+                    var firstReturnIdToInt = long.Parse(firstReturnId);
+                    var dateTime = DateTime.Parse(DateTime.Now.ToShortDateString());
+                    var firstDay = dateTime.AddDays(1 - dateTime.Day);
+                    var lastDay = dateTime.AddDays(1 - dateTime.Day).AddMonths(1);
+                    var sources = BaseService<CommodityReturns>.FindList(o => o.CreateDT >= firstDay && o.CreateDT < lastDay).Select(o => o.ReturnId);
+                    var monthCount = sources.Count();
+                    if (monthCount == 0)
+                    {
+                        returnId = firstReturnId;
+                    }
+                    else
+                    {
+                        returnId = (firstReturnIdToInt + monthCount).ToString();
+                    }
+                    //新增                                  
+                    obj.ReturnId = returnId;
+                    obj.CreateUID = Sys.CurrentUser.UID;
+                    obj.CreateDT = DateTime.Now;
+                    obj.State = 0;
+                    foreach (var d in details)
+                    {
+                        var Pro = BaseService<VwProduct>.Find(o => o.Barcode == d.Barcode);
+                        d.ReturnId = returnId;
+                        //d.SysPrice = Pro.SysPrice;
+                    }
+                    BaseService<CommodityReturnsDetail>.CurrentRepository.AddRange(details, false);
+                    re = Add(obj, true);
+                    re.Message = "操作成功！";
+                }
+                else
+                {
+                    //编辑
+                    var commodityReturn = FindById(obj.Id);
+                    commodityReturn.ReturnId = obj.ReturnId;
+                    commodityReturn.StoreId = obj.StoreId;
+                    commodityReturn.SupplierID = obj.SupplierID;
+                    commodityReturn.CreateUID = obj.CreateUID;
+                    commodityReturn.CreateDT = obj.CreateDT;
+                    //commodityReturn.State = obj.State;//可能由于退货明细状态的修改，导致退货信息状态的修改，前台的退货信息状态是旧数据，无需再保存
+                    foreach (var d in details)
+                    {
+                        d.ReturnId = commodityReturn.ReturnId;
+                    }
+                    var oldCommodityReturnsDetail = BaseService<CommodityReturnsDetail>.CurrentRepository.FindList(o => o.ReturnId == commodityReturn.ReturnId).ToList();
+                    BaseService<CommodityReturnsDetail>.CurrentRepository.RemoveRange(oldCommodityReturnsDetail, false);
+                    BaseService<CommodityReturnsDetail>.CurrentRepository.AddRange(details, false);
+                    re = Update(commodityReturn, true);
+                    re.Message = "操作成功！";
+                }
+            }
+            catch (Exception ex)
+            {
+                re.Message = ex.Message;
+            }
+            return re;
+        }
+
+        /// <summary>
+        /// 退货管理列表
+        /// </summary>
+        /// <param name="nvl">查询条件</param>
+        /// <param name="recordCount">总记录数</param>
+        /// <returns>退换管理列表</returns>
+        public static object CommodityReturnList(NameValueCollection nvl, out int recordCount)
+        {
+            var queryCommodityReturn = BaseService<CommodityReturns>.CurrentRepository.QueryEntity;
+            var queryReturnDetail = BaseService<CommodityReturnsDetail>.CurrentRepository.QueryEntity;
+            var queryStore = BaseService<Warehouse>.CurrentRepository.QueryEntity;
+            var queryUser = UserInfoService.CurrentRepository.QueryEntity;
+            var querySupplier = BaseService<Supplier>.CurrentRepository.QueryEntity;
+
+            var groupbyReturnDetail = from a in queryReturnDetail
+
+                                      group a by a.ReturnId into g
+                                      select new
+                                     {
+                                         g.Key,
+                                         TotalPrice = g.Sum(a => a.SysPrice * a.ReturnNum),
+                                         TotalNum = g.Sum(a => a.ReturnNum)
+                                     };
+
+            var query = from x in queryCommodityReturn
+                        join j in queryUser on x.CreateUID equals j.UID into tempUser
+                        from k in tempUser.DefaultIfEmpty()
+                        join l in queryStore on x.StoreId equals l.StoreId
+                        join m in groupbyReturnDetail on x.ReturnId equals m.Key
+                        join n in querySupplier on x.SupplierID equals n.Id into temp3
+                        from p in temp3.DefaultIfEmpty()
+                        select new
+                        {
+                            x.Id,
+                            x.ReturnId,
+                            x.State,
+                            x.CreateDT,
+                            x.CreateUID,
+                            CreateTitle = k.FullName,
+                            StoreTitle = l.Title,
+                            m.TotalPrice,
+                            m.TotalNum,
+                            SupplierTitle = p.Title
+                        };
+            var returnType = nvl["ReturnType"];
+            var returnState = nvl["State"];
+            var searchText = nvl["SearchText"];
+
+            if (!returnState.IsNullOrEmpty())
+            {
+                var rs = short.Parse(returnState);
+                query = query.Where(r => r.State == rs);
+            }
+            if (!searchText.IsNullOrEmpty())
+            {
+                query = query.Where(r => (r.ReturnId != null && r.ReturnId.Contains(searchText)));
+            }
+
+            recordCount = query.Count();
+            var reason = SysDataDictService.GetReasonTitle();
+            return query.ToPageList(nvl).Select(o => new
+            {
+                o.Id,
+                o.ReturnId,
+                o.State,
+                o.StoreTitle,
+                CreateDT = o.CreateDT.ToString("yyyy-MM-dd"),
+                o.CreateUID,
+                o.CreateTitle,
+                o.SupplierTitle,
+                StateTitle = Enum.GetName(typeof(OrderReturnState), o.State),
+                TotalNum = o.TotalNum.ToAutoString(),
+                TotalPrice = o.TotalPrice.ToAutoString()
+            });
+        }
+
+        /// <summary>
+        /// 获取退换明细
+        /// </summary>
+        /// <param name="returnId"></param>
+        /// <param name="recordCount"></param>
+        /// <returns></returns>
+        public static object GetCommodityReturnsById(string returnId, out int recordCount)
+        {
+            var queryReturn = BaseService<CommodityReturns>.CurrentRepository.QueryEntity;
+            var queryReturnDetail = BaseService<CommodityReturnsDetail>.CurrentRepository.QueryEntity;
+            var queryProduct = BaseService<ProductRecord>.CurrentRepository.QueryEntity;
+            var queryData = BaseService<SysDataDictionary>.CurrentRepository.QueryEntity;
+            var query = from x in queryReturn
+                        join y in queryReturnDetail on x.ReturnId equals y.ReturnId
+                        join z in queryProduct on y.Barcode equals z.Barcode
+                        join m in queryData on z.SubUnitId equals m.DicSN into tempUnit
+                        from n in tempUnit.DefaultIfEmpty()
+                        where x.ReturnId == returnId
+                        select new
+                        {
+                            x.Id,
+                            DetailId = y.Id,
+                            x.ReturnId,
+                            z.ProductCode,
+                            y.Barcode,
+                            z.Title,
+                            z.SubUnitId,
+                            SubUnit = n.Title,
+                            y.SysPrice,
+                            y.BuyPrice,
+                            y.ReturnNum,
+                            y.Memo,
+                            y.State
+                        };
+
+            recordCount = query.Count();
+            //var sql = query.ToString();
+            return query.ToPageList().Select(o => new
+            {
+                o.Id,
+                o.DetailId,
+                o.ReturnId,
+                o.ProductCode,
+                o.Barcode,
+                o.Title,
+                o.SubUnit,
+                o.SysPrice,
+                o.BuyPrice,
+                o.ReturnNum,
+                o.Memo,
+                o.State,
+                StateTitle = Enum.GetName(typeof(OrderReturnState), o.State)
+            });
+        }
+
+        /// <summary>
+        /// 修改主表退货状态（及其明细表）
+        /// </summary>
+        /// <param name="Ids">一组Id</param>
+        /// <param name="state">状态</param>
+        /// <returns>修改后的列表</returns>
+        public static OpResult SetStates(string Ids, short state)
+        {
+            var re = OpResult.Fail("操作失败");
+            var ids = Ids.Split(',').Select(o => int.Parse(o)).ToList();
+            var list = CommodityReturnsBLL.FindList(o => ids.Contains(o.Id));
+            list.ForEach(o => { o.State = state; });
+
+            var returnId = CommodityReturnsBLL.FindList(o => ids.Contains(o.Id)).Select(o => o.ReturnId);
+            var detail = BaseService<CommodityReturnsDetail>.FindList(o => returnId.Contains(o.ReturnId));
+            detail.ForEach(o => { o.State = state; });
+
+            if (state == 2)
+            {//转为已完成状态
+                #region 从商品库中扣除相应库存
+                var invents = new List<InventoryRecord>();
+                var storeIds = list.GroupBy(o => o.StoreId).Select(o => o.Key).ToList();
+                foreach (var storeId in storeIds)
+                {
+                    var returnGoodsGroupbyStore = list.Where(o => o.StoreId == storeId).ToList();
+                    var returnGoodIdsGroupbyStore = returnGoodsGroupbyStore.Select(o => o.ReturnId).ToList();
+                    var returnListGroupbyStore = detail.Where(o => returnGoodIdsGroupbyStore.Contains(o.ReturnId)).ToList();
+                    var datas = (from a in returnListGroupbyStore
+                                 group a by a.Barcode into g
+                                 select new
+                                 {
+                                     g.Key,
+                                     ReturnNum = g.Sum(o => o.ReturnNum)
+                                 }).ToDictionary(o => o.Key, o => o.ReturnNum);
+                    //判断出库的商品是否有库存记录
+                    var stockNums = CommodityService.GetStockNumsByStoreId(storeId);
+                    foreach (var d in datas)
+                    {
+                        var stockNum = stockNums.FirstOrDefault(o => o.Key == d.Key);
+                        if (stockNum.Value == 0 && string.IsNullOrEmpty(stockNum.Key))
+                        {
+                            re.Message = string.Format("条码：{0} 不存在库存记录，无法退货", d.Key);
+                            return re;
+                        }
+                        invents.Add(new InventoryRecord() { Barcode = d.Key, StoreId = storeId, Number = d.Value, Source = 14 });
+                    }
+                    //扣除库存
+                    var updateReusult = CommodityService.OutBoundReduceStock(datas, storeId);
+                    //更新状态
+                    if (updateReusult.Successed)
+                    {
+
+                    }
+                    else
+                    {
+                        re.Message = updateReusult.Message;
+                        return re;
+                    }
+                }
+                InventoryRecordService.SaveLog(invents);
+            }
+            CommodityReturnsBLL.Update(list,false);
+            re = BaseService<CommodityReturnsDetail>.Update(detail,true);
+            #endregion
+            return re;
+        }
+
+        /// <summary>
+        /// 操作栏_修改明细表退货状态（及其主表）
+        /// </summary>
+        /// <param name="id">当前行id</param>
+        /// <param name="state">要修改成这个状态</param>
+        /// <returns>修改后的列表</returns>
+        public static OpResult setState_Editor(int id, short state)
+        {
+            var re = OpResult.Fail("操作失败");
+            var obj = BaseService<CommodityReturnsDetail>.Find(o => o.Id == id);
+            obj.State = state;
+            var returnId = BaseService<CommodityReturnsDetail>.FindById(id).ReturnId;
+            var comReturn = CommodityReturnsBLL.Find(o => o.ReturnId == returnId);
+            if (state == 2)
+            {//转为已完成
+                #region 从商品库中扣除相应库存
+                var datas = new Dictionary<string, decimal>();
+                datas.Add(obj.Barcode,obj.ReturnNum);
+                //判断出库的商品是否有库存记录
+                var stockNums = CommodityService.GetStockNumsByStoreId(comReturn.StoreId);
+                foreach (var d in datas)
+                {
+                    var stockNum = stockNums.FirstOrDefault(o => o.Key == d.Key);
+                    if (stockNum.Value == 0 && string.IsNullOrEmpty(stockNum.Key))
+                    {
+                        re.Message = string.Format("条码：{0} 不存在库存记录，无法退货", d.Key);
+                        return re;
+                    }
+                }
+                //扣除库存
+                var updateReusult = CommodityService.OutBoundReduceStock(datas, comReturn.StoreId);
+                //更新状态
+                if (updateReusult.Successed)
+                {
+
+                }
+                else
+                {
+                    re.Message = updateReusult.Message;
+                    return re;
+                }
+                #endregion
+            }
+
+            re = BaseService<CommodityReturnsDetail>.Update(obj);
+
+            var detail = BaseService<CommodityReturnsDetail>.FindList(o => o.ReturnId == returnId);
+            int detailCount = detail.Count();
+            int countState = 0;
+            foreach (var d in detail)
+            {
+                if (d.State == state)
+                {
+                    countState = countState + 1;
+                }
+            }
+            if (countState == detailCount)
+            {
+                comReturn.State = state;
+                re = CommodityReturnsBLL.Update(comReturn);
+            }
+
+            return re;
+        }
+
+        /// <summary>
+        /// 获得打印退货单
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <returns></returns>
+        public static List<CommodityReturns> GetPrintReturn(string Ids)
+        {
+            var ids = Ids.Split(',').Select(o => o.ToString());
+            var queryReturn = BaseService<CommodityReturns>.CurrentRepository;
+            var queryReturnDetail = BaseService<CommodityReturnsDetail>.CurrentRepository;
+            var queryRecord = BaseService<ProductRecord>.CurrentRepository.QueryEntity;
+            var queryData = BaseService<SysDataDictionary>.CurrentRepository.QueryEntity;
+            var commodityReturns = queryReturn.FindList(o => ids.Contains(o.Id.ToString())).ToList();
+
+            foreach (var commodityReturn in commodityReturns)
+            {
+                commodityReturn.Details = queryReturnDetail.FindList(o => o.ReturnId == commodityReturn.ReturnId).ToList();
+                if (commodityReturn.Details != null)
+                {
+                    foreach (var detail in commodityReturn.Details)
+                    {
+                        var productRecode = queryRecord.FirstOrDefault(o => o.Barcode == detail.Barcode);
+                        if (productRecode != null)
+                        {
+                            detail.ProductCode = productRecode.ProductCode;
+                            detail.ProductTitle = productRecode.Title;
+                            var unit = queryData.FirstOrDefault(o => o.DicSN == productRecode.SubUnitId);
+                            if (unit != null)
+                            {
+                                detail.Unit = unit.Title;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return commodityReturns;
+        }
+    }
+}

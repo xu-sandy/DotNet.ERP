@@ -1,0 +1,74 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Web;
+
+namespace QCT.Api.Pay.Utils
+{
+    public class PayHelper
+    {
+        /// <summary>
+        /// Post提交支付接口
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="paramsStr"></param>
+        /// <returns></returns>
+        public static string PostPayApi(string url, string paramsStr)
+        {
+            var httpRequest = (HttpWebRequest)WebRequest.Create(url);
+            httpRequest.Method = "POST";
+            httpRequest.ContentType = "application/x-www-form-urlencoded";
+            httpRequest.Timeout = 15000;
+            httpRequest.ReadWriteTimeout = 15000;
+            byte[] byteRequest = System.Text.Encoding.UTF8.GetBytes(paramsStr);
+            httpRequest.ContentLength = byteRequest.Length;
+            Stream requestStream = httpRequest.GetRequestStream();
+            requestStream.Write(byteRequest, 0, byteRequest.Length);
+            requestStream.Close();
+
+            //获取服务端返回
+            var response = (HttpWebResponse)httpRequest.GetResponse();
+            //获取服务端返回数据
+            StreamReader sr = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+            var result = sr.ReadToEnd().Trim();
+            sr.Close();
+            return result;
+        }
+        /// <summary>
+        /// 组装请求参数为签名字符串
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static string GetParamsStr(SortedDictionary<string,object> obj)
+        {
+            StringBuilder signdatasb = new StringBuilder();
+            foreach (var item in obj)
+            {
+                String key = item.Key;
+                String value = obj[key] == null ? "" : obj[key].ToString();
+                signdatasb.Append("&").Append(key).Append("=").Append(value);
+            }
+            return signdatasb.ToString().Substring(1);
+        }
+        /// <summary>
+        /// MD5加密
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static string GetMD5(string value)
+        {
+            MD5 md5 = MD5.Create();
+            byte[] data = md5.ComputeHash(Encoding.UTF8.GetBytes(value));
+            string str = "";
+            for (int i = 0; i < data.Length; i++)
+            {
+                str += data[i].ToString("x2").ToUpperInvariant();
+            }
+            return str;
+        }
+    }
+}

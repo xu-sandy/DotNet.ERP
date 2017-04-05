@@ -1,0 +1,60 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.ServiceProcess;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Pharos.POS.ClientService
+{
+    static class Program
+    {
+        /// <summary>
+        /// 应用程序的主入口点。
+        /// </summary>
+        [STAThread]
+        static void Main(string[] args)
+        {
+
+            if (Environment.UserInteractive)
+            {
+                string parameter = string.Concat(args);
+                switch (parameter)
+                {
+                    case "-i":
+                        ServiceHelper.InstallWindowsService();
+                        break;
+                    case "-u":
+                        ServiceHelper.UninstallWindowsService();
+                        return;
+                    case "-start":
+                        ServiceHelper.StartService();
+                        break;
+                    case "-stop":
+                        ServiceHelper.StopService();
+                        break;
+                    default:
+                        var status = ServiceHelper.CheckServiceStatus();
+                        if (status == null)
+                        {
+                            ServiceHelper.InstallWindowsService();
+                        }
+                        else if (status != ServiceControllerStatus.Running)
+                        {
+                            ServiceHelper.StartService();
+                        }
+                        break;
+                }
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new MainForm());
+            }
+            else
+            {
+                ServiceBase[] servicesToRun;
+                servicesToRun = new ServiceBase[] { new POSService() };
+                ServiceBase.Run(servicesToRun);
+            }
+        }
+    }
+}

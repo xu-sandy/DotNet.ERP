@@ -1,0 +1,31 @@
+﻿using System;
+
+namespace Pharos.Logic.ApiData.Pos.Exceptions
+{
+    /// <summary>
+    /// POS异常
+    /// </summary>
+    [Serializable]
+    public class PosException : Exception
+    {
+        public PosException(string msg)
+            : base(msg)
+        {
+
+        }
+        public PosException(string errorCode, string msg)
+            : this(msg)
+        {
+            ErrorCode = errorCode;
+        }
+        public PosException(string errorCode, string msg,object obj)
+            : this(msg)
+        {
+            ErrorCode = errorCode; Info = obj;
+        }
+        public string ErrorCode { get; set; }
+
+        public object Info { get; set; }
+
+    }
+}

@@ -1,0 +1,56 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("Id")
+        @Html.Hidden("State")
+        <div class="content">
+            <table class="table-toolbar" width="100%" height="160px">
+                <tr>
+                    <td class="name">调出分店：</td>
+                    <td class="input">@Html.DisplayText("OutStoreTitle")</td>
+                    <td class="name">调入分店：</td>
+                    <td class="input">@Html.DisplayText("InStoreTitle")</td>
+                </tr>
+                <tr>
+                    <td class="name">商品条码：</td>
+                    <td class="input">@Html.DisplayText("Barcode")</td>
+                    <td class="name">商品名称：</td>
+                    <td class="input">@Html.DisplayText("Title")</td>
+                </tr>
+                <tr>
+                    <td class="name">申请数量：</td>
+                    <td class="input">@Html.DisplayText("OrderQuantity", "{0:f2}")</td>
+                    <td class="name">系统售价：</td>
+                    <td class="input">@Html.DisplayText("SysPrice", "{0:f2}")</td>
+                </tr>
+                <tr>
+                    <td class="name">备注说明：</td>
+                    <td class="input" colspan="3">
+                        @Html.DisplayText("Memo")
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">配送数量：</td>
+                    <td class="input">@Html.DisplayText("DeliveryQuantity","{0:f2}") @Html.DisplayText("SubUnit")</td>
+                    <td class="name">收货数量：</td>
+                    <td class="input">@Html.TextBox("ActualQuantity", ViewData["ActualQuantity"], new { @class = "easyui-numberspinner", data_options = "required:true,min:0.1,precision:2" })</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    function SaveBefore() {
+        var receNum = $("#ActualQuantity").numberbox("getValue");
+        var max= @(ViewData.Eval("DeliveryQuantity"));
+        if (receNum > max) {
+            $.messager.alert("提示", "收货数量不能大于配送数量!"); return false;
+        }
+        return true;
+    }
+</script>

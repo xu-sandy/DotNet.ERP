@@ -1,0 +1,208 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.库存管理_入库登记);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.库存管理_查看入库信息) || !hideAdd;
+    var hideInbound = !CurrentUser.HasPermiss(SysConstLimits.库存管理_设为已验入库);
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.库存管理_删除入库信息);
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: hideDel, delText: "删除记录",searchHeight:80));
+}
+@section search{
+    <table class="table-toolbar" style="margin-top:-3px;">
+        <tr>
+            <td class="label-toolbar">入库员：</td>
+            <td class="input-toolbar">
+                @Html.DropDownList("CreateUID", ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox datacontrol" })
+            </td>
+            <td class="label-toolbar">门店： </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("Store", ViewBag.stores as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+            </td>
+            <td class="label-toolbar">供货单位： </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("SupplierID", ViewBag.suppliers as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "width:180" })
+            </td>
+            <td class="label-toolbar">订货单号：</td>
+            <td class="input-toolbar">
+                <input name="IndentOrderId" class="datacontrol" style="width:140px;" />
+            </td>
+        </tr>
+        <tr>
+            <td class="label-toolbar">状态： </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("State", ViewBag.inboundState as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+            </td>
+            <td class="label-toolbar">入库日期：</td>
+            <td class="input-toolbar">
+                <input name="StartDate" id="" class="Wdate datacontrol" style="width: 110px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+                <label style="padding-left:5px;padding-right:5px;line-height:30px;">-</label>
+                <input name="EndDate" id="" class="Wdate datacontrol" style="width: 110px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar{
+    @if (!hideInbound)
+    {
+        <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-approved'" onclick="setState()">设为已验</a>
+    }
+    <a class="easyui-linkbutton cus1 linkbtn" onclick="printInboundGoods()">打印入库单</a>
+}
+
+<script type="text/javascript">
+
+    pharos.manager.geturl = "@Url.Action("FindInboundList", "Store")";
+    pharos.manager.columns = [[
+         { field: 'Buyer', title: '采购员', width: 80, align: 'center' },
+         { field: 'ReceivedDT', title: '到货日期', width: 100, align: 'center' },
+         { field: 'SupplierTitle', title: '供应单位', width: 100, align: 'center' },
+         { field: 'DistributionBatch', title: '配送批次', width: 90, align: 'center' },
+         { field: 'InboundNumber', title: '入库数量', width: 80, align: 'center' },
+         { field: 'InboundPrice', title: '入库金额', width: 80, align: 'center' },
+         { field: 'CreateDTStr', title: '入库日期', width: 100, align: 'center' },
+         { field: 'Creater', title: '入库员', width: 70, align: 'center' },
+         { field: 'StateTitle', title: '审核状态', width: 80, align: 'center' },
+    ]];
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true, width: 30 },
+        { field: 'InboundGoodsId', title: '入库单', width: 150, align: 'center' },
+        { field: 'StoreTitle', title: '门店', width: 140, align: 'center' },
+        { field: 'IndentOrderId', title: '订货单号', width: 120, align: 'center' }
+    ]]
+    //变更状态
+    function setState() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        $.messager.confirm("提示", "是否将选中的入库单设为已验?", function (r) {
+            if (!r) { return r; }
+            var ids = $.map(rows, function (item) {
+                return item.Id;
+            }).join();
+            $.post("@Url.Action("SetInboundStateToChecked")", { Ids: ids, t: Math.random() }, function (d) {
+                if (d.successed) {
+                    $.messager.alert("提示", "成功入库！", "info");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "修改失败！" + d.message, "error");
+                }
+            }, "json");
+        });
+    }
+    //编辑入库单
+    var editBtns = [
+        {
+            text: '设为已验',
+            iconCls: 'icon-approved',
+            width:110,
+            handler: function () {
+                window.top.$('#formDiv iframe')[0].contentWindow.$.messager.confirm("提示", "是否将该入库单设为已验（设为已验后将不能修改）?", function (r) {
+                    if (!r) { return r; }
+                    //设置为需要已验
+                    window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form #isNeedChecked').val(1);
+                    //保存并设为已验
+                    window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+                })
+            }
+        },
+        {
+            text: '保存',
+            iconCls: 'icon-ok',
+            id: "lbsave",
+            handler: function () {
+                window.top.$('#formDiv iframe')[0].contentWindow.$('.default-form form').submit();
+            }
+        }, {
+            text: '关闭',
+            iconCls: 'icon-cancel',
+            handler: function () {
+                pharos.easyui.dialog.topClose("formDiv");
+            }
+        }
+    ];
+    pharos.manager.editItem = function (Id, row) {
+        if (row.StateTitle == "已验") {
+            @if(showDetail)
+            {
+            @:openDialog(this.editText, '@Url.Action("InboundGoods","Store")?inboundGoodsId=' + row.InboundGoodsId, $(window.parent).width() - 80, $(window.parent).height() - 80, true);
+                                                                                    }
+        }
+        else {
+            @if(!hideAdd)
+            {
+            @*@:openDialog(this.editText, '@Url.Action("InboundGoods","Store")?inboundGoodsId=' + row.InboundGoodsId, $(window.parent).width() - 80, $(window.parent).height() - 80, false);*@
+            @:editInboundGoodsDialog(row.InboundGoodsId);
+                        }
+        }
+    }
+
+    function editInboundGoodsDialog(inboundGoodsId) {
+        var url = '@Url.Action("InboundGoods","Store")?inboundGoodsId=' + inboundGoodsId;
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("body").openTopDialog({
+            id: "formDiv",
+            title: "修改",
+            width: $(window.parent).width() - 80,
+            height: $(window.parent).height() - 80,
+            content: cont,
+            modal: true,
+            cache: false,
+            buttons: editBtns,
+            tools: dialogTools(),
+            onClose: closeDialog
+        });
+    }
+
+    //打印入库单
+    var btns = [{
+        text: '打印',
+        iconCls: '',
+        handler: function () {
+            window.top.$('#formDiv iframe')[0].contentWindow.printt();
+        }
+    },
+    {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            pharos.easyui.dialog.topClose("formDiv");
+        }
+    }];
+    function printInboundGoods() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var isAllChecked = true;
+        var uncheckedInboundId = '';
+        var ids = $.map(rows, function (item) {
+            if (item.StateTitle == "待验") {
+                isAllChecked = false;
+                uncheckedInboundId = item.InboundGoodsId;
+            }
+            return item.Id;
+        }).join();
+        if (!isAllChecked) {
+            $.messager.alert("提示", "入库单：" + uncheckedInboundId + "为待验状态，不能打印");
+        } else {
+            openPrintDialog(ids);
+        }
+
+    }
+
+    function openPrintDialog(ids) {
+        var url = "@Url.Action("InboundGoodsPrintView", "Store")?Ids=" + ids + "&t=" + Math.random();
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("body").openTopDialog({
+            id: "formDiv",
+            title: "打印入库单",
+            width: $(window.parent).width() >= 1000 ? 1000 : $(window.parent).width() - 80,
+            height: $(window.parent).height() >= 700 ? 700 : $(window.parent).height() - 80,
+            content: cont,
+            //href: url,
+            modal: true,
+            cache: false,
+            buttons: btns,
+            tools: dialogTools(),
+            onClose: closeDialog
+        });
+    }
+
+</script>

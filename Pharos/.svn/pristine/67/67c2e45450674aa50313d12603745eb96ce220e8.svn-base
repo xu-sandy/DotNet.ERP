@@ -1,0 +1,129 @@
+﻿@using Pharos.Logic.OMS.Entity
+@using Pharos.Logic.OMS.Entity.View
+@model  BankCardInfo
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .formbox td {
+        padding: 5px 0px;
+    }
+</style>
+
+<script type="text/javascript">
+
+    //获取url的参数
+    function getUrlParam(name) {
+
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+
+        var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+
+        if (r != null) return unescape(r[2]); return null; //返回参数值
+
+    }
+
+    $(function () {
+        //代理商编号
+        $("#AgentsId").next().find(".combo-arrow").removeClass("combo-arrow");
+        //商户号
+        $("#CID").next().find(".combo-arrow").removeClass("combo-arrow");
+    });
+
+    function SaveBefore() {
+        return true;
+    }
+
+    var comboRows = [];
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 0) return false;
+        var $combo = $(this);
+
+        var id = getUrlParam('id');
+        if (id == null) {
+            id = 0;
+        }
+        $.ajax({
+            url: "@Url.Action("getAgentsIdWhere", "AgentsInfo")",
+            type: "post",
+        data: {
+            //传值，还是JSON数据搜索
+            keyword: q,
+            id:id
+        },
+        dataType: "json",
+        success: function (data) {
+            comboRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function (item) {
+                return { AgentsId: item.AgentsId, AgentsId: item.AgentsId };
+            });
+            //执行loader的success方法
+            success(items);
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+
+            <div class="formbox" style="border-bottom:0px;">
+                <table class="table-form" width="100%">
+
+                    <tr>
+                        <td class="name">指派人：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AuditUid, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:125" })</td>
+                        <td class="name" style="width:20%;">签名类型：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.AuditUid, ViewBag.user as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo', editable: false,width:125" })</td>
+
+                    </tr>
+
+                    <tr>
+                        <td class="name">门店编号：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Agency, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'',validType: 'length[1,100]',width:125" })</td>
+                        <td class="name">门店名名称：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Agency, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'',validType: 'length[1,20]',width:190" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">支付通知：</td>
+                        <td class="input">@Html.DropDownList("PayNotice", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "0" }, new SelectListItem() { Text = "继承商家", Value = "1" }, new SelectListItem() { Text = "独立本店", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true,validType:'requiredForCombo',editable: false,width:125" })</td>
+                        <td class="name">支付结果通知URL：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.CardName, new { @class = "easyui-textbox", data_options = "required:true,prompt:'',validType: 'length[1,200]',width:190" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">退款通知：</td>
+                        <td class="input">@Html.DropDownList("RefundNotice", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "0" }, new SelectListItem() { Text = "继承商家", Value = "1" }, new SelectListItem() { Text = "独立本店", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true,validType:'requiredForCombo',editable: false,width:125" })</td>
+                        <td class="name">退款结果通知URL：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Phone, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,required:false,prompt:'',validType: 'length[1,200]',width:190" })</td>
+                    </tr>
+
+                    <tr>
+                        <td class="name">门店主账号：</td>
+                        <td class="input" colspan="3">
+                           @Html.DropDownList("MainUser", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "0" }, new SelectListItem() { Text = "来自商家登录账号", Value = "1" } }, new { @class = "easyui-combobox datacontrol", data_options = "required:true,novalidate:true,validType:'requiredForCombo',editable: false,width:125" })
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+
+        </div>
+    }
+</div>
+
+

@@ -1,0 +1,70 @@
+﻿using System;
+using System.Data;
+
+using Pharos.Utility;
+
+namespace Pharos.CRM.Retailing
+{
+    public partial class Test : System.Web.UI.Page
+    {
+        ExportExcel export = new ExportExcel();
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack)
+            {
+                //this.DaoChu();
+            }
+        }
+
+        private void DaoChu()
+        {
+            //模拟要导出的数据表
+            DataTable dt = new DataTable();
+            dt.Columns.Add("SN", typeof(int));
+            dt.Columns.Add("Branch", typeof(string));
+            dt.Columns.Add("Department", typeof(string));
+            dt.Columns.Add("FullName", typeof(string));
+            dt.Columns.Add("Num1", typeof(decimal));
+            dt.Columns.Add("Empty", typeof(string));
+            dt.Columns.Add("Num2", typeof(int));
+
+            string tel = string.Empty;
+            for (int i = 1; i < 600; i++)
+            {
+                DataRow dr = dt.NewRow();
+                dr["SN"] = i;
+
+                dr["Branch"] = "机构" + (i % 10);
+                dr["Department"] = "部门" + (i % 3);
+                dr["FullName"] = "蔡" + i;
+                dr["Num1"] = 0.3;
+                dr["Empty"] = "";
+                dr["Num2"] = i + i;
+
+                dt.Rows.Add(dr);
+            }
+
+            DataView dv = dt.DefaultView;
+            dv.Sort = "Branch ASC, Department ASC";
+            dt = dv.ToTable();
+
+            //绑定表字段名与excel的列名对应
+            string[] fields = { "SN", "Branch", "Department", "FullName", "Num1", "Empty", "Num2" };
+            string[] names = { "序号", "分公司", "部门", "姓名", "数量1", "空列", "数量2" };
+
+            //合并第1列的相同值，及第n列的相同值，并以第2列为最小合并参照单位（最小参照单位须放在第一位）
+            int[] merger = { 2, 1, 4, 5 };
+
+            //合计指定列的值
+            int[] totalColumn = { 4, 6 };
+
+            //直接输出下载（若采用返回url下载地址方式，须去掉该行）
+            export.IsBufferOutput = true;
+
+            export.ToExcel("员工通讯录-1", dt, fields, names, merger, totalColumn);
+
+            //export.ToExcel("员工通讯录-2", dt, merger);
+            //export.ToExcel("员工通讯录-3", dt);
+        }
+    }
+}

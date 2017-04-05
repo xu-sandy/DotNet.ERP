@@ -1,0 +1,60 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增行业", delText: "移除行业", editText: "修改行业"));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="title" name="title" class="datacontrol easyui-textbox" placeholder="名称" data-options="prompt:'名称'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setEnable(1)">设为可用</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-suspend'" onclick="setEnable(0)">设为停用</a>
+}
+<script>
+
+    pharos.managertree.geturl = "@Url.Action("FindPageList")";
+    pharos.managertree.editurl = "@Url.Action("Save")";
+    pharos.managertree.treeField = "Title";
+    pharos.managertree.pagination = false;
+    pharos.managertree.columns = [[
+        { field: 'Id', checkbox: true, width: 30 },
+        { field: 'Title', title: '名称', width: 200, align: 'center' },
+        { field: 'Byname', title: '别名', width: 150, align: 'center' },
+        { field: 'TraderNum', title: '商户量', width: 150, align: 'center' },
+        { field: 'Status', title: '状态', width: 150, align: 'center', formatter: function (value, row, index) { return value == 1 ? "可用" : "禁用"; } }
+    ]];
+
+    function setEnable(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.managertree.gridReload();
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    function removeBefore(item) {
+        if (item.TraderNum > 0) {
+            $.messager.alert("提示", "无法移除，该行业下存在商户信息!"); return false;
+        }
+        if (item.BrandNum > 0) {
+            $.messager.alert("提示", "无法移除，该行业下存在品牌信息!"); return false;
+        }
+        return true;
+    }
+</script>

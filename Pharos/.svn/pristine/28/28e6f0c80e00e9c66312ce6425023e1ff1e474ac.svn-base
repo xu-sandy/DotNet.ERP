@@ -1,0 +1,69 @@
+﻿using Pharos.Logic.ApiData.Pos.Exceptions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Payment
+{
+    /// <summary>
+    /// 第三方支付管理器
+    /// </summary>
+    public class ThirdPartyPaymentManager
+    {
+        private static Dictionary<string, IThirdPartyPayment> ThirdPartyPayments = new Dictionary<string, IThirdPartyPayment>();
+        private static string KEYFORMAT = "{0}-{1}-{2}-{3}";
+        static ThirdPartyPaymentManager()
+        {
+            Task.Factory.StartNew(() =>//过期管理
+            {
+                Thread.Sleep(new TimeSpan(0, 0, 1, 0, 0));
+                if (ThirdPartyPayments.Count > 0)
+                {
+                    Dictionary<string, IThirdPartyPayment> newThirdPartyPayments = new Dictionary<string, IThirdPartyPayment>();
+                    foreach (var item in ThirdPartyPayments)
+                    {
+                        if (item.Value != null && (DateTime.Now - item.Value.RequestPayDate) < new TimeSpan(0, 20, 0))
+                        {
+                            newThirdPartyPayments.Add(item.Key, item.Value);
+                        }
+                    }
+                    ThirdPartyPayments = newThirdPartyPayments;
+                }
+            });
+        }
+
+        public static void Add(IThirdPartyPayment pay, PayMode mode)
+        {
+            if (pay == null)
+                throw new Exception("请加入正确的支付对象！");
+            var key = string.Format(KEYFORMAT, pay.PayDetails.PaySn, pay.PayDetails.MachineSn, pay.PayDetails.StoreId, (int)mode);
+            ThirdPartyPayments.Remove(key);
+            ThirdPartyPayments.Add(key, pay);
+        }
+
+        public static IThirdPartyPayment Find(string storeId, string machineSn, string paySn, PayMode mode)
+        {
+            var key = string.Format(KEYFORMAT, paySn, machineSn, storeId, (int)mode);
+            if (ThirdPartyPayments.Keys.Contains(key))
+            {
+                var result = ThirdPartyPayments[key];
+                if (result != null)
+                {
+                    return result;
+                }
+                else
+                {
+                    throw new PosException("500", "支付未完成并且已过期！") ;
+                }
+            }
+            else
+            {
+                throw new PosException("500", "未找到对应支付或者支付已过期！");
+            }
+
+        }
+    }
+}

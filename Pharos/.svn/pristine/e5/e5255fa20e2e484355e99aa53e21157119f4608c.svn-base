@@ -1,0 +1,32 @@
+﻿using Pharos.SocketService.Retailing.Protocol.AppSessions;
+using Pharos.SocketService.Retailing.Protocol.CommandProviders;
+using Pharos.SocketService.Retailing.Protocol.ReceiveFilters;
+using Pharos.SocketService.Retailing.Protocol.RequestInfos;
+using Pharos.SocketService.Retailing.Services;
+using SuperSocket.SocketBase;
+
+namespace Pharos.SocketService.Retailing.Protocol.AppServers
+{
+    public class PosStoreServer : AppServer<PosStoreSession, PosStoreRequestInfo>
+    {
+        public PosStoreServer()
+            : base(new IReceiveFilterFactory())
+        {
+            _cmdNameProvider = new PosStoreCommandNameProvider();
+            _sessionManager = new SessionManager(this);
+        }
+
+        private ICommandNameProvider _cmdNameProvider = null;
+
+        public ICommandNameProvider CommandNameProvider
+        {
+            get { return _cmdNameProvider; }
+        }
+        private ISessionManager _sessionManager = null;
+
+        internal ISessionManager SessionManager
+        {
+            get { return _sessionManager; }
+        }
+    }
+}

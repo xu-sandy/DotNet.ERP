@@ -1,0 +1,100 @@
+﻿@using Newtonsoft.Json;
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+
+    //todo:完善日志功能 清楚日志、删除日志
+    var lmtAdd = CurrentUser.HasPermiss(SysConstLimits.日志管理_查看日志信息);
+    var lmtDel = CurrentUser.HasPermiss(SysConstLimits.日志管理_删除所选日志);
+    var lmtStatus = CurrentUser.HasPermiss(SysConstLimits.日志管理_清除全部日志);
+
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: !lmtDel, delText: "删除所选日志"));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <span>类型：</span>
+            </td>
+            <td class="input-toolbar">
+                <select class="datacontrol font-12" style="height:28px;" name="type" id="type">
+                    <option value="0">全部</option>
+                    <option value="1">登录</option>
+                    <option value="2">退出</option>
+                    <option value="3">普通信息</option>
+                    <option value="4">异常</option>
+                    <option value="5">其他</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="keyword" name="keyword" class="datacontrol easyui-textbox" placeholder="帐号/IP" data-options="prompt:'帐号/IP'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar{
+    @if (lmtStatus)
+    {
+        <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-delete'" onclick="deleteAll()">清除全部日志</a>
+    }
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("GetLogs")";
+    pharos.manager.editurl = "@Url.Action("LogView")";
+    pharos.manager.delurl = "@Url.Action("DeleteLogs")";
+    pharos.manager.pageSize = 20;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true, width: 30 },
+        {
+            field: 'Type', title: '类型', width: 60, formatter: function (value, row) {
+                return fmtLogType(value);
+            }
+        },
+        { field: 'LoginName', title: '帐号', width: 70 },
+        { field: 'Summary', title: '描述', width: $(this).width() * 0.3 },
+        { field: 'ClientIP', title: '客户端 IP', width: 100 },
+        { field: 'ServerName', title: '服务器名称', width: 180 },
+        { field: 'CreateDT', title: '记录时间', width: 150 }
+    ]];
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        openWin({ 'title': '查看日志', 'width': 600, 'height': 500, hideSave: true, 'url': this.editurlNocache() });
+    }
+
+    function fmtLogType(value) {
+        switch (value) {
+            case 1:
+                return "登录";
+            case 2:
+                return "退出";
+            case 3:
+                return "普通信息";
+            case 4:
+                return "异常";
+            case 5:
+                return "其他";
+            default:
+                return "其他";
+        }
+    }
+
+    function deleteAll() {
+        $.messager.confirm('提示', '是否确定清空全部日志？', function (r) {
+            if (r) {
+                $.ajax({
+                    type: 'post',
+                    url: "@Url.Action("DeleteAll")",
+                    success: function (data) {
+                        pharos.manager.gridReload();
+                    }, error: function (data) {
+                        $.messager.alert("提示", "清空日志表失败！", "info");
+                    }
+            });
+            }
+        })
+    }
+</script>

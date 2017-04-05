@@ -1,0 +1,53 @@
+﻿@model Pharos.Logic.OMS.Entity.SysUser
+@{
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var sexs = new List<SelectListItem>() { 
+        new SelectListItem(){Text="保密",Value="-1",Selected=true},
+        new SelectListItem(){Text="男",Value="1"},
+        new SelectListItem(){Text="女",Value="0"},
+    };
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.DeptId)
+        <div class="content">
+            <table class="table-form" width="100%" height="250px">
+                <tr>
+                    <td class="name">机构部门：</td>
+                    <td class="input" colspan="3">@Html.DisplayText("DeptName")</td>
+                </tr>
+                <tr>
+                    <td class="name">员工姓名：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.FullName, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:'length[1,20]'" })</td>
+                    <td class="name">员工编号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.UserCode, new { @class = "easyui-textbox", data_options = "readonly:true,prompt:'系统自动生成'" })</td>
+                </tr>
+                <tr>
+                    <td class="name">后台帐号：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.LoginName, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:'length[1,20]'" })</td>
+                    <td class="name">后台密码：</td>
+                    <td class="input">@Html.PasswordFor(o => o.LoginPwd, new { @class = "easyui-textbox", data_options = "novalidate:true,validType:'length[1,20]'"+(Model.Id==0?",required:true":"") })</td>
+                </tr>
+                <tr>
+                    <td class="name">职位：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.PositId, ViewBag.Posits as List<SelectListItem>, new { @class = "easyui-combobox" , data_options = "editable:false" })</td>
+                    <td class="name">性别：</td>
+                    <td class="input">@Html.DropDownListFor(o => o.Sex, sexs, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+                </tr>
+                <tr>
+                    <td class="name">角色组：</td>
+                    <td class="input" colspan="3">@Html.CheckBoxListFor(o => o.RoleIds, ViewBag.Roles as List<SelectListItem>,null,8)</td>
+                </tr>
+            </table>
+        </div>
+        
+    }
+</div>
+<script type="text/javascript">
+    function SaveBefore() {
+        return true;
+    }
+</script>

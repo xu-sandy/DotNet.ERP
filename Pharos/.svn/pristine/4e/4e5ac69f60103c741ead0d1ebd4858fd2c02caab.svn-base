@@ -1,0 +1,30 @@
+﻿@model object
+@{
+    ViewBag.Title = "Detail";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true, hideSearch: true));
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("DetailList")?@Html.Raw(Request.QueryString)";
+    pharos.manager.pagination = true;
+    pharos.manager.pageSize = 50;
+    pharos.manager.showFooter = true;
+    pharos.manager.sortName = "BalanceDate";
+    pharos.manager.sortOrder = "asc";
+    pharos.manager.columns = [[
+        { field: 'CategoryTitle', title: '品类', width: 150 },
+        { field: 'SubUnit', title: '单位', width: 50 },
+        { field: 'BalanceDate', title: '结余日期', width: 100, formatter: function (value) { var vl=value.replace(/-/g,'/'); return new Date(vl).format("yyyy-MM-dd"); } },
+        { field: 'Number', title: '库存量', width: 80 },
+        { field: 'StockAmount', title: '库存金额', width: 80, formatter: numberToFixed },
+        { field: 'SaleAmount', title: '销售金额', width: 80, formatter: numberToFixed }
+    ]];
+    pharos.manager.frozenColumns = [[
+        { field: 'StoreTitle', title: '门店名称', width: 120 },
+        { field: 'Barcode', title: '条码', width: 110 },
+        { field: 'Title', title: '品名', width: 150 }
+    ]]
+    pharos.manager.loadSuccess = function () {
+        //pharos.manager.$dg.datagrid('reloadFooter', footer);
+    }
+</script>

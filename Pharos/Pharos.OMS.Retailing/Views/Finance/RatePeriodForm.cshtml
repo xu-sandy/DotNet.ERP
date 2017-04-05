@@ -1,0 +1,147 @@
+﻿@model Pharos.Logic.OMS.Entity.CashTransRate
+@{
+    ViewBag.Title = "提现转账费率";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+
+<style type="text/css">
+    .name {
+        width: 100px;
+    }
+
+    .table-form td {
+    }
+
+    .lbltitle {
+        width: 150px;
+        display: inline-block;
+        text-align: right;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm("SaveRatePeriod", "Finance", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-form" style="width:750px;">
+                @if (Model.Id > 0)
+                {
+                    <tr>
+                        <td class="name">版本号：</td>
+                        <td class="input">1.0</td>
+                        <td class="name">状态：</td>
+                        <td class="input">已发布</td>
+                        <td class="name">发布信息：</td>
+                        <td class="input" colspan="3">蔡少发 发布于2016-12-27</td>
+                    </tr>
+                }
+                @*<tr>
+                        <td class="name">版本号：</td>
+                        <td class="input">1.0</td>
+                        <td class="name">状态：</td>
+                        <td class="input">已发布</td>
+                        <td class="name">发布信息：</td>
+                        <td class="input" colspan="3">蔡少发 发布于2016-12-27</td>
+                    </tr>*@
+                <tr>
+                    <td class="name">收单渠道：</td>
+                    <td>
+                        <select id="ChannelNo" name="ChannelNo" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text',value:'@Model.ChannelNo',data:null,prompt:'请选择',width:100,editable:false,required:true"><option value="">请选择</option></select>
+                    </td>
+                    <td class="name">结算周期：</td>
+                    <td>
+                        <select id="SettlementPeriod" name="SettlementPeriod" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text',value:'@Model.SettlementPeriodId',data:null,prompt:'请选择',width:100,editable:false,required:true"><option value="">请选择</option></select>
+                    </td>
+                    <td class="input" colspan="2" rowspan="3" style="vertical-align:top;">
+                        <select size="2" style="height:120px;">
+                            <option value="类目1">类目1</option>
+                            <option value="类目2">类目2</option>
+                            <option value="类目3">类目3</option>
+                            <option value="类目4">类目4</option>
+                        </select>
+                    </td>
+                    <td class="input" colspan="2" rowspan="3" style="vertical-align:top;">
+                        <select size="2" style="height:120px;">
+                            <option value="类目1">类目1</option>
+                            <option value="类目2">类目2</option>
+                            <option value="类目3">类目3</option>
+                            <option value="类目4">类目4</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">备注：</td>
+                    <td class="input" colspan="3">
+                        @Html.TextAreaFor(o => o.Memo, new { @class = "easyui-validatebox", data_options = "required:false,validType: 'length[0,500]',", style = "width:260px;height:60px;", maxlength = 500 })
+                        <div>限长500个字@*，还可以输入 <span style="color:#FF0000;" id="s_num">500</span> 个字*@</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="4"></td>
+                </tr>
+                <tr>
+                    <td colspan="8" style="height:30px;">
+                        <hr style="border:1px dashed #808080;border-bottom:0;border-right:0; border-left:0;width:750px;">
+                    </td>
+                </tr>
+                <tr>
+                    <td class="input" colspan="8">
+                        <label class="lbltitle">基础免费额度：</label>
+                        @Html.TextBoxFor(o => o.BaseFreeAmount, new { @class = "easyui-numberbox", data_options = "novalidate:true,required:true,prompt:'',validType:'range(this.value,[0,10])',width:160,precision:2" })
+                        <label>元，指提现、转账到银行卡的额度累积在该范围内为免服务费。</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="input" colspan="8">
+                        <label class="lbltitle">超出金额费率：</label>
+                        @Html.TextBoxFor(o => o.OverAmountRate, new { @class = "easyui-numberbox", data_options = "novalidate:true,required:true,prompt:'',validType:'range(this.value,[0,10])',width:160,precision:2" })
+                        <label>%，指提现、转账到银行卡超出基础免费额度外，按此服务费率收取。</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="input" colspan="8">
+                        <label class="lbltitle">单笔最低收费：</label>
+                        @Html.TextBoxFor(o => o.SingleMinFees, new { @class = "easyui-numberbox", data_options = "novalidate:true,required:true,prompt:'',validType:'range(this.value,[0,10])',width:160,precision:2" })
+                        <label>元。</label>
+                    </td>
+                </tr>
+                @*fish：暂且保留字段，Icon待后续处理*@
+                @*<tr>
+                        <td class="name">接口ICON1：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Icon1, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'',validType: 'length[2,10]',width:160" })</td>
+                        <td class="name">接口ICON2：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.Icon2, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'',validType: 'length[2,10]',width:160" })</td>
+                    </tr>*@
+                @*<tr>
+                        <td class="name">接口方技术联系人：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.TechContact, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'联系人',width:160" })</td>
+                        <td class="name">接口方技术联系电话：</td>
+                        <td class="input">@Html.TextBoxFor(o => o.TechPhone, new { @class = "easyui-textbox", data_options = "novalidate:true,required:false,prompt:'手机',validType:'phone',width:160" })</td>
+                    </tr>*@
+
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    window.drpdata = window.drpdata || {};
+    window.drpdata['payApiMode'] = @Html.Raw(ViewBag.PayApiModeList);
+    window.drpdata['payApiMethod'] = @Html.Raw(ViewBag.PayApiMethodList);
+    //function getMethodByMode(mode){
+    //    var data = window.drpdata['payApiMethod'];
+    //    return $(data).filter(function(index,value){ return $(this).attr("groupId")==mode; });
+    //};
+    $(function () {
+
+    });
+
+    function selectModel(obj) {
+        //fishtodo: 1待完成支付通道Change事件 2 备注字数控制方法 3 样式调整 4 保存成功提示，名称重复提示 5 类型等必输字段提示
+        $("#PayApiMethod").combobox("setValue", "");
+        var data = window.drpdata['payApiMethod'];
+        var filterData = $(data).filter(function(index,value){ return $(this).attr("groupId")==obj.value; });
+        $("#PayApiMethod").combobox({data:filterData,valueField:"value",textField:"text",value:""});
+    }
+</script>

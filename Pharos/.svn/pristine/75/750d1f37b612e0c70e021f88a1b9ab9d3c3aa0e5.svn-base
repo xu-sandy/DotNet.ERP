@@ -1,0 +1,99 @@
+﻿@{
+    ViewBag.Title = "Menus";
+    Layout = "~/Views/Shared/_ManagerTreeLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增主菜单", delText: "删除产品", editText: "修改主菜单", hideDel: true,hideSearch:true));
+}
+
+<script type="text/javascript">
+    pharos.managertree.geturl = "@Url.Action("MenuList", new { productid = Request["productid"] })";
+    pharos.managertree.editurl = "@Url.Action("SaveMenu", new { productid = Request["productid"] })";
+    pharos.managertree.sortName = "Id";
+    pharos.managertree.sortOrder = "asc";
+    pharos.managertree.treeField = "Title";
+    pharos.managertree.pagination = false;
+    pharos.managertree.columns = [[
+        { field: 'Id', checkbox: true,hidden:true },
+        { field: 'MenuId', title: '编号', width: 60 },
+        { field: 'Title', title: '菜单名称', width: 200 },
+        { field: 'Url', title: '页面地址', width: 200 },
+        { field: 'Expand', title: '展开', width: 60, formatter: function (value, row, index) { return value  ? "是" : "否"; } },
+        { field: 'Status', title: '状态', width: 60, formatter: function (value, row, index) { return value == 1 ? "显示" : "隐藏"; } },
+        {
+            field: 'Editor', title: '操作', width: 200, formatter: function (value, row, index) {
+                var operat = ""; 
+                if (row.Index == 0)
+                    operat += "<a style='color:#555'>[上移]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveMenuItem(1,\"" + row.MenuId + "\")'>[上移]</a>&nbsp;&nbsp;";
+                //debugger;
+                var childcount =0;
+                if (row.ParentId > 0) {
+                    var po = pharos.managertree.$dg.treegrid("find", row.ParentId);
+                    childcount = po.children.length - 1;
+                } else {
+                    childcount = pharos.managertree.$dg.treegrid("getData").length - 1;
+                }
+                if (row.Index == childcount)
+                    operat += "<a style='color:#555'>[下移]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveMenuItem(2,\"" + row.MenuId + "\")'>[下移]</a>&nbsp;&nbsp;";
+
+                if (row.ParentId > 0)
+                    operat += "<a  href='javascript:moveMenuItem(3,\"" + row.MenuId + "\")'>[升级]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a style='color:#555'>[升级]</a>&nbsp;&nbsp;";
+
+                if (row.children.length > 0 || row.ParentId > 0)
+                    operat += "<a style='color:#555'>[降级]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a  href='javascript:moveMenuItem(4,\"" + row.MenuId + "\")'>[降级]</a>&nbsp;&nbsp;";
+
+                if (row.HasLimit || row.ParentId > 0)
+                    operat += "<a style='color:#555'>[添加]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a href='javascript:addMenu(\"" + row.MenuId + "\")'>[添加]</a>&nbsp;&nbsp;";
+
+                if (row.children.length > 0 || row.HasLimit)
+                    operat += "<a style='color:#555'>[移除]</a>&nbsp;&nbsp;";
+                else
+                    operat += "<a href='javascript:removeMenu(\"" + row.MenuId + "\")'>[移除]</a>&nbsp;";
+                return operat;
+            }
+        }
+    ]];
+    //pharos.managertree.$dg.treegrid({ idField: "MenuId" });
+    pharos.managertree.editItem = function (id, row) {
+        this.Id=id;
+        openDialog600(this.editText, this.editurlNocache() + "&pmenuId=" + row.PMenuId + "&menuId=" + row.MenuId);
+    }
+    function moveMenuItem(mode, menuId) {
+        $.ajax({
+            type: 'post',
+            data: { mode: mode, menuId: menuId },
+            url: "@Url.Action("MoveMenuItem")",
+            success: function (data) {
+                pharos.managertree.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "菜单移动失败！", "info");
+            }
+        });
+    }    function addMenu(pid) {
+        openDialog600("新增子菜单", pharos.managertree.editurlNocache() + "&pmenuId=" +pid + "&menuId=");
+    }    function removeMenu(id) {
+        $.messager.confirm('提示', "是否确定移除该菜单?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                type: 'post',
+                data: { menuId: id },
+                url: "@Url.Action("RemoveMenu")",
+                success: function (data) {
+                    pharos.managertree.gridReload();
+                }, error: function (data) {
+                    $.messager.alert("提示", "移除菜单失败！", "info");
+                }
+            });
+        });
+    }
+</script>

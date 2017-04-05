@@ -1,0 +1,165 @@
+﻿using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS.Entity;
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class ProductPublishVerController : BaseController
+    {
+        #region 私有对象
+        [Ninject.Inject]
+        ProductVerService ProductVerService { get; set; }
+        [Ninject.Inject]
+        ProductPublishVerService ProductPublishVerService { get; set; }
+        [Ninject.Inject]
+        ProductModelVerService ProductModelVerService { get; set; }
+        #endregion
+        #region 首页
+        public ActionResult Index()
+        {
+            ViewBag.products = ListToSelect(ProductVerService.GetList(1, 2).Select(o => new SelectListItem() { Text = "（" + o.ProductId + "）" + o.SysName, Value = o.ProductId.ToString() }), emptyTitle: "全部");
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult FindPageList()
+        {
+            int count = 0;
+            var list = ProductPublishVerService.GetPageList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+
+        [HttpPost]
+        public ActionResult Delete(int[] ids)
+        {
+            return new JsonNetResult(ProductPublishVerService.Deletes(ids));
+        }
+        #endregion
+        
+        #region 发布
+        /// <summary>
+        /// 设置状态
+        /// </summary>
+        /// <param name="verId"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult Publish(int verId, short state, bool forced=false)
+        {
+            var re = ProductPublishVerService.Publish(verId, state, forced);
+            return new OpActionResult(re);
+        }
+        #endregion
+        [HttpPost]
+        public ActionResult Copy(int verId)
+        {
+            var re = ProductPublishVerService.Copy(verId);
+            return new OpActionResult(re);
+        }
+        public ActionResult Save(int? verId)
+        {
+            if(verId.HasValue)
+                ViewBag.products = ListToSelect(ProductVerService.GetList().Select(o => new SelectListItem() { Text = "（" + o.ProductId + "）" + o.SysName, Value = o.ProductId.ToString() }), emptyTitle: "请选择");
+            else
+                ViewBag.products = ListToSelect(ProductPublishVerService.GetProductVers().Select(o => new SelectListItem() { Text = "（" + o.ProductId + "）" + o.SysName, Value = o.ProductId.ToString() }), emptyTitle: "请选择");
+            ProductPublishVer ver =verId.HasValue ?ProductPublishVerService.Get(verId.Value):new ProductPublishVer();
+            return View(ver);
+        }
+        [HttpPost]
+        public ActionResult Save(ProductPublishVer obj)
+        {
+            var re = ProductPublishVerService.SaveVer(obj);
+            return new OpActionResult(re);
+        }
+        public ActionResult SaveSql(int verId)
+        {
+            var pmenus = new List<DropdownItem>();
+            var obj = ProductPublishVerService.Get(verId);
+            var menuModelId = "";
+            var runSqlWay = 1;
+            if(obj!=null)
+            {
+                ViewBag.products = ListToSelect(ProductVerService.GetList().Select(o => new SelectListItem() { Text = "（" + o.ProductId + "）" + o.SysName, Value = o.ProductId.ToString() }), emptyTitle: "请选择", selectValue: obj.ProductId);
+                ViewBag.state = obj.VerStatusTitle + "，" + obj.StatusTitle;
+                ViewBag.status = obj.VerCode == 0 ? "--" : "v" + obj.VerCode.ToString("f1");
+                ProductModuleVer model = null;
+                if (!obj.MenuModuleId.IsNullOrEmpty())
+                    model = ProductModelVerService.Get(obj.MenuModuleId);
+                else
+                    model = ProductModelVerService.GetOfficialLast(obj.ProductId);
+                if (model != null)
+                {
+                    menuModelId = model.ModuleId;
+                    pmenus.AddRange(model.ProductMenuLimits.Where(o => o.PMenuId <= 0).OrderBy(o => o.SortOrder).Select(o => new DropdownItem() { Text = o.Title, Value = o.MenuId.ToString() }));
+                }
+                if (pmenus.Any()) pmenus[0].IsSelected = true;
+                runSqlWay = obj.RunSqlWay==2?2:1;
+            }
+            else
+            {
+                ViewBag.products = ListToSelect(ProductVerService.GetList(1).Select(o => new SelectListItem() { Text = "（" + o.ProductId + "）" + o.SysName, Value = o.ProductId.ToString() }), emptyTitle: "请选择");
+                ViewBag.state = "未发布，未生效";
+                ViewBag.status = "--";
+            }
+            ViewBag.pmenus = pmenus.ToJson();
+            ViewBag.menuModelId = menuModelId;
+            ViewBag.runSqlWay = runSqlWay;
+            return View();
+        }
+        [HttpPost]
+        public ActionResult DataList(int verId)
+        {
+            var list = ProductPublishVerService.DataList(verId);
+            return ToDataGrid(list,0);
+        }
+
+        [HttpPost]
+        public ActionResult SaveSql(int id, string runSql)
+        {
+            var data = new ProductPublishSql()
+            {
+                Id=id,
+                RunSql = runSql
+            };
+            var re = ProductPublishVerService.SaveData(data);
+            return new OpActionResult(re);
+        }
+        [HttpPost]
+        public ActionResult AppendSql(int menuId, string runSql, int verId)
+        {
+            var data = new ProductPublishSql()
+            {
+                MenuId=menuId,
+                PublishId=verId,
+                RunSql = runSql
+            };
+            var re = ProductPublishVerService.SaveData(data);
+            return new OpActionResult(re);
+        }
+        [HttpPost]
+        public void RemoveData(int id)
+        {
+            ProductPublishVerService.RemoveData(id);
+        }
+        
+        [HttpPost]
+        public void MoveItem(short mode, int sn, int verId)
+        {
+            ProductPublishVerService.MoveItem(mode, sn, verId);
+        }
+
+        public ActionResult SeeData(int id)
+        {
+            var obj= ProductPublishVerService.SeeData(id);
+            var sql = "";
+            if (obj != null) sql = obj.RunSql;
+            ViewBag.sql = sql;
+            return View();
+        }
+    }
+}

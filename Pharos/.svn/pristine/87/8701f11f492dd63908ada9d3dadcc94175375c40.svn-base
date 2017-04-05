@@ -1,0 +1,130 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.供应商_新增供应商信息);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.供应商_查看供应商信息) && hideAdd;
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.供应商_删除供应商);
+    var hideType = !CurrentUser.HasPermiss(SysConstLimits.供应商_编辑商家分类);
+    var hideEditType = !CurrentUser.HasPermiss(SysConstLimits.供应商_批量修改商家分类);
+    var hideOrder = !CurrentUser.HasPermiss(SysConstLimits.供应商_下订单);
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增供应商", delText: "删除供应商", editText: "修改供应商", hideAdd: hideAdd, hideDel: true));
+}
+<style type="text/css">
+    .datagrid-cell {
+        word-wrap: break-word;
+        word-break: normal;
+    }
+</style>
+@section search{
+<table class="table-toolbar">
+    <tr>
+        <td class="label-toolbar">
+            <label>合同状态：</label>
+        </td>
+        <td class="input-toolbar">
+            @Html.DropDownList("state", ViewBag.states as List<SelectListItem>, new { @class = "datacontrol easyui-combobox font-12", data_options = "editable:false" })
+        </td>
+        <td class="label-toolbar">
+            <label>关键词：</label>
+        </td>
+        <td class="input-toolbar">
+            <input id="Name" name="searchText" class="datacontrol easyui-textbox" placeholder="供应商名称/联系人/电话" data-options="prompt:'供应商名称/联系人/电话'" />
+        </td>
+    </tr>
+</table>
+}
+@section toolbar
+{
+    @if (!hideType) { 
+<a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-category'" onclick="editSupplierType()">商家分类</a>
+    }
+    @if(!hideEditType)
+    { 
+<select class="easyui-combobox datacontrol" id="slttype" data-options="onSelect:sltMove,url:'@Url.Action("GetList", "SupplierType")'" style="width:180px;"></select>
+    }
+}
+
+<script type="text/javascript">
+    function editSupplierType() {
+        openWin({
+            'title': '商家分类', 'width': 600, 'height': 350, 'hideSave':true
+            , 'url': '@Url.Action("Save","SupplierType")' + '?a=' + Math.random()
+        });
+    }
+    //pharos.dropdown['types'] = @Html.Raw(ViewBag.types)
+    function sltMove(record) {
+        //alert(record.value);
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = [];
+        $.each(rows, function (i, r) {
+            ids.push(r.Id);
+        });
+        $.post("@Url.Action("MoveType")", { ids: ids.join(), typeSn: record.value }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "修改成功！", "info");
+                pharos.manager.gridReload();
+                $("#slttype").combobox("setValue", "");
+            } else {
+                $.messager.alert("提示", "修改失败！" + d.message, "error");
+            }
+        },"json");
+    }
+    function closeDialog() {
+        $("#slttype").combobox("reload");
+    }
+    pharos.manager.geturl = "@Url.Action("FindPageList")";
+    pharos.manager.editurl = "@Url.Action("Save")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ClassName', title: '分类', editor: { type: 'text', required: true }, width: 80 },
+        { field: 'Title', title: '供应商', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'MasterAccount', title: '帐号', width: 120 },
+        { field: 'Linkman', title: '联系人', width: 100 },
+        { field: 'MobilePhone', title: '手机号码', width: 100 },
+        { field: 'Tel', title: '电话号码', width: 100 },
+        { field: 'ContractSN', title: '合同编号', width: 100 },
+        { field: 'EndDate', title: '合同截止', width: 100 },
+        { field: 'State', title: '合同状态', width: 80 },
+        { field: 'OrderNum', title: '累计下单量', width: 80 },
+        { field: 'Designeer', title: '指派人', width: 80 },
+        {
+            title: '操作', field: 'Editor', width: 120, formatter: function (value, row, index) {
+                var html = "<span style='color:#a3a3a3'>[下订单]</span>";
+                if (row.State == "已审批"  @(hideOrder ? Html.Raw(" && 1!=1") : Html.Raw("")))
+                    html = "<a href='javascript:void(0)' title='点击可直接下订单' onclick='createOrder(\"" + row.Id + "\")'>[下订单]</a>";
+
+                if (!row.ContractSN @(hideDel ? Html.Raw(" && 1!=1") : Html.Raw("")))
+                    html += "&nbsp;&nbsp;&nbsp;<a href='javascript:void(0)' onclick='pharos.manager.removeItem(\"" + row.Id + "\")'>[删除]</a>";
+                else
+                    html += "&nbsp;&nbsp;&nbsp;<span style='color:#a3a3a3'>[删除]</span>";
+                return html;
+            }
+        }
+    ]];
+    pharos.manager.addItem = function () {
+        //openDialog800(this.addText, this.editurlNocache());
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 950, 'height': 450, 'url':this.editurlNocache()});
+    }
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        //openDialog1000(this.editText, this.editurlNocache());
+        @if (showDetail)
+        {
+            @:openDialog(this.editText, this.editurlNocache(), 1000, 650,true);
+        }
+        else if(!hideAdd){ 
+            @:openDialog(this.editText, this.editurlNocache(), 1000, 650);
+        }
+    }
+    function createOrder(id) {
+        openDialogMax("新增订单", "@Url.Action("Save","Order")?supplierId="+id);
+    }
+    function editBefore(rowData, field, index, value) {
+        if (field == "Editor") {
+            return false;
+        }
+        return true;
+    }
+</script>

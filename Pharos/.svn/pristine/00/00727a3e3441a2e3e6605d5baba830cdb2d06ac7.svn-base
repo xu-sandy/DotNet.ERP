@@ -1,0 +1,13 @@
+﻿using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class FreeGiftPurchaseListService : BaseGeneralService<Pharos.Logic.Entity.FreeGiftPurchaseList, EFDbContext>
+    {
+    }
+}

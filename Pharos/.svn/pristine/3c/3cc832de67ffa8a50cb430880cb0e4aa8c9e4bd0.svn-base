@@ -1,0 +1,399 @@
+﻿<control:DialogWindow02 x:Class="Pharos.POS.Retailing.ChildWin.Pay.MultiPay"
+         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:converter="clr-namespace:Pharos.Wpf.XamlConverters;assembly=Pharos.Wpf"       
+      xmlns:lctrlr="clr-namespace:Pharos.POS.Retailing.XamlConverters"       
+         xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf"
+        Title="结算支付" Height="750" Width="1024" WindowStartupLocation="CenterScreen" Icon="..\..\Images\ChaKuCun\search.png" Margin="0" WindowStyle="None">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\..\Styles\MultiPayStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+            <DataTemplate x:Key="itemstpl">
+                <Grid>
+                    <Label BorderThickness="1" Margin="10" Padding="15">
+                        <Label.Content>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#404040" FontSize="14"><Run Text="{Binding PayName}"/>：￥<Run Text="{Binding Amount,StringFormat='{}{0:N2}'}"/></TextBlock>
+                            </StackPanel>
+                        </Label.Content>
+                        <Label.Style>
+                            <Style TargetType="Label">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="true">
+                                        <Setter Property="BorderBrush" Value="#659d15"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="false">
+                                        <Setter Property="BorderBrush" Value="Gray"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Label.Style>
+                    </Label>
+                    <Border MouseDown="RemovePay_MouseDown" DataContext="{Binding}" Background="White" HorizontalAlignment="Right" VerticalAlignment="Top" BorderThickness="1" BorderBrush="Gray" CornerRadius="12" Width="25" Height="25">
+                        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="20"  Text="×"></TextBlock>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EnableClose}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding EnableClose}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+                </Grid>
+            </DataTemplate>
+            <DataTemplate x:Key="itemsTitle">
+                <TextBlock Text="支付方式：" FontSize="18" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#404040"></TextBlock>
+            </DataTemplate>
+            <DataTemplate x:Key="itemsAddBtn">
+                <Grid>
+                    <Label MouseDown="Label_MouseDown" BorderThickness="1" Margin="10" BorderBrush="Gray" Width="150" Padding="10" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                        <Image Source="..\..\Images\add.png" Height="25" HorizontalAlignment="Center" VerticalAlignment="Center"></Image>
+                    </Label>
+                </Grid>
+            </DataTemplate>
+            <DataTemplate x:Key="PayIcon">
+                <Image Height="250" Width="250" Source="{Binding PayItem.Icon}"></Image>
+            </DataTemplate>
+            <!--<DataTemplate x:Key="RongHeDynamicQRCode">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                        <ColumnDefinition Width="50"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Image Grid.Column="0" Grid.RowSpan="2" Height="250" Width="250" Source="{Binding PayItem.Icon}"></Image>
+                    <Image Grid.Column="1" Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Left" Height="200" Width="200" Source="{Binding PayItem.RongHeDynamicQRCode}"></Image>
+                    <TextBlock FontSize="20" VerticalAlignment="Center" Grid.Row="4" Width="460" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding Message,Mode=TwoWay}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap"></Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="{x:Null}">
+                                        <Setter Property="Foreground" Value="Black"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="True">
+                                        <Setter Property="Foreground" Value="Green"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                        <Setter Property="Foreground" Value="Red"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </DataTemplate>-->
+            <DataTemplate x:Key="RongHeCustomerDynamicQRCodePay">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="*"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="350"></ColumnDefinition>
+                        <ColumnDefinition Width="150"></ColumnDefinition>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.RowSpan="6" BorderBrush="Gray" VerticalContentAlignment="Center" HorizontalContentAlignment="Right" BorderThickness="0,0,1,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"></RowDefinition>
+                            </Grid.RowDefinitions>
+                            <Image Width="250" Height="250" VerticalAlignment="Center" HorizontalAlignment="Right"  Source="{Binding PayItem.Icon}"></Image>
+                        </Grid>
+                    </Label>
+                    <TextBlock FontSize="18" Grid.Row="0" Grid.Column="1" Style="{StaticResource contentTitle}" VerticalAlignment="Center" HorizontalAlignment="Right" Text="支付条码/二维码："></TextBlock>
+                    <!--<TextBlock FontSize="18" VerticalAlignment="Center" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding CardNo}"></TextBlock>-->
+                    <control:IconTextBox  InputMethod.PreferredImeState="Off" InputMethod.IsInputMethodEnabled="False"  Initialized="txtcardno_Initialized" x:Name="txtcardno" Grid.Row="0"  Grid.Column="2" PreviewKeyDown="InputCardNoPreviewKeyDown" TabIndex="0" Text="{Binding CardNo}" Height="45" Width="350" FontSize="18"  VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" >
+                        <control:IconTextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasOperat}" Value="False">
+                                        <Setter Property="IsReadOnly" Value="True"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsRequestEnd}" Value="False">
+                                        <Setter Property="IsReadOnly" Value="True"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsRequestEnd}" Value="True">
+                                        <Setter Property="IsReadOnly" Value="False"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </control:IconTextBox.Style>
+                    </control:IconTextBox>
+                    <TextBlock FontSize="18" Grid.Row="4" Grid.Column="1" Style="{StaticResource contentTitle}" VerticalAlignment="Center" HorizontalAlignment="Right" Text="提示："></TextBlock>
+                    <TextBlock FontSize="20" VerticalAlignment="Center" Grid.Row="4" Width="460" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding Message,Mode=TwoWay}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap"></Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="{x:Null}">
+                                        <Setter Property="Foreground" Value="Black"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="True">
+                                        <Setter Property="Foreground" Value="Green"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                        <Setter Property="Foreground" Value="Red"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                </Grid>
+            </DataTemplate>
+            <DataTemplate x:Key="RongHeDynamicQRCode">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50*"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="350"></ColumnDefinition>
+                        <ColumnDefinition Width="150"></ColumnDefinition>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.RowSpan="6" BorderBrush="Gray" VerticalContentAlignment="Center" HorizontalContentAlignment="Right" BorderThickness="0,0,1,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"></RowDefinition>
+                            </Grid.RowDefinitions>
+                            <Image Width="250" Height="250" VerticalAlignment="Center" HorizontalAlignment="Right"  Source="{Binding PayItem.Icon}"></Image>
+                        </Grid>
+                    </Label>
+
+                    <Image Grid.Column="1" Grid.Row="0" Grid.ColumnSpan="2" VerticalAlignment="Center" Margin="10"  HorizontalAlignment="Center"  Source="{Binding PayItem.RongHeDynamicQRCode}"></Image>
+                    
+                    <TextBlock FontSize="18" Grid.Row="1" Grid.Column="1" Style="{StaticResource contentTitle}" VerticalAlignment="Center" HorizontalAlignment="Right" Text="提示："></TextBlock>
+                    <TextBlock FontSize="18" VerticalAlignment="Center" Width="460" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding Message,Mode=TwoWay}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap"></Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="{x:Null}">
+                                        <Setter Property="Foreground" Value="Black"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="True">
+                                        <Setter Property="Foreground" Value="Green"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                        <Setter Property="Foreground" Value="Red"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="UnionPay">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="*"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="350"></ColumnDefinition>
+                        <ColumnDefinition Width="150"></ColumnDefinition>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.RowSpan="6" BorderBrush="Gray" VerticalContentAlignment="Center" HorizontalContentAlignment="Right" BorderThickness="0,0,1,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"></RowDefinition>
+                            </Grid.RowDefinitions>
+                            <Image Width="250" Height="250" VerticalAlignment="Center" HorizontalAlignment="Right"  Source="{Binding PayItem.Icon}"></Image>
+                        </Grid>
+                    </Label>
+                    <TextBlock FontSize="18" Grid.Row="0" Grid.Column="1" Style="{StaticResource contentTitle}" VerticalAlignment="Center" HorizontalAlignment="Right" Text="卡号："></TextBlock>
+                    <TextBlock FontSize="18" VerticalAlignment="Center" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding CardNo,Mode=TwoWay}"></TextBlock>
+                    <TextBlock FontSize="18" Grid.Row="1" Grid.Column="1" Style="{StaticResource contentTitle}" VerticalAlignment="Center" HorizontalAlignment="Right" Text="卡类型/名称："></TextBlock>
+                    <TextBlock FontSize="18" VerticalAlignment="Center" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding CardName,Mode=TwoWay}"></TextBlock>
+                    <TextBlock FontSize="18" Grid.Row="2" Grid.Column="1" Style="{StaticResource contentTitle}" VerticalAlignment="Center" HorizontalAlignment="Right" Text="提示："></TextBlock>
+                    <TextBlock FontSize="18" VerticalAlignment="Center" Width="460" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding Message,Mode=TwoWay}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap"></Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="{x:Null}">
+                                        <Setter Property="Foreground" Value="Black"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="True">
+                                        <Setter Property="Foreground" Value="Green"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                        <Setter Property="Foreground" Value="Red"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="StoredValueCard">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="50"></RowDefinition>
+                        <RowDefinition Height="*"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="350"></ColumnDefinition>
+                        <ColumnDefinition Width="150"></ColumnDefinition>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.RowSpan="6" BorderBrush="Gray" VerticalContentAlignment="Center" HorizontalContentAlignment="Right" BorderThickness="0,0,1,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"></RowDefinition>
+                            </Grid.RowDefinitions>
+                            <Image Width="250" Height="250" VerticalAlignment="Center" HorizontalAlignment="Right"  Source="{Binding PayItem.Icon}"></Image>
+                        </Grid>
+                    </Label>
+                    <TextBlock FontSize="18" Grid.Row="0" Grid.Column="1" Style="{StaticResource contentTitle}" VerticalAlignment="Center" HorizontalAlignment="Right" Text="储值卡卡号："></TextBlock>
+                    <!--<TextBlock FontSize="18" VerticalAlignment="Center" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding CardNo}"></TextBlock>-->
+                    <control:IconTextBox  InputMethod.PreferredImeState="Off" InputMethod.IsInputMethodEnabled="False"  Initialized="txtcardno_Initialized" x:Name="txtcardno" Grid.Row="0"  Grid.Column="2" PreviewKeyDown="InputCardNoPreviewKeyDown" TabIndex="0" Text="{Binding CardNo}" Height="45" Width="350" FontSize="18"  VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" >
+                        <control:IconTextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasOperat}" Value="False">
+                                        <Setter Property="IsReadOnly" Value="True"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsRequestEnd}" Value="False">
+                                        <Setter Property="IsReadOnly" Value="True"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsRequestEnd}" Value="True">
+                                        <Setter Property="IsReadOnly" Value="False"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </control:IconTextBox.Style>
+                    </control:IconTextBox>
+                    <TextBlock FontSize="18" VerticalAlignment="Center" Style="{StaticResource contentTitle}" Grid.Row="1"  Grid.Column="1" HorizontalAlignment="Right" Text="持卡人："></TextBlock>
+                    <TextBlock FontSize="18" VerticalAlignment="Center" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding User}"></TextBlock>
+                    <TextBlock FontSize="18" VerticalAlignment="Center" Style="{StaticResource contentTitle}" Grid.Row="2"  Grid.Column="1" HorizontalAlignment="Right" Text="已支付：￥"></TextBlock>
+                    <TextBlock FontSize="18" VerticalAlignment="Center" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding PayAmount,StringFormat='{}{0:N2}'}"></TextBlock>
+                    <TextBlock FontSize="18" VerticalAlignment="Center" Style="{StaticResource contentTitle}" Grid.Row="3"  Grid.Column="1" HorizontalAlignment="Right" Text="卡内余额：￥"></TextBlock>
+                    <TextBlock FontSize="18" VerticalAlignment="Center" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding Balance,StringFormat='{}{0:N2}'}"></TextBlock>
+                    <TextBlock FontSize="18" Grid.Row="4" Grid.Column="1" Style="{StaticResource contentTitle}" VerticalAlignment="Center" HorizontalAlignment="Right" Text="提示："></TextBlock>
+                    <TextBlock FontSize="20" VerticalAlignment="Center" Grid.Row="4" Width="460" Grid.Column="2" HorizontalAlignment="Left" Text="{Binding Message,Mode=TwoWay}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap"></Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="{x:Null}">
+                                        <Setter Property="Foreground" Value="Black"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="True">
+                                        <Setter Property="Foreground" Value="Green"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                        <Setter Property="Foreground" Value="Red"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                </Grid>
+            </DataTemplate>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="160"></RowDefinition>
+            <RowDefinition Height="150"></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition Height="80"></RowDefinition>
+
+        </Grid.RowDefinitions>
+        <Border BorderThickness="0,0,0,0.6" BorderBrush="Gray"></Border>
+        <WrapPanel Orientation="Horizontal" Width="1024">
+            <Grid Style="{StaticResource contentGrid}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="应收金额：￥" Style="{StaticResource contentTitle}"></TextBlock>
+                <TextBlock Grid.Column="1" Text="{Binding WipeZeroAfter,StringFormat='{}{0:N2}'}" FontSize="26" x:Name="txtyingshou" Style="{StaticResource contentValueTitle}"></TextBlock>
+            </Grid>
+            <Grid Style="{StaticResource contentGrid}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="实收金额：￥" Style="{StaticResource contentTitle}"></TextBlock>
+                <TextBlock x:Name="txtshishou" Grid.Column="1"  FontSize="26" Text="{Binding Received,StringFormat='{}{0:N2}'}" Style="{StaticResource contentValueTitle}"></TextBlock>
+            </Grid>
+
+            <Grid Style="{StaticResource contentGrid}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="抹零：￥" Style="{StaticResource contentTitle}"></TextBlock>
+                <TextBlock Grid.Column="1" x:Name="txtmoling" FontSize="26" Text="{Binding WipeZero,StringFormat='{}{0:N2}'}" Style="{StaticResource contentValueTitle}"></TextBlock>
+            </Grid>
+            <Grid Width="600" Height="80">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="130"></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="未支付：￥"  Style="{StaticResource contentTitle}"></TextBlock>
+                <TextBlock Grid.Column="1" x:Name="txtshangqian"  FontSize="50" Text="{Binding StillOwe,StringFormat='{}{0:N2}'}"  Style="{StaticResource contentValueTitle}"  Foreground="#b53434"></TextBlock>
+            </Grid>
+            <Grid Width="400" Height="80">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120"></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="找零：￥" Style="{StaticResource contentTitle}"></TextBlock>
+                <TextBlock x:Name="txtzhaoling" Grid.Column="1"  FontSize="50" Text="{Binding Change,StringFormat='{}{0:N2}'}" Style="{StaticResource contentValueTitle}" Foreground="#b53434"></TextBlock>
+            </Grid>
+            <TextBlock TextWrapping="WrapWithOverflow" FontSize="14" Text="      注意：多方式支付如使用代金券支付，请优先录入代金券！"></TextBlock>
+        </WrapPanel>
+
+        <ItemsControl  Grid.Row="1" ItemsSource="{Binding PayItems}" x:Name="pays" >
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel></WrapPanel>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplateSelector>
+                <lctrlr:MultiPayDataTemplateSelector AddTpl="{StaticResource itemsAddBtn}" ItemTpl="{StaticResource itemstpl}" TitleTpl="{StaticResource itemsTitle}"></lctrlr:MultiPayDataTemplateSelector>
+            </ItemsControl.ItemTemplateSelector>
+        </ItemsControl>
+        <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="0,0,0,1"></Border>
+        <ContentControl Content="{Binding CurrentPayItem,Mode=TwoWay}" Grid.Row="2">
+            <ContentControl.ContentTemplateSelector>
+                <lctrlr:PayItemViewDataTemplateSelector PayDefaultTpl="{StaticResource PayIcon}" RongHeCustomerDynamicQRCodePayTpl="{StaticResource RongHeCustomerDynamicQRCodePay}"  RongHeDynamicQRCodePayTpl="{StaticResource RongHeDynamicQRCode}"  UnionPayTpl="{StaticResource UnionPay}"  StoredValueCardTpl="{StaticResource StoredValueCard}"></lctrlr:PayItemViewDataTemplateSelector>
+            </ContentControl.ContentTemplateSelector>
+        </ContentControl>
+        <Grid Grid.Row="3">
+            <control:PosButton Grid.Column="0" TabIndex="1" Command="{Binding ConfirmCommand}"  HorizontalAlignment="Center"  Content="确定" FontSize="18" Foreground="White" Background="#659D15" Width="160" Height="50"></control:PosButton>
+        </Grid>
+        <Border Grid.Row="3" BorderBrush="Gray" BorderThickness="0,1,0,0"></Border>
+
+    </Grid>
+</control:DialogWindow02>

@@ -1,0 +1,110 @@
+﻿@{
+    ViewBag.Title = "TakeCouponIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText:"新建优惠券",delText: "移除", hideDel: true, hideEdit: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类别：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option>
+                    <option>现金券</option>
+                    <option>体验券</option>
+                    <option>礼品券</option>
+                    <option>折扣券</option>
+                    <option>特价券</option>
+                    <option>换购券</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>形式：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option>
+                    <option>电子</option>
+                    <option>短信</option>
+                    <option>纸质</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option></select>
+            </td>
+            <td class="label-toolbar">
+                <label>使用期限：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox">
+                    <option>全部</option>
+                    <option>1个月</option>
+                    <option>2个月</option>
+                    <option>3个月</option>
+                    <option>4/5/6个月</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>创建人：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox"><option>全部</option></select>
+            </td>
+            <td class="label-toolbar">
+                <label>领用期限：</label>
+            </td>
+            <td class="input-toolbar"> 
+                <input name="title" class="datacontrol Wdate"/>
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">设为生效</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">设为作废</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-print'" onclick="">打印优惠券</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">查看打印历史</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindCreateCouponPageList")";
+    pharos.manager.editurl = "@Url.Action("CreateCoupon")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StateTitle', title: '批号', width: 80 },
+        { field: 'StateTitle2', title: '类别', width: 80 },
+        { field: 'StateTitle3', title: '形式', width: 80 },
+        { field: 'StateTitle5', title: '适用门店', width: 80 },
+        { field: 'StateTitle5', title: '适用商品', width: 80 },
+        { field: 'StateTitle6', title: '发放数量', width: 80 },
+        { field: 'StateTitle7', title: '已领数量', width: 80 },
+        { field: 'StateTitle8', title: '领取期限', width: 80 },
+        { field: 'StateTitle9', title: '使用期限', width: 80 },
+        { field: 'StateTitle10', title: '状态', width: 80 },
+        { field: 'StateTitle11', title: '创建时间', width: 80 },
+        { field: 'StateTitle12', title: '创建人', width: 80 },
+    ]];
+
+    //打开新增优惠券窗口
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        var w = $(window.parent).width() * 0.8 ;
+        var h = $(window.parent).height() * 0.8;
+        openDialog1000(this.addText, this.editurlNocache(), w, h, false, true);
+
+    }
+    pharos.manager.editItem = function (Id, row) {
+        this.Id = Id;
+        openDialog1000(this.addText, this.editurlNocache(), true);
+    }
+
+    
+
+   
+
+
+</script>

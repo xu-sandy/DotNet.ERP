@@ -1,0 +1,186 @@
+--新建表 HouseMove
+USE [Pharos_Dev]
+GO
+
+/****** Object:  Table [dbo].[HouseMove]    Script Date: 12/25/2015 16:28:26 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[HouseMove](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[MoveId] [varchar](40) NOT NULL,
+	[OutStoreId] [varchar](3) NOT NULL,
+	[InStoreId] [varchar](3) NOT NULL,
+	[CreateDT] [datetime] NOT NULL,
+	[CreateUID] [varchar](40) NOT NULL,
+	[DeliveryUID] [varchar](40) NULL,
+	[DeliveryDT] [datetime] NULL,
+	[Memo] [nvarchar](200) NULL,
+	[State] [smallint] NOT NULL,
+	[ReasonId] [int] NULL,
+ CONSTRAINT [PK_HouseMove] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'记录ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'Id'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'调拨单号 ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'MoveId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'调出分店 ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'OutStoreId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'调入分店 ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'InStoreId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'申请时间' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'CreateDT'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'申请人 UID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'CreateUID'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'配送人 UID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'DeliveryUID'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'调出时间' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'DeliveryDT'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'备注' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'Memo'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'状态（ 1:调拨中、2:已配送、 3:已撤回、 4:已收货）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'State'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'退回请求原因（ 来自字典）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove', @level2type=N'COLUMN',@level2name=N'ReasonId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'用于管理本系统的所有店内的货品调拨基本信息' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMove'
+GO
+
+ALTER TABLE [dbo].[HouseMove] ADD  CONSTRAINT [DF_HouseMove_CreateDT]  DEFAULT (getdate()) FOR [CreateDT]
+GO
+
+ALTER TABLE [dbo].[HouseMove] ADD  CONSTRAINT [DF_HouseMove_Stte]  DEFAULT ((1)) FOR [State]
+GO
+
+
+
+--新建表 HouseMoveList
+USE [Pharos_Dev]
+GO
+
+/****** Object:  Table [dbo].[HouseMoveList]    Script Date: 12/25/2015 16:29:02 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[HouseMoveList](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[MoveId] [varchar](40) NOT NULL,
+	[Barcode] [varchar](30) NOT NULL,
+	[OrderQuantity] [money] NOT NULL,
+	[DeliveryQuantity] [money] NULL,
+	[BuyPrice] [money] NOT NULL,
+	[SysPrice] [money] NOT NULL,
+	[ActualQuantity] [money] NULL,
+	[ActualUID] [varchar](40) NULL,
+	[ActualDT] [datetime] NOT NULL,
+	[StockOut] [smallint] NOT NULL,
+	[Memo] [nvarchar](200) NULL,
+	[State] [smallint] NOT NULL,
+ CONSTRAINT [PK_HouseMoveList] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'记录 ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'Id'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'调拨单号 ID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'MoveId'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'调拨商品条码' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'Barcode'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'申请数量' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'OrderQuantity'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'配送数量' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'DeliveryQuantity'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'单价（进价）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'BuyPrice'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'系统售价' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'SysPrice'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'收货数量' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'ActualQuantity'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'收货人 UID' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'ActualUID'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'收货时间' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'ActualDT'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'是否缺货（ 0:否、1:是）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'StockOut'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'备注' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'Memo'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'状态（ 1:调拨中、2:已配送、 3:已撤回、 4:已收货）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList', @level2type=N'COLUMN',@level2name=N'State'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'用于管理本系统的所有店内调拨明细清单，依懒表（ STHouseMove）' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'HouseMoveList'
+GO
+
+ALTER TABLE [dbo].[HouseMoveList] ADD  CONSTRAINT [DF_HouseMoveList_DeliveryQuantity]  DEFAULT ((0)) FOR [DeliveryQuantity]
+GO
+
+ALTER TABLE [dbo].[HouseMoveList] ADD  CONSTRAINT [DF_HouseMoveList_BuyPrice]  DEFAULT ((0)) FOR [BuyPrice]
+GO
+
+ALTER TABLE [dbo].[HouseMoveList] ADD  CONSTRAINT [DF_HouseMoveList_SysPrice]  DEFAULT ((0)) FOR [SysPrice]
+GO
+
+ALTER TABLE [dbo].[HouseMoveList] ADD  CONSTRAINT [DF_HouseMoveList_ActualQuantity]  DEFAULT ((0)) FOR [ActualQuantity]
+GO
+
+ALTER TABLE [dbo].[HouseMoveList] ADD  CONSTRAINT [DF_HouseMoveList_ActualDate]  DEFAULT (getdate()) FOR [ActualDT]
+GO
+
+ALTER TABLE [dbo].[HouseMoveList] ADD  CONSTRAINT [DF_HouseMoveList_StockOut]  DEFAULT ((0)) FOR [StockOut]
+GO
+
+ALTER TABLE [dbo].[HouseMoveList] ADD  CONSTRAINT [DF_HouseMoveList_State]  DEFAULT ((1)) FOR [State]
+GO
+
+
+
+

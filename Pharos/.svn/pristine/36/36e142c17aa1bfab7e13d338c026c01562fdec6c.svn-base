@@ -1,0 +1,110 @@
+﻿// --------------------------------------------------
+// Copyright (C) 2015 版权所有
+// 创 建 人：陈雅宾
+// 创建时间：2015-12-25
+// 描述信息：用于管理本系统的所有店内调拨明细清单，依懒表（STHouseMove）
+// --------------------------------------------------
+
+using Newtonsoft.Json;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.Entity
+{
+    /// <summary>
+    /// 调拨明细信息
+    /// </summary>
+    [Serializable]
+    public class HouseMoveList
+    {
+        /// <summary>
+        /// 记录ID
+        /// [主键：√]
+        /// [不允许为空]
+        /// </summary>
+        public int? Id { get; set; }
+
+        /// <summary>
+        /// 调拨单号 ID
+        /// [不允许为空]
+        /// </summary>
+        public string MoveId { get; set; }
+
+        /// <summary>
+        /// 调拨商品条码
+        /// [长度：30]
+        /// [不允许为空]
+        /// </summary>
+        public string Barcode { get; set; }
+
+        /// <summary>
+        /// 申请数量
+        /// [不允许为空]
+        /// </summary>
+        public decimal OrderQuantity { get; set; }
+
+        /// <summary>
+        /// 配送数量	
+        /// [默认值：((0))]
+        /// </summary>
+        public decimal? DeliveryQuantity { get; set; }
+
+        /// <summary>
+        /// 收货人UID
+        /// [长度：40]
+        /// </summary>
+        public string ActualUID { get; set; }
+
+        /// <summary>
+        /// 收货时间
+        /// [长度：23，小数位数：3]
+        /// </summary>
+        [JsonConverter(typeof(JsonShortDate))]
+        public DateTime? ActualDT { get; set; }
+
+        /// <summary>
+        /// 单价（进价）
+        /// [默认值：((0))]
+        /// </summary>
+        public decimal? BuyPrice { get; set; }
+
+        /// <summary>
+        /// 系统售价
+        /// [默认值：((0))]
+        /// </summary>
+        public decimal SysPrice { get; set; }
+
+        /// <summary>
+        /// 收货数量
+        /// [默认值：((0))]
+        /// </summary>
+        public decimal? ActualQuantity { get; set; }
+
+        /// <summary>
+        /// 是否缺货（ 0:否、1:是）
+        /// [长度：5]
+        /// [不允许为空]
+        /// [默认值：((0))]
+        /// </summary>
+        public short StockOut { get; set; }
+
+        /// <summary>
+        /// 备注
+        /// [长度：200]
+        /// [允许为空]
+        /// </summary>
+        public string Memo { get; set; }
+
+        /// <summary>
+        /// 状态（1:调拨中、2:已配送、3:已撤回、4:已收货）
+        /// [长度：5]
+        /// [不允许为空]
+        /// [默认值：((1))]
+        /// </summary>
+        public short State { get; set; }
+
+    }
+}

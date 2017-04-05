@@ -1,0 +1,73 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Marketings
+{
+    /// <summary>
+    /// 促销活动限制规则
+    /// </summary>
+    public class MarketingRule
+    {
+
+        /// <summary>
+        /// 促销活动规则计量模式
+        /// </summary>
+        public MeteringMode MeteringMode { get; set; }
+        /// <summary>
+        /// 条码范围
+        /// </summary>
+        IEnumerable<string> BarcodeRange { get; set; }
+        /// <summary>
+        /// 规则数量
+        /// </summary>
+        public decimal RuleNumber { get; set; }
+
+        /// <summary>
+        /// 促销活动
+        /// </summary>
+        public MarketingAction MarketingAction { get; set; }
+        /// <summary>
+        /// 客户类型
+        /// </summary>
+        public CustomerType CustomerType { get; set; }
+        /// <summary>
+        /// 匹配
+        /// </summary>
+        /// <param name="shoppingCart">购物车</param>
+        /// <returns>促销活动上下文</returns>
+        internal MarketingContext Match(ShoppingCart shoppingCart)
+        {
+            var matchRanges = shoppingCart.OrderList.Where(barcode => barcode.EnableMarketing && BarcodeRange.Contains(barcode.CurrentString));
+            MarketingContext result = new MarketingContext();
+            var total = 0m;
+            var enableMarketing = false;
+            switch (MeteringMode)
+            {
+                case Marketings.MeteringMode.GuDingLiang://固定量
+                    total = matchRanges.Sum(o => o.SaleNumber);
+                    enableMarketing = RuleNumber <= total;
+                    break;
+                case Marketings.MeteringMode.QiGouLiang://起购量
+                    total = matchRanges.Sum(o => o.SaleNumber);
+                    enableMarketing = RuleNumber <= total;
+                    break;
+                case Marketings.MeteringMode.ManYuan://满元
+                    total = matchRanges.Sum(o => o.SaleNumber * o.SalePrice);
+                    enableMarketing = RuleNumber <= total;
+                    break;
+            }
+            if (enableMarketing)
+            {
+                result.MarketingRule = this;
+                result.MatchRanges = matchRanges;
+            }
+            else
+            {
+                result = MarketingContext.Empty;
+            }
+            return result;
+        }
+    }
+}

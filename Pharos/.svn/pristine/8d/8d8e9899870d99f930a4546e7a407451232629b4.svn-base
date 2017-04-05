@@ -1,0 +1,84 @@
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Web;
+using System.Web.Http.Filters;
+
+namespace QCT.Api.Pay.Utils
+{
+    /// <summary>
+    /// 验证签名
+    /// </summary>
+    public class VerifySignAttribute : ActionFilterAttribute
+    {
+        /// <summary>
+        /// 验证签名
+        /// </summary>
+        /// <param name="actionContext"></param>
+        public override void OnActionExecuting(System.Web.Http.Controllers.HttpActionContext actionContext)
+        {
+            string postRaw = PostRaw(actionContext.Request.Content);
+
+            if (!PayManager.VerifySign(postRaw))
+            {
+                var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent(PayManager.ResultResponse(PayConst.FailCode, "签名失败"))
+                };
+                actionContext.Response = response;
+            }
+            base.OnActionExecuting(actionContext);
+        }
+        /// <summary>
+        /// 获取参数内容
+        /// </summary>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        //async private Task<string> PostRaw(HttpContent content)
+        //{
+        //    return await content.ReadAsStringAsync();
+        //}
+        private string PostRaw(HttpContent content)
+        {
+            try
+            {
+                return content.ReadAsStringAsync().Result;
+            }
+            catch(Exception ex) { return ""; }
+        }
+    }
+
+    public class VerifySign3Attribute : ActionFilterAttribute
+    {
+        /// <summary>
+        /// 验证签名
+        /// </summary>
+        /// <param name="actionContext"></param>
+        public override void OnActionExecuting(System.Web.Http.Controllers.HttpActionContext actionContext)
+        {
+            string postRaw = PostRaw(actionContext.Request.Content).Result;
+
+            if (!PayManager.VerifySign(postRaw))
+            {
+                var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent(PayManager.ResultResponse(PayConst.FailCode, "签名失败"))
+                };
+                actionContext.Response = response;
+            }
+            base.OnActionExecuting(actionContext);
+        }
+        /// <summary>
+        /// 获取参数内容
+        /// </summary>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        async private Task<string> PostRaw(HttpContent content)
+        {
+            return await content.ReadAsStringAsync();
+        }
+    }
+}

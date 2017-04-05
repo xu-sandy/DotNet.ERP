@@ -1,0 +1,543 @@
+﻿@model PrivilegeSolution
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var per = Model.ModeTitle.Contains("%")?",max:1":"";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.InsertProducted)
+        @Html.HiddenFor(o => o.DeleteProducted)
+        @Html.HiddenFor(o => o.InsertTypeed)
+        @Html.HiddenFor(o => o.DeleteTypeed)
+        @Html.HiddenFor(o => o.UpdateProducted)
+        @Html.HiddenFor(o => o.UpdateTypeed)
+        <div class="content">
+            <b>方案名称:</b>@Html.DisplayTextFor(o=>o.Title) <span style="margin:0px 10px;"></span><b>返利模式：</b>@Html.DisplayTextFor(o=>o.ModeTitle)
+            <div id="selType" style="margin-top:5px;">
+                <a href="#" class="easyui-linkbutton" onclick="selectType()" style="margin:5px 0px;">添加系列</a>
+                <table class="easyui-datagrid" id="gridType"
+                       data-options="url:'@Url.Action("LoadTypeDetailList")',queryParams:{id:'@Model.Id'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onClickCell:clickCellType,onLoadSuccess:function(){setTimeout(appendItemType, 500);},onLoadError:loadError">
+                    <thead>
+                        <tr>
+                            <th data-options="field:'Id',rowspan:2,hidden:true,editor:{type:'textbox'}" width="120">ID</th>
+                            <th data-options="field:'StrId',rowspan:2,hidden:true,editor:{type:'textbox'}" width="120">ID</th>
+                            <th data-options="field:'BrandSN',rowspan:2,hidden:true,editor:{type:'textbox'}" width="120">品牌</th>
+                            <th data-options="field:'CategorySN',rowspan:2,hidden:true,editor:{type:'textbox'}" width="120">类别</th>
+                            <th data-options="field:'BigCategoryTitle',rowspan:2,editor:{type:'combobox',options:{required:true,data:pharos.dropdown['parenttypes'],onSelect:bigTypeSelect}}" width="150">大类</th>
+                            <th data-options="field:'MidCategoryTitle',rowspan:2,editor:{type:'combobox',options:{required:true,onSelect:midTypeSelect}}" width="150">中类</th>
+                            <th data-options="field:'SubCategoryTitle',rowspan:2,editor:{type:'combobox',options:{}}" width="150">子类</th>
+                            <th data-options="colspan:@Model.Regions.Count" width="200">范围设定</th>
+                            @if (Model.ModeSN == 46)
+                            {
+                                <th data-options="field:'Detail',rowspan:2,formatter:operType" width="200">赠送商品</th>
+                            }
+                            <th data-options="field:'Editor',rowspan:2,formatter:operationType" width="120">操作</th>
+                        </tr>
+                        <tr>
+                            @foreach (var reg in Model.Regions)
+{
+    <th data-options="field:'@("a" + reg.StartVal.Value.ToAutoString() + "a" + (reg.EndVal.HasValue ? reg.EndVal.GetValueOrDefault().ToAutoString() : ""))',editor:{type:'numberbox',options:{disabled:false,precision:2,min:0@(per)}}" width="100">@(reg.StartVal.GetValueOrDefault().ToAutoString() + "-" + (reg.EndVal.HasValue ? reg.EndVal.Value.ToAutoString() : "不限"))</th>
+}
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div id="selPro">
+                <a href="#" class="easyui-linkbutton" onclick="selectProduct()" style="margin:5px 0px;">添加商品</a>
+                <table class="easyui-datagrid" id="gridPro"
+                       data-options="url:'@Url.Action("LoadProductDetailList")',queryParams:{id:'@Model.Id'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onClickCell:clickCellProc,onLoadSuccess:function(){setTimeout(appendItemProc, 500);},onLoadError:loadError">
+                    <thead>
+                        <tr>
+                            <th data-options="field:'ProductCode',editor:{type:'textbox',options:{disabled:true}},rowspan:2" width="120">货号</th>
+                            <th data-options="field:'Barcode',rowspan:2,editor:{type:'combobox',options:{required:true,panelWidth:250,mode:'remote',valueField:'barcode',textField:'title',loader:comboload,onChange:comboSelect1}}" width="150">条码</th>
+                            <th data-options="field:'Title',rowspan:2,editor:{type:'textbox',options:{disabled:true}}" width="150">品名</th>
+                            <th data-options="colspan:@Model.Regions.Count" width="200">范围设定</th>
+                            @if (Model.ModeSN == 46)
+                            {
+                                <th data-options="field:'Detail',formatter:operProc,rowspan:2" width="200">赠送商品</th>
+                            }
+                            <th data-options="field:'Editor',formatter:operationProc,rowspan:2" width="120">操作</th>
+                        </tr>
+                        <tr>
+                            @foreach (var reg in Model.Regions)
+{
+    <th data-options="field:'@("a" + reg.StartVal.Value.ToAutoString() + "a" + (reg.EndVal.HasValue?reg.EndVal.GetValueOrDefault().ToAutoString():""))',editor:{type:'numberbox',options:{disabled:false,precision:2,min:0@(per)}}" width="100">@(reg.StartVal.GetValueOrDefault().ToAutoString() + "-" + (reg.EndVal.HasValue ? reg.EndVal.Value.ToAutoString() : "不限"))</th>
+}
+                        </tr>
+                    </thead>
+                </table>
+                <div id="win" class="easyui-dialog" data-options="title:'设定商品',cache:false,modal:true,width:800,height:450,closed:true,collapsible:false,minimizable:false,maximizable:false"></div>
+            </div>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    pharos.dropdown['parenttypes'] =@Html.Raw(ViewBag.parenttypes)
+
+    var $dgPro, $dgType,$dg,selectIndex=undefined;
+    $(function () {
+        $dgPro = $("#gridPro");
+        $dgType = $("#gridType");
+    });
+
+
+    var comboload=function (param, success, error) {
+        var q = param.q || "";
+        if(q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url:"@Url.Action("GetProductInput", "Product")",
+            type:"post",
+            data:{
+                //传值，还是JSON数据搜索
+                searchName:q,
+                supplierId:'@Model.SupplierIds'
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType:"json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function(item){
+                    return { barcode: item.Barcode, title: item.Title };
+                });
+                //执行loader的success方法
+                success(items);
+                var val = $combo.combobox("getValue");
+                if (val) {
+                    comboSelect1(val);
+                }
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    function comboSelect1(newValue, oldValue) {
+        var obj = getRow(newValue);
+        if (!obj) return;
+        var ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'ProductCode' });
+        $(ed.target).textbox('setValue', obj.ProductCode);
+        ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'Title' });
+        $(ed.target).textbox('setValue', obj.Title);
+    }
+
+    function getRow(cd) {
+        var obj = null;
+        $.each(comboRows, function (i, row) {
+            if (row.Barcode == cd) {
+                obj = row; return;
+            }
+        });
+        return obj;
+    }
+    function bigTypeSelect(record) {
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+        if (ed) {
+            $(ed.target).combobox("clear").combobox('reload', "@Url.Action("ChildCategory", "ProductType")?emptyTitle=&psn=" + record.value);
+        }
+    }
+    function midTypeSelect(record) {
+        var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'SubCategoryTitle' });
+        if (ed) {
+            $(ed.target).combobox("clear").combobox('reload', "@Url.Action("ChildCategory", "ProductType")?emptyTitle=&psn=" + record.value);
+        }
+    }
+    function endClickEditingType() {
+        if (clickTypeIndex == undefined) { return true }
+        if ($dgType.datagrid('validateRow', clickTypeIndex)) {
+            $dgType.datagrid('endEdit', clickTypeIndex);
+            clickTypeIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function clickCellType(index, field) {
+        if (endClickEditingType() && field.substring(0,1)=="a") {
+            $dgType.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickTypeIndex = index;
+        }
+    }
+    function endClickEditingProc() {
+        if (clickProcIndex == undefined) { return true }
+        if ($dgPro.datagrid('validateRow', clickProcIndex)) {
+            $dgPro.datagrid('endEdit', clickProcIndex);
+            clickProcIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function clickCellProc(index, field) {
+        if (endClickEditingProc() && field.substring(0,1)=="a") {
+            $dgPro.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickProcIndex = index;
+        }
+    }
+    var editProcIndex = undefined, editTypeIndex = undefined,clickTypeIndex=undefined,clickProcIndex=undefined, opaddPro = false,opaddType = false, comboRows = [];
+    function endProcEditing() {
+        if (editProcIndex == undefined) { return true }
+        if ($dgPro.datagrid('validateRow', editProcIndex)) {
+            var ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'Barcode' });
+            if (ed) {
+                var vl = $(ed.target).combobox('getValue');
+                var data = $dgPro.datagrid("getData");
+                if (isExists(data.rows, vl)) {
+                    $.messager.alert("提示", "该条形码已存在", "warning", function () {
+                        $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                    });
+                    return false;
+                }
+                if (!vl) return false;
+                if (!isExists(comboRows, vl)) {
+                    $.messager.alert("提示", "该条形码不存在", "warning", function () {
+                        $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                    });
+                    return false;
+                }
+            }
+            $dgPro.datagrid('endEdit', editProcIndex);
+            editProcIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function endTypeEditing() {
+        if (editTypeIndex == undefined) { return true }
+        if ($dgType.datagrid('validateRow', editTypeIndex)) {
+            var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'SubCategoryTitle' });
+            var edm = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+            var edp = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BigCategoryTitle' });
+            var edb = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BrandSN' });
+            if (ed) {
+                var subTitle = $(ed.target).combobox('getText');
+                var subId = $(ed.target).combobox('getValue');
+                var midTitle = $(edm.target).combobox('getText');
+                var midId = $(edm.target).combobox('getValue');
+                var bigTitle = $(edp.target).combobox('getText');
+                var bigId = $(edp.target).combobox('getValue');
+                var brandId = $(edb.target).textbox('getValue');
+                brandId = brandId ? brandId : "0";
+                var categorySN = subId ? subId : midId;
+                var titles = categorySN + '~'+brandId;
+                var rows = $dgType.datagrid("getRows");
+                var categorys = $.map(rows, function (item) {
+                    return item.StrId;
+                })
+                if (categorys.indexOf(titles) != -1) {
+                    $.messager.alert("提示", "该子类别已存在", "warning", function () {
+                        $(ed.target).combobox('showPanel').next('span').find('input').focus()
+                    });
+                    return false;
+                }
+                $(edp.target).combobox('setValue', bigTitle);//改变文本
+                $(ed.target).combobox('setValue', subTitle);//改变文本
+                $(edm.target).combobox('setValue', midTitle);//改变文本
+                var edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'CategorySN' });
+                $(edid.target).textbox("setValue", categorySN);
+                edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'StrId' });
+                $(edid.target).textbox("setValue", titles);
+                edid = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'Id' });
+                $(edid.target).textbox("setValue", maxId(2));
+            }
+            $dgType.datagrid('endEdit', editTypeIndex);
+            editTypeIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function appendItemProc() {
+        if (endProcEditing()) {
+            opaddPro = true;
+            $dgPro.datagrid('appendRow', {});
+            editProcIndex = $dgPro.datagrid('getRows').length - 1;
+            $dgPro.datagrid('selectRow', editProcIndex)
+                .datagrid('beginEdit', editProcIndex);
+            //$dgPro.datagrid('beginEdit', editProcIndex);
+            changeValue();
+        }
+    }
+    function appendItemType() {
+        if (endTypeEditing()) {
+            opaddType = true;
+            $dgType.datagrid('appendRow', { });
+            editTypeIndex = $dgType.datagrid('getRows').length - 1;
+            $dgType.datagrid('selectRow', editTypeIndex)
+                .datagrid('beginEdit', editTypeIndex);
+            changeValue();
+        }
+    }
+    function removeItemProc(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dgPro.datagrid("selectRecord", id);
+            var row = $dgPro.datagrid("getSelected")
+            var index = $dgPro.datagrid("getRowIndex", row);
+            $dgPro.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+    function removeItemType(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dgType.datagrid("selectRecord", id);
+            var row = $dgType.datagrid("getSelected")
+            var index = $dgType.datagrid("getRowIndex", row);
+            $dgType.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+    function operationProc(value, row, index) {
+        if (opaddPro) {
+            opaddPro = false;
+            return "<a href='javascript:void(0)' onclick='appendItemProc()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItemProc('" + row.Id + "')\">删除</a>";
+        }
+    }
+    function operationType(value, row, index) {
+        if (opaddType) {
+            opaddType = false;
+            return "<a href='javascript:void(0)' onclick='appendItemType()'>添加</a>";
+        } else {
+            return "<a href='javascript:void(0)' onclick=\"removeItemType('" + row.Id + "')\">删除</a>";
+        }
+    }
+    function operType(value, row, index) {
+        return value ? value : "<a href='javascript:void(0)' onclick=\"selectProduct("+index+",'gridType')\">指定赠送商品</a>";
+    }
+    function operProc(value, row, index) {
+        return value ? value : "<a href='javascript:void(0)' onclick=\"selectProduct("+index+",'gridPro')\">指定赠送商品</a>";
+    }
+    function selectProduct(idx,dg) {
+        var url = "@Url.Action("SelectProduct", "Product")?t="+Math.random();
+        selectIndex=idx;
+        $dg=$dgPro;
+        if(dg){
+            $dg=$("#"+dg);
+            url+="&innum=1";
+            url += "&isExclude=1";
+            $dg.datagrid("selectRow", selectIndex);
+            if (dg == "gridPro") {
+                if (selectIndex == editProcIndex) {
+                    if (endClickEditingProc() && endProcEditing()) {
+                        appendItemProc();
+                    } else {
+                        return;
+                    }
+                }
+            } else if (dg == "gridType") {
+                if (selectIndex == editTypeIndex) {
+                    if (endClickEditingType() && endTypeEditing()) {
+                        appendItemType();
+                    } else
+                        return;
+                }
+            }
+        }else{
+            url+="&supplierId=@Model.SupplierIds";
+        }
+        var rows = $dg.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Barcode;
+        }).join(",");
+        url += "&cds=" + ids;
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("#win").dialog({ content: cont, buttons: btnprods }).dialog("open");
+    }
+    function selectType() {
+        var url = "@Url.Action("SelectType", "Product")?t="+Math.random();
+        var rows = $dgType.datagrid("getRows");
+        var cds = $.map(rows, function (row) {
+            return row.StrId;
+        }).join(",");
+        url += "&cds=" + cds;
+        url+="&supplierId=@Model.SupplierIds";
+        var cont = "<iframe src='" + url + "' width='100%' height='99%' frameborder='0' />";
+        $("#win").dialog({ content: cont, buttons: btntypes }).dialog("open");
+    }
+    var btnprods = [{
+        text: '添加所选产品',
+        iconCls: 'icon-ok',
+        width:140,
+        handler: function () {
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            $('#win iframe')[0].contentWindow.endClickEditing();
+            if (selectIndex != undefined && chks.length>0) {
+                var nums=$.map(chks,function(item){
+                    return item.innum?item.innum:"0";
+                });
+                if(nums.indexOf("0")!=-1){
+                    $.messager.alert("提示","请输入赠品数量","info");return;
+                }
+                var str = "<div style='color:orange'>赠品:</div>";
+                var detail = $.map(chks, function (item) {
+                    return item.Barcode + " " + item.Title+" "+item.innum+"件";
+                }).join("<br>");
+                var barcodes = $.map(chks, function (row) {
+                    return row.Barcode+"~"+row.innum;
+                }).join();
+                $dg.datagrid('updateRow',
+                {
+                    index: selectIndex,
+                    row: { Detail: str + detail, Barcodes: barcodes }
+                });
+                selectIndex = undefined;
+            } else {
+                var data = $dgPro.datagrid("getData");
+                var lastIndex = data.rows.length - 1;
+                $.each(chks, function (idx, row) {
+                    if (!isExists(data.rows, row.Barcode)) {
+                        $dgPro.datagrid('insertRow',
+                        {
+                            index: lastIndex,
+                            row: {
+                                ProductCode: row.ProductCode, Barcode: row.Barcode,Title:row.Title
+                            }
+                        });
+                        lastIndex++;
+                    }
+                });
+            }
+            changeValue();
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+    var btntypes = [{
+        text: '添加所选系列',
+        iconCls: 'icon-ok',
+        width: 140,
+        handler: function () {
+            //debugger;
+            var chks = $('#win iframe')[0].contentWindow.$dg3.datagrid("getChecked");
+            var data = $dgType.datagrid("getData");
+            var lastIndex = data.rows.length - 1;
+            var names = $.map(data.rows, function (item) { return item.StrId; });
+            $.each(chks, function (idx, row) {
+                if (names.indexOf(row.Id) == -1) {
+                    $dgType.datagrid('insertRow',
+                    {
+                        index: lastIndex,
+                        row: {
+                            CategorySN: row.CategorySN, MidCategoryTitle: row.MidCategoryTitle, SubCategoryTitle: row.SubCategoryTitle, BigCategoryTitle: row.BigCategoryTitle,
+                            StrId: row.CategorySN + '~' + row.BrandSN,BrandSN:row.BrandSN, Id: maxId(2)
+                        }
+                    });
+                    lastIndex++;
+                }
+            });
+            changeValue();
+            $('#win').dialog('close');
+        }
+    }, {
+        text: '关闭',
+        iconCls: 'icon-cancel',
+        handler: function () {
+            $('#win').dialog('close');
+        }
+    }];
+    function isExists(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.Barcode == cd) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+    function changeValue() {
+        var inserted11 = $dgPro.datagrid('getChanges', "inserted");
+        var inserted12 = $dgPro.datagrid('getChanges', "deleted");
+        var inserted13 = $dgPro.datagrid('getChanges', "updated");
+        var inserted21 = $dgType.datagrid('getChanges', "inserted");
+        var inserted22 = $dgType.datagrid('getChanges', "deleted");
+        var inserted23 = $dgType.datagrid('getChanges', "updated");
+        //var allc = $dgPro.datagrid('getChanges')
+        //alert("新增:"+JSON.stringify(inserted) +"删除:"+ JSON.stringify(deleted)+"修改:"+JSON.stringify(updated));
+        //alert(JSON.stringify(inserted2) + "," + JSON.stringify(inserted1));
+        $("#InsertProducted").val(JSON.stringify(inserted11));
+        $("#DeleteProducted").val(JSON.stringify(inserted12));
+        $("#InsertTypeed").val(JSON.stringify(inserted21));
+        $("#DeleteTypeed").val(JSON.stringify(inserted22));
+        $("#UpdateProducted").val(JSON.stringify(inserted13));
+        $("#UpdateTypeed").val(JSON.stringify(inserted23));
+        editProcIndex = $dgPro.datagrid('getRows').length - 1;
+        editTypeIndex = $dgType.datagrid('getRows').length - 1;
+        if (editProcIndex < 0) editProcIndex = undefined;
+        if (editTypeIndex < 0) editTypeIndex = undefined;
+    }
+    function disabedGrid() {
+        if (editProcIndex != undefined) {
+            var ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'Barcode' });
+            if (!ed) return;
+            $(ed.target).combobox('disableValidation');
+        }
+    }
+    function enabledGrid() {
+        if (editProcIndex != undefined) {
+            var ed = $dgPro.datagrid('getEditor', { index: editProcIndex, field: 'Barcode' });
+            if (!ed) return;
+            $(ed.target).combobox('enableValidation');
+        }
+    }
+    function disabedTypeGrid() {
+        if (editTypeIndex != undefined) {
+            var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BigCategoryTitle' });
+            if (ed) {
+                $(ed.target).combobox('disableValidation');
+                ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+                $(ed.target).combobox('disableValidation');
+            }
+        }
+    }
+    function enabledTypeGrid() {
+        if (editTypeIndex != undefined) {
+            var ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'BigCategoryTitle' });
+            if (ed) {
+                $(ed.target).combobox('enableValidation');
+                ed = $dgType.datagrid('getEditor', { index: editTypeIndex, field: 'MidCategoryTitle' });
+                $(ed.target).combobox('enableValidation');
+            }
+        }
+    }
+    function SaveBefore() {
+        endClickEditingProc();
+        endClickEditingType();
+        disabedGrid();
+        disabedTypeGrid();
+        changeValue();
+        return true;
+    }
+    function maxId(type) {
+        var $dg = type == 1 ? $dgPro : $dgType;
+        var rows = $dg.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? row.Id : 0;
+        });
+        var maxId = Math.max.apply(null, ids);
+        if (maxId == -Infinity) maxId = 0;
+        return maxId + 1;
+    }
+</script>

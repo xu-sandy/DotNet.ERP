@@ -1,0 +1,169 @@
+﻿using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class StoredValueCardRecharge : BaseViewModel
+    {
+
+        private string name;
+
+        public string Name
+        {
+            get { return name; }
+            set
+            {
+                name = value;
+                this.OnPropertyChanged(o => o.Name);
+            }
+        }
+
+
+        private string cardNo;
+        public string CardNo
+        {
+            get { return cardNo; }
+            set
+            {
+                var text = value.Trim();
+
+                if (text.Length > 40)
+                {
+                    Toast.ShowMessage("卡号超出！限制长度50个字符！", CurrentWindow);
+                    return;
+                }
+                cardNo = text;
+                this.OnPropertyChanged(o => o.CardNo);
+            }
+        }
+
+        decimal amount;
+        public decimal Amount
+        {
+            get { return amount; }
+            set
+            {
+
+                amount = decimal.Truncate(value);
+                this.OnPropertyChanged(o => o.Amount);
+            }
+        }
+        decimal _YuE;
+        public decimal YuE
+        {
+            get { return _YuE; }
+            set
+            {
+
+                _YuE = value;
+                this.OnPropertyChanged(o => o.YuE);
+            }
+        }
+        public ICommand QueryCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (string.IsNullOrEmpty(CardNo))
+                    {
+                        Toast.ShowMessage("请输入卡号！", CurrentWindow);
+                        return;
+                    }
+                    Task.Factory.StartNew(() =>
+                    {
+                        var _machinesInfo = Global.MachineSettings.MachineInformations;
+                        StoredValueCardRechargeParams _params = new StoredValueCardRechargeParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CID = _machinesInfo.CompanyId,
+                            CardNo = CardNo,
+                            Amount = 0
+                        };
+                        var result = ApiManager.Post<StoredValueCardRechargeParams, ApiRetrunResult<StoredValueCardRechargeResult>>(@"api/StoredValueCardRecharge", _params);
+                        CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                        {
+                            if (result.Code == "200")
+                            {
+                                YuE = result.Result.balance;
+                                Amount = result.Result.Amount;
+                                Name = result.Result.Name;
+                                CardNo = result.Result.CardNo;
+                            }
+                            else
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }
+                        }));
+                    });
+                });
+            }
+        }
+        public ICommand ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (string.IsNullOrEmpty(CardNo))
+                    {
+                        Toast.ShowMessage("请输入卡号！", CurrentWindow);
+                        return;
+                    }
+                    if (Amount <= 0)
+                    {
+                        Toast.ShowMessage("充值金额不能为0！", CurrentWindow);
+                        return;
+                    }
+                    Confirm.ShowMessage(string.Format("请确认是否{1} {0:N2} 元！", Amount,o1.Equals("1")?"充值":"反结算"), CurrentWindow, (state) =>
+                    {
+                        if (state == ConfirmMode.Cancelled) return;
+
+                        Task.Factory.StartNew(() =>
+                        {
+                            var _machinesInfo = Global.MachineSettings.MachineInformations;
+                            StoredValueCardRechargeParams _params = new StoredValueCardRechargeParams()
+                            {
+
+                                StoreId = _machinesInfo.StoreId,
+                                MachineSn = _machinesInfo.MachineSn,
+                                CID = _machinesInfo.CompanyId,
+                                CardNo = CardNo,
+                                Amount = Amount,
+                                Type = Convert.ToInt32(o1)
+                            };
+                            var result = ApiManager.Post<StoredValueCardRechargeParams, ApiRetrunResult<StoredValueCardRechargeResult>>(@"api/StoredValueCardRecharge", _params);
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                if (result.Code == "200")
+                                {
+                                    YuE = result.Result.balance;
+                                    Amount = result.Result.Amount;
+                                    Name = result.Result.Name;
+                                    CardNo = result.Result.CardNo;
+                                }
+                                else
+                                {
+                                    Toast.ShowMessage(result.Message, CurrentWindow);
+                                }
+                            }));
+                        });
+
+                    });
+
+
+                });
+            }
+        }
+    }
+}

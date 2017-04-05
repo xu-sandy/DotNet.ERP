@@ -1,0 +1,66 @@
+﻿@model Pharos.Logic.OMS.Entity.PayChannelManage
+@{
+    ViewBag.Title = "新增收单渠道";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+
+<style type="text/css">
+    .name {
+        width: 80px;
+    }
+
+    .table-form td {
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm("SavePayChannel", "Finance", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="content">
+            <table class="table-form" style="width:380px;">
+                @if (Model.Id > 0)
+                {
+                    <tr>
+                        <td class="name">渠道编号：</td>
+                        <td class="input"></td>
+                    </tr>
+                    <tr>
+                        <td class="name">审核信息：</td>
+                        <td class="input">蔡少发 审核于2016-12-27</td>
+                    </tr>
+                }
+
+                <tr>
+                    <td class="name">收单渠道：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.ChannelCode, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'2-30个字符',validType: 'length[2,30]',width:220" })</td>
+                </tr>
+                <tr>
+                    <td class="name">名称：</td>
+                    <td class="input">@Html.TextBoxFor(o => o.ChannelName, new { @class = "easyui-textbox", data_options = "novalidate:true,required:true,prompt:'2-30个字符',validType: 'length[2,30]',width:220" })</td>
+
+                </tr>
+                @*<tr>
+                    <td class="name">状态：</td>
+                    <td class="input" data-options="width:160,editable:true,required:true" colspan="3">
+                        @Html.RadioButtonListFor(o => o.Status, ViewBag.StatusList as List<SelectListItem>)
+                    </td>
+                </tr>*@
+                
+                <tr>
+                    <td class="name">备注：</td>
+                    <td class="input">
+                        @Html.TextAreaFor(o => o.Memo, new { @class = "easyui-validatebox", data_options = "required:false,validType: 'length[0,500]',", style = "width:200px;height:80px;", maxlength = 500 })
+                        <div>限长500个字</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    $(function () {
+
+    });
+</script>

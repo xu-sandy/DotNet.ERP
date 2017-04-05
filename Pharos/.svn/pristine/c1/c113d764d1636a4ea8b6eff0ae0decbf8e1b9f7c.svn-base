@@ -1,0 +1,100 @@
+﻿@model UserLogin
+@{
+    ViewBag.Title = "分店后台管理";
+    Layout = "~/Views/Shared/_LayoutEmpty.cshtml";
+}
+<link href="~/Content/mythemes/default/login-store.css" rel="stylesheet" />
+<a href="http://www.xmpharos.com/" target="_blank"><span class="logo" /></a>
+<div class="login-box">
+    @using (Html.BeginForm())
+    {
+        <input type="hidden" value="@Model.CID" name="cid" />
+        <table class="login">
+            <tr>
+                <td style="width:20px;"></td>
+                <td class="user-left"></td>
+                <td colspan="2"><input type="text" name="userName" id="userName" placeholder="帐户名称" class="user-right" onkeyup="if (window.event.keyCode == 13) $('#userPwd').focus()" value="@Model.UserName" /></td>
+                <td style="width:20px;"></td>
+            </tr>
+            <tr style="height:25px;"></tr>
+            <tr>
+                <td style="width:20px;"></td>
+                <td class="password-left"></td>
+                <td colspan="2"><input type="password" name="userPwd" id="userPwd" placeholder="帐户密码" class="user-right" onkeyup="if (window.event.keyCode == 13) $('form').submit()" value="@Model.UserPwd" /></td>
+                <td style="width:20px;"></td>
+            </tr>
+            <tr style="height:25px;"></tr>
+            <tr>
+                <td style="width:20px;"></td>
+                <td class="store-left"></td>
+                <td colspan="2">
+                    @Html.DropDownList("StoreId", ViewBag.stores as List<SelectListItem>, new { @class = "user-right", style = "padding:0;padding-left:16px;width:320px;height:60px;", disabled = "disabled" })
+                    <input type="hidden" value="" />
+                </td>
+                <td style="width:20px;"></td>
+            </tr>
+            <tr>
+                <td colspan="5" class="line"></td>
+            </tr>
+        </table>
+
+        <table class="login margin-25">
+            <tr>
+                <td style="width:16px;">
+                    @Html.CheckBox("rememberMe", new { value = "true" })
+                </td>
+                <td class="font-color font-size padding-15"><label for="rememberMe">记住我的账户名称</label></td>
+                <td class="login-button">
+                    <button type="submit">登&nbsp;录</button>
+                </td>
+            </tr>
+        </table>
+        <ul class="error"><li class="flag"></li><li class="text">@ViewBag.msg</li></ul>
+    }
+</div>
+<div class="browser"></div>
+@section scripts{
+    <script type="text/javascript">
+        $(function () {
+            //下拉框选中当前门店
+            var storeid = '@Model.StoreId';
+            $("#StoreId option").each(function (index, item) {
+                var val = $(item).val();
+                if (val.indexOf(storeid + "~") == 0) {
+                    $("#StoreId").val(val);
+                    return;
+                }
+            });
+
+            if ($(".text").html() != "")
+                $(".error").show();
+            $("form").submit(function () {
+
+                $("#StoreId").removeAttr("disabled");
+
+                $("#userName").val($.trim($("#userName").val()));
+                $("#userPwd").val($.trim($("#userPwd").val()));
+                //var reg = new RegExp("^[a-zA-Z]{1}[0-9a-zA-Z_]{1,9}$");
+                //if (reg.test($("#userName").val()) == false) {
+                //    $("#msg").html("<p>Username must start with a letter,it can only contain letters, numbers, underscores,and its length should be more than 2 and less than 10. </p>"); //用户名应以字母开头，只能含有字母数字下划线，长度大于2位小于10位
+                //    return false;
+                //}
+                if ($("#userName").val() == "") {
+                    $(".error").css({ top: "10px" }).show().find(".text").html("请输入帐户名称.");
+                    return false;
+                }
+                if ($("#userPwd").val() == "") {
+                    $(".error").css({ top: "95px" }).show().find(".text").html("请输入帐户密码.");
+                    return false;
+                }
+                if ($("#StoreId").val() == "") {
+                    $(".error").css({ top: "180px" }).show().find(".text").html("请选择门店.");
+                    return false;
+                }
+                return true;
+            });
+            var screenWidth = $(window).width();
+            document.cookie = "screenWidth=" + screenWidth + ";path=/";
+        });
+    </script>
+}

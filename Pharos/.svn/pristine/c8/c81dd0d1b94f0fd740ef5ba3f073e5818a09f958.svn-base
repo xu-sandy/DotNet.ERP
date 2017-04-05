@@ -1,0 +1,35 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Logic.BLL;
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class PosDeviceController:BaseController
+    {
+        public ActionResult Index()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindPageList()
+        {
+            int count=0;
+            var list= PosDeviceService.FindPageList(out count);
+            return ToDataGrid(list, count);
+        }
+        [HttpPost]
+        public ActionResult SetDevState(string ids, short state)
+        {
+            var sid = ids.Split(',').Select(o => int.Parse(o));
+            var list = BaseService<Logic.Entity.PosDevice>.FindList(o => sid.Contains(o.Id));
+            list.ForEach(o =>
+            {
+                o.State = state;
+            });
+            var re = BaseService<Logic.Entity.PosDevice>.Update(list);
+            return new Pharos.Utility.JsonNetResult(re);
+        }
+    }
+}

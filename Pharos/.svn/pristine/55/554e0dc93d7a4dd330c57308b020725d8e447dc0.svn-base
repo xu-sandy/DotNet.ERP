@@ -1,0 +1,44 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IBLL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class MenuService : IMenuService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<SysMenus> MenuRepository { get; set; }
+        public Pharos.Utility.OpResult SaveOrUpdate(SysMenus model)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = MenuRepository.GetQuery(null);
+            recordCount = query.Count();
+            return query.ToList();
+        }
+
+        public Pharos.Utility.OpResult Deletes(object[] ids)
+        {
+            throw new NotImplementedException();
+        }
+
+        public SysMenus GetOne(object id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public List<SysMenus> GetList()
+        {
+            return MenuRepository.GetQuery(o => o.Status).OrderBy(o => o.SortOrder).ToList();
+        }
+
+    }
+}

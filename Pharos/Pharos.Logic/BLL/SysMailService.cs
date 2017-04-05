@@ -1,0 +1,518 @@
+﻿using Pharos.Logic.Entity;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Data.Entity;
+using System.Text.RegularExpressions;
+using Pharos.Sys.Entity;
+namespace Pharos.Logic.BLL
+{
+    public class SysMailService:BaseService<SysMailSender>
+    {
+        static Sys.LogEngine log = new Sys.LogEngine();
+
+        /// <summary>
+        /// 发送，草稿，回复，转发
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <param name="httpFiles">附件</param>
+        /// <param name="fileId">原存在附件ID</param>
+        /// <returns></returns>
+        public static OpResult SendMail(SysMailSender obj, System.Web.HttpFileCollectionBase httpFiles,string fileId)
+        {
+            var op = new OpResult();
+            try
+            {
+                var mailReceives = new List<SysMailReceive>();
+                obj.ReceiverCodes.IsNullThrow("收件人不能空!");
+                var receiverIds=obj.ReceiverCodes.Split(';');
+                var createDate = DateTime.Now;
+                var sendCode = Sys.CurrentUser.UserName;
+                var sendName = Sys.CurrentUser.FullName;
+                foreach(var o in receiverIds)
+                {
+                    if (o.IsNullOrEmpty()) continue;
+                    string uid = "", uname = "";
+                    if (o.Contains("("))
+                    {
+                        uid = o.Substring(o.LastIndexOf("(") + 1).TrimEnd(')');
+                        uname = o.Substring(0, o.IndexOf("("));
+                    }
+                    else
+                    {
+                        var user = GetUser(o);
+                        if (user == null) continue;
+                        uid = user.UserCode.ToString();
+                        uname = user.FullName;
+                    }
+                    var rece = new SysMailReceive();
+                    obj.ToCopyProperty(rece);
+                    rece.ReceiveCode = uid;
+                    rece.ReceiveName = uname;
+                    rece.SenderCode = sendCode;
+                    rece.SenderName = sendName;
+                    rece.State = 0;
+                    rece.Type = 1;
+                    rece.Id = CommonRules.GUID;
+                    rece.CreateDT = createDate;
+                    rece.BatchNo = createDate.ToString("yyyyMMddHHmmssfff");
+                    mailReceives.Add(rece);
+                }
+                if (!obj.CopytoCodes.IsNullOrEmpty())
+                {
+                    var copytoIds= obj.CopytoCodes.Split(';');
+                    foreach(var o in copytoIds)
+                    {
+                        if (o.IsNullOrEmpty()) continue;
+                        string uid = "", uname = "";
+                        if (o.Contains("("))
+                        {
+                            uid = o.Substring(o.LastIndexOf("(") + 1).TrimEnd(')');
+                            uname = o.Substring(0, o.IndexOf("("));
+                        }
+                        else
+                        {
+                            var user = GetUser(o);
+                            if (user == null) continue;
+                            uid = user.UserCode.ToString();
+                            uname = user.FullName;
+                        }
+                        var rece = new SysMailReceive();
+                        obj.ToCopyProperty(rece);
+                        rece.ReceiveCode = uid;
+                        rece.ReceiveName = uname;
+                        rece.SenderCode = sendCode;
+                        rece.SenderName = sendName;
+                        rece.State = 0;
+                        rece.Type = 2;
+                        rece.Id = CommonRules.GUID;
+                        rece.CreateDT = createDate;
+                        rece.BatchNo = createDate.ToString("yyyyMMddHHmmssfff");
+                        mailReceives.Add(rece);
+                    }
+                }
+                if (obj.State == 1)
+                {
+                    foreach (var rece in mailReceives)
+                    {
+                        rece.Attachments = GetAttachs(httpFiles, fileId, obj.Id.IsNullOrEmpty() && !obj.BatchNo.IsNullOrEmpty());
+                    }
+                }
+                obj.Attachments = GetAttachs(httpFiles, fileId, obj.Id.IsNullOrEmpty() && !obj.BatchNo.IsNullOrEmpty());
+                obj.CompanyId = CommonService.CompanyId;
+                if (obj.Id.IsNullOrEmpty())
+                {
+                    obj.BatchNo = createDate.ToString("yyyyMMddHHmmssfff");
+                    obj.Id = CommonRules.GUID;
+                    obj.CreateDT = createDate;
+                    obj.SenderCode = sendCode;
+                    obj.SenderName = sendName;
+                    if (obj.State == 1)//发送
+                    {
+                        Add(obj, false);
+                        op = BaseService<SysMailReceive>.AddRange(mailReceives, true);                       
+                    }
+                    else
+                        op=Add(obj); 
+                     
+                    #region 写入日志
+                    string StateTitle = obj.State == 1 ? "已发送" : "存草稿";
+                    string msg = obj.State == 1 ? "成功发送邮件！" : "成功保存草稿到发件箱！";
+                    var module = Pharos.Sys.LogModule.邮件管理;
+                    if (op.Successed)
+                    {
+                        string copyCodes = string.IsNullOrEmpty(obj.CopytoCodes) ? "" : ("，抄送人=" + obj.CopytoCodes);
+                        msg += "<br />Id=" + obj.Id + "，";
+                        msg += "<br />收件人=" + obj.ReceiverCodes + copyCodes + "，状态=" + StateTitle + "，主题=" + obj.Title + "，批次=" + obj.BatchNo + "。";
+                    }
+                    else
+                    {
+                        msg = obj.State == 1 ? "发送邮件失败！" : "保存草稿到发件箱失败！";
+                    }
+                    log.WriteInsert(msg, module);
+                    #endregion
+                }
+                else//草稿时
+                {
+                    var resour = CurrentRepository.QueryEntity.Include(o => o.Attachments).SingleOrDefault(o => o.Id == obj.Id);
+                    var isUpdateRec = obj.ReceiverCodes != resour.ReceiverCodes;
+                    var isUpdateCop = obj.CopytoCodes != resour.CopytoCodes;
+                    var isUpdateState = obj.State != resour.State;
+                    var isUpdateTitle = obj.Title != resour.Title;
+                    var isUpdateBody = obj.Body != resour.Body;
+                    bool isUpdate = isUpdateRec || isUpdateCop || isUpdateState || isUpdateTitle || isUpdateBody;
+                    obj.ToCopyProperty(resour);
+                    foreach(var att in obj.Attachments)
+                    {
+                        if (!resour.Attachments.Any(o => o.Title == att.Title))
+                            resour.Attachments.Add(att);
+                    }
+                    if (obj.State == 1)//发送
+                    {
+                        Update(resour, false);
+                        op = BaseService<SysMailReceive>.AddRange(mailReceives, true);
+                    }
+                    else
+                        op = Update(resour);
+
+                    #region 写入日志                   
+                    string StateTitle = obj.State == 1 ? "已发送" : "存草稿";
+                    string msg = obj.State == 1 ? "成功发送邮件！" : "成功修改草稿！";
+                    var module = Pharos.Sys.LogModule.邮件管理;
+                    if (op.Successed)
+                    {
+                        int n = 0;
+                        if (isUpdate)
+                        {                           
+                            msg += "<br />Id=" + obj.Id + "，<br />";
+                            if (isUpdateState)
+                            {
+                                msg += "状态由草稿改为已发送";
+                                n = n + 1;
+                            }
+                            if (isUpdateRec)
+                            {
+                                msg += n > 0 ? "，收件人=" + obj.ReceiverCodes : "收件人=" + obj.ReceiverCodes;
+                                n = n + 1;
+                            }
+                            if (isUpdateCop)
+                            {
+                                msg += n > 0 ? "，抄送人=" + obj.CopytoCodes : "抄送人=" + obj.CopytoCodes;
+                                n = n + 1;
+                            }
+                            if (isUpdateTitle)
+                            {
+                                msg += n > 0 ? "，主题=" + obj.Title : "主题=" + obj.Title;
+                                n = n + 1;
+                            }
+                            if (isUpdateBody)
+                            {
+                                msg += n > 0 ? "，正文=" + obj.Body : "正文=" + obj.Body;
+                            }
+                            msg += "。";
+                            log.WriteUpdate(msg, module);
+                        }                                          
+                    }
+                    else
+                    {
+                        msg = obj.State == 1 ? "发送邮件失败(从发件箱的草稿发送)！" : "修改草稿失败！";
+                        log.WriteUpdate(msg, module);
+                    }         
+                    #endregion
+                }
+            }
+            catch(Exception ex)
+            {
+                op.Message = ex.Message;
+                Log.WriteError(ex);
+            }
+            return op;
+        }
+        //发件列表
+        public static object OutboxList(System.Collections.Specialized.NameValueCollection nvl,out int recordCount)
+        {
+            var query = CurrentRepository.QueryEntity.Include(o => o.Attachments).Where(o => o.SenderCode == Sys.CurrentUser.UserName && o.CompanyId==CommonService.CompanyId);
+            var state= nvl["State"].IsNullOrEmpty()?-1:short.Parse(nvl["State"]);
+            var title= nvl["searchText"].Trim();
+            query=query.Where(DynamicallyLinqHelper.Empty<SysMailSender>().And(o => o.State == state, state == -1).And(o => o.Title.StartsWith(title), title.IsNullOrEmpty()));
+            recordCount = query.Count();
+            var list= query.ToPageList();
+            return list.Select(o => new
+            { 
+                o.Id,
+                o.CreateDT,
+                StateTitle= o.State==0?"草稿":"已发送",
+                o.Title,
+                Receiver =o.ReceiverCodes,
+                Attach= HasAttach(o.Attachments.Any())
+            });
+        }
+        //收件列表
+        public static object InboxList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = BaseService<SysMailReceive>.CurrentRepository.QueryEntity.Include(o => o.Attachments).Where(o => o.ReceiveCode == Sys.CurrentUser.UserName && o.CompanyId == CommonService.CompanyId);
+            var state = nvl["State"].IsNullOrEmpty() ? -1 : short.Parse(nvl["State"]);
+            var title = nvl["searchText"].Trim();
+            query = query.Where(DynamicallyLinqHelper.Empty<SysMailReceive>().And(o => o.State == state, state == -1).And(o => o.Title.StartsWith(title), title.IsNullOrEmpty()));
+            recordCount = query.Count();
+            var list = query.ToPageList();
+            var uids = list.Select(o => o.SenderCode).Distinct().ToList();
+            var users = UserInfoService.FindList(o => uids.Contains(o.LoginName) && o.CompanyId==CommonService.CompanyId);
+            return list.Select(o => new
+            {
+                o.Id,
+                o.CreateDT,
+                StateTitle = o.State == 0 ? "未读" : "已读",
+                Content = Title(o.Title, o.Body,o.State),
+                Sender = Sender(users, o.SenderCode,o.State),
+                Attach = HasAttach(o.Attachments.Any()),
+                o.State
+            });
+        }
+        /// <summary>
+        /// 对象
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="isRead">为true改变状态</param>
+        /// <returns></returns>
+        public static SysMailSender GetObj(string id,bool isRead)
+        {
+            SysMailSender obj = new SysMailSender();
+            OpResult re = new OpResult();
+            if (isRead)
+            {
+                var objRece = BaseService <SysMailReceive>.CurrentRepository.QueryEntity.Include(o => o.Attachments).SingleOrDefault(o => o.Id == id);
+                if (objRece != null)
+                {
+                    if (objRece.State == 0)
+                    {
+                        objRece.State = 1;
+                        objRece.ReadDate = DateTime.Now;
+                        re = BaseService<SysMailReceive>.Update(objRece);
+                        #region 写入日志
+                        Sys.LogEngine log = new Sys.LogEngine();
+                        string msg = "成功修改邮件状态！";
+                        var module = Pharos.Sys.LogModule.邮件管理;
+                        if (re.Successed)
+                        {
+                            msg += "<br />Id=" + objRece.Id + "，<br />状态=已读" + "。";
+                            log.WriteUpdate(msg, module);
+                        }
+                        else
+                        {
+                            msg = "修改邮件状态失败！";
+                            log.WriteUpdate(msg, module);
+                        }
+                        #endregion
+                    }
+                    objRece.ToCopyProperty(obj);
+                    obj.SenderCode = objRece.SenderCode;
+                    obj.SenderName = objRece.SenderName;
+                    obj.Attachments = objRece.Attachments;
+                }
+            }
+            else
+                obj=CurrentRepository.QueryEntity.Include(o => o.Attachments).SingleOrDefault(o => o.Id == id);
+            return obj;
+        }
+        //格式化处理内容
+        public static SysMailSender GetObjFormat(SysMailSender obj,string reback)
+        {
+            if (!reback.IsNullOrEmpty())
+            {
+                obj.Body = "<br/><br/><br/>------------------ <span style='font-size:12px'>原始内容</span> ------------------<br/><br/>" + obj.Body;
+                if (reback == "1")//回复
+                {
+                    obj.Title = "回复:" + obj.Title;
+                    var codes = obj.ReceiverCodes.Split(';').ToList();
+                    var i = codes.RemoveAll(o => o.EndsWith(Sys.CurrentUser.UserName + ")"));
+                    if(i<=0)
+                        i = codes.RemoveAll(o => o == Sys.CurrentUser.UserName);
+                    if (i <= 0)
+                        i = codes.RemoveAll(o => o == Sys.CurrentUser.FullName);
+                    obj.ReceiverCodes = obj.SenderName + "(" + obj.SenderCode + ");" + (codes.Any() ? string.Join(";", codes) : "");
+                    if (!obj.CopytoCodes.IsNullOrEmpty())
+                    {
+                        codes = obj.CopytoCodes.Split(';').ToList();
+                        codes.RemoveAll(o => o.EndsWith(Sys.CurrentUser.UserName + ")"));
+                        obj.CopytoCodes = codes.Any() ? string.Join(";", codes) : "";
+                    }
+                }
+                else if (reback == "2")//转发
+                {
+                    obj.Title = "转发:" + obj.Title;
+                    obj.ReceiverCodes = obj.CopytoCodes = "";
+                }
+                obj.Id = "";
+                obj.State = 0;
+            }
+            return obj;
+        }
+        /// <summary>
+        /// 删除
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="type">0－发件箱，1-收件箱</param>
+        /// <returns></returns>
+        public static OpResult Delete(string[] ids,int type)
+        {
+            var op = new OpResult();
+             var list = new List<SysMailSender>();
+            var senders = CurrentRepository.QueryEntity.Where(o => ids.Contains(o.Id)).Include(o => o.Attachments).ToList();
+            var receives = BaseService<SysMailReceive>.CurrentRepository.QueryEntity.Include(o => o.Attachments).Where(o => ids.Contains(o.Id)).ToList();
+            if (type == 0)
+            {             
+                var files = senders.SelectMany(o => o.Attachments).ToList();
+                foreach (var rece in senders)
+                {
+                    var send = new SysMailSender() { Attachments = rece.Attachments.ToList() };
+                    list.Add(send);
+                }
+                AttachService.CurrentRepository.RemoveRange(files, false);
+                op = Delete(senders);
+            }
+            else
+            {                
+                var files = receives.SelectMany(o => o.Attachments).ToList();
+                foreach(var rece in receives)
+                {
+                    var send = new SysMailSender() { Attachments=rece.Attachments.ToList()};
+                    list.Add(send);
+                }
+                AttachService.CurrentRepository.RemoveRange(files, false);
+                op = BaseService<SysMailReceive>.Delete(receives);
+            }
+            string msg = type == 0 ? "成功删除发件箱邮件！" : "成功删除收件箱邮件！";
+            var module = Pharos.Sys.LogModule.通知公告;
+            if (op.Successed)//成功后写入日志并删除附件
+            {
+                #region 写入日志   
+                if (type == 0)
+                {
+                    for (int i = 0; i < senders.Count(); i++)
+                    {
+                        var senderTemp = senders[i];
+                        string copyCodes = string.IsNullOrEmpty(senderTemp.CopytoCodes) ? "" : ("，抄送人=" + senderTemp.CopytoCodes);
+                        string stateTitle = senderTemp.State == 1 ? "已发送" : "存草稿";
+                        msg += "<br />Id=" + senderTemp.Id + "，<br />收件人=" + senderTemp.ReceiverCodes + copyCodes + "，发件人=" + senderTemp.SenderName + "(" + senderTemp.SenderCode + ")" + ",状态=" + stateTitle + "，主题=" + senderTemp.Title + "，发送时间=" + senderTemp.CreateDT.ToString("yyyy-MM-dd HH:mm:ss") + "。";
+                        log.WriteDelete(msg, module);
+                        msg = "成功删除发件箱邮件！";
+                    }     
+                }
+                else
+                {
+                    for (int j = 0; j < receives.Count(); j++)
+                    {
+                        var recTemp = receives[j];
+                        string typeName = recTemp.Type == 1 ? "收件人" : "抄送人";
+                        string stateTitle = recTemp.State == 1 ? "已读" : "未读";
+                        msg += "<br />Id=" + recTemp.Id + "，<br />收件人=" + recTemp.ReceiveName + "(" + recTemp.ReceiveCode + ")" + "，发件人=" + recTemp.SenderName + "(" + recTemp.SenderCode + ")" + "，类型=" + typeName + ",状态=" + stateTitle + "，主题=" + recTemp.Title + "，发送时间=" + recTemp.CreateDT.ToString("yyyy-MM-dd HH:mm:ss") + "。";
+                        log.WriteDelete(msg, module);
+                        msg = "成功删除收件箱邮件！";
+                    }     
+                }
+                #endregion
+                var root = Sys.SysConstPool.GetRoot;
+                foreach (var mail in list)
+                {
+                    foreach (var att in mail.Attachments)
+                    {
+                        var full = Path.Combine(root, att.SaveUrl);
+                        if (File.Exists(full)) File.Delete(full);
+                    }
+                }
+            }
+            else
+            {
+                msg = type == 0 ? "发件箱删除邮件失败！" : "收件箱删除邮件失败！";
+                log.WriteDelete(msg, module);
+            }  
+            return op;     
+        }
+        static string Receiver(List<SysUserInfo> user,List<SysMailReceive> receives)
+        {
+            var receiveIds = receives.Select(o => o.ReceiveCode);
+            if (!receiveIds.Any()) return "";
+            return string.Join(",", user.Where(o => receiveIds.Contains(o.LoginName)).Select(o => o.FullName));
+        }
+        static string Sender(List<SysUserInfo> user,string code,short state)
+        {
+            var obj = user.FirstOrDefault(o => o.UserCode == code.ToString());
+            if (obj == null) return code.ToString();
+            var sender = state == 0 ? "<b>" + obj.FullName + "</b>" : obj.FullName;
+            return sender;
+        }
+        static string Title(string title,string body, short state)
+        {
+            if (title.IsNullOrEmpty()) return "";
+            var sender = state == 0 ? "<b>" + title + "</b>" : title;
+            body = striphtml(body);
+            if (body.Length > 100)
+                body = body.Substring(0, 100);
+            return sender+"<span class='titbody'>"+body+"</span>";
+        }
+        static string HasAttach(bool has)
+        {
+            return has ? "有" : "否";
+        }
+        //除去所有在html元素中标记
+        static string striphtml(string strhtml)
+        {
+            if (strhtml == null) return "";
+            string stroutput = strhtml;
+            Regex regex = new Regex(@"<[^>]+>|</[^>]+>");
+            stroutput = regex.Replace(stroutput, "");
+            return stroutput;
+        }
+        /// <summary>
+        /// 附件操作
+        /// </summary>
+        /// <param name="httpFiles"></param>
+        /// <param name="fileId"></param>
+        /// <param name="isTrans">回复或转发</param>
+        /// <returns></returns>
+        static List<Attachment> GetAttachs(System.Web.HttpFileCollectionBase httpFiles,string fileId, bool isTrans)
+        {
+            var relativePath = "";
+            var path = Sys.SysConstPool.SaveAttachPath(ref relativePath);
+            var root = Sys.SysConstPool.GetRoot;
+            var list = new List<Attachment>();
+            if (isTrans && !fileId.IsNullOrEmpty())
+            {
+                var ids = fileId.Split(',').Select(o=>int.Parse(o)).ToList();
+                var attachs= AttachService.FindList(o => ids.Contains(o.Id));
+                foreach (var att in attachs)
+                {
+                    var full = Path.Combine(root, att.SaveUrl);
+                    FileInfo file = new FileInfo(full);
+                    if (!file.Exists) continue;
+                    var destFileName = att.SaveUrl.Replace(file.Name, CommonRules.GUID + file.Extension);
+                    var destFile = Path.Combine(root, destFileName);
+                    var info = file.CopyTo(destFile);
+                    list.Add(new Attachment()
+                    {
+                        SourceClassify = 3,
+                        Title = att.Title,
+                        Size = att.Size,
+                        SaveUrl = destFileName
+                    });
+                }
+            }
+            for (int i = 0; i < httpFiles.Count; i++)
+            {
+                var file = httpFiles[i];
+                if (file.ContentLength <= 0) continue;
+                var filename = CommonRules.GUID + Path.GetExtension(file.FileName);
+                string fullname = path + filename;
+                file.SaveAs(fullname);
+                list.Add(new Attachment()
+                {
+                    SourceClassify = 3,
+                    Title = Path.GetFileName(file.FileName),
+                    Size = file.ContentLength / 1024,
+                    SaveUrl = relativePath + filename
+                });
+            }
+            return list;
+        }
+        /// <summary>
+        /// 支持手动输入姓名或编号
+        /// </summary>
+        /// <param name="title">内容</param>
+        /// <returns></returns>
+        static SysUserInfo GetUser(string title)
+        {
+            if (title.IsNullOrEmpty()) return null;
+            var obj = UserInfoService.Find(o => o.FullName == title);
+            if (obj != null) return obj;
+            int code=0;
+            if(int.TryParse(title, out code))
+                obj = UserInfoService.Find(o => o.UserCode == code.ToString());
+            return null;
+        }
+    }
+}

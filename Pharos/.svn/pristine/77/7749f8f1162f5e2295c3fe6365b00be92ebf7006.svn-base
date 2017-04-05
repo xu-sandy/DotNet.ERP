@@ -1,0 +1,32 @@
+﻿using Pharos.POS.Retailing.ChildPages;
+using Pharos.POS.Retailing.Models.SettingsPagesModels;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.SettingPages
+{
+    /// <summary>
+    /// SetStoreInfo.xaml 的交互逻辑
+    /// </summary>
+    public partial class SetMachineInfo : Window
+    {
+        public SetMachineInfo()
+        {
+            InitializeComponent();
+            this.DataContext = new MachineInfoModel();
+            this.Closing += SetMachineInfo_Closing;
+        }
+
+        void SetMachineInfo_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            Application.Current.Shutdown();
+        }
+
+        public SetMachineInfo(bool isModify)
+        {
+            InitializeComponent();
+            var model = new MachineInfoModel();
+            model.IsModify = isModify;
+            this.DataContext = model;
+        }
+    }
+}

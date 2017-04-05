@@ -1,0 +1,95 @@
+﻿@model PromotionBundling
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">
+    .times .textbox {
+        width: 78px !important;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <div class="formbox">
+                <table class="table-form" height="117px">
+                    <tr>
+                        <td class="name">活动有效期：</td>
+                        <td class="input">
+                            <table>
+                                <tr>
+                                    <td>@Html.DisplayTextFor(o => o.StartDate, "{0:yyyy-MM-dd}")</td>
+                                    <td style="padding-left:5px;padding-right:5px;line-height:28px;">至</td>
+                                    <td>@Html.DisplayTextFor(o => o.EndDate, "{0:yyyy-MM-dd}")</td>
+                                    <td style="padding-left:10px;">适用客户：</td>
+                                    <td>@Html.RadioButtonListFor(o => o.CustomerObj, ViewBag.customers as List<SelectListItem>)</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="name">活动时效：</td>
+                        <td class="input times">
+                            <table>
+                                <tr>
+                                    <td>@Html.RadioButtonListFor(o => o.Timeliness, new List<SelectListItem>() { new SelectListItem() { Text = "不限", Value = "0", Selected = true }, new SelectListItem() { Text = "指定每天时效", Value = "1" } })</td>
+                                    <td id="tdtimes">@Html.TimeBoxList((List<string>)ViewBag.times, "Times")</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="name">适用门店：</td>
+                        <td class="input choose">@Html.CheckBoxListFor(o => o.StoreId, ViewBag.shops as List<SelectListItem>, new { data_options = "", @class = "easyui-validatebox", id = "store" })</td>
+                    </tr>
+                </table>
+            </div><br />
+            <table class="easyui-datagrid" id="grid2"
+                    data-options="url:'@Url.Action("LoadDetailList")',queryParams:{zhekouId:'@Model.Id'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onLoadError:loadError">
+                <thead>
+                    <tr>
+                        <th data-options="field:'ProductCode',editor:{type:'textbox',options:{disabled:true}}" width="120">货号</th>
+                        <th data-options="field:'Barcode',editor:{type:'combobox',options:{prompt:'请输入条码...',required:true,panelWidth:250,mode:'remote',valueField:'barcode',textField:'title'}}" width="150">条码</th>
+                        <th data-options="field:'Title',editor:{type:'textbox',options:{disabled:true}}" width="150">品名</th>
+                        <th data-options="field:'SubCategoryTitle',editor:{type:'textbox',options:{disabled:true}}" width="80">品类</th>
+                        <th data-options="field:'BrandTitle',editor:{type:'textbox',options:{disabled:true}}" width="80">品牌</th>
+                        <th data-options="field:'SubUnit',editor:{type:'textbox',options:{disabled:true}}" width="60">单位</th>
+                        <th data-options="field:'BuyPrice',editor:{type:'textbox',options:{disabled:true}}" width="80">进价</th>
+                        <th data-options="field:'SysPrice',editor:{type:'textbox',options:{disabled:true}}" width="80">系统售价</th>
+                        <th data-options="field:'Number',editor:{type:'numberbox',options:{required:true,min:1}}" width="100">每捆数量</th>
+                        <th data-options="field:'StockNums',editor:{type:'numberbox',options:{disabled:true}}" width="60">库存量</th>
+                    </tr>
+                </thead>
+            </table><br />
+            <table width="90%">
+                <tr>
+                    <td style="width:63px;">捆绑条码：</td>
+                    <td style="width:170px;">@Html.DisplayTextFor(o => o.NewBarcode)</td>
+                    <td style="width:63px;">新品名：</td>
+                    <td style="width:170px;">@Html.DisplayTextFor(o => o.Title)</td>
+                    <td style="width:53px;">捆绑价：</td>
+                    <td style="width:169px;">@Html.DisplayTextFor(o => o.BundledPrice, "{0:f2}")</td>
+                    <td style="width:53px;">总捆数：</td>
+                    <td>@Html.DisplayTextFor(o => o.TotalBundled)</td>
+                </tr>
+            </table>
+            <p style="margin-top:30px;">
+                说明：<br />
+                1）录入货号后自动填充相关商品信息；<br />
+                2）总捆数为0，则表示无限制，直至商品售完或活动到期为止；<br />
+                3）捆绑条码：指销售终端所扫描的主商品条码后，则自动附加相关捆绑商品信息；<br />
+                当捆绑条码为空，表示扫描该捆任一商品条码后，则自动附加相关捆绑商品信息；<br />
+                当指定条码时，表示销售终端扫描到该条码后，则自动附件相关捆绑商品信息。<br />
+            </p>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        if ($("[name='Timeliness']").html() == "不限") {
+            $("#tdtimes").hide();
+        }
+    });
+</script>

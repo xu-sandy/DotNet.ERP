@@ -1,0 +1,55 @@
+﻿@model  Pharos.Logic.OMS.Entity.AgentsUsers
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style type="text/css">
+    .table-form td {
+        padding: 5px 0px;
+    }
+</style>
+
+<script type="text/javascript">
+    //代理商全称
+    var FullName = "@ViewBag.FullName";
+    //主登录账号
+    var LoginName = "@ViewBag.LoginName";
+    //姓名
+    var usersFullName = "@ViewBag.usersFullName";
+
+    var isRequired = true;
+    if (LoginName != "")
+    {
+        isRequired = false;
+    }
+</script>
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+
+        <div class="content">
+            <table class="table-form" width="100%">
+                <tr>
+                    <input type="hidden" value="@ViewBag.ids" name="ids" />
+                    <td class="name">代理商：</td>
+                    <td class="input">@Html.TextBox("FullName", "", new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'',width:120,readonly:true,value:FullName" })</td>
+                </tr>
+                <tr>
+                    <td class="name">主登录账号：</td>
+                    <td class="input">@Html.TextBox("LoginName", "", new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'',width:120,required:true,value:LoginName" })</td>
+                </tr>
+                <tr>
+                    <td class="name">姓名：</td>
+                    <td class="input">@Html.TextBox("usersFullName", "", new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'',width:120,required:true,value:usersFullName" })</td>
+                </tr>
+                <tr>
+                    <td class="name">密码：</td>
+                    <td class="input">@Html.Password("LoginPwd", "", new { @class = "easyui-textbox", data_options = "novalidate:true,prompt:'',width:120,required:isRequired,validType: 'length[6,20]'" })</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+

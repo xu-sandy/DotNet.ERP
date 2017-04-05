@@ -1,0 +1,109 @@
+﻿@model Pharos.Logic.Entity.CardInfo
+@{
+    ViewBag.Title = "CreateMemberCardType";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%" height="250px">
+                <tr>
+                    <td class="name">名称：</td>
+                    <td class="input">
+                        <input type="text" name="CardName" class="easyui-textbox" value="@Model.CardName" data-options="require:true" />
+                    </td>
+                    <td class="name"></td>
+                    <td class="input"></td>
+                </tr>
+                <tr>
+                    <td class="name">卡片功能：</td>
+                    <td class="input">
+                        <select id="Category" name="Category" class="easyui-combobox" data-options="editable:false">
+                            <option value="-1">请选择</option>
+                            <option value="1">储蓄卡</option>
+                            <option value="2">购物卡</option>
+                            <option value="3">会员卡</option>
+                        </select>
+                    </td>
+                    <td class="name">卡片种类：</td>
+                    <td class="input">
+                        <select id="CardType" name="CardType" class="easyui-combobox" data-options="editable:false">
+                            <option value="-1">请选择</option>
+                            <option value="1">电子卡</option>
+                            <option value="2">磁卡</option>
+                            <option value="3">IC卡</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">最低充值金额：</td>
+                    <td class="input"><input type="text" name="MinRecharge" class="easyui-numberbox" value="@Model.MinRecharge" data-options="precision:1" /></td>
+                    <td class="name">初始金额：</td>
+                    <td class="input"><input type="text" name="DefaultPrice" class="easyui-numberbox" value="@Model.DefaultPrice" data-options="precision:1" /></td>
+                </tr>
+                @*<tr>
+                        <td class="name">初始积分：</td>
+                        <td class="input"><input type="text" name="DefaultIntegr" class="easyui-textbox" value="@Model.DefaultIntegr" /></td>
+                        <td class="name">办卡押金：</td>
+                            <td class="input"><input type="text" name="" class="easyui-textbox" /></td>
+                    </tr>*@
+                <tr>
+                    <td class="name">状态：</td>
+                    <td class="input">
+                        @*@Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "可用", Selected = true }, new SelectListItem() { Text = "注销" } }, "state")*@
+                        <input type="radio" id="stateTrue" name="state" value="0" /><label for="stateTrue">可用</label>
+                        <input type="radio" id="stateFalse" name="state" value="1" /><label for="stateFalse">禁用</label>
+
+                    </td>
+
+                </tr>
+                <tr>
+                    <td class="name">备 注：</td>
+                    <td class="input" colspan="3">
+                        <textarea name="Memo" class="easyui-validatebox" style="width:320px;height:50px;">@Model.Memo</textarea>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script>
+    $(function () {
+        $(".discount").hide();
+        if ('@Model.Category' != '0')
+            $("#Category").combobox("setValue", '@Model.Category');
+        if ('@Model.CardType' != '0')
+            $("#CardType").combobox("setValue", '@Model.CardType');
+        if ("@Model.State" == "0") {
+            //可用
+            $("#stateTrue").click();
+        } else {
+            $("#stateFalse").click();
+        }
+
+        //$("#couponType").combobox({
+        //    onChange: function (n, o) {
+        //        if (n == 2) {
+        //            $(".discount").show();
+        //        } else {
+        //            $(".discount").hide();
+        //        }
+        //    }
+        //});
+        //$("#couponType").combobox('setValue', '0');
+    })
+
+    function SaveBefore() {
+        var category = $("#Category").combobox("getValue");
+        if (category == "-1") {
+            $.messager.alert("提示", "请选择类型名称！", "info");
+            return false;
+        }
+        var cardType = $("#CardType").combobox("getValue");
+        if (cardType == "-1") {
+            $.messager.alert("提示", "请选择卡片种类！", "info");
+            return false;
+        }
+    }
+</script>

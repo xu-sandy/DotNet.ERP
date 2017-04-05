@@ -1,0 +1,34 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Ninject;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IBLL;
+using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.BLL;
+
+
+namespace Pharos.Logic.OMS
+{
+    public class NinjectData
+    {
+        /// <summary>
+        /// 添加绑定
+        /// </summary>
+        /// <param name="kernel"></param>
+        public static void AddBindings(IKernel kernel)
+        {
+            kernel.Bind<IBaseRepository<Area>>().To<AreaRepository>();
+            kernel.Bind<IBaseService<Area>>().To<AreaService>();
+            kernel.Bind<IBaseRepository<SysUserInfo>>().To<UserInfoRepository>();
+            kernel.Bind<IUserService>().To<UserService>();
+            kernel.Bind<IBaseRepository<CompanyAuthorize>>().To<CompAuthorRepository>();
+            kernel.Bind<IBaseService<CompanyAuthorize>>().To<CompAuthorService>();
+            kernel.Bind<IBaseRepository<SysMenus>>().To<MenuRepository>();
+            kernel.Bind<IMenuService>().To<MenuService>();
+
+            kernel.Bind<LogEngine>().ToSelf();
+        }
+    }
+}

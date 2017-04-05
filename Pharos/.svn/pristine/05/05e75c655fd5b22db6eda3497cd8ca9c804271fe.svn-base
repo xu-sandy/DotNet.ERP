@@ -1,0 +1,406 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Logic.OMS.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.OMS.DAL;
+using System.ComponentModel;
+using QCT.Pay.Common;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// 支付接口Service类
+    /// </summary>
+    public class PayTradeService : IPayTradeService
+    {
+        /// <summary>
+        /// 支付接口仓储
+        /// </summary>
+        [Ninject.Inject]
+        IBaseRepository<PayApi> PayApiRepost { get; set; }
+        /// <summary>
+        /// 支付订单记录仓储
+        /// </summary>
+        [Ninject.Inject]
+        IBaseRepository<TradeOrder> TradeOrderRepost { get; set; }
+        /// <summary>
+        /// 支付结果通知仓储
+        /// </summary>
+        [Ninject.Inject]
+        IBaseRepository<TradeResult> TradeResultRepost { get; set; }
+        /// <summary>
+        /// 商户支付账号仓储
+        /// </summary>
+        [Ninject.Inject]
+        IBaseRepository<MerchantPay> MchPayRepost { get; set; }
+        /// <summary>
+        /// 商户支付门店仓储
+        /// </summary>
+        [Ninject.Inject]
+        IBaseRepository<MerchantStore> MchStoreRepost { get; set; }
+
+        /// <summary>
+        /// 日志记录引擎
+        /// </summary>
+        [Ninject.Inject]
+        protected LogEngine LogEngine { get; set; }
+
+        static object objlock = new object();
+        /// <summary>
+        /// 生成支付交易流水号
+        /// </summary>
+        public string NewTradeNo
+        {
+            get
+            {
+                lock (objlock)
+                {
+                    var prefix = DateTime.Now.ToString("yyyyMMddHHmmss");
+                    var maxNo = GetMaxTradeNo(prefix);
+                    int defNo = 0;
+                    if (!string.IsNullOrEmpty(maxNo))
+                        defNo = int.Parse(maxNo.Substring(14));
+                    defNo++;
+                    return prefix + defNo.ToString("0000");
+                }
+            }
+        }
+        /// <summary>
+        /// 根据商户CID获得该商户的可以通道
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <returns></returns>
+        public object GetChannels(int cid)
+        {
+            throw new NotImplementedException();
+        }
+        /// <summary>
+        /// 创建商户主扫支付动态二维码订单
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <param name="secretKey3"></param>
+        /// <returns></returns>
+        public TradeOrder CreateBuyerScanDynaOrder(PayBuyerScanDynaRequest reqParams, out string secretKey, out string secretKey3)
+        {
+            secretKey = "";
+            secretKey3 = "";
+            var hasOutTradeNo = HasTradeOrder(reqParams.CID, reqParams.OutTradeNo);
+            if (!hasOutTradeNo)
+            {
+                var mchObj = GetMchPay(reqParams.CID);
+                var storeObj = GetMchStore(reqParams.CID, reqParams.SID);
+                reqParams.ResetPayNotifyUrl(mchObj.PayNotifyUrl);
+
+                if (mchObj != null && storeObj != null)
+                {
+                    secretKey = mchObj.SecretKey;
+                    secretKey3 = mchObj.SecretKey3;
+                    DateTime createDt = DateTime.Now;
+
+                    var tradeRcd = new TradeOrder()
+                    {
+                        TradeNo = NewTradeNo,
+                        OutTradeNo = reqParams.OutTradeNo,
+                        CID = reqParams.CID,
+                        SID = reqParams.SID,
+                        DeviceId = reqParams.DeviceId,
+                        MchId3 = storeObj.MchId3,
+                        StoreId3 = storeObj.StoreId3,
+                        DeviceId3 = reqParams.DeviceId.ToString(),
+                        TotalAmount = reqParams.TotalAmount,
+                        SourceType = mchObj.SourceType,
+                        ApiNo = mchObj.ApiNo,
+                        SignType = reqParams.SignType,
+                        Version = reqParams.Version,
+                        Signature = reqParams.Sign,
+                        Status = 0,
+                        PayNotifyUrl = reqParams.PayNotifyUrl,
+                        Fee = CalcFee(reqParams.TotalAmount, mchObj.MchRate),
+                        OrderType3 = short.Parse(reqParams.OrderType3),
+                        TradeType = (short)QctTradeType.Income,
+                        FeeType = (short)FeeType.RMB,
+                        BuyerMobile = "",
+                        CreateDT = createDt,
+                        UpdateDT = createDt
+                    };
+                    using (var trans = new EFDbContext().Database.BeginTransaction())
+                    {
+                        TradeOrderRepost.Add(tradeRcd, false);
+                        var result = TradeOrderRepost.SaveChanges();
+                        if (result)
+                        {
+                            return tradeRcd;
+                        }
+                    }
+                }
+            }
+            
+            return null;
+        }
+        /// <summary>
+        /// 创建商户被扫支付订单
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <param name="secretKey3"></param>
+        /// <returns></returns>
+        public TradeOrder CreateBuyerScanDynaOrder(PayMerchScanRequest reqParams, out string secretKey, out string secretKey3)
+        {
+            secretKey = "";
+            secretKey3 = "";
+            var hasOutTradeNo = HasTradeOrder(reqParams.CID, reqParams.OutTradeNo);
+            if (!hasOutTradeNo)
+            {
+                var mchObj = GetMchPay(reqParams.CID);
+                var storeObj = GetMchStore(reqParams.CID, reqParams.SID);
+                reqParams.ResetPayNotifyUrl(mchObj.PayNotifyUrl);
+
+                if (mchObj != null && storeObj != null)
+                {
+                    secretKey = mchObj.SecretKey;
+                    secretKey3 = mchObj.SecretKey3;
+                    DateTime createDt = DateTime.Now;
+
+                    var tradeRcd = new TradeOrder()
+                    {
+                        TradeNo = NewTradeNo,
+                        OutTradeNo = reqParams.OutTradeNo,
+                        CID = reqParams.CID,
+                        SID = reqParams.SID,
+                        DeviceId = reqParams.DeviceId,
+                        MchId3 = storeObj.MchId3,
+                        StoreId3 = storeObj.StoreId3,
+                        DeviceId3 = reqParams.DeviceId.ToString(),
+                        TotalAmount = reqParams.TotalAmount,
+                        BuyerPayToken = reqParams.BuyerPayToken,
+                        SourceType = mchObj.SourceType,
+                        ApiNo = mchObj.ApiNo,
+                        SignType = reqParams.SignType,
+                        Version = reqParams.Version,
+                        Signature = reqParams.Sign,
+                        Status = 0,
+                        PayNotifyUrl = reqParams.PayNotifyUrl,
+                        Fee = CalcFee(reqParams.TotalAmount, mchObj.MchRate),
+                        OrderType3 = short.Parse(reqParams.OrderType3),
+                        TradeType = (short)QctTradeType.Income,
+                        FeeType = (short)FeeType.RMB,
+                        BuyerMobile = "",
+                        CreateDT = createDt,
+                        UpdateDT = createDt
+                    };
+                    using (var trans = new EFDbContext().Database.BeginTransaction())
+                    {
+                        TradeOrderRepost.Add(tradeRcd, false);
+                        var result = TradeOrderRepost.SaveChanges();
+                        if (result)
+                        {
+                            return tradeRcd;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        /// <summary>
+        /// 创建商户退款申请单
+        /// </summary>
+        /// <param name="reqParams"></param>
+        /// <param name="secretKey3"></param>
+        /// <returns></returns>
+        public TradeOrder CreateRefundApplyOrder(RefundApplyRequest reqParams, out string secretKey, out string secretKey3)
+        {
+            secretKey = "";
+            secretKey3 = "";
+            var hasOutTradeNo = HasTradeOrder(reqParams.CID, reqParams.OutTradeNo);
+            if (!hasOutTradeNo)
+            {
+                var mchObj = GetMchPay(reqParams.CID);
+                var storeObj = GetMchStore(reqParams.CID, reqParams.SID);
+                reqParams.ResetRfdNotifyUrl(mchObj.PayNotifyUrl);
+
+                if (mchObj != null && storeObj != null)
+                {
+                    secretKey = mchObj.SecretKey;
+                    secretKey3 = mchObj.SecretKey3;
+                    DateTime createDt = DateTime.Now;
+
+                    var tradeRcd = new TradeOrder()
+                    {
+                        TradeNo = NewTradeNo,
+                        OutTradeNo = reqParams.OutTradeNo,
+                        OldOutTradeNo = reqParams.OldOutTradeNo,
+                        CID = reqParams.CID,
+                        SID = reqParams.SID,
+                        DeviceId = reqParams.DeviceId,
+                        MchId3 = storeObj.MchId3,
+                        StoreId3 = storeObj.StoreId3,
+                        DeviceId3 = reqParams.DeviceId.ToString(),
+                        TotalAmount = reqParams.RefundAmount,
+                        SourceType = mchObj.SourceType,
+                        ApiNo = mchObj.ApiNo,
+                        SignType = reqParams.SignType,
+                        Version = reqParams.Version,
+                        Signature = reqParams.Sign,
+                        Status = (short)RefundStatus.RefundIng,
+                        RfdNotifyUrl = reqParams.RfdNotifyUrl,
+                        Fee = 0,
+                        OrderType3 = ((short)SxfOrderType.CommonOrder),
+                        TradeType = (short)QctTradeType.Expense,
+                        FeeType = (short)FeeType.RMB,
+                        BuyerMobile = "",
+                        CreateDT = createDt,
+                        UpdateDT = createDt
+                    };
+                    using (var trans = new EFDbContext().Database.BeginTransaction())
+                    {
+                        TradeOrderRepost.Add(tradeRcd, false);
+                        var result = TradeOrderRepost.SaveChanges();
+                        if (result)
+                        {
+                            return tradeRcd;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        /// <summary>
+        /// 保存支付返回结果
+        /// </summary>
+        /// <param name="tradeResult"></param>
+        /// <returns></returns>
+        public bool SaveMchTradeResult(TradeResult tradeResult, out TradeOrder tradeOrder)
+        {
+            //fishtodo:保存交易结果
+            tradeOrder = null;
+            try
+            {
+                var tradeObj = TradeResultRepost.GetQuery(o => o.OutTradeNo == tradeResult.OutTradeNo).FirstOrDefault();
+                using (var trans = new EFDbContext().Database.BeginTransaction())
+                {
+                    if (tradeObj != null)
+                    {
+                        tradeResult.ToCopyProperty(tradeObj, new List<string>() { "CreateDT", "OutTradeNo" });
+                    }
+                    else
+                    {
+                        TradeResultRepost.Add(tradeResult);
+                    }
+                    //变更TradeOrder数据状态
+                    tradeOrder = TradeOrderRepost.GetQuery(o => o.OutTradeNo == tradeResult.OutTradeNo && o.MchId3 == tradeResult.MchId3).FirstOrDefault();
+                    tradeOrder.ReceiptAmount = tradeResult.ReceiptAmount;
+                    tradeOrder.TradeNo3 = tradeResult.TradeNo3;
+                    tradeOrder.Status = tradeResult.TradeStatus;
+                    tradeOrder.TradeDate = tradeResult.TradeDate;
+                    tradeOrder.UpdateDT = DateTime.Now;
+                    var result = TradeResultRepost.SaveChanges();
+                    var result1 = TradeOrderRepost.SaveChanges();
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogEngine.WriteError(ex.Message, ex, LogModule.支付交易);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 获取最大订单交易流水号
+        /// </summary>
+        /// <param name="prefix"></param>
+        /// <returns></returns>
+        public string GetMaxTradeNo(string prefix)
+        {
+            var result = TradeOrderRepost.GetQuery(o => o.TradeNo.StartsWith(prefix)).Max(o => o.TradeNo);
+            return result;
+        }
+
+        /// <summary>
+        /// 根据CID获取商户支付账户信息
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <returns></returns>
+        public MerchantPay GetMchPay(int cid)
+        {
+            var mchObj = MchPayRepost.GetQuery(o => o.CID == cid && o.Status == 1).FirstOrDefault();
+            return mchObj;
+        }
+
+        /// <summary>
+        /// 根据根据第三方商户号获取商户支付账户信息
+        /// </summary>
+        /// <param name="mchId"></param>
+        /// <returns></returns>
+        public MerchantPay GetMchPay(string mchId)
+        {
+            var mchObj = MchPayRepost.GetQuery(o => o.Info1 == mchId && o.Status == 1).FirstOrDefault();
+            return mchObj;
+        }
+
+        /// <summary>
+        /// 根据商户号及门店号获取商户信息
+        /// </summary>
+        /// <param name="mchId"></param>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public MerchantStore GetMchStore(int cid, int sid)
+        {
+            var storeObj = MchStoreRepost.GetQuery(o => o.CID == cid && o.SID == sid && o.Status == 1).FirstOrDefault();
+            return storeObj;
+        }
+        /// <summary>
+        /// 根据商户号及门店号获取商户信息
+        /// </summary>
+        /// <param name="mchId"></param>
+        /// <param name="storeId"></param>
+        /// <returns></returns>
+        public MerchantStore GetMchStore(string mchId3, string storeId3)
+        {
+            var storeObj = MchStoreRepost.GetQuery(o => o.MchId3 == mchId3 && o.StoreId3 == storeId3 && o.Status == 1).FirstOrDefault();
+            return storeObj;
+        }
+
+        /// <summary>
+        /// 根据第三方商户号，商户订单号获得唯一订单
+        /// </summary>
+        /// <param name="mchId3"></param>
+        /// <param name="outTradeNo"></param>
+        /// <returns></returns>
+        public TradeOrder GetTradeOrder(string mchId3, string outTradeNo)
+        {
+            var trade = TradeOrderRepost.GetQuery(o => o.MchId3 == mchId3 && o.OutTradeNo == outTradeNo).FirstOrDefault();
+            return trade;
+        }
+        /// <summary>
+        /// 判断是否存在商户订单
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <param name="outTradeNo"></param>
+        /// <returns></returns>
+        public bool HasTradeOrder(int cid, string outTradeNo)
+        {
+            var order = TradeOrderRepost.GetQuery(o => o.CID == cid && o.OutTradeNo == outTradeNo).FirstOrDefault();
+            if (order != null)
+                return true;
+            else
+                return false;
+        }
+        #region private
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="totalAmount">金额</param>
+        /// <param name="rate">费率%</param>
+        /// <returns></returns>
+        private decimal CalcFee(decimal totalAmount, decimal rate)
+        {
+            var val = totalAmount * rate * (decimal)0.01;
+            return val;
+        }
+        #endregion
+    }
+}

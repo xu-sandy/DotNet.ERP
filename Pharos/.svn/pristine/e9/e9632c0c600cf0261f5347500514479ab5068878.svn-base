@@ -1,0 +1,198 @@
+﻿using Pharos.MessageAgent.Data.V1;
+using Quartz;
+using Quartz.Impl;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.MessageTransferAgenClient.DomainEvent
+{
+    public class EventAggregator : IEventAggregator
+    {
+        public EventAggregator()
+        {
+            RefreshSubscribe(new TimeSpan(0, 30, 0));
+        }
+        static EventAggregator current;
+        public static EventAggregator Current
+        {
+            get
+            {
+                if (current == null)
+                {
+                    current = new EventAggregator();
+                }
+                return current;
+            }
+        }
+        internal static readonly IList<IEventHandler> handlers = new List<IEventHandler>();
+        public void Subscribe(string topic, IEventHandler handler)
+        {
+            SubscribeAsync(topic, handler).Wait();
+        }
+
+        public void Subscribe<TEvent>(string topic, Action<TEvent> handler) where TEvent : class, IEvent
+        {
+            SubscribeAsync(topic, handler).Wait();
+        }
+        public System.Threading.Tasks.Task SubscribeAsync<TEvent>(string topic, Action<TEvent> handler) where TEvent : class, IEvent
+        {
+            return SubscribeAsync(topic, new ActionEventHandler<TEvent>(topic, handler));
+
+        }
+        public System.Threading.Tasks.Task SubscribeAsync(string topic, IEventHandler handler)
+        {
+            return Task.Factory.StartNew(() =>
+             {
+                 handler.Topic = topic;
+                 lock (handlers)
+                 {
+                     handlers.Add(handler);
+                 }
+                 RemoteSubscribe(topic);
+             });
+        }
+        internal void RemoteSubscribe(string topic)
+        {
+            MessageClient.Current.SendObjectToJsonStream(new byte[] { 0x01, 0x00, 0x00, 0x01 }, new SubscribeInformaction()
+            {
+                IsWebSiteSubscriber = MessageSettings.Current.IsWeb,
+                Topic = topic,
+                WebSiteURI = MessageSettings.Current.WebSiteURI,
+                SubscribeId = MessageSettings.Current.SubscribeId
+            });
+        }
+
+        public long Publish<TEvent>(string topic, TEvent domainEvent) where TEvent : class, IEvent
+        {
+            var task = PublishAsync(topic, domainEvent);
+            task.Wait();
+            return task.Result;
+        }
+
+        public System.Threading.Tasks.Task<long> PublishAsync<TEvent>(string topic, TEvent domainEvent) where TEvent : class, IEvent
+        {
+            return Task.Factory.StartNew<long>(() =>
+            {
+                MessageClient.Current.SendObjectToJsonStream(new byte[] { 0x01, 0x00, 0x00, 0x02 }, new PubishInformaction() { Topic = topic, Content = MessageClient.Current.ObjectToJsonString(domainEvent) });
+                return handlers.LongCount(o => o.Topic == topic);
+            });
+        }
+
+        public void Unsubscribe(string topic, IEventHandler handler = null)
+        {
+            lock (handlers)
+            {
+                var topicHandlers = handlers.Where(o => o.Topic == topic);
+                if (handler != null)
+                {
+                    topicHandlers = topicHandlers.Where(o => o == handler);
+                }
+                foreach (var item in topicHandlers)
+                {
+                    handlers.Remove(item);
+                }
+            }
+        }
+
+        public void Unsubscribe<TEvent>(string topic, Action<TEvent> handler = null) where TEvent : class, IEvent
+        {
+            lock (handlers)
+            {
+                var topicHandlers = handlers.Where(o => o.Topic == topic);
+                if (handler != null)
+                {
+                    topicHandlers = topicHandlers.Where(o => o is ActionEventHandler<TEvent> && ((ActionEventHandler<TEvent>)o).CallBack == handler);
+                }
+                foreach (var item in topicHandlers)
+                {
+                    handlers.Remove(item);
+                }
+            }
+        }
+
+        public System.Threading.Tasks.Task UnsubscribeAsync(string topic, IEventHandler handler = null)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                Unsubscribe(topic, handler);
+            });
+        }
+
+        public void UnsubscribeAll()
+        {
+            lock (handlers)
+            {
+                handlers.Clear();
+            }
+        }
+
+        public System.Threading.Tasks.Task UnsubscribeAllAsync()
+        {
+            return Task.Factory.StartNew(() =>
+             {
+                 UnsubscribeAll();
+             });
+        }
+        public void RemotePublish(PubishInformaction info)
+        {
+            List<Task> tasks = new List<Task>();
+            lock (EventAggregator.handlers)
+            {
+                var topicHandlers = EventAggregator.handlers.Where(o => o.Topic == info.Topic).ToList();
+                foreach (var item in topicHandlers)
+                {
+                    tasks.Add(Task.Factory.StartNew((o) =>
+                    {
+                        item.Handle((PubishInformaction)o);
+                    }, info));
+                }
+            }
+            //Task.WaitAll(tasks.ToArray());
+
+        }
+
+        private static void RefreshSubscribe(TimeSpan ts)
+        {
+            if (ts == default(TimeSpan) && ts < new TimeSpan(1)) return;
+
+            lock (StdSchedulerFactory.SystemPropertyAsInstanceId)
+            {
+                IScheduler scheduler = StdSchedulerFactory.GetDefaultScheduler();
+                scheduler.Start();       //开启调度器
+                var tempTriggerKey = new TriggerKey("RefreshSubscribeJob", "RefreshSubscribeJob");
+                if (scheduler.CheckExists(tempTriggerKey))
+                {
+                    scheduler.UnscheduleJob(tempTriggerKey);
+                }
+                IJobDetail job1 = JobBuilder.Create<RefreshSubscribeJob>()  //创建一个作业
+                   .WithIdentity("RefreshSubscribeJob", "RefreshSubscribeJob")
+                   .Build();
+                ITrigger trigger1 = TriggerBuilder.Create()
+                                           .WithIdentity("RefreshHostedMarketing", "Marketing")
+                                           .StartNow()                       //现在开始
+                                           .WithSimpleSchedule(x => x         //触发时间
+                                               .WithInterval(ts)
+                                               .RepeatForever()
+                                               )
+                                           .Build();
+                scheduler.ScheduleJob(job1, trigger1);      //把作业，触发器加入调度器。
+            }
+
+        }
+    }
+
+    public class RefreshSubscribeJob : IJob
+    {
+
+        public void Execute(IJobExecutionContext context)
+        {
+            foreach (var handler in EventAggregator.handlers)
+            {
+                EventAggregator.Current.RemoteSubscribe(handler.Topic);
+            }
+        }
+    }
+}

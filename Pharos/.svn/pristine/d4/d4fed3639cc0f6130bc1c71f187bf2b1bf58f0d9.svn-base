@@ -1,0 +1,177 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using Pharos.Logic;
+using Pharos.Logic.BLL;
+using Pharos.Logic.Entity;
+using Pharos.Sys;
+
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class STHouseMoveController : BaseController
+    {
+        #region 调入管理
+        public ActionResult MoveinIndex()
+        {
+            var list = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "全部");
+            ViewBag.inshops = list.Where(o => o.Value != Sys.CurrentUser.StoreId).ToList();
+
+            ViewBag.states = EnumToSelect(typeof(HouseMoveState), emptyTitle: "全部");
+            ViewBag.CurStoreId = CurrentUser.StoreId;
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult FindMoveinList(int page = 1, int rows = 30)
+        {
+            int count;
+            var list = STHouseMoveService.FindMoveinList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+
+        #region 申请调入
+        public ActionResult MoveinAdd(int? id)
+        {
+            var list = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "请选择");
+            ViewBag.outshops = list.Where(o => o.Value != Sys.CurrentUser.StoreId).ToList();
+            ViewBag.inshops = list.Where(o => o.Value == Sys.CurrentUser.StoreId).ToList();
+
+            var obj = new Logic.Entity.HouseMove();
+            if (id.HasValue)
+            {
+                obj = STHouseMoveService.FindById(id);
+            }
+            return View(obj.IsNullThrow());
+        }
+        [HttpPost]
+        [ValidateInput(false)]
+        public ActionResult MoveinAdd(HouseMove obj)
+        {
+            var re = STHouseMoveService.SaveOrUpdate(obj);
+            return Content(re.ToJson());
+        }
+        /// <summary>
+        /// 加载明细
+        /// </summary>
+        /// <param name="orderId"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult LoadDetailList(string moveId)
+        {
+            int count = 0;
+            object footer = null;
+            var list = STHouseMoveService.LoadDetailList(moveId, out count, ref footer);
+            //var list = Session["orderdetails"];
+            return ToDataGrid(list, count, footer);
+        }
+
+        /// <summary>
+        /// 撤回调拨
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult ReBack(string ids)
+        {
+            var sid = ids.Split(',');
+            var houses = STHouseMoveService.FindList(o => sid.Contains(o.MoveId));
+            houses.Each(o =>
+            {
+                o.State = (short)HouseMoveState.已撤回;
+                var houselist = BaseService<HouseMoveList>.FindList(a => a.MoveId == o.MoveId);
+                houselist.Each(a =>
+                {
+                    a.State = (short)HouseMoveState.已撤回;
+                });
+                BaseService<HouseMoveList>.Update(houselist);
+            });
+            var re = STHouseMoveService.Update(houses);
+            return Content(re.ToJson());
+        }
+        #endregion
+
+        #region 收货
+        public ActionResult MoveinReceive(int? id) //, string supplierId
+        {
+            var list = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "请选择");
+            ViewBag.outshops = list.Where(o => o.Value != Sys.CurrentUser.StoreId).ToList();
+            ViewBag.inshops = list.Where(o => o.Value == Sys.CurrentUser.StoreId).ToList();
+
+            var obj = new Logic.Entity.HouseMove();
+            if (id.HasValue)
+            {
+                obj = STHouseMoveService.FindById(id);
+            }
+            int count = 0;
+            object footer = null;
+            var details = STHouseMoveService.LoadDetailList(obj.MoveId, out count, ref footer);
+            ViewData["Updated"] = details.ToJson();
+            Session["orderdetails"] = details;
+            return View(obj.IsNullThrow());
+        }
+        [HttpPost]
+
+        public ActionResult MoveinReceive(string moveId, string updated, string updated2)
+        {
+            var op = STHouseMoveService.MoveinReceive(moveId, updated, updated2);
+            return Content(op.ToJson());
+        }
+        #endregion
+
+        #endregion
+
+        #region 调出管理
+        public ActionResult MoveoutIndex()
+        {
+            var list = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "全部");
+            ViewBag.outshops = list.Where(o => o.Value != Sys.CurrentUser.StoreId).ToList();
+
+            ViewBag.states = EnumToSelect(typeof(HouseMoveState), emptyTitle: "全部");
+            ViewBag.CurStoreId = CurrentUser.StoreId;
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult FindMoveoutList(int page = 1, int rows = 30)
+        {
+            int count;
+            var list = STHouseMoveService.FindMoveoutList(Request.Params, out count);
+            return ToDataGrid(list, count);
+        }
+
+
+        #region 配送
+        public ActionResult MoveOutDelivery(int? id) //, string supplierId
+        {
+            var list = ListToSelect(WarehouseService.GetList().Select(o => new SelectListItem() { Value = o.StoreId, Text = o.Title }), emptyTitle: "请选择");
+            ViewBag.outshops = list.Where(o => o.Value == Sys.CurrentUser.StoreId).ToList();
+            ViewBag.inshops = list.Where(o => o.Value != Sys.CurrentUser.StoreId).ToList();
+
+            var obj = new Logic.Entity.HouseMove();
+            if (id.HasValue)
+            {
+                obj = STHouseMoveService.FindById(id);
+            }
+            int count = 0;
+            object footer = null;
+            var details = STHouseMoveService.LoadDetailList(obj.MoveId, out count, ref footer);
+            ViewData["Updated"] = details.ToJson();
+            Session["orderdetails"] = details;
+            return View(obj.IsNullThrow());
+        }
+        [HttpPost]
+
+        public ActionResult MoveOutDelivery(string moveId, string updated, string updated2)
+        {
+            var op = STHouseMoveService.MoveOutDelivery(moveId, updated, updated2);
+            return Content(op.ToJson());
+        }
+        #endregion
+        #endregion
+
+    }
+}

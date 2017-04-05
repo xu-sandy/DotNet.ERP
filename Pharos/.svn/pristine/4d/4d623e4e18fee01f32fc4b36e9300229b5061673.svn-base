@@ -1,0 +1,72 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Sys;
+using Pharos.Sys.BLL;
+using Pharos.Sys.Entity;
+using Pharos.Utility.Helpers;
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class AuthorizationController : Controller
+    {
+        #region 产品注册
+        public ActionResult Register(int again=0)
+        {
+            var companyId = SysCommonRules.CompanyId;
+            var obj = new OMS_CompanyAuthorize() { Category = 1 };
+            if (!companyId.IsNullOrEmpty())
+            {
+                obj = OMSCompanyAuthrizeBLL.GetByCode(companyId);
+                if (obj != null && again==0)
+                    return RedirectToAction("Activate", new { companyId = obj.Code });
+            }
+            return View(obj);
+        }
+        [HttpPost]
+        public ActionResult Register(OMS_CompanyAuthorize obj)
+        {
+            var op = new SysAuthorize().Register(obj);
+            return Content(op.ToJson());
+        }
+        public ActionResult Activate(int companyId)
+        {
+            var obj = OMSCompanyAuthrizeBLL.GetByCode(companyId);
+            if (!(obj != null && !obj.SerialNo.IsNullOrEmpty()))
+                obj = null;
+            return View(obj);
+        }
+        [HttpPost]
+        public ActionResult Activate(string serialNo)
+        {
+            var op = new SysAuthorize().VerifyActivate(serialNo);
+            return Content(op.ToJson());
+        }
+        public ActionResult RegisterUpdate()
+        {
+            var companyId = Pharos.Utility.Config.GetAppSettings("CompanyId");
+            var obj = new OMS_CompanyAuthorize() { Category = 1 };
+            if (!companyId.IsNullOrEmpty())
+            {
+                obj = OMSCompanyAuthrizeBLL.GetByCode(int.Parse(companyId));
+                new Pharos.Utility.Config().SetAppSettings("CompanyId", "");
+            }
+            return View("Register", obj);
+        }
+        [HttpPost]
+        public void RegisterAgain()
+        {
+            var companyId = SysCommonRules.CompanyId;
+            var comp = OMSCompanyAuthrizeBLL.GetByCode(companyId);
+            if(comp!=null)
+            {
+                if (comp.Category == 2)
+                    new Pharos.Utility.Config().SetAppSettings(SysAuthorize._SerialKey, "");
+                comp.SerialNo = "";
+                OMSCompanyAuthrizeBLL.Update(comp);
+            }
+        }
+        #endregion
+    }
+}

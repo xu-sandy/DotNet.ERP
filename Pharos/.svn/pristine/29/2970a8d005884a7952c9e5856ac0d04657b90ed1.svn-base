@@ -1,0 +1,171 @@
+﻿using Pharos.POS.Retailing.ChildWin;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.Printer;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Windows;
+using System.Windows.Input;
+
+namespace Pharos.POS.Retailing.Models.ApiReturnResults
+{
+    /// <summary>
+    /// 订单信息
+    /// </summary>
+    public class OrderInfoModel
+    {
+        public int Index { get; set; }
+        /// <summary>
+        /// 流水号
+        /// </summary>
+        public string PaySn { get; set; }
+        /// <summary>
+        /// 数量
+        /// </summary>
+        public decimal Number { get; set; }
+        /// <summary>
+        /// 金额
+        /// </summary>
+        public decimal Amount { get; set; }
+        /// <summary>
+        /// 订单时间
+        /// </summary>
+        public DateTime Date { get; set; }
+
+        public FindBills Parent { get; set; }
+        /// <summary>
+        /// 订单状态
+        /// </summary>
+        public int OrderStatus { get; set; }
+
+        public string Cashier { get; set; }
+
+        public string SaleMan { get; set; }
+        public short OrderType { get; set; }
+
+
+        /// <summary>
+        /// 查看详情
+        /// </summary>
+        public ICommand CheckDetail
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    DingDanXiangQing page = new DingDanXiangQing(PaySn);
+                    page.Owner = Application.Current.MainWindow;
+                    page.ShowDialog();
+                });
+            }
+        }
+
+        /// <summary>
+        /// 重打订单
+        /// </summary>
+        public ICommand Print
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    if (PosViewModel.Current.PrintStatus == PrintStatus.Open)
+                    {
+                        var _machineInfo = Global.MachineSettings.MachineInformations;
+                        //调历史订单接口
+                        FindBillHistoryParams _params = new FindBillHistoryParams()
+                        {
+                            StoreId = _machineInfo.StoreId,
+                            MachineSn = _machineInfo.MachineSn,
+                            CID = _machineInfo.CompanyId,
+                            PaySn = PaySn
+                        };
+                        var result = ApiManager.Post<FindBillHistoryParams, ApiRetrunResult<BillHistoryInfo>>(@"api/FindBillHistory", _params);
+                        if (result.Code == "200")
+                        {
+                            var orderDetail = result.Result.Details;
+                            var orderStatus = result.Result.OrderStatus;
+                            var refundStatus = 1;//1=退整单
+
+                            int printWidth = 40;
+                            PrintModelHelper printer = new PrintModelHelper();
+                            TicketModel ticketModel = new TicketModel();
+                            ticketModel.TicketWidth = printWidth;//发票宽度，按字符数计算，根据打印机型号有所区别(通常在30-70之间),建议系统提供配置入口
+                            ticketModel.StoreName = _machineInfo.StoreName;
+                            ticketModel.DeviceNumber = result.Result.MachineSn;
+                            //ticketModel.Cashier = UserModel.Current.UserCode;
+                            ticketModel.Cashier = result.Result.CashierId;
+                            ticketModel.SN = PaySn;
+                            List<ProductModel> productList = new List<ProductModel>();
+                            foreach (var item in orderDetail)
+                            {
+                                ProductModel productModel = new ProductModel();
+                                productModel.Code = item.Barcode;
+                                productModel.Name = item.Title;
+                                productModel.Num = orderStatus == refundStatus ? -item.Number : item.Number;
+                                productModel.Price = orderStatus == refundStatus ? -item.ActualPrice : item.ActualPrice;
+                                productModel.SubTotal = item.Total;
+                                productList.Add(productModel);
+
+                            }
+                            ticketModel.ProductList = productList;
+                            ticketModel.CountNum = orderStatus == refundStatus ? -(int)result.Result.ProductCount : (int)result.Result.ProductCount;
+                            ticketModel.TotalPrice = result.Result.WipeZeroAfterTotalAmount.ToString("0.###");
+                            ticketModel.Receivable = result.Result.Received.ToString("0.###");
+                            ticketModel.Change = result.Result.Change;
+
+
+                            //if (result.Result.WipeZeroAfterTotalAmount > 0)
+                            //{
+                            ticketModel.PayType = result.Result.Payment;
+                            //}
+                            ticketModel.Preferential = result.Result.PreferentialAmount;
+
+                            ticketModel.SaleMan = result.Result.SaleManName;
+
+                            //type=0正常 1换货 2退货    status=0正常 1退单
+                            if (result.Result.OrderStatus == 1)
+                            {
+                                ticketModel.OrderType = 3;
+                                ticketModel.CreateDT = (DateTime)result.Result.ReturnDT;
+                            }
+                            else
+                            {
+                                ticketModel.OrderType = result.Result.OrderType;
+                                ticketModel.CreateDT = result.Result.OrderTime;
+                            }
+                            //ticketModel.OrderType = result.Result.OrderStatus == 1 ? 2 : 0; //0=sale;1=换;2=退
+                            //  ticketModel.Weigh = "0 KG";
+                            List<string> footItemList = new List<string>();
+                            //if (PosViewModel.Current.Preferential > 0m)
+                            //{
+                            //    footItemList.Add("已优惠：" + string.Format("{0:N2}", result.Result.PreferentialAmount));
+
+                            //}
+                            //footItemList.Add("称重商品数量请参照条码标签");
+                            footItemList.Add("欢迎光临");
+                            footItemList.Add("服务电话：" + _machineInfo.Phone);
+                            footItemList.Add("请保留电脑小票，作为退换货凭证");
+                            footItemList.Add("重打小票");
+                            ticketModel.FootItemList = footItemList;
+                            string titleStr = string.Empty;
+                            string printStr = printer.GetPrintStr(ticketModel, out titleStr);
+                            PrintHelper.Print(printStr, titleStr);
+                        }
+                        else
+                        {
+                            Toast.ShowMessage("获取订单数据失败,订单打印失败！", Application.Current.MainWindow);
+                        }
+
+                    }
+                    else
+                    {
+                        Toast.ShowMessage("未打开小票打印功能！", Application.Current.MainWindow);
+                    }
+                });
+
+            }
+        }
+    }
+}

@@ -1,0 +1,311 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    
+}
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div class="default-form" data-options="region:'north',border:false" style="height:70px;">
+        <form id="frmsearch" action="@Url.Action("Save")" method="post">
+            @Html.Hidden("Updated")
+            @Html.Hidden("Deleted")
+            @Html.Hidden("Inserted")
+            @Html.Hidden("state", "1")
+            <table class="table-toolbar">
+                <tr>
+                    <td class="name" style="padding-left:13px;">盘点门店：</td>
+                    <td class="input">@Html.DropDownList("LockStoreID", ViewBag.shops as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "onSelect:storeSelect,validType:'requiredForCombo',width:150" })</td>
+                    <td class="name padding-left-10">盘点批次：</td>
+                    <td class="input">@Html.DropDownList("CheckBatch", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "" } }, new { @class = "easyui-combobox datacontrol", data_options = "validType:'requiredForCombo',onChange:batchSelect,width:130" })</td>
+                    <td class="name">盘点员:</td>
+                    <td class="input"><select id="CheckUID" name="CheckUID" class="easyui-combobox" data-options="width:130"><option value="" selected>请选择</option></select></td>
+                    <td class="name">复盘日期：</td>
+                    <td class="input">
+                        <input id="date" class="Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',maxDate:'#F{$dp.$D(\'date2\')}'})" style="width:100px;display:none" />
+                        <input name="ActualDate" id="date2" class="Wdate easyui-validatebox" onclick="WdatePicker({dateFmt: 'yyyy-MM-dd',minDate:'#F{$dp.$D(\'date\')}'})" value="@DateTime.Now.ToString("yyyy-MM-dd")" style="width:100px" data-options="required:true" />
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="name">条码(F2)：</td>
+                    <td class="input">@Html.DropDownList("Barcode", new List<SelectListItem>(), new { @class = "easyui-combobox", data_options = "required:true,onChange:barcodeSelect,prompt:'请输入条码...',width:150,valueField:'barcode',textField:'barcode',loader:comboload,mode:'remote'" })</td>
+                    <td class="name">品 名：</td>
+                    <td class="input"><input type="text" class="easyui-textbox" id="Bartitle" data-options="width:130,prompt:'自动显示'" readonly /></td>
+                    <td class="name">品 类：</td>
+                    <td class="input"><input type="text" class="easyui-textbox" id="CategoryTitle" data-options="width:130,prompt:'自动显示'" readonly /></td>
+                    <td class="name padding-left-10">复盘数量：</td>
+                    <td class="input">@Html.TextBox("ActualNumber", "0", new { @class = "easyui-numberbox", data_options = "min:0,width:80,precision:3" }) <span id="unit">个</span></td>
+                    <td width="120" align="right"><a href="#" style="margin-left:10px;" class="easyui-linkbutton cus4 linkbtn" data-options="iconCls:'icon-ok'" onclick="insertGrid()">添加</a></td>
+                </tr>
+            </table>
+        </form>
+    </div>
+    <div data-options="region:'center',border:false">
+        <table class="easyui-datagrid" id="grid"
+               data-options="checkOnSelect:false,singleSelect:true,border:true,rownumbers:true,fit:true,fitColumns:true,pagination:false,onClickCell:clickCell,onLoadError:loadError,idField:'Id',onLoadSuccess:loadSuccess,showFooter:true,onAfterEdit:loadSuccess">
+            <thead>
+                <tr>
+                    <th data-options="field:'Id',checkbox: true,hidden:true" width="50"></th>
+                    <th data-options="field:'Barcode'" width="120">条形码</th>
+                    <th data-options="field:'Title'" width="150">品名</th>
+                    <th data-options="field:'SubUnit'" width="60">计量单位</th>
+                    <th data-options="field:'Number',editor:{type:'numberbox',options:{required:true,min:0,precision:3}}" width="60">复盘数量</th>
+                    <th data-options="field:'SysPrice'" width="60">单价</th>
+                    <th data-options="field:'FullName'" width="60">盘点员</th>
+                    <th data-options="field:'CheckUID',hidden:true" width="60">盘点员</th>
+                    <th data-options="field:'CreateDT'" width="140">录入时间</th>
+                    <th data-options="field:'Editor',formatter:operation" width="60">操作</th>
+                </tr>
+            </thead>
+        </table>
+        @Html.Hidden("isadd")
+    </div>
+    <div data-options="region:'south',border:false" style="height:0px;">
+    </div>
+</div>
+<script type="text/javascript">
+    var $dg, first = true,gridRows=[];
+    $(function () {
+        $dg = $("#grid");
+        //$("#ActualNumber").next('span').find('input').keyup(function () {
+        //    if (event.keyCode == 13)
+        //        updateGrid();
+        //})
+        $("body").keydown(function (e) {
+            if (event.keyCode == 113)
+                $("#Barcode").next('span').find('input').focus();
+        })
+        $("#Barcode").next('span').find('input').keyup(function (e) {
+            if (event.keyCode == 13) {
+                $("#ActualNumber").next("span").find("input").focus().select()
+            }
+        });
+        $("#ActualNumber").next("span").find("input").bind("keyup", function () {
+            if (event.keyCode == 13) {
+                $("#Barcode").combobox("showPanel").next('span').find('input').focus();
+                insertGrid();
+            }
+        });
+    })
+    var comboload = function (param, success, error) {
+        //获取输入的值
+        var q = param.q || "";
+        //此处q的length代表输入多少个字符后开始查询
+        if (q.length <= 1) return false;
+        var $combo = $(this);
+        $.ajax({
+            url:"@Url.Action("GetProductInput")",
+            type:"post",
+        data:{
+            //传值，还是JSON数据搜索
+            searchName: q,
+            storeId:$("#LockStoreID").combobox("getValue"),
+            checkBatch: $("#CheckBatch").combobox("getValue")
+        },
+        //重要，如果写jsonp会报转换错误，此处不写都可以
+        dataType:"json",
+        success: function (data) {
+            gridRows = data.rows;
+            //关键步骤，遍历一个MAP对象
+            var items = $.map(data.rows, function(item){
+                return { barcode: item.Barcode, title: item.Title };
+            });
+            //执行loader的success方法
+            success(items);
+            var val = $combo.combobox("getValue");
+            if (val) {
+                barcodeSelect(val);
+            }
+        },    //异常处理
+        error: function (xml, text, msg) {
+            error.apply(this, arguments);
+        }
+    });
+    }
+    function storeSelect(record) {
+        if (!record.value) {
+            $("#CheckBatch").combobox("clear");
+            return;
+        }
+        //$("#CheckBatch").combobox("clear").combobox("reload", "@Url.Action("StoreSelect")?state=0&storeId=" + record.value);
+        $.post("@Url.Action("StoreSelect")",{storeId:record.value,state:0,t:Math.random()},function(data){
+            $("#CheckBatch").combobox("clear").combobox("loadData",data.batchs);
+            $("#CheckUID").combobox("clear").combobox("loadData",data.users);
+        },"json");
+    }
+    var isChange = false;
+    function batchSelect(newVal, oldVal) {
+        gridReload();
+        if (newVal) {
+            var date = newVal.substr(2, 6);
+            $("#date").val("20" + date.substr(0, 2) + "-" + date.substr(2, 2) + "-" + date.substr(4, 2));
+        }
+        return;
+        if (isChange) { isChange = false; return; }
+        var obj = $(this);
+        var rows= $dg.datagrid('getChanges', "inserted");
+        if(rows && rows.length>0){
+            $.messager.confirm("提示","是否撤销输入记录？",function(r){
+                if(!r){
+                    isChange = true;
+                    obj.combobox("select", oldVal);
+                    return;
+                }
+                loadBarcode(newVal);
+            });
+        }else
+            loadBarcode(newVal);
+    }
+    function loadBarcode(batch){
+        $dg.datagrid("loadData",[]);
+        if(!batch){
+            $("#Barcode").combobox("clear");
+            return;
+        }
+        $.post("@Url.Action("ReBatchSelect")",{batchNo:batch,storeId:$("#LockStoreID").combobox("getValue"),t:Math.random()},function(data){
+            gridRows=data;
+            $("#Barcode").combobox("clear").combobox("loadData",gridRows);
+        },"json");
+    }
+    function insertGrid() {
+        $("#Barcode").combobox("enableValidation");
+        if (!$("form").form('validate')) return;
+        //if (!$("#CheckUID").combobox('isValid')) return;
+        var bar= $("#Barcode").combobox("getValue");
+        var num = $("#ActualNumber").numberspinner("getValue");
+        if (!num) {
+            num = 0;
+        }
+        var row =pharos.deepCopy(getRow(bar));
+        if(!row.Barcode){
+            $.messager.alert("提示", "请输入正确商品条码!", "info"); return;
+        }
+        row.Id=maxId();
+        row.Number=num;
+        row.CheckUID = $("#CheckUID").combobox("getValue");
+        var name = $("#CheckUID").combobox("getText");
+        row.FullName = name == "请选择" ? "" : name;
+        row.CreateDT = new Date().format("yyyy-MM-dd hh:mm:ss");
+        row.State = 1;
+        $dg.datagrid("appendRow", row);
+        $("#Barcode").combobox("setValue","");
+        $("#Bartitle").textbox("setValue","");
+        $("#ActualNumber").numberspinner("setValue", "0");
+        gridRows.forEach(function(item){
+            if (item.Barcode == bar) {
+                gridRows.remove(item);
+            }
+        })
+        $("#Barcode").combobox("clear").combobox("loadData", gridRows);
+        var panel = $dg.datagrid("getPanel");
+        var grid = panel.find('.datagrid-body');
+        //console.log(grid.scrollTop()+","+grid.height());
+        grid.scrollTop(grid.scrollTop() + grid.height());
+    }
+    function barcodeSelect(newVal,oldVal) {
+        var obj = getRow(newVal);
+        if (!obj) return;
+        $("#Bartitle").textbox("setValue", obj.Title);
+        $("#CategoryTitle").textbox("setValue", obj.CategoryTitle);
+        $("#unit").html(obj.SubUnit);
+        //$("#ActualNumber").next('span').find('input').focus().select();
+    }
+    function getRow(barcode) {
+        var obj = null;
+        $.each(gridRows, function (i, row) {
+            if (row.Barcode == barcode) {
+                obj = row; return;
+            }
+        });
+        return obj;
+    }
+    function gridReload() {
+        $("#Inserted").val("");
+        $("#Deleted").val("");
+        $("#Updated").val("");
+        $dg.datagrid('options').url = "@Url.Action("FindStockLogList")?" + $('form').serialize();
+        $dg.datagrid('reload');
+    }
+    function loadSuccess(data) {
+        var panel = $(this).datagrid("getPanel");
+        var total = 0;
+        panel.find('.datagrid-body td[field="Number"]').each(function (i, r) {
+            total += Number($(r).find("div").html());
+        });
+        panel.find('.datagrid-footer td[field="Number"]').find("div").html(numberToFixed(total, 3));
+    }
+    function Refresh() {
+        var val = $('#isadd').val();
+        if (!val) {
+            pharos.easyui.dialog.topClose("formDiv");
+            pharos.easyui.dialog.curJquery("formDiv")("#grid").datagrid("reload");
+        }else{
+            gridReload();
+        }
+
+    }
+    function operation(value, row, index) {
+        return "<a href='javascript:void(0)' onclick=\"removeItem(" + row.Id + ")\">删除</a>";
+    }
+    function removeItem(id) {
+        $.messager.confirm("提示", "是否确定删除该项信息?", function (r) {
+            if (!r) return r;
+            $dg.datagrid("selectRecord", id);
+            var row = $dg.datagrid("getSelected");
+            gridRows.add({ SubUnit: row.SubUnit, Barcode: row.Barcode, Title: row.Title });
+            $("#Barcode").combobox("clear").combobox("loadData", gridRows);
+            var index = $dg.datagrid("getRowIndex", row);
+            $dg.datagrid('deleteRow', index);
+            changeValue();
+        })
+    }
+    function clickCell(index, field) {
+        if (endClickEditing() && (field == "Number" || field == "CheckUID")) {
+            $dg.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickIndex = index;
+        }
+    }
+    var clickIndex = undefined;
+    function endClickEditing() {
+        if (clickIndex == undefined) { return true }
+        if ($dg.datagrid('validateRow', clickIndex)) {
+            $dg.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            return true;
+        } else {
+            return false;
+        }
+    }
+    function changeValue() {
+        var inserted = $dg.datagrid('getChanges', "inserted");
+        var deleted = $dg.datagrid('getChanges', "deleted");
+        var updated = $dg.datagrid('getChanges', "updated");
+        $("#Inserted").val(JSON.stringify(inserted));
+        $("#Deleted").val(JSON.stringify(deleted));
+        $("#Updated").val(JSON.stringify(updated));
+    }
+    function SaveBefore() {
+        if(!endClickEditing()) return false;
+        changeValue();
+        $("#Barcode").combobox("disableValidation");
+        return true;
+    }
+    function maxId() {
+        var rows = $dg.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? row.Id : 0;
+        });
+        var maxId = Math.max.apply(null, ids);
+        if (maxId == -Infinity) maxId = 0;
+        return maxId + 1;
+    }
+    function maxId() {
+        var rows = $dg.datagrid("getRows");
+        var ids = $.map(rows, function (row) {
+            return row.Id ? row.Id : 0;
+        });
+        var minId = Math.min.apply(null, ids);
+        if (minId > 0) minId = 0;
+        return minId - 1;
+    }
+</script>

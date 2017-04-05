@@ -1,0 +1,38 @@
+﻿using Pharos.POS.Retailing.Models;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.ChildPages
+{
+    /// <summary>
+    /// Login.xaml 的交互逻辑
+    /// </summary>
+    public partial class Unlock : Window
+    {
+        public Unlock()
+        {
+            InitializeComponent();
+            this.DataContext = PosMachine.Current.CurrentOperator;
+            this.InitPublicSettings();
+
+        }
+
+        public GeneralCommand LoginAction
+        {
+            get
+            {
+                return new GeneralCommand(() =>
+                {
+                    if (PosMachine.Current.CurrentOperator.Verify())
+                    {
+                        PosMachine.Current.Status = PosStatus.Market;
+                        this.Close();
+                    }
+                    else 
+                    {
+                        Toast.DoShow("验证失败，请重新输入！", this);
+                    }
+                });
+            }
+        }
+    }
+}

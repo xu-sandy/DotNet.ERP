@@ -1,0 +1,420 @@
+﻿@helper UserCombobox(string name, object value = null, List<System.Web.Mvc.SelectListItem> items = null, string dataOptions = "", string empty = "全部", bool async = true)
+{
+    var val = value == null ? "" : ",value:'" + value + "'";
+    var opt = dataOptions == "" ? "" : dataOptions + ",";
+    <select name="@name" id="@name" class="easyui-combobox datacontrol" data-options="@(opt)mode:'remote',valueField:'id',textField:'name',loader:userComboLoad @(val)">
+        @if (items != null && items.Count > 0)
+        {
+            foreach (var item in items)
+            {
+                <option value="@item.Value" @(item.Selected ? "selected" : "")>@item.Text</option>
+            }
+        }
+    </select>
+
+    <script type="text/javascript">
+        var userComboLoad = function (param, success, error) {
+            //获取输入的值
+            var q = param.q || "";
+            //此处q的length代表输入多少个字符后开始查询
+            //if (q.length <= 1) return false;
+            @if (!async)
+            {
+                @:return false;
+                                                                                                                                                }
+            var uid = $(this).combobox("getValue");
+            $.ajax({
+                url: "@(Context.Request.ApplicationPath == "/" ? "" : Context.Request.ApplicationPath)/SysAdmin/GetUserInput",
+                type: "post",
+                data: {
+                    term: q,
+                    maxRows: 100,
+                    empty: '@empty',
+                    UID: uid
+                },
+                dataType: "json",
+                success: function (data) {
+                    var items = $.map(data.rows, function (item) {
+                        return { id: item.UID, name: item.FullName };
+                    });
+                    //$("#@name").combobox("clear");
+                    //执行loader的success方法
+                    success(items);
+                },    //异常处理
+                error: function (xml, text, msg) {
+                    error.apply(this, arguments);
+                }
+            });
+        }
+    </script>
+}
+@helper CategoryCombobox(string name, System.Web.Mvc.SelectListItem selectItem = null, string dataOptions = "", string empty = "全部", bool showAll = false, bool showThird = false, int panelWidth = 250, int controlWidth = 150, int i = 0)
+{
+    var opt = dataOptions == "" ? "" : dataOptions + ",";
+    if (selectItem == null && !string.IsNullOrWhiteSpace(empty)) { selectItem = new System.Web.Mvc.SelectListItem() { Text = empty, Value = "", Selected = true }; }
+    <div id="cate_@(i)" style="display:none">
+        <div style="color:#99BBE8;background:#fafafa;padding:5px;">请选择分类</div>
+        <div style="padding:5px">
+            <table>
+                <tr>
+                    <td>一级分类:<select class="easyui-combobox" id="firsttype_@(i)" data-options="width:100,onSelect:firstSelect_@(i),editable:true"><option value="">@empty</option></select></td>
+                    <td>二级分类:<select class="easyui-combobox" id="secondtype_@(i)" data-options="width:100,onSelect:secondSelect_@(i),editable:true"><option value="">@empty</option></select></td>
+                    @if (showThird)
+                    {
+                        <td>三级分类:<select class="easyui-combobox" id="thirdtype_@(i)" data-options="width:100,onSelect:thirdSelect_@(i),editable:true"><option value="">@empty</option></select></td>
+                    }
+                </tr>
+            </table>
+        </div>
+    </div>
+    <input type="hidden" name="@(name+"_"+i)" />
+    <select name="@name" id="@(name+"_"+i)" class="easyui-combobox datacontrol" style="width:@(controlWidth)px" data-options="@(opt)panelHeight:120,panelWidth:@panelWidth,editable:false,onSelect:parentSelectEmpty_@(i)">
+        @if (selectItem != null)
+        {
+            <option value="@selectItem.Value" selected="selected">@selectItem.Text</option>
+        }
+    </select>
+    <script type="text/javascript">
+        var $selecCate_@(i) = $("#@(name+"_"+i)");
+        var empty_@(i) = escape("@empty");
+        var root2 = "@(Context.Request.ApplicationPath == "/" ? "" : Context.Request.ApplicationPath)";
+        $(function () {
+            $('#cate_@(i)').show().appendTo($selecCate_@(i).combobox('panel'));
+            $("#firsttype_@(i)").combobox("reload", root2 + "/ProductType/ParentCategory?showAll=@showAll&emptyTitle=" + empty_@(i));
+        })
+        function parentSelectEmpty_@(i)(record) {
+            $("#firsttype_@(i)").combobox("setValue", "");
+            $("#secondtype_@(i)").combobox("setValue", "");
+            $("#thirdtype_@(i)").combobox("setValue", "");
+        }
+        function firstSelect_@(i)(record) {
+            $("#secondtype_@(i)").combobox("reload", root2 + "/ProductType/ChildCategory?emptyTitle=" + empty_@(i) + "&psn=" + record.value);
+            $selecCate_@(i).combobox("setValue", record.value).combobox("setText", record.text);
+            $("[name='@(name+"_"+i)']").val(record.value)
+        }
+        function secondSelect_@(i)(record) {
+            var text = $("#firsttype_@(i)").combobox("getText") + (record.value ? "/" + record.text : "");
+            var firstVal = $("#firsttype_@(i)").combobox("getValue");
+            if ($("#thirdtype_@(i)").size() > 0) {
+                $("#thirdtype_@(i)").combobox("reload", root2 + "/ProductType/ChildCategory?emptyTitle=" + empty_@(i) + "&psn=" + record.value);
+                $selecCate_@(i).combobox("setValue", record.value ? record.value : firstVal).combobox("setText", text);
+            } else {
+                $selecCate_@(i).combobox("setValue", record.value ? record.value : firstVal).combobox("setText", text).combobox("hidePanel");
+            }
+            $("[name='@(name+"_"+i)']").val($("#firsttype_@(i)").combobox("getValue") + "," + record.value)
+        }
+        function thirdSelect_@(i)(record) {
+            var secondVal = $("#secondtype_@(i)").combobox("getValue");
+            var text = $("#firsttype_@(i)").combobox("getText") + (secondVal ? "/" + $("#secondtype_@(i)").combobox("getText") + (record.value ? "/" + record.text : "") : "");
+            $selecCate_@(i).combobox("setValue", record.value ? record.value : secondVal).combobox("setText", text).combobox("hidePanel");
+            $("[name='@(name+"_"+i)']").val($("#firsttype_@(i)").combobox("getValue") + "," + (secondVal ? secondVal + "," + record.value : ""));
+        }
+    </script>
+}
+@helper CityCombobox(string name, System.Web.Mvc.SelectListItem selectItem = null, string dataOptions = "", string empty = "全部", int panelWidth = 250, int controlWidth = 150, int i = 0)
+{
+    var opt = dataOptions == "" ? "" : dataOptions + ",";
+    if (selectItem == null && !string.IsNullOrWhiteSpace(empty)) { selectItem = new System.Web.Mvc.SelectListItem() { Text = empty, Value = "", Selected = true }; }
+    <div id="city_@(i)" style="display:none">
+        <div style="color:#99BBE8;background:#fafafa;padding:5px;">请选择省市</div>
+        <div style="padding:5px">
+            <table>
+                <tr>
+                    <td>省份:<select class="easyui-combobox" id="firstcity_@(i)" data-options="width:100,onSelect:firstSelectCity_@(i),editable:true"><option value="">@empty</option></select></td>
+                    <td>城市:<select class="easyui-combobox" id="secondcity_@(i)" data-options="width:100,onSelect:secondSelectCity_@(i),editable:true"><option value="">@empty</option></select></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <input type="hidden" name="@(name+"_"+i)" />
+    <select name="@name" id="@(name+"_"+i)" class="easyui-combobox datacontrol" style="width:@(controlWidth)px" data-options="@(opt)panelHeight:120,panelWidth:@panelWidth,editable:false,onSelect:parentSelectCityEmpty_@(i)">
+        @if (selectItem != null)
+        {
+            <option value="@selectItem.Value" selected="selected">@selectItem.Text</option>
+        }
+    </select>
+    <script type="text/javascript">
+        var $selecCity_@(i) = $("#@(name+"_"+i)");
+        var emptyCity_@(i) = escape("@empty");
+        var root2 = "@(Context.Request.ApplicationPath == "/" ? "" : Context.Request.ApplicationPath)";
+        $(function () {
+            $('#city_@(i)').show().appendTo($selecCity_@(i).combobox('panel'));
+            $("#firstcity_@(i)").combobox("reload", root2 + "/SysAdmin/ProvinceSelect?emptyTitle=" + emptyCity_@(i));
+        })
+        function parentSelectCityEmpty_@(i)(record) {
+            $("#firstcity_@(i)").combobox("setValue", "");
+            $("#secondcity_@(i)").combobox("setValue", "");
+        }
+        function firstSelectCity_@(i)(record) {
+            $("#secondcity_@(i)").combobox("reload", root2 + "/SysAdmin/CitySelect?emptyTitle=" + emptyCity_@(i) + "&pid=" + record.value);
+            $selecCity_@(i).combobox("setValue", record.value).combobox("setText", record.text);
+            $("[name='@(name+"_"+i)']").val(record.value)
+        }
+        function secondSelectCity_@(i)(record) {
+            var text = $("#firstcity_@(i)").combobox("getText") + (record.value ? "/" + record.text : "");
+            var firstVal = $("#firstcity_@(i)").combobox("getValue");
+            $selecCity_@(i).combobox("setValue", record.value ? record.value : firstVal).combobox("setText", text).combobox("hidePanel");
+            $("[name='@(name+"_"+i)']").val($("#firstcity_@(i)").combobox("getValue") + "," + record.value)
+        }
+    </script>
+}
+@functions{
+    /// <summary>
+    /// 测试
+    /// </summary>
+    /// <param name="count"></param>
+    /// <returns></returns>
+    public static IHtmlString Get(string count)
+    {
+        return new HtmlString(count);
+    }
+    public static List<System.Web.Mvc.SelectListItem> GetExcelCol()
+    {
+        var cols = new List<System.Web.Mvc.SelectListItem>() { new System.Web.Mvc.SelectListItem() { Text = "选择列", Value = "", Selected = true } };
+        for (int i = 65; i < 26 + 65; i++)
+        {
+            var val = (char)i + "";
+            cols.Add(new System.Web.Mvc.SelectListItem() { Text = val + "列", Value = val });
+        }
+        return cols;
+    }
+}
+
+@*组合树多选下拉*@
+@helper CategoryCombotree(string name, System.Web.Mvc.SelectListItem selectItem = null, string dataOptions = "", string empty = "全部", bool showAll = false, bool showThird = false, int panelWidth = 250, int controlWidth = 250, int i = 0)
+{
+    <input name="@(name+"_"+i)" hidden>
+    <input id="@(name+"_"+i)" name="@name" style="width:@(controlWidth)px">
+    <script>
+    var $combotree_@(i) = $('#@(name+"_"+i)');
+    var root = "@(Context.Request.ApplicationPath == "/" ? "" : Context.Request.ApplicationPath)";
+
+    $combotree_@(i).combotree({
+        url: root + '/ProductType/FindTreeListToMultiSelect',
+        method: 'post',
+        multiple: true,
+        //width: 250,
+        panelHeight: 'auto',
+        panelMaxHeight: 290,
+        onLoadSuccess: function (node, data) {
+            var $tree = $combotree_@(i).combotree('tree');
+            var treeNode = $tree.tree('find', 0);
+            $tree.tree('check', treeNode.target);
+            $("[name='@(name+"_"+i)']").val(0);
+        },
+        onCheck: function (node, checked) {
+            if (node.Id == 0 && checked) {
+                $combotree_@(i).combotree('setText', '全部');
+                $("[name='@(name+"_"+i)']").val(0);
+            }
+            else {
+                $("[name='@(name+"_"+i)']").val(-1);
+            }
+        },
+        onClick: function (node) {
+            if ($combotree_@(i).combotree('getValues')[0] == 0) {
+                $combotree_@(i).combotree('setText', '全部');
+                $("[name='@(name+"_"+i)']").val(0);
+                }
+                 else {
+                    $("[name='@(name+"_"+i)']").val(-1);
+                }
+            },
+            panelWidth:@(panelWidth),
+        @(dataOptions)
+    })
+    </script>
+}
+
+@*空值项作不作为父级，但与其他对立*@
+@helper CategoryCombobox(string name, bool multiple, System.Web.Mvc.SelectListItem selectItem = null, string dataOptions = "", string empty = "全部", bool showAll = false, bool showThird = false, int panelWidth = 250, int controlWidth = 150, int i = 0)
+{
+    var thirdMultiple = multiple;
+    var secondMultiple = multiple;
+    if (showThird && multiple) { secondMultiple = false; }
+    var opt = dataOptions == "" ? "" : dataOptions + ",";
+    if (selectItem == null && !string.IsNullOrWhiteSpace(empty)) { selectItem = new System.Web.Mvc.SelectListItem() { Text = empty, Value = "", Selected = true }; }
+    <div id="cate_@(i)" style="display:none">
+        <div style="color:#99BBE8;background:#fafafa;padding:5px;">请选择分类</div>
+        <div style="padding:5px">
+            <table>
+                <tr>
+                    <td>一级分类:<select class="easyui-combobox" id="firsttype_@(i)" data-options="width:100,onSelect:firstSelect_@(i),editable:true"><option value="">@empty</option></select></td>
+                    <td>二级分类:<select class="easyui-combobox" id="secondtype_@(i)" data-options="width:100,onSelect:secondSelect_@(i),editable:true,multiple:@Json.Encode(secondMultiple),onUnselect:secondUnselect_@(i)"><option value="">@empty</option></select></td>
+                    @if (showThird)
+                    {
+                        <td>三级分类:<select class="easyui-combobox" id="thirdtype_@(i)" data-options="width:100,onSelect:thirdSelect_@(i),editable:true,multiple:@Json.Encode(thirdMultiple),onUnselect:thirdUnSelect_@(i)"><option value="">@empty</option></select></td>
+                    }
+                </tr>
+            </table>
+        </div>
+    </div>
+    <input type="hidden" name="@(name+"_"+i)" />
+    <select name="@name" id="@(name+"_"+i)" class="easyui-combobox datacontrol" style="width:@(controlWidth)px" data-options="@(opt)panelHeight:120,panelWidth:@panelWidth,editable:false,onSelect:parentSelectEmpty_@(i)">
+        @if (selectItem != null)
+        {
+            <option value="@selectItem.Value" selected="selected">@selectItem.Text</option>
+        }
+    </select>
+    <script type="text/javascript">
+    var $selecCate_@(i) = $("#@(name+"_"+i)");
+    var empty_@(i) = escape("@empty");
+    var root2 = "@(Context.Request.ApplicationPath == "/" ? "" : Context.Request.ApplicationPath)";
+    $(function () {
+        $('#cate_@(i)').show().appendTo($selecCate_@(i).combobox('panel'));
+        $("#firsttype_@(i)").combobox("reload", root2 + "/ProductType/ParentCategory?showAll=@showAll&emptyTitle=" + empty_@(i));
+    })
+    function parentSelectEmpty_@(i)(record) {
+        $("#firsttype_@(i)").combobox("setValue", "");
+        $("#secondtype_@(i)").combobox("setValue", "");
+        $("#thirdtype_@(i)").combobox("setValue", "");
+    }
+    function firstSelect_@(i)(record) {
+        $("#secondtype_@(i)").combobox("reload", root2 + "/ProductType/ChildCategory?emptyTitle=" + empty_@(i) + "&psn=" + record.value);
+        $selecCate_@(i).combobox("setValue", record.value).combobox("setText", record.text);
+        $("[name='@(name+"_"+i)']").val(record.value);
+        @if (secondMultiple) {
+            <text>
+            $("#secondtype_@(i)").combobox('reset');
+            </text>
+        }
+    }
+    function secondSelect_@(i)(record) {
+        var firstVal = $("#firsttype_@(i)").combobox("getValue");
+
+        @if (secondMultiple) {
+            <text>
+            var data = $("#secondtype_@(i)").combobox('getData');
+            if (record.value == '') {//选中“全部”项时，同时取消勾选其他所有项
+                $.each(data, function(i,n){
+                    if(n.value != '')
+                        $("#secondtype_@(i)").combobox('unselect', n.value);
+                });
+            }
+            else {//选中其他任何一项时，取消勾选“全部”项
+                $("#secondtype_@(i)").combobox('unselect', '');
+            }
+            var text = $("#firsttype_@(i)").combobox("getText") + (record.value ? "/" + $("#secondtype_@(i)").combobox('getText') : "");
+            $selecCate_@(i).combobox("setValue", record.value ? $("#secondtype_@(i)").combobox('getValues') : firstVal).combobox("setText", text);
+            $("[name='@(name+"_"+i)']").val($("#firsttype_@(i)").combobox("getValue") + "," + record.value)
+            </text>
+        }
+        else {
+            <text>
+            var text = $("#firsttype_@(i)").combobox("getText") + (record.value ? "/" + record.text : "");
+            if ($("#thirdtype_@(i)").size() > 0) {
+                $("#thirdtype_@(i)").combobox("reload", root2 + "/ProductType/ChildCategory?emptyTitle=" + empty_@(i) + "&psn=" + record.value).combobox('reset');
+                $selecCate_@(i).combobox("setValue", record.value ? record.value : firstVal).combobox("setText", text);
+            } else {
+                $selecCate_@(i).combobox("setValue", record.value ? record.value : firstVal).combobox("setText", text).combobox("hidePanel");
+            }
+            $("[name='@(name+"_"+i)']").val($("#firsttype_@(i)").combobox("getValue") + "," + record.value)
+            </text>
+        }
+    }
+    function secondUnselect_@(i)(record) {
+        @if (secondMultiple)
+        {
+            <text>
+        var firstVal = $("#firsttype_@(i)").combobox("getValue");
+        var text = $("#firsttype_@(i)").combobox("getText") + ($("#secondtype_@(i)").combobox('getText') != '@empty' && $("#secondtype_@(i)").combobox('getText') != '' ? "/" + $("#secondtype_@(i)").combobox("getText") : "");
+        $selecCate_@(i).combobox("setValue", $("#secondtype_@(i)").combobox('getText') != '@empty' && $("#secondtype_@(i)").combobox('getText') != '' ? $("#secondtype_@(i)").combobox('getValues') : firstVal).combobox("setText", text);
+        </text>
+        }
+    }
+    function thirdSelect_@(i)(record) {
+        var secondVal = $("#secondtype_@(i)").combobox("getValue");
+        @if (thirdMultiple)
+        {
+             <text>
+        var data = $("#thirdtype_@(i)").combobox('getData');
+        if (record.value == '') {//选中“全部”项时，同时取消勾选其他所有项
+            $.each(data, function(i,n){
+                if(n.value != '')
+                    $("#thirdtype_@(i)").combobox('unselect', n.value);
+            });
+        }
+        else {//选中其他任何一项时，取消勾选“全部”项
+            $("#thirdtype_@(i)").combobox('unselect', '');
+        }
+
+
+        var text = $("#firsttype_@(i)").combobox("getText") + (secondVal ? "/" + $("#secondtype_@(i)").combobox("getText") + (record.value ? "/" + $("#thirdtype_@(i)").combobox('getText') : "") : "");
+        $selecCate_@(i).combobox("setValue", record.value ? $("#thirdtype_@(i)").combobox('getValues') : secondVal).combobox("setText", text);
+        $("[name='@(name+"_"+i)']").val($("#firsttype_@(i)").combobox("getValue") + "," + (secondVal ? secondVal + "," + record.value : ""));
+        </text>
+        }
+        else {
+            <text>
+        var text = $("#firsttype_@(i)").combobox("getText") + (secondVal ? "/" + $("#secondtype_@(i)").combobox("getText") + (record.value ? "/" + record.text : "") : "");
+        $selecCate_@(i).combobox("setValue", record.value ? record.value : secondVal).combobox("setText", text).combobox("hidePanel");
+        $("[name='@(name+"_"+i)']").val($("#firsttype_@(i)").combobox("getValue") + "," + (secondVal ? secondVal + "," + record.value : ""));
+        </text>
+        }
+    }
+    function thirdUnSelect_@(i)(record){
+        @if (thirdMultiple)
+            {
+                <text>
+        var secondVal = $("#secondtype_@(i)").combobox("getValue");
+        var text = $("#firsttype_@(i)").combobox("getText") + (secondVal ? "/" + $("#secondtype_@(i)").combobox("getText") + ($("#thirdtype_@(i)").combobox('getText') != "全部" && $("#thirdtype_@(i)").combobox('getText') != '' ? "/" + $("#thirdtype_@(i)").combobox('getText') : "") : "");
+        $selecCate_@(i).combobox("setValue", $("#thirdtype_@(i)").combobox('getText') != "全部" && $("#thirdtype_@(i)").combobox('getText') != '' ? $("#thirdtype_@(i)").combobox('getValues') : secondVal).combobox("setText", text);
+        </text>
+            }
+    }
+    </script>
+}
+
+@*空值项作不作为父级，但与其他对立*@
+@helper Combobox(string name, IEnumerable<System.Web.Mvc.SelectListItem> items,string dataOptions = "", bool multiple = true, int controlWidth = 150, int i = 0)
+{
+    <select id="@(name+"_"+i)" style="width:@(controlWidth)px" name="@(name)" class="easyui-combobox" data-options="multiple:@Json.Encode(multiple),onSelect:@(name+"_"+i)Select,@dataOptions">
+        @if (items != null)
+        {
+            foreach (var item in items)
+            {
+                <option value="@item.Value" @(item.Selected ? "selected" : "")>@item.Text</option>
+            }
+        }
+    </select>
+    <script>
+        function @(name+"_"+i)Select(record) {
+            var $comboMultiple=$(this);
+            var data = $comboMultiple.combobox('getData');
+            if (record.value == '') {//选中“全部”项时，同时取消勾选其他所有项
+                $.each(data, function(i,n){
+                    if(n.value != '')
+                        $comboMultiple.combobox('unselect', n.value);
+                });
+            }
+            else {//选中其他任何一项时，取消勾选“全部”项
+                $comboMultiple.combobox('unselect', '');
+            }
+        }
+    </script>
+}
+
+@helper SupplierCombobox(string name,object value=null,string dataOptions = "", bool multiple = false, int controlWidth = 150,int panelWidth=200, string emptyTitle="请选择")
+{
+        //var value = PageContext.PageData[name];
+    var root = Context.Request.ApplicationPath == "/" ? "" : Context.Request.ApplicationPath;
+    var datas = HelperPage.PageData;
+    var ds = HelperPage.CurrentPage.PageData;
+    var url = root + "/Common/GetSuppliersDropdown?emptyTitle=" +Server.UrlEncode(emptyTitle)+"&value="+value;
+    <select id="@(name)" style="width:@(controlWidth)px" name="@(name)" class="easyui-combobox" data-options="url:'@url',valueField:'value',textField:'text',panelWidth:@panelWidth,onSelect:@(name)Select,multiple:@Json.Encode(multiple),@dataOptions"></select>
+    <script>
+    function @(name)Select(record) {
+        var $comboMultiple=$(this);
+        var data = $comboMultiple.combobox('getData');
+        if (record.value == '') {//选中“全部”项时，同时取消勾选其他所有项
+            $.each(data, function(i,n){
+                if(n.value != '')
+                    $comboMultiple.combobox('unselect', n.value);
+            });
+        }
+        else {//选中其他任何一项时，取消勾选“全部”项
+            $comboMultiple.combobox('unselect', '');
+        }
+    }
+    </script>
+}

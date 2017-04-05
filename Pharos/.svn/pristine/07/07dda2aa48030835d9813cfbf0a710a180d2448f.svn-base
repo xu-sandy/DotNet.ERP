@@ -1,0 +1,29 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.BLL;
+using Quartz;
+
+namespace Pharos.Logic.InstalmentDomain
+{
+    /// <summary>
+    /// 返赠规则定时调度
+    /// </summary>
+    public class ReturnRulesTimerTaskJob : IJob
+    {
+        public void Execute(IJobExecutionContext context)
+        {
+            JobDataMap dataMap = context.JobDetail.JobDataMap;
+            int content = dataMap.GetInt("rechargeGiftsJob");
+            ReturnRulesTimerTaskJob.RefreshReturnRules(content);
+        }
+
+        public static TimeSpan RefreshReturnRules(int companyId)
+        {
+            //var spanTimes = new List<DateTime>();//用于作业调度
+            //var datas = ReturnRulesService.GetIntegralRuleProviderIds(companyId);
+            return default(TimeSpan);
+        }
+    }
+}

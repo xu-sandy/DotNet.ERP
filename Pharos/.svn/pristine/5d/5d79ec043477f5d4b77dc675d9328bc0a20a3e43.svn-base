@@ -1,0 +1,99 @@
+﻿using Pharos.POS.Retailing.ChildPages;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Xml.Serialization;
+using Pharos.Logic.BLL.LocalServices;
+using Pharos.Logic.LocalEntity;
+
+namespace Pharos.POS.Retailing.Models
+{
+    /// <summary>
+    /// 支付方式配置文件(注:0必须是现金支付）
+    /// </summary>
+    public class PayWayConfig
+    {
+        public PayWayConfig()
+        {
+            PayWays = new List<PayWaysItem>();
+        }
+
+        public const string FILENAME = "PharosPayWays.Config";
+        public List<PayWaysItem> PayWays { get; set; }
+
+        [XmlIgnore]
+        public int this[int key]
+        {
+            get
+            {
+                try
+                {
+                    var keyValue = PayWays.Find(o => o.Key == key);
+                    return keyValue.ApiCode;
+                }
+                catch
+                {
+                    return -1;
+                }
+            }
+        }
+
+
+        private static PayWayConfig current = null;
+        [XmlIgnore]
+        public static PayWayConfig Current
+        {
+            get
+            {
+                if (current == null)
+                {
+                    current = new PayWayConfig();
+                    current.LoadConfig();
+                }
+                return current;
+            }
+        }
+
+        public void LoadConfig()
+        {
+            try
+            {
+                FileStream fs = new FileStream(FILENAME, FileMode.OpenOrCreate);
+                XmlSerializer serializer = new XmlSerializer(typeof(PayWayConfig));
+                var result = serializer.Deserialize(fs) as PayWayConfig;
+                fs.Close();
+                fs.Dispose();
+                Current.PayWays = result.PayWays;
+            }
+            catch (Exception e)
+            {
+                Toast.DoShow(string.Format("加载支付方式失败！错误消息如下：\n{0}", e.Message), null);
+            }
+        }
+
+        public void SaveConfig()
+        {
+            try
+            {
+                FileStream fs = new FileStream(FILENAME, FileMode.Create);
+                XmlSerializer serializer = new XmlSerializer(typeof(PayWayConfig));
+                serializer.Serialize(fs, this);
+                fs.Close();
+                fs.Dispose();
+            }
+            catch (Exception e)
+            {
+                Toast.DoShow(string.Format("保存支付方式配置失败！错误消息如下：\n{0}", e.Message), null);
+            }
+        }
+    }
+
+    public class PayWaysItem
+    {
+        [XmlAttribute]
+        public int Key { get; set; }
+        [XmlAttribute]
+        public int ApiCode { get; set; }
+    }
+}

@@ -1,0 +1,59 @@
+﻿@model CouponCardDetail
+@{
+    ViewBag.Title = "TakeCoupon";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class="table-form" width="100%" height="117px">
+                <tr>
+                    <td class="name">批次：</td>
+                    <td class="input">
+                        @Html.DropDownListFor(o => o.BatchSN, ViewBag.batchSN as List<SelectListItem>, new { id = "batchSN", @class = "easyui-combobox", data_options = "validType:'requiredForCombo',onChange:batchSNChange " })
+                        <label id="msg" style="padding-left:10px;"></label>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">领取数量：</td>
+                    <td class="input">
+                        @Html.TextBox("takeNum", "", new { @class = "easyui-validatebox", id = "MakeNumber", data_options = "required:true,validType:'lessThanMaxVal(this.value,5000)' " })
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">券号范围：</td>
+                    <td class="input">
+                        @Html.TextBoxFor(o => o.TicketNo, new { id = "ticketNoStart", @class = "easyui-textbox", data_options = "editable:false" }) - 
+                        @Html.TextBoxFor(o => o.TicketNo, new { id = "ticketNoEnd", @class = "easyui-textbox", data_options = "editable:false" })
+                    </td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    //判断批号是否存在，并带出该批号的起止券号
+    function batchSNChange(value)
+    {
+        $("#msg").text("");
+        if (value != undefined && value.length == 8) {
+            $.post("@Url.Action("GetBatchAndTicket")", { batchSN: value }, function (result) {
+                if (result.successed) {
+                    var message = result.message.split(';');
+                    $("#msg").text("剩余" + message[0] + "张未领");
+                    //$("#ticketNoStart").val(message[1]);
+                    //$("#ticketNoEnd").val(message[2]);
+                } else {
+                    $.messager.alert("提示", result.message, "error");
+                    $("#batchSN").focus();
+                }
+            }, "json");
+
+        }
+    }
+
+
+</script>

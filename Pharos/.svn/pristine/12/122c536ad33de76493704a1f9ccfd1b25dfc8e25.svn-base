@@ -1,0 +1,107 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_TreeManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增人员", delText: "删除人员", editText: "修改人员",hideDel:true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>角色：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("role", ViewBag.roles as List<SelectListItem>, new { @class = "easyui-combobox",data_options="editable:false,width:120" })
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "正常", Value = "1", Selected = true }, new SelectListItem() { Text = "暂停", Value = "2", Selected = true }, new SelectListItem() { Text = "注销", Value = "3", Selected = true } }, "status")
+            </td>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox" name="searchField" data-options="editable:false,width:100">
+                    <option value="1">按姓名</option>
+                    <option value="2">按工号</option>
+                    <option value="3">按帐号</option>
+                </select>&nbsp;
+            </td>
+            <td class="input-toolbar">
+                <input type="text" name="searchText" class="easyui-textbox" data-options="prompt:'请输入查询条件...'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(2)">设为暂停</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(1)">设为正常</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setState(3)">设为注销</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setDept()">部门变更</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="setAdmin()">超管变更</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'UserCode', title: '员工编号', width: 80 },
+        { field: 'FullName', title: '员工姓名', width: 100 },
+        { field: 'LoginName', title: '后台账号', width: 80 },
+        { field: 'DeptTitle', title: '部门', width: 80 },
+        { field: 'PositionTitle', title: '职位', width: 70 },
+        { field: 'RoleTitles', title: '角色组', width: 150 },
+        { field: 'CreateDT', title: '创建时间', width: 140 },
+        { field: 'LoginDT', title: '最近登录时间', width: 140 },
+        { field: 'Status', title: '状态', width: 60, formatter: function (value, row, index) { return value == 1 ? "正常" : value == 2 ? "暂停" : "注销"; } }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        if (!deptId) {
+            $.messager.alert("提示", "请选择机构部门！", "info");
+            return;
+        }
+        openDialog800(this.addText, this.editurlNocache() + "&deptId=" + deptId + "&deptName=" + deptName);
+    }
+    pharos.manager.editItem = function (id) {
+        this.Id = id;
+        openDialog800(this.editText, this.editurlNocache());
+    }
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        if (rows[0].Status == state) {
+            $.messager.alert("提示", "请选择不同状态");
+            return;
+        }
+        $.ajax({
+            type: 'post',
+            data: { id: rows[0].Id, t: Math.random(), mode: state },
+            url: "@Url.Action("SetState")",
+            success: function (data) {
+                pharos.manager.gridReload();
+            }, error: function (data) {
+                $.messager.alert("提示", "修改状态失败！", "info");
+            }
+        });
+    }
+    function setDept() {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        openDialog600("变更所选人员部门", "@Url.Action("SaveDept")?ids=" + ids);
+    }
+    function setAdmin() {
+        openDialog600("变更超级管理员", "@Url.Action("SaveAdmin")");
+    }
+    var deptId = "", deptName = "";
+    function treeSelect(node) {
+        deptId = node.id;
+        deptName = node.FullTitle;
+        pharos.manager.gridReload();
+    }
+</script>

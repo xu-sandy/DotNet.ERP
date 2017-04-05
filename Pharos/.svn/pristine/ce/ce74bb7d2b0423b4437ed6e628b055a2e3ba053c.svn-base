@@ -1,0 +1,62 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class UserService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<SysUserInfo> UserRepository { get; set; }
+        public Utility.OpResult SaveOrUpdate(SysUserInfo model)
+        {
+            if(model.Id==0)
+            {
+                UserRepository.Add(model);
+            }
+            else
+            {
+                var source= UserRepository.Get(model.Id);
+                model.ToCopyProperty(source);
+                UserRepository.SaveChanges();
+            }
+            return Utility.OpResult.Success();
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = UserRepository.GetQuery(null);
+            var keyword = (nvl["keyword"] ?? "").Trim();
+            query=query.Where(o=>(o.LoginName!=null && o.LoginName.Contains(keyword)) || (o.FullName!=null && o.FullName.Contains(keyword)));
+            recordCount = query.Count();
+            return query.ToPageList();
+        }
+
+        public Utility.OpResult Deletes(object[] ids)
+        {
+            throw new NotImplementedException();
+        }
+
+        public SysUserInfo GetOne(object id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public SysUserInfo Login(string loginName,string password)
+        {
+            var pwd = Pharos.Utility.Security.MD5_Encrypt(password);
+            return UserRepository.Find(o => o.LoginName == loginName && o.LoginPwd == pwd);
+        }
+
+
+        public List<SysUserInfo> GetList()
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

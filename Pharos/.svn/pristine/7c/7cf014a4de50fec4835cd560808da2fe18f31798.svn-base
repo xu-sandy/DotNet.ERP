@@ -1,0 +1,31 @@
+﻿using Microsoft.Owin.Hosting;
+using Owin;
+using System;
+using System.Web.Http;
+
+namespace Pharos.Api.Retailing
+{
+    class WebApiStartup
+    {
+        public void Configuration(IAppBuilder appBuilder)
+        {
+            StoreConfig.Register();
+            // Configure Web API for self-host. 
+            HttpConfiguration config = new HttpConfiguration();
+            WebApiConfig.Register(config);
+            SwaggerConfig.Register(config);
+            config.Filters.Add(new ApiExceptionFilterAttribute());
+            config.Filters.Add(new ResponseFilterAttribute());
+            appBuilder.UseWebApi(config);
+        }
+
+        public static IDisposable RunWebServer(string address = null)
+        {
+            if (string.IsNullOrEmpty(address))
+            {
+                address = System.Configuration.ConfigurationManager.AppSettings["ApiUrl"];
+            }
+            return WebApp.Start<WebApiStartup>(url: address);
+        }
+    }
+}

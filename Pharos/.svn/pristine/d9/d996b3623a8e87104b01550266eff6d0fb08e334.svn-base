@@ -1,0 +1,165 @@
+﻿using Pharos.Logic.ApiData.Pos.DAL;
+using Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.Sale;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Logic.BLL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Services.LocalCeServices
+{
+    public class ProductRecordService : BaseGeneralService<ProductRecord, LocalCeDbContext>
+    {
+        /// <summary>
+        /// 适配多条码串、一品多码、价格（变价、一品多价、系统售价）
+        /// </summary>
+        /// <param name="storeId"></param>
+        /// <param name="barcode"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        public static ProductInfo GetProductRecod(string storeId, string barcode, int token)
+        {
+            IQueryable<ProductInfo> query = CurrentRepository.Entities.Where(p => p.Barcode.Equals(barcode)).Select(o => new ProductInfo()
+            {
+                Brand = o.BrandName,
+                BuyPrice = o.BuyPrice,
+                Category = o.CategoryName,
+                EnableEditPrice = Convert.ToBoolean(o.Favorable),
+                MainBarcode = o.Barcode,
+                ProductCode = o.ProductCode,
+                Title = o.Title,
+                Size = o.Size,
+                SystemPrice = o.SysPrice,
+                Unit = o.Unit,
+                MultiCodes = o.BarcodeMult,
+                EnableEditNum = o.ValuationType==1,
+                ProductType = (o.ValuationType == 2 ? ProductType.Weigh : o.ValuationType == 1 && o.Nature == 0 ? ProductType.Normal : o.ValuationType == 1 && o.Nature == 1 ? ProductType.Combination : ProductType.Split)
+
+            });///Todo GetProduct
+            ProductInfo result = query.FirstOrDefault();
+            if (result == null)
+            {
+                throw new SaleException("605", string.Format("未找到商品【{0}】！", barcode));
+            }
+            if (result.ProductType == ProductType.Weigh)
+            {
+                throw new SaleException("604", "散称商品请过称！");
+            }
+            if (!string.IsNullOrEmpty(result.MultiCodes))
+            {
+                result.MultiCode = result.MultiCodes.Split(",".ToArray(), StringSplitOptions.RemoveEmptyEntries);
+            }
+            return result;
+        }
+
+        internal static ProductInfo GetProductRecodByProductCode(string storeId, string productCode, int token)
+        {
+
+            return CurrentRepository.Entities.Where(p => p.ProductCode.Equals(productCode)).Select(o => new ProductInfo()
+            {
+                Brand = o.BrandName,
+                BuyPrice = o.BuyPrice,
+                Category = o.CategoryName,
+                EnableEditPrice = Convert.ToBoolean(o.Favorable),
+                MainBarcode = o.Barcode,
+                ProductCode = o.ProductCode,
+                Title = o.Title,
+                Size = o.Size,
+                SystemPrice = o.SysPrice,
+                Unit = o.Unit,
+                MultiCodes = o.BarcodeMult,
+                EnableEditNum = o.ValuationType == 1,
+                ProductType = (o.ValuationType == 2 ? ProductType.Weigh : o.ValuationType == 1 && o.Nature == 0 ? ProductType.Normal : o.ValuationType == 1 && o.Nature == 1 ? ProductType.Combination : ProductType.Split)
+
+            }).FirstOrDefault();
+
+        }
+
+        public static IEnumerable<InventoryResult> CheckedPrice(string storeId, int token, IEnumerable<int> categorySns, decimal from, decimal to)
+        {
+            string categorySnsStr = string.Empty;
+            if (categorySns != null)
+            {
+                categorySnsStr = string.Join(",", categorySns.Select(o => o.ToString()));
+            }
+            return CurrentRepository.Entities.Where(p => categorySnsStr.Contains(p.CategorySN.ToString())).Select(o => new InventoryResult()
+            {
+                Barcode = o.Barcode,
+                //Brand=o.Barcode
+                Category = o.CategoryName,
+                Inventory = o.Inventory,
+                Price = o.SysPrice,
+                ProductCode = o.ProductCode,
+                Size = o.Size,
+                Title = o.Title,
+                Unit = o.Unit
+            });
+        }
+
+
+
+        internal static PageResult<InventoryResult> CheckedPrice(string StoreId, int CompanyToken, IEnumerable<int> categorySns, decimal from, decimal to, int pageSize, int pageIndex)
+        {
+            ///Todo CheckedPrice
+            string categorySnsStr = string.Empty;
+            if (categorySns != null)
+            {
+                categorySnsStr = string.Join(",", categorySns.Select(o => o.ToString()));
+            }
+            var beforecount = pageSize* (pageIndex-1);
+            var sql ="select * from ProductRecord r where @p0 like '%'+r.CategorySN+'%' and r.sysprice between @p1 and @p2";
+            var sqlpaging = sql+" Order by id OFFSET @p3 ROWS FETCH NEXT @p4 ROWS ONLY";
+           var total= CurrentRepository._context.Database.SqlQuery<InventoryResult>(sql,categorySnsStr,from,to).Count();
+            var ranges = CurrentRepository._context.Database.SqlQuery<InventoryResult>(sqlpaging,categorySnsStr,from,to,beforecount,pageSize).ToList();
+           
+            var pageCount = total / pageSize + (total % pageSize > 0 ? 1 : 0);
+            var pager = new PageInfo()
+            {
+                Index = pageIndex,
+                Size = pageSize,
+                Total = total,
+                PageCount = pageCount
+            };
+            var result = new PageResult<InventoryResult>()
+            {
+                Datas = ranges,
+                Pager = pager
+            };
+            return result;
+        }
+
+        internal static PageResult<InventoryResult> CheckedInventory(string StoreId, int CompanyToken, IEnumerable<int> categorySns, string keyword, int pageSize, int pageIndex)
+        {
+            ///Todo CheckedInventory
+            string categorySnsStr = string.Empty;
+            if (categorySns != null)
+            {
+                categorySnsStr = string.Join(",", categorySns.Select(o => o.ToString()));
+            }
+
+            var beforecount = pageSize * (pageIndex - 1);
+            var sql = "select * from ProductRecord r where @p0 like '%'+r.CategorySN+'%' and (@p1 is null or @p1='' or r.barcode like '%'+@p1+'%' or r.productcode like '%'+@p1+'%' )";
+            var sqlpaging = sql + " Order by id OFFSET @p2 ROWS FETCH NEXT @p3 ROWS ONLY";
+            var total = CurrentRepository._context.Database.SqlQuery<InventoryResult>(sql, categorySnsStr, keyword).Count();
+            var ranges = CurrentRepository._context.Database.SqlQuery<InventoryResult>(sqlpaging, categorySnsStr, keyword, beforecount, pageSize).ToList();
+
+            var pageCount = total / pageSize + (total % pageSize > 0 ? 1 : 0);
+            var pager = new PageInfo()
+            {
+                Index = pageIndex,
+                Size = pageSize,
+                Total = total,
+                PageCount = pageCount
+            };
+            var result = new PageResult<InventoryResult>()
+            {
+                Datas = ranges,
+                Pager = pager
+            };
+            return result;
+        }
+    }
+}

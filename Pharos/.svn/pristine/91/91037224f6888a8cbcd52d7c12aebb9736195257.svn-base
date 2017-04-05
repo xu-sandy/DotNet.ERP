@@ -1,0 +1,30 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// ChaJiaGe.xaml 的交互逻辑
+    /// </summary>
+    public partial class ChaJiaGe : DialogWindow02
+    {
+        public ChaJiaGe()
+        {
+            InitializeComponent();
+            
+            this.InitDefualtSettings();
+            Task.Factory.StartNew(() =>
+            {
+                var model = new CheckPrice();
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    this.ApplyBindings(this, model);
+                }));
+            });
+        }
+    }
+}

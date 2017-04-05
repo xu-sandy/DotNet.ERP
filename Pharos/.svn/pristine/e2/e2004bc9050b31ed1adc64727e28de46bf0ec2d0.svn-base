@@ -1,0 +1,230 @@
+﻿@model ProductRecord
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    int i = 1;
+}
+<script src="~/Scripts/jquery-ui.min.js"></script>
+<link href="~/Content/themes/jquery-ui.css" rel="stylesheet" />
+<style type="text/css">
+    .table-form tr {
+        height: 32px;
+    }
+
+    .pagination-page-list {
+        width: auto !important;
+    }
+</style>
+<script type="text/javascript">
+    function treeSuccess(node, data) {
+        if ($("#BigCategorySN", window.frames[0].document).size() <= 0) return;
+        var bigsn = $("#BigCategorySN", window.frames[0].document).val();//$("iframe").contents().find("#BigCategorySN").val();
+        var midsn = $("#MidCategorySN", window.frames[0].document).val();
+        var subsn = $("#CategorySN", window.frames[0].document).val();
+        var node = $("#tree").tree("find", bigsn);
+        if (!isNull(subsn)) {
+            node = $("#tree").tree("find", subsn);
+        } else if (!isNull(midsn)) {
+            node = $("#tree").tree("find", midsn);
+        }
+        $('#tree').tree('select', node.target);
+    }
+    function treeBeforeSelect(node) {
+        if (!$("#tree").tree("isLeaf", node.target)) return false;
+        var bigId = $("#BigCategorySN", window.frames[0].document).val();
+        var midNode = $("#tree").tree("getParent", node.target);
+        if (midNode.id == "0") {
+            $("#BigCategorySN",window.frames[0].document).val(node.id);
+        } else {
+            var bigNode = $("#tree").tree("getParent", midNode.target);
+            if (bigNode && bigNode.id != "0") {
+                $("#BigCategorySN", window.frames[0].document).val(bigNode.id);
+            } else {
+                $("#BigCategorySN", window.frames[0].document).val(midNode.id);
+            }
+        }
+        //var rows = $dgprice.datagrid("getRows");
+        //if (rows.length > 1 && bigId != $("#BigCategorySN").val()) {
+        //    if (confirm("修改类别将清除原有一品多价信息,是否继续?")) {
+        //        for (var i = rows.length - 2; i >= 0; i--) {
+        //            $dgprice.datagrid("deleteRow", i);
+        //        }
+        //        changeValue();
+        //    } else {
+        //        $("#BigCategorySN").val(bigId);
+        //        return false;
+        //    }
+        //}
+        return true;
+    }
+    function treeSelect(node) {
+        if (!$("#tree").tree("isLeaf", node.target)) return;
+        var midNode = $("#tree").tree("getParent", node.target);
+        if (midNode.id == "0") {
+            //$("#category", window.frames[0].document).textbox("setValue", node.text);
+            document.getElementById("ifmgroup").contentWindow.$("#category").textbox("setValue", node.text);
+            $("#BigCategorySN", window.frames[0].document).val(node.id);
+            $("#CategorySN", window.frames[0].document).val(node.id);
+        } else {
+            var bigNode = $("#tree").tree("getParent", midNode.target);
+            var text = midNode.text + "/" + node.text;
+            if (bigNode && bigNode.id != "0") {
+                $("#BigCategorySN", window.frames[0].document).val(bigNode.id);
+                $("#CategorySN", window.frames[0].document).val(node.id);
+                text = bigNode.text + "/" + midNode.text + "/" + node.text;
+            } else {
+                $("#BigCategorySN", window.frames[0].document).val(midNode.id);
+                $("#CategorySN", window.frames[0].document).val(node.id);
+            }
+            //$("#category", window.frames[0].document).textbox("setValue", text);
+            //$("iframe").contents().find("#category").textbox("setValue", text);
+            document.getElementById("ifmgroup").contentWindow.$("#category").textbox("setValue", text);
+        }
+        loadStore();
+    }
+    function loadStore() {
+        return;
+        var ed = $dgprice.datagrid("getEditor", { index: editPriceIndex, field: 'Title' });
+        if (!ed) return;
+        $.post("@Url.Action("GetStoreInput", "Store")", { bigId: $("#BigCategorySN").val() }, function (data) {
+            $(ed.target).combobox("clear").combobox('loadData', data.rows);
+        }, "json");
+    }
+    
+    function SaveBefore() {
+        //$("form", window.frames[0].document).submit();
+        document.getElementById("ifmgroup").contentWindow.$("form").submit();
+        return false;
+    }
+    function addBarcode() {
+        var i= $("[name='selectbars']").size()+1;
+        $("[name='selectbars']:last").clone().attr({ name: "selectbars", id: "selectbars" + i, class: "" }).appendTo($("#dfs"));
+        $("[name='selectbars']").autocomplete(combOption);
+        $("#selectbars" + i).val("");
+    }
+    function selbarSubmit() {
+        var result = false;
+        try
+        {
+            result=$("#selectbars2").validatebox("isValid");
+        } catch (e) { result = true;};
+        if ($("#selectbars1").validatebox("isValid") && result) {
+            var vals = $.map($("[name='selectbars']"), function (r) {
+                return $(r).val();
+            })
+            if (vals) {
+                $("#ifmgroup").attr("src","@Url.Action("GroupSaveNew")?seltab=1&id=@(Request["id"])&barcodes=" + vals+"&t="+Math.random());
+                $("#tt1").tabs("select", 1);
+            }
+        }
+    }
+    $(function () {
+        $("[name='selectbars']").autocomplete(combOption);
+        var seltab = "@Request["seltab"]";
+        if (seltab) $("#tt1").tabs("select",Number(seltab));
+    })
+var combOption = {
+    source: function (request, response) {
+        var q = request.term || "";
+        if (q.lastIndexOf(";") != -1)
+            q = q.substring(q.lastIndexOf(";") + 1);
+        if (q.length <= 0) return;
+        $.ajax({
+            url: "@Url.Action("GetBarcodeInput")",
+            dataType: "json",
+            type: "post",
+            cache: false,
+            data: {
+                maxRows: 12,
+                searchName: q,
+                nature: 1,
+                flag:1
+            },
+            success: function (data) {
+                response($.map(data.rows, function (item) {
+                    if (item.Barcode) {
+                        return {
+                            value: item.Barcode,
+                            label: item.Title + "(" + item.Barcode + ")"
+                        }
+                    }
+                }));
+            }
+        });
+    },
+    minLength: 2,
+    select: function (event, ui) {
+        this.value = ui.item.value;
+        return false;
+    },
+    focus: function () {
+        return false;
+    }
+};
+</script>
+<div class="easyui-layout" data-options="fit:true">
+    <div data-options="region:'west',width:200">
+        <ul id="tree" class="easyui-tree" data-options="url:'@Url.Action("FindTreeList")',method:'post',onSelect:treeSelect,onBeforeSelect:treeBeforeSelect,onLoadSuccess:treeSuccess"></ul>
+    </div>
+    <div data-options="region:'center'">
+        <div class="default-form">
+                <form action="#" method="post"></form>
+                <div class="content">
+                    <div id="tt1" class="easyui-tabs" data-options="onSelect:function(title,index){}" style="height:auto;">
+                        <div title="添加商品">
+                            <table>
+                                <tr>
+                                    <td valign="top"><span style="display:inline-block;margin-top:10px;margin-left:5px; ">组合条码:</span></td>
+                                    <td valign="top">
+                                        <span id="dfs" style=" display:inline-block;width:200px;margin-top:10px; ">
+                                            @if (!Model.ProductGroups.Any())
+                                            {
+                                                <input type="text" name="selectbars" id="selectbars1" style="margin-bottom:5px;" class="easyui-validatebox" data-options="required:true" />
+                                                <input type="text" name="selectbars" id="selectbars2" style="margin-bottom:5px;" class="easyui-validatebox" data-options="required:false" />
+                                            }
+                                            else
+                                            {
+                                                int n = 1;
+                                                foreach (var gp in Model.ProductGroups)
+                                                {
+                                                    <input type="text" name="selectbars" id="@("selectbars"+n)" style="margin-bottom:5px;" value="@gp.GroupBarcode" @(n < 2 ? "class=easyui-validatebox data-options=required:true" : "") />
+                                                    n++;
+                                                }
+                                            }
+                                        </span>
+                                    </td>
+                                    <td valign="top"><a href="#" class="send_Button easyui-linkbutton cus1 linkbtn" onclick="addBarcode()">添加</a></td>
+                                </tr>
+                                <tr>
+                                    <td></td>
+                                    <td colspan="2"><a href="#" class="send_Button easyui-linkbutton cus1 linkbtn" onclick="selbarSubmit()">确定</a></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div title=" 基本信息">
+                            <iframe id="ifmgroup" name="ifmgroup" src="@Url.Action("GroupSaveNew", new { id = Request["id"],barcodes=Request["barcodes"]})" frameborder="0" width="750px" height="400px"></iframe>
+                        </div>
+                        @if (Model.Id != 0)
+                        {
+                            <div title="调价记录">
+                                <table class="easyui-datagrid" id="gridlog"
+                                       data-options="url:'@Url.Action("LoadChangLogList")',queryParams:{barcode:'@Model.Barcode'},showFooter:false,pageSize:20,border:true,rownumbers:true,fit:false,nowrap:false,fitColumns:true,pagination:true,singleSelect:true,onLoadError:loadError">
+                                    <thead>
+                                        <tr>
+                                            <th data-options="field:'OperType',hidden:true" width="60">操作类型</th>
+                                            <th data-options="field:'BatchNo'" width="120">批次</th>
+                                            <th data-options="field:'StoreTitle'" width="80">门店</th>
+                                            <th data-options="field:'OldPrice'" width="80">原价格</th>
+                                            <th data-options="field:'NewPrice'" width="80">新价格</th>
+                                            <th data-options="field:'CreateDT'" width="150">操作时间</th>
+                                            <th data-options="field:'FullName'" width="100">操作者</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+        </div>
+    </div>
+</div>

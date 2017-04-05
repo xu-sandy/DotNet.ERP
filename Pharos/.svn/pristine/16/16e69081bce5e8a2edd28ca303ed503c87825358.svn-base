@@ -1,0 +1,67 @@
+﻿using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS.Entity;
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class SysRoleController : BaseController
+    {
+        #region 私有对象
+        [Ninject.Inject]
+        PositionService PositionService { get; set; }
+        [Ninject.Inject]
+        DepartMentService DeptService { get; set; }
+        #endregion
+        public ActionResult Index()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult FindPageList()
+        {
+            int count = 0;
+            var list = PositionService.GetPageList(Request.Params);
+            return ToDataGrid(list, count);
+        }
+
+        [HttpPost]
+        public ActionResult Delete(int[] ids)
+        {
+            return new JsonNetResult(PositionService.Deletes(ids));
+        }
+        public ActionResult Save(int? id)
+        {
+            var obj = new SysPositions() { Status=true};
+            var list = ListToSelect(DeptService.GetFullTitle().Select(o => new SelectListItem() { Text = o.Value, Value = o.Key.ToString() }), emptyTitle: "请选择");
+            var datas = new Dictionary<int,string>();
+            if (id.HasValue)
+            {
+                obj = PositionService.Get(id.Value);
+                if(!obj.DeptId.IsNullOrEmpty())
+                {
+                    datas=DeptService.GetFullTitle(obj.DeptId);
+                }
+            }
+            ViewBag.depts = list.ToJson();
+            ViewBag.datas = datas.Select(o => new { DeptId=o.Key,Title= o.Value }).ToJson();
+            return View(obj.IsNullThrow());
+        }
+        [HttpPost]
+        public ActionResult Save(SysPositions obj)
+        {
+            var re = PositionService.SaveOrUpdate(obj, Request["inserted"], Request["deleted"]);
+            return new OpActionResult(re);
+        }
+        [HttpPost]
+        public void SetState(short mode, int id)
+        {
+            PositionService.SetState(mode, id);
+        }
+    }
+}

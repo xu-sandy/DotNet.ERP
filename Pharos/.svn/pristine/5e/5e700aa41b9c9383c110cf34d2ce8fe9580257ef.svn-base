@@ -1,0 +1,91 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IBLL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.OMS.DAL;
+using Pharos.Utility;
+namespace Pharos.Logic.OMS.BLL
+{
+    public class BrandService : BaseService, IBrandService
+    {
+        [Ninject.Inject]
+        public IBaseRepository<ProductBrand> BrandRepository { get; set; }
+        [Ninject.Inject]
+        public IBaseRepository<ProductRecord> ProductRepository { get; set; }
+        public Pharos.Utility.OpResult SaveOrUpdate(ProductBrand model)
+        {
+            if (BrandRepository.GetQuery(o => o.Title == model.Title && o.Id != model.Id).Any())
+                return OpResult.Fail("已存在该品牌!");
+            else if(model.Id==0)
+            {
+                model.BrandSN = BrandRepository.GetQuery().Max(o => (int?)o.BrandSN).GetValueOrDefault() + 1;
+                model.State = 1;
+                BrandRepository.Add(model);
+            }
+            else
+            {
+                var source = BrandRepository.Get(model.Id);
+                model.ToCopyProperty(source);
+            }
+            if(BrandRepository.SaveChanges())
+            {
+                LogEngine.WriteUpdate(model.Id+","+model.Title,LogModule.品牌管理);
+            }
+            return OpResult.Success();
+        }
+
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var title = nvl["title"];
+            var classfyId = nvl["classfyId"].IsNullOrEmpty()?0:int.Parse(nvl["classfyId"]);
+            var where = DynamicallyLinqHelper.Empty<ProductBrand>().And(o => o.Title.Contains(title), title.IsNullOrEmpty()).And(o => o.ClassifyId == classfyId, classfyId == 0);
+            var query= BrandRepository.GetQuery(where);
+            recordCount = query.Count();
+            return query.ToPageList();
+        }
+
+        public OpResult Deletes(object[] ids)
+        {
+            var list= BrandRepository.GetQuery(o => ids.Contains(o.Id)).ToList();
+            var brands= list.Select(o => o.BrandSN).ToList();
+            if (ProductRepository.GetQuery(o => brands.Contains(o.BrandSN)).Any())
+                return OpResult.Fail("商品存在品牌关联!");
+            if(BrandRepository.RemoveRange(list))
+            {
+                LogEngine.WriteDelete(string.Join(",",list.Select(o => o.Title)), LogModule.品牌管理);
+            }
+            return OpResult.Success();
+        }
+
+        public ProductBrand GetOne(object id)
+        {
+            throw new NotImplementedException();
+        }
+
+
+        public List<ProductBrand> GetList()
+        {
+            throw new NotImplementedException();
+        }
+
+        public OpResult SetState(string ids, short state)
+        {
+            var sId = ids.Split(',').Select(o => int.Parse(o));
+            var olist = BrandRepository.GetQuery(o => sId.Contains(o.Id)).ToList();
+            olist.Each(o => o.State = state);
+            return OpResult.Result(BrandRepository.SaveChanges());
+        }
+        public List<ProductBrand> GetBrandInput(string text)
+        {
+            if(!text.IsNullOrEmpty())
+            {
+                return BrandRepository.GetQuery(o => (o.JianPin != null && o.JianPin.StartsWith(text)) || o.Title.Contains(text)).Take(20).ToList();
+            }
+            return new List<ProductBrand>();
+        }
+    }
+}

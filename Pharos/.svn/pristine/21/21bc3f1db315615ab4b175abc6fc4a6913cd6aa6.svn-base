@@ -1,0 +1,137 @@
+﻿@{
+    ViewBag.Title = "TakeCouponIndex";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新建优惠券", editText:"修改优惠券", delText: "移除", hideDel: true, hideEdit: false, searchHeight: 80));
+}
+@section search{
+    
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类别：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox" name="couponType">
+                    @{
+                        foreach (var item in ViewBag.types)
+                        {
+                            <option value="@item.Value">@item.Text</option>
+                        }
+                    }
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>形式：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox" name="couponFrom">
+                    @{
+                        foreach (var item in ViewBag.forms)
+                        {
+                            <option value="@item.Value">@item.Text</option>
+                        }
+                    }
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox" name="state">
+                    <option value="-1">全部</option>
+                    <option value="0">未生效</option>
+                    <option value="1">正常</option>
+                    <option value="2">已作废</option>
+                </select>
+            </td>
+
+            <td class="label-toolbar">
+                <label>适用门店：</label>
+            </td>
+            <td class="input-toolbar">
+                <select class="easyui-combobox" name="storeIds">
+                    @{
+                        foreach (var item in ViewBag.shops)
+                        {
+                            <option value="@item.Value">@item.Text</option>
+                        }
+                    }
+                </select>
+            </td>
+        </tr>
+
+        <tr>
+            <td class="label-toolbar">
+                <label>创建人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("createUID", ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "" })
+            </td>
+            <td class="label-toolbar">
+                <label>有效期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input class="datacontrol Wdate" name="expiryStart" />
+            </td>
+            <td class="label-toolbar">
+                <label>-</label>
+            </td>
+            <td class="input-toolbar">
+                <input class="datacontrol Wdate" name="expiryEnd" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">设为生效</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">设为作废</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-print'" onclick="">打印优惠券</a>
+    <a class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-usable'" onclick="">查看打印历史</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("FindCreateCouponPageList")";
+    pharos.manager.editurl = "@Url.Action("CreateCoupon")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'BatchSN', title: '批号', width: 80 },
+        { field: 'CouponTypeTitle', title: '类别', width: 60 },
+        { field: 'CouponFromTitle', title: '形式', width: 60 },
+        { field: 'StoreTitle', title: '适用门店', width: 200 },
+        { field: 'ProductTypeTitle', title: '适用商品', width: 80 },
+        { field: 'MakeNumber', title: '发放数量', width: 50, formatter: function (value, row) { return value == 0 ? "不限" : value; } },
+        { field: 'xxxxxxxxxxxx', title: '已领数量', width: 50 },
+        { field: 'ExpiryStart', title: '有效期起始', width: 80 },
+        { field: 'ExpiryEnd', title: '有效期截止', width: 80,align: 'center', formatter: function (value, row) { return value == null ? "-" : value; } },
+        { field: 'StateTitle', title: '状态', width: 50 },
+        { field: 'CreateDate', title: '创建时间', width: 80 },
+        { field: 'CreateUser', title: '创建人', width: 50 },
+    ]];
+
+    //打开新增优惠券窗口
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        var w = $(window.parent).width() * 0.8 ;
+        var h = $(window.parent).height() * 0.8;
+        openDialog1000(this.addText, this.editurlNocache(), w, h, false, true);
+
+    }
+    pharos.manager.editItem = function (Id, row) {
+        this.Id = Id;
+        if (row.StateTitle == "未生效") {
+            openDialog1000(this.editText, this.editurlNocache(), false, false);
+        }
+        else {
+            openDialog1000(this.editText, this.editurlNocache(), false, true);
+        }
+
+
+    }
+
+    
+
+   
+
+
+</script>

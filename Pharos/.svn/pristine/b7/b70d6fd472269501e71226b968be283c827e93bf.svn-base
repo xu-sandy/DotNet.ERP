@@ -1,0 +1,27 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+
+namespace Pharos.POS.Retailing.Models.Payment
+{
+    public class CashPay : BasePay
+    {
+        public CashPay() 
+        {
+            base.Title = "现金支付";
+            base.ApiCode = ApiLibraryLocalService.GetPayCode(Title);
+        }
+        public override BasePay Pay(PayDetails info)
+        {
+            base.Pay(info);
+            //Todo:自动打开钱箱
+            //ToDo:设置打印小票
+            return this;
+        }
+
+        protected internal override void SetComplete()
+        {
+            base.SaveRecord();
+            base.SetComplete();
+        }
+
+    }
+}

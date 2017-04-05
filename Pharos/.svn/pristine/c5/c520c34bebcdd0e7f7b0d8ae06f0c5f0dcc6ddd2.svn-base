@@ -1,0 +1,433 @@
+﻿@model Pharos.Sys.Entity.SysWebSetting
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    
+}
+
+<style>
+    body { text-align: center; }
+</style>
+<div class="default-form">
+@using (Html.BeginForm("WebSetting", "SysAdmin", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+    <div class="WebSettingBox">
+        @Html.HiddenFor(o=>o.Id)
+        <table class="table">
+            <tr>
+                <td class="leftTd title">
+                    基本信息 :
+                </td>
+                <td class="rightTd"></td>
+                <td class="leftTd"></td>
+                <td class="rightTd"></td>
+            </tr>
+            <tr>
+                <td class="leftTd">顶部Logo : </td>
+                <td class="rightTd">                  
+                    <input type="text" name="TopLogo" value="@Model.TopLogo" id="TopLogo" onclick="getTopLogo()" class="datacontrol" readonly="readonly">
+                    <input type="file" name="TopLogo" id="hidTopLogo" onchange="handleTopLogo()" style="display:none;">
+                </td>
+                <td colspan="2" >
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <img src="~/@Model.TopLogo" height="30" id="imgTopLogo" onclick='ViewSourceImg("@Server.UrlEncode(Model.TopLogo)")'/>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">底部Logo : </td>
+                <td class="rightTd">
+                    <input type="text" name="BottomLogo" value="@Model.BottomLogo" id="BottomLogo" onclick="getBottomLogo()" class="datacontrol" readonly="readonly">
+                    <input type="file" name="hidBottomLogo" id="hidBottomLogo" onchange="handleBottomLogo()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <img src="~/@Model.BottomLogo" height="30" id="imgBottomLogo"/>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">App Icon : </td>
+                <td class="rightTd">
+                    <input type="text" name="AppIcon" value="@Model.AppIcon" id="AppIcon" onclick="getAppIcon()" class="datacontrol" readonly="readonly">
+                    <input type="file" name="hidAppIcon" id="hidAppIcon" onchange="handleAppIcon()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <img src="~/@Model.AppIcon" height="30" id="imgAppIcon"/>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">App首页背景 : </td>
+                <td class="rightTd">
+                    <input type="text" name="AppCustomer" value="@Model.AppCustomer" id="AppCustomer" onclick="getAppCustomer()" class="datacontrol" readonly="readonly">
+                    <input type="file" name="hidAppCustomer" id="hidAppCustomer" onchange="handleAppCustomer()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <img src="~/@Model.AppCustomer" height="30" id="imgAppCustomer"/>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">系统Icon : </td>
+                <td class="rightTd">
+                    <input type="text" name="SysIcon" value="@Model.SysIcon" id="SysIcon" onclick="getSysIcon()" class="datacontrol" readonly="readonly">
+                    <input type="file" name="hidSysIcon" id="hidSysIcon" onchange="handleSysIcon()" style="display:none;">
+                </td>
+                <td colspan="2">
+                    <div style="text-align: left; height: 30px; padding-top: 2px; padding-bottom: 3px;">
+                        <img src="~/@Model.SysIcon" height="30" id="imgSysIcon" />
+                    </div>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="leftTd">公司简称 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.CompanyTitle, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true",validtype="length[1,50]" })
+                </td>
+                <td class="leftTd">公司电话 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.Tel, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true",validtype="phone" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">官网地址 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.WebsiteUrl, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+
+                </td>
+                <td class="leftTd">页面Title : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.PageTitle, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,50]" })
+                </td>
+            </tr>           
+            <tr>
+                <td class="leftTd title" colspan="4">
+                    SMTP :
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">服务器 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPServer, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,100]" })
+                </td>
+                <td class="leftTd">端口号 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPPort, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "integer" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">显示名称 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPShowName, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd">SSL端口 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPSSLPort, new { @class = "easyui-textbox datacontrol", data_options = "novalidate:true", validtype = "integer" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">账号 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPAccount, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "email length[1,100]" })
+                </td>
+                <td class="leftTd">密码 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPPwd, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[4,20]", type = "password" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd title" colspan="4">
+                    环信IM :
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">Url : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMReqUrlBase, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd">Id : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppId, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">Secret : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppSecret, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd">org_name : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppOrg, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">app_name : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppName, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd"></td>
+                <td class="rightTd"></td>
+            </tr>      
+        </table>
+        @if(CurrentUser.HasPermiss(SysConstLimits.基本配置_编辑配置信息))
+        { 
+        <div class="buttonBox">
+            <a class="easyui-linkbutton cus4 linkbtn btn" onclick="Submit()">保存</a>
+            <a class="easyui-linkbutton cus4 linkbtn btn" onclick="window.location.reload();" style="float:right;">重置</a>
+        </div>
+        }
+    </div> 
+    
+}
+</div>
+
+<script type="text/javascript">
+    //保存
+    function Submit() {  
+        $('form').submit();     
+    }
+    function Refresh() {
+            window.location.reload();
+    }
+
+    var hidTopLogo = document.getElementById("hidTopLogo");
+    var hidBottomLogo = document.getElementById("hidBottomLogo");
+    var hidAppIcon = document.getElementById("hidAppIcon");
+    var hidAppCustomer = document.getElementById("hidAppCustomer");
+    var hidSysIcon = document.getElementById("hidSysIcon");
+    //TopLogo  
+    function getTopLogo() { //点击文本框，触发选择文件按钮
+        $("#hidTopLogo").click();
+    }   
+    function handleTopLogo() { //选择文件后，将选择的文件名复制到文本框并读取图片预览  
+        document.getElementById("TopLogo").value = hidTopLogo.value;
+        preImg(hidTopLogo, "hidTopLogo", "imgTopLogo");
+    }
+    //BottomLogo
+    function getBottomLogo() {
+        $("#hidBottomLogo").click();
+    }
+    function handleBottomLogo() {
+        document.getElementById("BottomLogo").value = hidBottomLogo.value;
+        preImg(hidBottomLogo, "hidBottomLogo", "imgBottomLogo");
+    }
+    //AppIcon
+    function getAppIcon() {
+        $("#hidAppIcon").click();
+    }
+    function handleAppIcon() {
+        document.getElementById("AppIcon").value = hidAppIcon.value;
+        preImg(hidAppIcon, "hidAppIcon", "imgAppIcon");
+    }
+    //AppCustomer
+    function getAppCustomer() {
+        $("#hidAppCustomer").click();
+    }
+    function handleAppCustomer() {
+        document.getElementById("AppCustomer").value = hidAppCustomer.value;
+        preImg(hidAppCustomer, "hidAppCustomer", "imgAppCustomer");
+    }
+    //SysIcon
+    function getSysIcon() {
+        $("#hidSysIcon").click();
+    }
+    function handleSysIcon() {
+        document.getElementById("SysIcon").value = hidSysIcon.value;
+        preImg(hidSysIcon, "hidSysIcon", "imgSysIcon");
+    }
+
+    //读取图片后预览
+    function preImg(inputStr, fileId, imgId) {
+        if (inputStr.value == "") {
+            document.getElementById(imgId).style.display = "none";
+        }
+        else {  debugger
+            var imgPre = document.getElementById(imgId);
+            var url = "";
+            var file = document.getElementById(fileId);
+            var agent = navigator.userAgent;
+            if (agent.indexOf("MSIE") >= 1) {
+                url = file.value;
+            } else if (agent.indexOf("Firefox") > 0) {
+                url = window.URL.createObjectURL(file.files.item(0));
+            } else if (agent.indexOf("Chrome") > 0) {
+                url = window.URL.createObjectURL(file.files.item(0));
+            }
+            imgPre.src = url;
+
+            //todo:预览时可查看原图
+            imgPre.onclick= ViewSourceImg(url);
+
+        }
+    }
+   
+    function SaveBefore() { 
+        //图片不能为空
+        var fileName = new Array(4);
+        fileName[0] = document.getElementById("TopLogo").value;
+        fileName[1] = document.getElementById("BottomLogo").value;
+        fileName[2] = document.getElementById("AppIcon").value;
+        fileName[3] = document.getElementById("AppCustomer").value;
+        fileName[4] = document.getElementById("SysIcon").value;
+        var strName = "";
+        var itemName = "";
+        var countName = 0;       
+        for (var i = 0; i < 5; i++)  
+        {
+            if ((fileName[i] == null) ||(fileName[i] == "")) {
+                itemName = itemName + i.toString() + ",";
+            }
+            else {
+                itemName = itemName + ",";
+            }
+        }      
+        var splitName = itemName.split(",");
+        if (splitName[0] == "0")
+        {
+            strName += "顶部Logo";
+            countName = countName + 1;
+        }
+        if (splitName[1] == "1")
+        {
+            if (countName > 0) {
+                strName += "、底部Logo";
+                countName = countName + 1;
+            }
+            else {
+                strName += "底部Logo";
+                countName = countName + 1;
+            }
+        }
+        if (splitName[2] == "2") {
+            if (countName > 0) {
+                strName += "、App Icon";
+                countName = countName + 1;
+            }
+            else {
+                strName += "App Icon";
+                countName = countName + 1;
+            }
+        }
+        if (splitName[3] == "3") {
+            if (countName > 0) {
+                strName += "、App首页背景";
+                countName = countName + 1;
+            }
+            else {
+                strName += "App首页背景";
+                countName = countName + 1;
+            }
+        }
+        if (splitName[4] == "4") {
+            if (countName > 0) {
+                strName += "、系统Icon";
+                countName = countName + 1;
+            }
+            else {
+                strName += "、系统Icon";
+                countName = countName + 1;
+            }
+        }
+        if (countName > 0)
+        {
+            strName+="不能为空，请选择文件！";
+            alert(strName);
+            return false;
+        }
+
+        //限制图片上传的格式
+        var filepath = new Array(4);
+        filepath[0] = $("input[id='hidTopLogo']").val();
+        filepath[1] = $("input[id='hidBottomLogo']").val();
+        filepath[2] = $("input[id='hidAppIcon']").val();
+        filepath[3] = $("input[id='hidAppCustomer']").val();
+        filepath[4] = $("input[id='hidSysIcon']").val();
+        var str = "";
+        var item = "";
+        var count = 0;       
+        for (var i = 0; i < 4; i++)  
+        {
+            var extStart = filepath[i].lastIndexOf(".");
+            var ext = filepath[i].substring(extStart, filepath[i].length).toUpperCase();
+            if ((filepath[i] != null) && (filepath[i] != "") && (ext != ".PNG")) {
+                item = item + i.toString() + ",";
+            }
+            else {
+                item = item + ",";
+            }
+        }
+        var extStart4 = filepath[4].lastIndexOf(".");
+        var ext4 = filepath[4].substring(extStart4, filepath[4].length).toUpperCase();
+        if ((filepath[4] != null) && (filepath[4] != "") && (ext4 != ".ICO")) {
+            item = item + "4";
+        }
+
+        var splitCount = item.split(",");
+        if (splitCount[0] == "0")
+        {
+            str += "顶部Logo";
+            count = count + 1;
+        }
+        if (splitCount[1] == "1")
+        {
+            if (count > 0) {
+                str += "、底部Logo";
+                count = count + 1;
+            }
+            else {
+                str += "底部Logo";
+                count = count + 1;
+            }
+        }
+        if (splitCount[2] == "2") {
+            if (count > 0) {
+                str += "、App Icon";
+                count = count + 1;
+            }
+            else {
+                str += "App Icon";
+                count = count + 1;
+            }
+        }
+        if (splitCount[3] == "3") {
+            if (count > 0) {
+                str += "、App首页背景";
+                count = count + 1;
+            }
+            else {
+                str += "App首页背景";
+                count = count + 1;
+            }
+        }
+        if (count > 0)
+        {
+            str += "格式不正确，请选择.png类型的图片！"
+        }
+        if (splitCount[4] == "4") {
+            if (count > 0) {                                       
+                str += "\n系统Icon格式不正确，请选择.ico类型的图片！";
+                count = count + 1;
+            }
+            else {
+                str += "系统Icon格式不正确，请选择.ico类型的图片！";
+                count = count + 1;
+            }
+        }
+        if (count > 0) {
+            alert(str);
+            return false;
+        }
+        return true;
+    }
+
+    //查看原图
+    function ViewSourceImg(Src) {        
+        openDialogNew("查看原图", "@Url.Action("WebSettingViewImg")?Src=" + Src, 1000, 600, true, true);
+    }
+
+
+</script>

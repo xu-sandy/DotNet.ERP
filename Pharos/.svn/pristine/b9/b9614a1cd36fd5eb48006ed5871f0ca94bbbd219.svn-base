@@ -1,0 +1,74 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.ApiParams;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Windows;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// WeiXinZhiFu.xaml 的交互逻辑
+    /// </summary>
+    public partial class WeiXinZhiFu : DialogWindow02
+    {
+        public WeiXinZhiFu(decimal amount, PayAction mode, int reason, PayAction _action)
+        {
+            InitializeComponent();
+            this.InitDefualtSettings();
+            Task.Factory.StartNew(() =>
+            {
+                MachineInformations _machineInfo = Global.MachineSettings.MachineInformations;
+                List<PayWay> payWay = new List<PayWay>();
+                PayWay _payWay = new PayWay()
+                {
+                    Amount = amount,
+                    Change = 0,
+                    Receive = amount,
+                    Type = PayMode.Weixin
+                };
+                payWay.Add(_payWay);
+                ApiPayParams _params = new ApiPayParams()
+                {
+                    StoreId = _machineInfo.StoreId,
+                    MachineSn = _machineInfo.MachineSn,
+                    CompanyToken = _machineInfo.CompanyToken,
+                    Mode = _action,
+                    Receivable = amount,
+                    Payway = payWay,
+                    OrderAmount = amount,
+                    Reason = reason
+                };
+                var result = ApiManager.Post<ApiPayParams, ApiRetrunResult<ApiPayResult>>(@"api/Pay", _params);
+                Application.Current.Dispatcher.Invoke(new Action(() =>
+                {
+                    if (result.Code == "200")
+                    {
+                        var model = new WeixinPayViewModel(result.Result.Url, result.Result.PaySN, amount, mode);
+                        this.Dispatcher.Invoke(new Action(() =>
+                        {
+                            this.ApplyBindings(this, model);
+                        }));
+
+                        //WeiXinZhiFu page = new WeiXinZhiFu(result.Result.Url, result.Result.PaySN, amount, Action);
+                        //page.Owner = Application.Current.MainWindow;
+
+                        //CurrentWindow.Hide();
+                        //page.ShowDialog();
+                        //CurrentWindow.Close();
+                    }
+                    else
+                    {
+                        Toast.ShowMessage(result.Message, Application.Current.MainWindow);
+                    }
+                }));
+            });
+        }
+    }
+}

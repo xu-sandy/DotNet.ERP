@@ -1,0 +1,168 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Utility.Helpers;
+using Pharos.Sys.Entity;
+using Pharos.Utility;
+
+namespace Pharos.Logic.BLL
+{
+    public class MembershipCardService : BaseService<MembershipCard>
+    {
+        public object FindMembershipCardPageList(int? type, short? state, int beOverdue, DateTime? dueTimeStart, DateTime? dueTimeEnd, string keyWord, out int count)
+        {
+            try
+            {
+                var query = (from a in CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId)
+                             //join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                             //on a.UserUID equals b.UID
+                             join b in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                             on a.MemberId equals b.UID into d
+                             from e in d.DefaultIfEmpty()
+                             join c in BaseService<SysStoreUserInfo>.CurrentRepository.Entities
+                             on a.CreateUID equals c.UID
+                             select new
+                             {
+                                 Id = a.Id,
+                                 BatchSN = a.BatchSN,
+                                 CardSN = a.CardSN,
+                                 CardType = a.CardType,
+                                 UserUID = e.FullName,
+                                 ReChargeTotal = a.ReChargeTotal,
+                                 GiveTotal = a.GiveTotal,
+                                 Balance = a.Balance,
+                                 Integer = a.Integer,
+                                 Deposit = a.Deposit,
+                                 State = a.State,
+                                 ExpiryStart = a.ExpiryStart,
+                                 ExpiryEnd = a.ExpiryEnd,
+                                 CreateDT = a.CreateDT,
+                                 CreateUID = c.FullName,
+                                 LeadTime = a.LeadTime
+                             });
+
+                if (type != null)
+                {
+                    query = query.Where(o => o.Id == type);
+                }
+                if (state != null && state != -1)
+                {
+                    query = query.Where(o => o.State == state);
+                }
+                if (beOverdue > 0)
+                {
+                    DateTime startTime = DateTime.Now;
+                    DateTime endTime = new DateTime();
+                    switch (beOverdue)
+                    {
+                        case 1:
+                            endTime = startTime.AddMonths(beOverdue);
+                            break;
+                        case 2:
+                            endTime = startTime.AddMonths(beOverdue);
+                            break;
+                        case 3:
+                            endTime = startTime.AddMonths(beOverdue);
+                            break;
+                        case 6:
+                            endTime = startTime.AddMonths(beOverdue);
+                            break;
+                    }
+                    query = query.Where(o => Convert.ToDateTime(o.ExpiryEnd) > startTime && Convert.ToDateTime(o.ExpiryEnd) < endTime);
+                }
+                if (dueTimeStart != null)
+                {
+                    query = query.Where(o => o.LeadTime > dueTimeStart);
+                }
+                if (dueTimeEnd != null)
+                {
+                    query = query.Where(o => o.LeadTime < dueTimeEnd);
+                }
+                if (!string.IsNullOrEmpty(keyWord))
+                {
+                    query = query.Where(o => o.CardSN.Contains(keyWord) || o.UserUID.Contains(keyWord));
+                }
+                count = query.Count();
+                object result = null;
+                if (count > 0)
+                {
+                    result = query.ToPageList();
+                }
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+
+        }
+
+        public OpResult UpdateMemberCardState(short state, string ids)
+        {
+            try
+            {
+                var cards = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ","));
+                cards.Each(o => o.State = state);
+                CurrentRepository.Update(new MembershipCard());
+                return new OpResult() { Successed = true, Message = "修改成功！" };
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+        }
+
+        public object UpdateCardType(short type, string ids)
+        {
+            try
+            {
+                var cards = CurrentRepository.Entities.Where(o => o.CompanyId == CommonService.CompanyId && ("," + ids + ",").Contains("," + o.Id + ","));
+                cards.Each(o => o.CardType = type);
+                CurrentRepository.Update(new MembershipCard());
+                return new OpResult() { Successed = true, Message = "修改成功！" };
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+        }
+
+        public OpResult UpdateMembershipCard(MembershipCard _membershipCard)
+        {
+            //发卡
+            try
+            {
+                var _oldCard = CurrentRepository.Entities.Where(o => o.Id == _membershipCard.Id).FirstOrDefault();
+                if (_oldCard != null)
+                {
+                    _oldCard.MemberId = _membershipCard.MemberId;
+                    _oldCard.LeadTime = _membershipCard.LeadTime;
+                    _oldCard.Deposit = _membershipCard.Deposit;
+                    CurrentRepository.Update(_oldCard);
+                }
+                return new OpResult() { Successed = true, Message = "操作成功！" };
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        public object GetMembersCardByCardSn(string cardSN)
+        {
+            var _memberCardInfo = (from a in CurrentRepository.Entities.Where(o => o.CardSN == cardSN && o.CompanyId == CommonService.CompanyId)
+                                   join b in BaseService<Members>.CurrentRepository.Entities
+                                   on a.MemberId equals b.MemberId into c
+                                   from d in c.DefaultIfEmpty()
+                                   select new
+                                   {
+                                       Batch = a.BatchSN,
+                                       RealName = d.RealName,
+                                       Deposit = a.Deposit
+                                   }).FirstOrDefault();
+            return _memberCardInfo;
+        }
+    }
+}

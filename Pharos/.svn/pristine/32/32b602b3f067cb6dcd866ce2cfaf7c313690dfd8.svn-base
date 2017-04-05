@@ -1,0 +1,61 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Text;
+
+namespace Pharos.Utility
+{
+    public class HttpClient
+    {
+        /// <summary>
+        /// jsonPost
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="parms"></param>
+        /// <returns></returns>
+        public static string HttpPost(string url, string parms)
+        {
+            try
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "POST";
+                request.ContentType = "application/json";//json方式上传
+                byte[] data = Encoding.UTF8.GetBytes(parms);//使用UTF8
+                request.ContentLength = data.Length;
+                var reqStream = request.GetRequestStream();
+                reqStream.Write(data, 0, data.Length);
+                reqStream.Close();
+
+                var response = (HttpWebResponse)request.GetResponse();
+                StreamReader sr = new StreamReader(response.GetResponseStream(), System.Text.Encoding.UTF8);
+                var rt = sr.ReadToEnd().Trim();
+                sr.Close();
+                return rt;
+            }
+            catch (Exception ex)
+            {
+                return "404";
+            }
+        }
+        public static string HttpGet(string url, string parms)
+        {
+            try
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url+"?"+parms);
+                request.Method = "GET";
+                request.ContentType = "text/json";
+                var response = (HttpWebResponse)request.GetResponse();
+                StreamReader sr = new StreamReader(response.GetResponseStream(), System.Text.Encoding.UTF8);
+                var rt = sr.ReadToEnd().Trim();
+                sr.Close();
+                return rt;
+            }
+            catch (Exception ex)
+            {
+                return "";
+            }
+        }
+    }
+}

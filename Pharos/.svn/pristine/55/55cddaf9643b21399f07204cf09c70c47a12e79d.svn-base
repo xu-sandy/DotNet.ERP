@@ -1,0 +1,117 @@
+﻿using Pharos.Logic.ApiData.Pos.Common;
+using Pharos.Logic.ApiData.Pos.DataAdapter;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Pharos.Logic.ApiData.Pos.Cache
+{
+    public class ProductCache : MemoryCacheWrapper<ProductInfo>
+    {
+        public ProductCache()
+            : base("ProductCache", new TimeSpan(2, 0, 0), true)
+        {
+        }
+
+
+
+        public void RefreshProduct(int companyId, MemoryCacheRefreshQuery _params)
+        {
+
+            if (string.IsNullOrEmpty(_params.StoreId))
+            {
+                if (_params.ProductType != Sale.ProductType.Bundling)
+                {
+                    var items = Collections.Where(o => o.Value.ProductCode == _params.ProductCode).ToList();
+                    var rule = "(?<=" + KeyFactory.ProductKeyFactory(companyId, ").*(?=", ".*") + ")";
+                    Regex regex = new Regex(rule);
+                    foreach (var item in items)
+                    {
+                        var match = regex.Match(item.Key);
+                        var matchStoreId = match.Value;
+                        RefreshProduct(item.Key, companyId, _params, matchStoreId, item.Value);
+                    }
+                }
+                else
+                {
+                    var rule = "(?<=" + KeyFactory.ProductKeyFactory(companyId, ").*(?=", _params.ProductType == Sale.ProductType.Weigh ? _params.ProductCode : _params.Barcode) + ")";
+                    Regex regex = new Regex(rule);
+                    foreach (var item in Keys)
+                    {
+                        var match = regex.Match(item);
+                        var matchStoreId = match.Value;
+                        RefreshProduct(item, companyId, _params, matchStoreId, Get(item));
+                    }
+                }
+            }
+            else
+            {
+                if (_params.ProductType != Sale.ProductType.Bundling)
+                {
+                    var storeIds = _params.StoreId.Split(",".ToArray(), StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var storeId in storeIds)
+                    {
+                        var rule = "(?<=" + KeyFactory.ProductKeyFactory(companyId, storeId, ").*");
+                        Regex regex = new Regex(rule);
+                        IEnumerable<KeyValuePair<string, ProductInfo>> items;
+                        if (!string.IsNullOrEmpty(_params.ProductCode))
+                        {
+                            items = Collections.Where(o => o.Value.ProductCode == _params.ProductCode && regex.IsMatch(o.Key));
+                        }
+                        else
+                        {
+                            items = Collections.Where(o => (o.Value.MainBarcode == _params.Barcode || regex.Match(o.Key).Value == _params.Barcode) && regex.IsMatch(o.Key));
+                        }
+                        foreach (var item in items)
+                        {
+                            RefreshProduct(item.Key, companyId, _params, _params.StoreId, item.Value);
+                        }
+                    }
+                }
+                else
+                {
+                    var storeIds = _params.StoreId.Split(",".ToArray(), StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var storeId in storeIds)
+                    {
+                        var key = KeyFactory.ProductKeyFactory(companyId, storeId, _params.Barcode);
+                        RefreshProduct(key, companyId, _params, _params.StoreId, Get(key));
+                    }
+                }
+            }
+        }
+        /// <summary>
+        /// 重置缓存中的产品信息
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="companyId"></param>
+        /// <param name="barcode"></param>
+        /// <param name="storeId"></param>
+        private void RefreshProduct(string key, int companyId, MemoryCacheRefreshQuery _params, string storeId, ProductInfo info)
+        {
+            var product = Get(key);
+            //缓存中不存在符合条件的数据从数据库中查找
+            var dataAdapter = DataAdapterFactory.DbFactory(MachinesSettings.Mode, storeId, DataAdapterFactory.DEFUALT, companyId);
+            ProductInfo result = null;
+            switch (_params.ProductType)
+            {
+                case Sale.ProductType.Weigh:
+                    result = dataAdapter.GetProductInfoByProductCode(info.ProductCode);
+                    break;
+                case Sale.ProductType.Bundling:
+                    result = dataAdapter.GetProductInfoFromBundlingByBarcode(info.MainBarcode);
+                    break;
+                default:
+                    result = dataAdapter.GetProductInfoByBarcode(_params.Barcode);
+                    break;
+            }
+            //加到缓存中
+            if (result != null)
+                DataAdapterFactory.ProductCache.Set(key, result);
+        }
+    }
+}

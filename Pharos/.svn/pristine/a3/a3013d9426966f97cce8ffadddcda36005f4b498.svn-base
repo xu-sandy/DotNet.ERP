@@ -1,0 +1,389 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Data.Entity;
+namespace Pharos.Logic.OMS.BLL
+{
+    public class ProductRoleVerService
+    {
+        [Ninject.Inject]
+        IBaseRepository<ProductRoleVer> ProductRoleVerRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.ProductVer> ProductVerRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.ProductRoleData> ProductRoleDataRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.ProductRole> ProductRoleRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysUser> UserRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.ProductMenuLimit> ProductMenuLimitRepository { get; set; }
+        [Ninject.Inject]
+        ProductModelVerService ProductModelVerService { get; set; }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = ProductRoleVerRepository.GetQuery();
+            var queryProduct = ProductVerRepository.GetQuery();
+            var queryUser = UserRepository.GetQuery();
+            var productId = nvl["productId"].ToType<int?>();
+            var state = nvl["state"];
+            var verstate = nvl["verstate"];
+            var q = from x in query
+                    join y in queryProduct on x.ProductId equals y.ProductId
+                    select new
+                    {
+                        x.Id,
+                        x.CreateDT,
+                        x.ProductId,
+                        x.Status,
+                        x.VerStatus,
+                        x,
+                        RoleCount = x.ProductRoles.Count(),
+                        LimitCount = x.ProductRoles.SelectMany(o=>o.ProductRoleDatas).Count(),
+                        y.SysName,
+                        Updater = queryUser.Where(o => o.UserId == x.UpdateUID).Select(o => o.FullName).FirstOrDefault(),
+                        Publisher = queryUser.Where(o => o.UserId == x.PublishUID).Select(o => o.FullName).FirstOrDefault()
+                    };
+            if (productId.HasValue)
+                q = q.Where(o => o.ProductId == productId);
+            if (!state.IsNullOrEmpty())
+            {
+                var st = state.Split(',').Select(o => short.Parse(o)).ToList();
+                q = q.Where(o => st.Contains(o.Status));
+            }
+            if (!verstate.IsNullOrEmpty())
+            {
+                var st = verstate.Split(',').Select(o => short.Parse(o)).ToList();
+                q = q.Where(o => st.Contains(o.VerStatus));
+            }
+            recordCount = q.Count();
+            return q.ToPageList().Select(x => new
+            {
+                x.Id,
+                x.x.RoleVerId,
+                x.ProductId,
+                x.SysName,
+                x.x.VerCode,
+                x.CreateDT,
+                x.x.CreateUID,
+                x.Status,
+                x.VerStatus,
+                x.x.UpdateDT,
+                x.x.PublishDT,
+                x.x.StatusTitle,
+                x.x.VerStatusTitle,
+                x.RoleCount,
+                x.LimitCount,
+                x.Updater,
+                x.Publisher
+            });
+        }
+        
+        public OpResult SaveOrUpdate(ProductRoleVer obj)
+        {
+            if (obj.Id == 0)
+            {
+                obj.RoleVerId = CommonService.GUID;
+                obj.CreateDT = DateTime.Now;
+                obj.UpdateDT = obj.CreateDT;
+                obj.UpdateUID = CurrentUser.UID;
+                obj.CreateUID = obj.UpdateUID;
+                ProductRoleVerRepository.Add(obj, false);
+            }
+            else
+            {
+                var product = ProductRoleVerRepository.Find(o => o.Id == obj.Id);
+                product.UpdateUID = CurrentUser.UID;
+                product.UpdateDT = DateTime.Now;
+            }
+            ProductRoleVerRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        public OpResult SaveRole(string roleVerId, string moduleId, int? productId, string title)
+        {
+            if (ProductRoleVerRepository.IsExists(o => o.ProductId == productId && o.Status == 0 && o.RoleVerId!=roleVerId))
+                return OpResult.Fail("已存在未发布的版本");
+            var verId = roleVerId.IsNullOrEmpty() ? CommonService.GUID : roleVerId;
+            if (ProductRoleRepository.IsExists(o => o.RoleVerId == verId && o.Title == title))
+                return OpResult.Fail("该角色已存在!");
+            var role = new ProductRole()
+            {
+                Title=title,
+                RoleVerId=verId,
+                RoleId=ProductRoleRepository.GetMaxInt(o=>o.RoleId,whereLambda:o=>o.RoleVerId==verId),
+                CreateDT = DateTime.Now,
+                CreateUID = CurrentUser.UID
+            };
+            var ver = ProductRoleVerRepository.Find(o => o.RoleVerId == verId);
+            if (ver == null)
+            {
+                ver = new ProductRoleVer()
+                {
+                    ModuleId = moduleId,
+                    ProductId = productId.GetValueOrDefault(),
+                    RoleVerId = verId,
+                };
+                ver.UpdateDT =ver.CreateDT= role.CreateDT;
+                ver.UpdateUID = ver.CreateUID = role.CreateUID;
+                ProductRoleVerRepository.Add(ver, false);
+            }
+            else
+                ver.ModuleId = moduleId;
+            ProductRoleRepository.Add(role, false);
+            ProductRoleRepository.SaveChanges();
+            return OpResult.Success(data:new{verId=verId,roleId=role.RoleId});
+        }
+        public OpResult SaveLimits(string verId, int roleId, string menuIds, string limitIds)
+        {
+            var ver= Get(verId);
+            if (ver == null) return OpResult.Fail();
+            var role= ver.ProductRoles.FirstOrDefault(o => o.RoleId == roleId);
+            if (role == null) return OpResult.Fail();
+            var mids = menuIds.Split(',').Where(o=>!o.IsNullOrEmpty()).Select(o=>int.Parse(o));
+            role.ProductRoleDatas.Each(o => {
+                o.HasSelected = mids.Any(i=>i==o.MenuId);
+                o.Limitids = limitIds;
+            });
+            ver.UpdateDT = DateTime.Now;
+            ver.UpdateUID = CurrentUser.UID;
+            ProductRoleRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        public OpResult Copy(string verId)
+        {
+            var pro = Get(verId);
+            if (pro != null && pro.Status != 0)
+            {
+                var obj = new Entity.ProductRoleVer();
+                pro.ToCopyProperty(obj);
+                obj.Id = 0;
+                obj.Status = 0;
+                obj.VerStatus = 0;
+                obj.VerCode = 0;
+                obj.PublishDT = null;
+                obj.PublishUID = "";
+                obj.ProductRoles = pro.ProductRoles.ToClone();
+                pro.ProductRoles.Each(o =>
+                {
+                    var role= obj.ProductRoles.FirstOrDefault(i => i.RoleId == o.RoleId);
+                    role.ProductRoleDatas = o.ProductRoleDatas.ToClone();
+                });
+                return SaveOrUpdate(obj);
+            }
+            return OpResult.Fail();
+        }
+        public OpResult Deletes(int[] ids)
+        {
+            var list = ProductRoleVerRepository.GetQuery(o => ids.Contains(o.Id)).Include(o => o.ProductRoles).Include("ProductRoles.ProductRoleDatas").ToList();
+            ProductRoleDataRepository.RemoveRange(list.SelectMany(o => o.ProductRoles.SelectMany(i=>i.ProductRoleDatas)).ToList(), false);
+            ProductRoleRepository.RemoveRange(list.SelectMany(o => o.ProductRoles).ToList(), false);
+            ProductRoleVerRepository.RemoveRange(list);
+            return OpResult.Success();
+        }
+        public Entity.ProductRoleVer Get(string verId)
+        {
+            return ProductRoleVerRepository.GetQuery(o => o.RoleVerId == verId).Include(o => o.ProductRoles).Include("ProductRoles.ProductRoleDatas").FirstOrDefault();
+        }
+        public List<Models.TreeModel> FindTreeList(string verId)
+        {
+            var trees = new List<Models.TreeModel>(){
+                new Models.TreeModel(){
+                Id = 0,
+                Text = "角色列表",
+                Childrens = new List<Models.TreeModel>()
+                }
+            };
+            var obj = Get(verId);
+            if(obj!=null)
+            {
+                trees[0].Childrens.AddRange(obj.ProductRoles.Select(o => new Models.TreeModel()
+                {
+                    Text="["+o.RoleId+"] "+o.Title,
+                    Id=o.RoleId,
+                }));
+            }
+            return trees;
+        }
+        public void MoveMenuItem(short mode,int menuId,int roleId, string verId)
+        {
+            var ver = Get(verId);
+            var role = ver.ProductRoles.FirstOrDefault(o => o.RoleId == roleId);
+            var obj = role.ProductRoleDatas.FirstOrDefault(o=> o.MenuId == menuId);
+            var list= role.ProductRoleDatas.Where(o => o.PMenuId == obj.PMenuId).OrderBy(o => o.SortOrder).ToList();
+            switch (mode)
+            {
+                case 2://下移
+                    var obj1 = list.LastOrDefault();
+                    if (obj.Id != obj1.Id)
+                    {
+                        Entity.ProductRoleData next = null;
+                        for (var i = 0; i < list.Count; i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                next = list[i + 1]; break;
+                            }
+                        }
+                        if (next != null)
+                        {
+                            var sort = obj.SortOrder;
+                            obj.SortOrder = next.SortOrder;
+                            next.SortOrder = sort;
+                            ProductRoleVerRepository.SaveChanges();
+                        }
+                    }
+                    break;
+                default://上移
+                    var obj2 = list.FirstOrDefault();
+                    if (obj.Id != obj2.Id)
+                    {
+                        Entity.ProductRoleData prev = null;
+                        for (var i = 0; i < list.Count; i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                prev = list[i - 1]; break;
+                            }
+                        }
+                        if (prev != null)
+                        {
+                            var sort = obj.SortOrder;
+                            obj.SortOrder = prev.SortOrder;
+                            prev.SortOrder = sort;
+                            ProductRoleVerRepository.SaveChanges();
+                        }
+                    }
+                    break;
+            }
+        }
+        public OpResult Publish(string verId, short state)
+        {
+            var obj = Get(verId);
+            if (obj != null)
+            {
+                if (!obj.ProductRoles.Any())
+                    return OpResult.Fail("请先配置角色！");
+                obj.VerStatus = state;
+                var list = ProductRoleVerRepository.GetQuery(o => o.ProductId == obj.ProductId && o.RoleVerId != obj.RoleVerId).ToList();
+                list.Where(o=>o.VerStatus==obj.VerStatus).Each(o => o.Status = 2);
+                if (state == 1)//测试
+                {
+                    obj.PublishDT = DateTime.Now;
+                    obj.PublishUID = CurrentUser.UID;
+                    obj.Status = 1;
+                    var source = list.OrderByDescending(o => o.VerCode).FirstOrDefault(o => o.VerCode > 0);
+                    if (source == null)
+                        obj.VerCode = 1;
+                    else
+                        obj.VerCode = source.VerCode + 0.1m;
+                }
+                
+                ProductVerRepository.SaveChanges();
+                return OpResult.Success();
+            }
+            return OpResult.Fail();
+        }
+        static object _objlock = new object();
+        public List<Models.ProductRoleMenuModel> FindMenuList(int productId, int roleId, string verId)
+        {
+            lock (_objlock)
+            {
+                var queryMenu = ProductMenuLimitRepository.GetQuery();
+                var queryRole = ProductRoleRepository.GetQuery(o => o.RoleId == roleId);
+                var queryRoleData = ProductRoleDataRepository.GetQuery();
+                var ver = Get(verId);
+                var ms = new List<Models.ProductRoleMenuModel>();
+                if (ver != null && !ver.ModuleId.IsNullOrEmpty())
+                {
+                    queryMenu = queryMenu.Where(o => o.ModuleId == ver.ModuleId);
+                    var q = from x in queryRoleData
+                            join y in queryMenu on x.MenuId equals y.MenuId
+                            join z in queryRole on x.RoleDataId equals z.Id
+                            where z.RoleVerId == verId
+                            orderby x.SortOrder
+                            select new Models.ProductRoleMenuModel()
+                            {
+                                Id = y.MenuId,
+                                MenuId = y.MenuId,
+                                PMenuId = y.PMenuId,
+                                Title = y.Title,
+                                LimitSelects = x.Limitids,
+                                ParentId = x.HasSelected ? 1 : 0
+                            };
+                    ms = q.ToList();
+                    var limits = queryMenu.Where(o => o.Type == 3).ToList();
+                    ms.Each(o =>
+                    {
+                        o.Limitids = string.Join(",", limits.Where(i => i.PMenuId == o.MenuId).Select(i => i.Title + ":" + i.MenuId));
+                        o.MenuIdSelects = string.Join(",", ms.Where(i => i.ParentId == 1).Select(i => i.MenuId));
+                        o.ParentId = 0;
+                    });
+
+                }
+                if (!ms.Any())
+                {
+                    var modelVer = ProductModelVerService.GetOfficialLast(productId);
+                    if (modelVer != null)
+                    {
+                        ms.AddRange(modelVer.ProductMenuLimits.Where(o => o.Type != 3).Select(o => new Models.ProductRoleMenuModel()
+                        {
+                            Id = o.MenuId,
+                            MenuId = o.MenuId,
+                            PMenuId = o.PMenuId,
+                            Title = o.Title,
+                            Limitids = string.Join(",", modelVer.ProductMenuLimits.Where(i => i.PMenuId == o.MenuId && i.Type == 3).Select(i => i.Title + ":" + i.MenuId))
+                        }));
+
+                        if (ver != null)
+                        {
+                            ver.ModuleId = modelVer.ModuleId;
+                            var role = ver.ProductRoles.FirstOrDefault(o => o.RoleId == roleId);
+                            role.ProductRoleDatas.AddRange(modelVer.ProductMenuLimits.Where(o => o.Type != 3).Select(o => new ProductRoleData()
+                            {
+                                PMenuId = o.PMenuId,
+                                MenuId = o.MenuId,
+                                SortOrder = o.SortOrder,
+                            }));
+                            ProductRoleVerRepository.SaveChanges();
+                        }
+                    }
+
+                }
+                var list = new List<Models.ProductRoleMenuModel>();
+                foreach (var menu in ms.Where(o => o.PMenuId <= 0))
+                {
+                    SetChilds(menu, ms);
+                    menu.Index = list.Count;
+                    list.Add(menu);
+                }
+                return list;
+            }
+        }
+        public List<Entity.ProductVer> GetProductVers()
+        {
+            var queryProduct = ProductVerRepository.GetQuery();
+            var queryModel = ProductRoleVerRepository.GetQuery();
+            var query = from x in queryProduct
+                        where !queryModel.Any(o => o.ProductId == x.ProductId)
+                            && x.Status == 1
+                        select x;
+            return query.ToList();
+        }
+        void SetChilds(Models.ProductRoleMenuModel menu, List<Models.ProductRoleMenuModel> alls)
+        {
+            menu.Childrens = alls.Where(o => o.PMenuId == menu.MenuId).ToList();
+            int i = 0;
+            foreach (var child in menu.Childrens)
+            {
+                child.Index = i++;
+                child.ParentId = menu.Id;
+                SetChilds(child, alls);
+            }
+        }
+    }
+}

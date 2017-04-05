@@ -1,0 +1,345 @@
+﻿using Newtonsoft.Json;
+using Pharos.Utility;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
+using System.Text;
+using System.Runtime.Serialization;
+
+namespace Pharos.Logic.Entity
+{
+#if (Local!= true)
+    public partial class Supplier
+    {
+        public virtual ICollection<Contract> Contracts { get; set; }
+    }
+    public partial class Contract
+    {
+        public virtual Supplier Supplier { get; set; }
+        [NotMapped]
+        public virtual string SupplierTitle { get; set; }
+        [NotMapped]
+        public string CreateTitle { get; set; }
+        public virtual ICollection<ContractBoth> ContractBoths { get; set; }
+
+        public virtual List<Attachment> Attachments { get; set; }
+        [NotMapped]
+        public string AttCount { get; set; }
+        [NotMapped]
+        public string isExtend { get; set; }
+
+    }
+    public partial class IndentOrder
+    {
+        [NotMapped]
+        public List<IndentOrderList> Details { get; set; }
+        [NotMapped]
+        public string Inserted { get; set; }
+        [NotMapped]
+        public string Deleted { get; set; }
+        [NotMapped]
+        public string Updated { get; set; }
+    }
+#endif
+    public partial class ProductCategory
+    {
+        [NotMapped]
+        [JsonProperty("children")]
+        public virtual List<ProductCategory> Childrens { get; set; }
+        /// <summary>
+        /// 树形涨开或收缩(open|closed)
+        /// </summary>
+        [NotMapped]
+        [JsonProperty("state")]
+        public string OnOff { get; set; }
+        [NotMapped]
+        public string CategoryPSNTitle { get; set; }
+        [NotMapped]
+        public string StateTitle { get { return Enum.GetName(typeof(EnableState), State); } }
+        [NotMapped]
+        public bool IsRemove { get; set; }
+        [NotMapped]
+
+        public int Count { get; set; }
+        [NotMapped]
+        [JsonProperty("text")]
+        public string Text { get { return (CategoryCode > 0 ? "[" + CategoryCode.ToString("00") + "]" : "") + Title; } }
+        [JsonProperty("id")]
+        [NotMapped]
+        public int SN { get { return CategorySN; } }
+    }
+    public partial class ProductRecord
+    {
+        [NotMapped]
+        public decimal GroupCount { get; set; }
+        [NotMapped]
+        public decimal StockNumber { get; set; }
+        [NotMapped]
+        public decimal Price { get; set; }
+
+        [NotMapped]
+        public string Category { get; set; }
+        [NotMapped]
+        public string SubUnit2 { get; set; }
+        [NotMapped]
+        public string BigUnit2 { get; set; }
+        [NotMapped]
+        public string ProductCode2 { get; set; }
+        [NotMapped]
+        public List<ProductGroup> ProductGroups { get; set; }
+        public ProductRecord InitForLocalDb(decimal value, string subUnit, string bigUnit)
+        {
+            StockNumber = value;
+            SubUnit2 = subUnit;
+            BigUnit2 = bigUnit;
+            return this;
+        }
+        [NotMapped]
+        public string PriceInserted { get; set; }
+        [NotMapped]
+        public string PriceDeleteed { get; set; }
+        [NotMapped]
+        public string PriceUpdateed { get; set; }
+        [NotMapped]
+        public string SuppInserted { get; set; }
+        [NotMapped]
+        public string SuppDeleteed { get; set; }
+        [NotMapped]
+        public string SuppUpdateed { get; set; }
+        [NotMapped]
+        public List<ProductImage> ProductImages { get; set; }
+    }
+#if (Local!= true)
+
+    public partial class Receipts
+    {
+        [NotMapped]
+        public string CreateTitle { get; set; }
+        public virtual List<Attachment> Attachments { get; set; }
+    }
+#endif
+    public partial class CommodityPromotion
+    {
+        /// <summary>
+        /// 单品折扣
+        /// </summary>
+        public virtual List<CommodityDiscount> CommodityDiscounts { get; set; }
+        /// <summary>
+        /// 捆绑销售
+        /// </summary>
+        public virtual List<Bundling> Bundlings { get; set; }
+        public virtual List<BundlingList> BundlingDetails { get; set; }
+        /// <summary>
+        /// 组合和满元促销
+        /// </summary>
+        public virtual List<PromotionBlend> Blends { get; set; }
+        public virtual List<PromotionBlendList> BlendDetails { get; set; }
+        /// <summary>
+        /// 买赚促销
+        /// </summary>
+        public virtual List<FreeGiftPurchase> FreeGiftPurchases { get; set; }
+    }
+#if (Local!= true)
+
+    public partial class OrderDistribution
+    {
+        [NotMapped]
+        public virtual string ProductCode { get; set; }
+        [NotMapped]
+        public virtual string ProductTitle { get; set; }
+        [NotMapped]
+        public virtual string IndentNums { get; set; }
+        [NotMapped]
+        public virtual string DeliveryNums { get; set; }
+
+        public List<OrderDistributionGift> OrderDistributionGifts { get; set; }
+    }
+
+    public partial class OutboundGoods
+    {
+        [NotMapped]
+        public List<OutboundList> Details { get; set; }
+
+        [NotMapped]
+        public string Rows { get; set; }
+    }
+    public partial class OutboundList
+    {
+        //public virtual OutboundGoods Order { get; set; }
+
+        /// <summary>
+        /// 货号
+        /// </summary>
+        [NotMapped]
+        public string ProductCode { get; set; }
+        /// <summary>
+        /// 商品名称
+        /// </summary>
+        [NotMapped]
+        public string ProductTitle { get; set; }
+        /// <summary>
+        /// 单位
+        /// </summary>
+        [NotMapped]
+        public string Unit { get; set; }
+        /// <summary>
+        /// 规格
+        /// </summary>
+        [NotMapped]
+        public string Size { get; set; }
+    }
+
+    public partial class InboundGoods
+    {
+        [NotMapped]
+        public List<InboundList> Details { get; set; }
+        [NotMapped]
+        public string Rows { get; set; }
+    }
+    public partial class InboundList
+    {
+        //public virtual InboundGoods InboundGoods { get; set; }
+
+        /// <summary>
+        /// 货号
+        /// </summary>
+        [NotMapped]
+        public string ProductCode { get; set; }
+        /// <summary>
+        /// 商品名称
+        /// </summary>
+        [NotMapped]
+        public string ProductTitle { get; set; }
+        /// <summary>
+        /// 单位
+        /// </summary>
+        [NotMapped]
+        public string Unit { get; set; }
+        /// <summary>
+        /// 规格
+        /// </summary>
+        [NotMapped]
+        public string Size { get; set; }
+    }
+    public partial class PrivilegeSolution
+    {
+        /// <summary>
+        /// 设定区间
+        /// </summary>
+        public virtual List<PrivilegeRegion> Regions { get; set; }
+        /// <summary>
+        /// 设定商品
+        /// </summary>
+        public virtual List<PrivilegeProduct> Products { get; set; }
+        [NotMapped]
+        public string InsertProducted { get; set; }
+        [NotMapped]
+        public string UpdateProducted { get; set; }
+        [NotMapped]
+        public string DeleteProducted { get; set; }
+        [NotMapped]
+        public string InsertTypeed { get; set; }
+        [NotMapped]
+        public string UpdateTypeed { get; set; }
+        [NotMapped]
+        public string DeleteTypeed { get; set; }
+        [NotMapped]
+        public string ModeTitle { get; set; }
+    }
+    public partial class ProductGroup
+    {
+        [NotMapped]
+        public string Title { get; set; }
+        [NotMapped]
+        public decimal BuyPrice { get; set; }
+        [NotMapped]
+        public decimal SysPrice { get; set; }
+        [NotMapped]
+        public short ValuationType { get; set; }
+        [NotMapped]
+        public string Unit { get; set; }
+    }
+
+    public partial class CommodityReturns
+    {
+        [NotMapped]
+        public List<CommodityReturnsDetail> Details { get; set; }
+        [NotMapped]
+        public string Rows { get; set; }
+    }
+    public partial class CommodityReturnsDetail
+    {
+        /// <summary>
+        /// 货号
+        /// </summary>
+        [NotMapped]
+        public string ProductCode { get; set; }
+        /// <summary>
+        /// 商品名称
+        /// </summary>
+        [NotMapped]
+        public string ProductTitle { get; set; }
+        /// <summary>
+        /// 单位
+        /// </summary>
+        [NotMapped]
+        public string Unit { get; set; }
+        /// <summary>
+        /// 规格
+        /// </summary>
+        [NotMapped]
+        public string Size { get; set; }
+    }
+#endif
+    public partial class BundlingList
+    {
+        [NotMapped]
+        public string ProductCode { get; set; }
+    }
+#if (Local!= true)
+
+    public partial class IndentOrderList
+    {
+        [NotMapped]
+        public string Gift { get; set; }
+    }
+
+    public partial class BreakageGoods
+    {
+        [NotMapped]
+        public string Rows { get; set; }
+    }
+    public partial class BreakageList
+    {
+
+    }
+
+    public partial class HouseMove
+    {
+        [NotMapped]
+        public List<HouseMoveList> Details { get; set; }
+        [NotMapped]
+        public string Inserted { get; set; }
+        [NotMapped]
+        public string Deleted { get; set; }
+        [NotMapped]
+        public string Updated { get; set; }
+    }
+#endif
+
+
+    public partial class SaleOrders : SyncEntity
+    {
+        [ForeignKey("PaySN")]
+
+        public virtual List<ConsumptionPayment> ConsumptionPayments { get; set; }
+        [ForeignKey("PaySN")]
+
+        public virtual List<SaleDetail> SaleDetails { get; set; }
+        [ForeignKey("PaySN")]
+        public virtual List<WipeZero> WipeZeros { get; set; }
+    }
+
+}

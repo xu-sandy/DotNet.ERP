@@ -1,0 +1,78 @@
+﻿@model PrivilegeSolution
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">.name{width:20%;} w{margin:0px 10px;}</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o=>o.Id)
+        <div class="content">
+            <div class="formbox">
+                <table width="100%" height="150px">
+                    <tr>
+                        <td class="name">方案名称：</td>
+                        <td>@Html.TextBoxFor(o => o.Title, new { @class = "easyui-validatebox datacontrol", data_options = "required:true,novalidate:true" })</td>
+                        <td class="name">返利模式：</td>
+                        <td>@Html.DropDownListFor(o => o.ModeSN, ViewBag.Modes as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,width:220" })</td>
+                    </tr>
+                    <tr>
+                        <td class="name">返利供应商：</td>
+                        <td colspan="3" class="long-select">@Html.DropDownListFor(o => o.SupplierIds, ViewBag.Suppliers as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "required:true,novalidate:true,validType:'requiredForCombo',multiple:true,editable:true,width:550,onSelect:supplierSelect,onUnselect:supplierUnSelect" })</td>
+                    </tr>
+                    <tr>
+                        <td class="name">备 注：</td>
+                        <td colspan="3" class="long-select">@Html.TextAreaFor(o => o.Memo, new { @class = "datacontrol", style = "width:550px;height:50px;min-height:50px;" })</td>
+                    </tr>
+                </table>
+            </div>
+            <table width="100%" height="225px" class="width-18">
+                <tr>
+                    <th class="name">区间段设置</th><th colspan="3"></th>
+                </tr>
+                @for (var i = 0; i < Model.Regions.Count;i++ )
+                { 
+                <tr>
+                    <td class="name">第 @(i+1)区间：</td>
+                    <td>
+                        @Html.TextBox("StartVal", Model.Regions[i].StartVal, new { @class = "easyui-numberbox", data_options = i == 0 ? "required:true,novalidate:true,min:0" : "" }) <w>至</w> @Html.TextBox("EndVal", Model.Regions[i].EndVal, new { @class = "easyui-numberbox", data_options=i==0?"required:true,novalidate:true,min:0":"" })
+                    </td>
+                </tr>
+                }
+        </table>
+        </div>
+    }
+</div>
+
+<script type="text/javascript">
+    var vals = "";
+    $(function () {
+        var sids = '@Model.SupplierIds';
+        $("#SupplierIds").combobox("setValues", sids.split(','));
+        var startVals = $("[name='StartVal']").map(function () { return $(this).val(); }).get().join();
+        var endVals = $("[name='EndVal']").map(function () { return $(this).val(); }).get().join();
+        vals = startVals + "," + endVals;
+        supplierIds = $("#SupplierIds").combobox("getValues"); 
+        supplierIds.remove("");
+    });
+    var supplierIds = [];
+    function supplierSelect(record) {
+        if (record.value) {
+            supplierIds.add(record.value);
+        }
+        $("#SupplierIds").combobox("setValues", supplierIds);
+    }
+    function supplierUnSelect(record) {
+        supplierIds.remove(record.value);
+        $("#SupplierIds").combobox("setValues", supplierIds);
+    }
+    function SaveBefore() {
+        var startVals = $("[name='StartVal']").map(function () { return $(this).val(); }).get().join();
+        var endVals = $("[name='EndVal']").map(function () { return $(this).val(); }).get().join();
+        var vs = startVals + "," + endVals;
+        if (vals != vs && $("#Id").val()!="0")
+            return confirm("重新设定值，将会删除已设定商品的信息,是否继续?");
+        return true;
+    }
+</script>

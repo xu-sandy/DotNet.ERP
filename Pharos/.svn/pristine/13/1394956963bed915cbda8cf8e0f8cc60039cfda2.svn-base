@@ -1,0 +1,19 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Entity.LocalCeEntity
+{
+    public class FreeGiftPurchase : BaseEntity
+    {
+        public string CommodityId { get; set; }
+        public short GiftType { get; set; }
+        public string GiftId { get; set; }
+        public decimal MinPurchaseNum { get; set; }
+        public short RestrictionBuyNum { get; set; }
+        public string BarcodeOrCategorySN { get; set; }
+        public int BrandSN { get; set; }
+        public short? CategoryGrade { get; set; }
+    }
+}

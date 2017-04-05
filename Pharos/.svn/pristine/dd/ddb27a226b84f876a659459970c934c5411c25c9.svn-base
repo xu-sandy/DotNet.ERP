@@ -1,0 +1,68 @@
+﻿using Pharos.POS.Retailing.Models;
+using Pharos.Wpf.Extensions;
+using Pharos.Wpf.HotKeyHelper;
+using System;
+using System.Threading.Tasks;
+using System.Windows;
+
+namespace Pharos.POS.Retailing
+{
+    /// <summary>
+    /// App.xaml 的交互逻辑
+    /// </summary>
+    public partial class App : Application
+    {
+        public App()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                try
+                {
+                    HotKey.LoadConfig();
+                }
+                catch
+                {
+                    //this.Dispatcher.Invoke(new Action(() =>
+                    //{
+                    //    Toast.ShowMessage("快捷键设置异常，将使用默认快捷键设置！", Application.Current.MainWindow);
+                    //}));
+
+                    //Todo 恢复默认设置
+                }
+            });
+            this.DefaultSettings();
+            this.Startup += App_Startup;
+        }
+
+
+
+        void App_Startup(object sender, StartupEventArgs e)
+        {
+            Global.MachineSettings.Load();
+
+            if (e.Args.Length == 0 || e.Args[0] != "Restart")
+            {
+                var arr = System.Diagnostics.Process.GetProcessesByName("Pharos.POS.Retailing");
+                if (arr.Length > 1)
+                {
+                    Application.Current.Shutdown();
+                }
+                if (Global.MachineSettings != null && Global.MachineSettings.Enable)
+                {
+                    this.StartupUri = new Uri("Login.xaml", UriKind.Relative);
+                }
+                else
+                {
+                    this.StartupUri = new Uri("MachineSettings.xaml", UriKind.Relative);
+                }
+            }
+        }
+
+        private void Application_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            var win = Application.Current.MainWindow;
+            Toast.ShowMessage(e.Exception.Message, null);
+            e.Handled = true;
+        }
+    }
+}

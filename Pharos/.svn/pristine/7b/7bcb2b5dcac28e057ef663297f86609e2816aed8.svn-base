@@ -1,0 +1,203 @@
+﻿using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Data.Entity;
+namespace Pharos.Logic.OMS.BLL
+{
+    public class SysRoleService
+    {
+        [Ninject.Inject]
+        IBaseRepository<SysRoles> RoleRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<SysLimits> LimitRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<SysMenus> MenuRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<SysRoleData> RoleDataRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysDepartments> DepartRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysUser> UserRepository { get; set; }
+        [Ninject.Inject]
+        DepartMentService DeptService { get; set; }
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl)
+        {
+            var type = nvl["Type"];
+            var status = nvl["Status"];
+            var queryRole = RoleRepository.GetQuery();
+            var queryUser = UserRepository.GetQuery();
+            var query = from x in queryRole
+                        select new { 
+                            x.Id,
+                            x.RoleId,
+                            x.Title,
+                            x.UpdateDT,
+                            x.UpdateUID,
+                            x.CreateDT,
+                            x.Status,
+                            x.DeptId,
+                            UserCount = queryUser.Count(o => (","+o.RoleIds+",").Contains(","+ x.RoleId+",")),
+                            StatusTitle=x.Status?"可用":"停用",
+                            x.Type,
+                            TypeTitle = x.Type == 0 ? "默认" : "自定义",
+                            x.Memo
+                        };
+            if (!type.IsNullOrEmpty())
+            {
+                var st = type.Split(',').Select(o => short.Parse(o)).ToList();
+                query = query.Where(o =>st.Contains( o.Type));
+            }
+            if (!status.IsNullOrEmpty())
+            {
+                var st = status.Split(',').Select(o => bool.Parse(o)).ToList();
+                query = query.Where(o => st.Contains(o.Status));
+            }
+            var list= query.ToList();
+            var depts= DeptService.GetFullTitle(true);
+            return list.Select(x => new
+            {
+                x.Id,
+                x.RoleId,
+                x.Title,
+                x.UpdateDT,
+                x.UpdateUID,
+                x.Status,
+                x.StatusTitle,
+                x.CreateDT,
+                x.UserCount,
+                x.TypeTitle,
+                x.Type,
+                Memo=x.Memo.TrimMore(100),
+                DepartMent = GetDepartment(x.DeptId,depts)
+            });
+        }
+        string GetDepartment(string deptId,Dictionary<int,string> depts)
+        {
+            if (deptId.IsNullOrEmpty()) return "";
+            var ids= deptId.Split(',').Select(o=>int.Parse(o));
+            return string.Join("<br>", depts.Where(o => ids.Contains(o.Key)).Select(o=>o.Value));
+        }
+        public OpResult SaveOrUpdate(SysRoles obj, string menuIds, string limitIds)
+        {
+            var mids = menuIds.Split(',').Where(o => !o.IsNullOrEmpty()).Select(o => int.Parse(o));
+            if (obj.Id == 0)
+            {
+                obj.RoleId = RoleRepository.GetMaxInt(o => o.RoleId);
+                obj.UpdateDT=obj.CreateDT = DateTime.Now;
+                obj.UpdateUID= obj.CreateUID = CurrentUser.UID;
+                obj.Status = true;
+                var menus= MenuRepository.GetQuery(o =>o.Status).ToList();
+                obj.SysRoleDatas=new List<SysRoleData>();
+                menus.Each(o =>
+                {
+                    var data= new SysRoleData() { 
+                        Limitids=limitIds,
+                        MenuId=o.MenuId,
+                        PMenuId =o.PMenuId,
+                        SortOrder=o.SortOrder,
+                    };
+                    data.HasSelected = mids.Any(i => i == o.MenuId);
+                    obj.SysRoleDatas.Add(data);
+                });
+                RoleRepository.Add(obj, false);
+            }
+            else
+            {
+                var menu = Get(obj.Id);
+                obj.ToCopyProperty(menu, new List<string>() { "CreateDT", "CreateUID", "Status", "RoleId" });
+                menu.UpdateDT = DateTime.Now;
+                menu.UpdateUID = CurrentUser.UID;
+                menu.SysRoleDatas.Each(o =>
+                {
+                    o.HasSelected = mids.Any(i => i == o.MenuId);
+                    o.Limitids = limitIds;
+                });
+            }
+            RoleRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        public List<Models.ProductRoleMenuModel> FindMenuList(int? roleId)
+        {
+            var queryMenu = MenuRepository.GetQuery(o=>o.Status);
+            var ms = new List<Models.ProductRoleMenuModel>();
+            if (roleId>0)
+            {
+                var queryRoleData = RoleDataRepository.GetQuery(o=>o.RoleId==roleId);
+                var q = from x in queryMenu
+                        join y in queryRoleData on x.MenuId equals y.PMenuId into tmp
+                        from z in tmp.DefaultIfEmpty()
+                        orderby z.SortOrder, x.SortOrder
+                        select new Models.ProductRoleMenuModel()
+                        {
+                            Id = x.MenuId,
+                            MenuId = x.MenuId,
+                            PMenuId = x.PMenuId,
+                            Title = x.Title,
+                            LimitSelects = z.Limitids,
+                            ParentId = z.HasSelected ? 1 : 0
+                        };
+                ms = q.ToList();
+            }
+            else
+            {
+                ms = queryMenu.Select(x => new Models.ProductRoleMenuModel()
+                {
+                    Id = x.MenuId,
+                    MenuId = x.MenuId,
+                    PMenuId = x.PMenuId,
+                    Title = x.Title
+                }).ToList();
+            }
+            var limits = LimitRepository.GetQuery(o => o.Status).ToList();
+            ms.Each(o =>
+            {
+                o.Limitids = string.Join(",", limits.Where(i => i.PLimitId == o.MenuId).Select(i => i.Title + ":" + i.LimitId));
+                o.MenuIdSelects = string.Join(",", ms.Where(i => i.ParentId == 1).Select(i => i.MenuId));
+                o.ParentId = 0;
+            });
+                
+            var list = new List<Models.ProductRoleMenuModel>();
+            foreach (var menu in ms.Where(o => o.PMenuId <= 0))
+            {
+                SetChilds(menu, ms);
+                menu.Index = list.Count;
+                list.Add(menu);
+            }
+            return list;
+        }
+
+        public OpResult Deletes(int[] ids)
+        {
+            var list = RoleRepository.GetQuery(o => ids.Contains(o.Id)).ToList();
+            RoleRepository.RemoveRange(list);
+            return OpResult.Success();
+        }
+        public SysRoles Get(int id)
+        {
+            return RoleRepository.GetQuery(o => o.Id == id).Include(o => o.SysRoleDatas).FirstOrDefault();
+        }
+        public void SetState(short mode, int id)
+        {
+            var obj = Get(id);
+            obj.Status = mode == 1;
+            RoleRepository.SaveChanges();
+        }
+
+        void SetChilds(Models.ProductRoleMenuModel menu, List<Models.ProductRoleMenuModel> alls)
+        {
+            menu.Childrens = alls.Where(o => o.PMenuId == menu.MenuId).ToList();
+            int i = 0;
+            foreach (var child in menu.Childrens)
+            {
+                child.Index = i++;
+                child.ParentId = menu.Id;
+                SetChilds(child, alls);
+            }
+        }
+    }
+}

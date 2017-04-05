@@ -1,0 +1,49 @@
+﻿using Pharos.Logic.ApiData.Pos.Sale.Barcodes;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.AfterSale
+{
+    public class ChangeProduct
+    {
+        internal IBarcode CurrentBarcode { get; set; }
+        public ChangeProduct(IBarcode barcode,bool status)
+        {
+            CurrentBarcode = barcode;
+            if (!status)
+            {
+                ChangeNumber = -barcode.SaleNumber;
+            }
+            else 
+            {
+                ChangeNumber = barcode.SaleNumber;
+            }
+            Barcode = barcode.CurrentString;
+            Title = barcode.Details.Title;
+            ChangePrice = barcode.Details.SystemPrice;
+            Total = ChangePrice * ChangeNumber;
+            SysPrice = barcode.Details.SystemPrice;
+            Status = status;
+            Unit = barcode.Details.Unit;
+        }
+        public ProductType ProductType { get; set; }
+        public string Barcode { get; set; }
+
+        public string Unit { get; set; }
+        public bool Status { get; set; }
+        public string Title { get; set; }
+        public decimal ChangeNumber { get; set; }
+
+        public decimal SysPrice { get; set; }
+        public decimal ChangePrice { get; set; }
+
+        public SaleStatus SaleStatus { get; set; }
+
+        public decimal Total { get; set; }
+
+        public int Index { get; set; }
+    }
+}

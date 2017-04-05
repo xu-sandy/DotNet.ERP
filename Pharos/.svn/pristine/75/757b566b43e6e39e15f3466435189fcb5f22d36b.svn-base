@@ -1,0 +1,36 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Web.Mvc;
+
+namespace Pharos.Logic.OMS
+{
+    public static class Tool
+    {
+        /// <summary>
+        /// 转换List SelectListItem
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="t"></param>
+        /// <param name="text">文本</param>
+        /// <param name="value">值</param>
+        /// <param name="emptyTitle">空文本</param>
+        /// <returns></returns>
+        public static List<SelectListItem> CreateSelect<T>(this IList<T> t, string text, string value, string emptyTitle)
+        {
+            List<SelectListItem> l = new List<SelectListItem>();
+            if (!String.IsNullOrEmpty(emptyTitle))
+            {
+                l.Add(new SelectListItem { Text = emptyTitle, Value = "" });
+            }
+            foreach (var item in t)
+            {
+                var propers = item.GetType().GetProperty(text);
+                var valpropers = item.GetType().GetProperty(value);
+                l.Add(new SelectListItem { Text = propers.GetValue(item, null).ToString(), Value = valpropers.GetValue(item, null).ToString() });
+            }
+            return l;
+        } 
+    }
+}

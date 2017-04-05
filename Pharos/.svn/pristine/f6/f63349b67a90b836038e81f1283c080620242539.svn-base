@@ -1,0 +1,93 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.IO;
+using Pharos.EmbeddedIISExpress.Properties;
+using System.Reflection;
+
+namespace Pharos.EmbeddedIISExpress
+{
+    public class IISExpressSeverManager
+    {
+
+        private readonly string IISPATHx64 = @"C:\Program Files\IIS Express\";
+        private readonly string IISPATHx86 = @"C:\Program Files (x86)\IIS Express\";
+        private readonly string CALLAPP = "iisexpress.exe";
+        private readonly string MSIEXECQUIET = @"/i {0} /quiet";
+        private readonly string SETSITEPATHFORMAT = "/path:{0} /port:{1} /clr:{2}";
+        private readonly string HISTORYPATH;
+        public IISExpressSeverManager()
+        {
+            var mydoc = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            var assembly = Assembly.GetEntryAssembly().GetName().Name;
+            HISTORYPATH = Path.Combine(mydoc, "EmbeddedIISExpress", assembly);
+        }
+        public Process CurrentServer { get; private set; }
+        public void Run(int port, string sitePath, string clr = "v4.0")
+        {
+            var historyPath = Path.Combine(HISTORYPATH, port.ToString());
+            var exeCmd = "";
+            var exePath = "";
+            ProcessStartInfo processStartInfo;
+            Console.WriteLine("正在检查运行环境......");
+            if (File.Exists(historyPath))
+            {
+                try
+                {
+                    var history = File.ReadAllText(historyPath);
+                    CurrentServer = Process.GetProcessById(Convert.ToInt16(history));
+                    if (CurrentServer != null)
+                        return;
+                }
+                catch (Exception)
+                {
+
+                }
+            }
+
+        RunStart:
+            if (Environment.Is64BitOperatingSystem && Directory.Exists(IISPATHx64))
+            {
+                exePath = Path.Combine(IISPATHx64, CALLAPP);
+                exeCmd = string.Format(SETSITEPATHFORMAT, sitePath, port, clr);
+
+                processStartInfo = new ProcessStartInfo(exePath, exeCmd);
+            }
+            else if (Directory.Exists(IISPATHx86))
+            {
+                exePath = Path.Combine(IISPATHx86, CALLAPP);
+                exeCmd = string.Format(SETSITEPATHFORMAT, sitePath, port, clr);
+                processStartInfo = new ProcessStartInfo(exePath, exeCmd);
+
+            }
+            else
+            {
+                Console.WriteLine("正在安装IISExpress......");
+
+                var tempPath = Path.Combine(Path.GetTempPath(), Path.GetTempFileName() + ".msi");
+                File.WriteAllBytes(tempPath, Resources.iisexpress_1_11_x86_zh_CN);
+                exeCmd = string.Format(MSIEXECQUIET, tempPath);
+                processStartInfo = new ProcessStartInfo("msiexec", exeCmd);
+                var installProcess = Process.Start(processStartInfo);
+                installProcess.WaitForExit();
+                goto RunStart;
+            }
+            Console.WriteLine("正在启动站点");
+            processStartInfo.UseShellExecute = false;
+            processStartInfo.CreateNoWindow = true;
+            processStartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            CurrentServer = Process.Start(processStartInfo);
+            if (!Directory.Exists(historyPath))
+            {
+                Directory.CreateDirectory(historyPath);
+            }
+            File.WriteAllText(Path.Combine(historyPath,"history.data"), CurrentServer.Id.ToString());
+            Console.WriteLine(string.Format("已启动站点http://localhost:{0}", port));
+
+        }
+
+
+    }
+}

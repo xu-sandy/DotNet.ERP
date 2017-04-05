@@ -1,0 +1,107 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var hideAdd = !CurrentUser.HasPermiss(SysConstLimits.促销管理_创建促销);
+    var showDetail = CurrentUser.HasPermiss(SysConstLimits.促销管理_查看促销) && hideAdd;//没有保存且有查看权限=显示详细
+    var hideExpire = !CurrentUser.HasPermiss(SysConstLimits.促销管理_状态设定);
+    var hideDel = !CurrentUser.HasPermiss(SysConstLimits.促销管理_移除促销);
+    var hideCheck = hideDel && hideExpire;
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增折扣", delText: "删除折扣", editText: "修改折扣", hideAdd: hideAdd, hideDel: hideDel));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>品类：</label>
+            </td>
+            <td class="input-toolbar">
+                @*@Html.DropDownList("parentType", ViewBag.parenttypes as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "editable:false,onSelect:parentSelect" })*@
+                @Form.CategoryCombobox("parentType", showThird: true, showAll: false, panelWidth: 350, controlWidth: 200)
+            </td>
+            <td class="label-toolbar">&nbsp;</td>
+            @*<td class="input-toolbar">
+                @Html.DropDownList("childType", new List<SelectListItem>() { new SelectListItem() { Text = "子类", Value = "", Selected = true } }, new { @class = "easyui-combobox datacontrol", data_options = "editable:false" })
+            </td>*@
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.RadioButtonList(ViewBag.states as List<SelectListItem>, "state", new { style="height:26px;"})
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input type="text" class="datacontrol easyui-textbox font-12" name="searchText" data-options="prompt:'货号/品名/条码'" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if (!hideExpire) { 
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(2)">设为已过期</a>
+    }
+}
+<script type="text/javascript">
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true @(hideCheck?",hidden:true":"")},
+        { field: 'Customer', title: '适用客户', editor: { type: 'text', required: true }, width: 70 },
+        { field: 'ProductCode', title: '货号', editor: { type: 'text', required: true }, width: 60 },
+        { field: 'Barcode', title: '条码', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Title', title: '品名', width: 150 },
+        { field: 'CategoryTitle', title: '类别', width: 120 },
+        { field: 'BrandTitle', title: '品牌', width: 80 },
+        { field: 'SysPrice', title: '系统售价', width: 70 },
+        { field: 'WayDesc', title: '折扣方式', width: 80 },
+        { field: 'MinPurchaseNum', title: '购买量', width: 60 },
+        { field: 'DiscountRate', title: '折扣', width: 60 },
+        { field: 'DiscountPrice', title: '售价', width: 60 },
+        { field: 'BetWeen', title: '活动有效期', width: 180 },
+        { field: 'StateTitle', title: '活动状态', width: 80 },
+        { field: 'CreateDT', title: '创建时间', width: 140 }
+    ]];
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialogMax(this.addText, this.editurlNocache());
+    }
+    pharos.manager.editItem = function (Id, Row) {
+        var w = $(window.parent).width() - 80;
+        var h = $(window.parent).height() - 80;
+        this.Id = Id;
+        if (@(showDetail?" 1==1":"1!=1"))
+            openDialog(this.detailText, this.detailurl+"&Id="+Id, w, h, true);
+        else if(@(hideAdd?"1!=1":"1==1"))
+            openDialog(this.editText, this.editurlNocache(),w,h);
+    }
+    function parentSelect(record) {
+        $.post("@Url.Action("ParentTypeSelect","Product")", { Id: record.value, t: Math.random() }, function (data) {
+            $("#childType").combobox("clear").combobox("loadData", data);
+        }, "json");
+    }
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.CommodityId;
+        }).join();
+        $.post("@Url.Action("SetState")", { Ids: ids, t: Math.random(), state: state }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "操作成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "操作失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+    function removeBefore(row) {
+        if (row.StateTitle != "未开始") {
+            $.messager.alert("提示", "活动未开始才能进行删除！", "info"); return false;
+        }
+        return true;
+    }
+    pharos.manager.loadSuccess = function () {
+        pharos.manager.$dg.datagrid("autoMergeCellsGroupby", { groupby: 'CommodityId', columns: ['BetWeen', 'StateTitle', 'CreateDT', 'Customer'] });
+    }
+</script>

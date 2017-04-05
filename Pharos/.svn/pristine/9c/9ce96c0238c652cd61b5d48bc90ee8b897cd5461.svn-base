@@ -1,0 +1,255 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Logic.BLL;
+using Pharos.Logic.Entity;
+using Pharos.Utility;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Pharos.Utility.Helpers;
+
+namespace Pharos.CRM.Retailing.Controllers
+{
+    public class MembersController : BaseController
+    {
+        #region 会员资料
+        public ActionResult Index()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindMemberPageList()
+        {
+            return ToDataGrid(null, 0);
+        }
+        public ActionResult CreateMember()
+        {
+            return View();
+        }
+        public ActionResult CreateMemberGroup()
+        {
+            var list = new List<string>() { "分组1", "分组2" };
+            return View(list);
+        }
+        [HttpPost]
+        public ActionResult MemberGroupListPartial()
+        {
+            return PartialView();
+        }
+        [HttpPost]
+        public ActionResult DeleteMemberGroup()
+        {
+            var op = OpResult.Success();
+            return new Pharos.Utility.JsonNetResult(op);
+        }
+        #endregion
+        #region 会员充值
+        public ActionResult RechargeIndex()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindRechargePageList()
+        {
+            return ToDataGrid(null, 0);
+        }
+        public ActionResult CreateRecharge()
+        {
+            return View();
+        }
+        #endregion
+        #region 会员卡
+        public ActionResult MemberCardIndex()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindMemberCardPageList()
+        {
+            return ToDataGrid(null, 0);
+        }
+        public ActionResult DispatchMemberCard()
+        {
+            return View();
+        }
+        #endregion
+        #region 制作会员卡
+        public ActionResult CreateCardIndex()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindCreateCardPageList()
+        {
+            return ToDataGrid(null, 0);
+        }
+        public ActionResult CreateMemberCard()
+        {
+            return View();
+        }
+        #endregion
+        #region 领用优惠券
+        public ActionResult TakeCouponIndex()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindTakeCouponPageList()
+        {
+            return ToDataGrid(null, 0);
+        }
+        #endregion
+        #region 制作优惠券
+        public ActionResult CreateCouponIndex()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindCreateCouponPageList()
+        {
+            return ToDataGrid(null, 0);
+        }
+        public ActionResult CreateCoupon()
+        {
+            return View();
+        }
+        #endregion
+        #region 充值赠送
+        public ActionResult RechargeGiftIndex()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindRechargeGiftPageList()
+        {
+            return ToDataGrid(null, 0);
+        }
+        public ActionResult CreateRechargeGift()
+        {
+            return View();
+        }
+        #endregion
+        #region 生日提醒
+        public ActionResult BirthdayRemindIndex()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindBirthdayRemindPageList()
+        {
+            return ToDataGrid(null, 0);
+        }
+        public ActionResult CreateBirthdayRemind()
+        {
+            return View();
+        }
+        #endregion
+        #region 会员等级
+        MemberLevelBLL _memberLevelBll = new MemberLevelBLL();
+        public ActionResult MemberGradeIndex()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult FindMemberGradePageList()
+        {
+            int count = 0;
+            var result = _memberLevelBll.FindMemberLevelByCompanyId(out count);
+            return ToDataGrid(result, count);
+        }
+        [HttpGet]
+        public ActionResult CreateMemberGrade()
+        {
+            return View(new MemberLevel());
+        }
+        [HttpPost]
+        public ActionResult CreateMemberGrade(MemberLevel level)
+        {
+            var result = _memberLevelBll.CreateMemberLevel(level);
+            return Content(result.ToJson());
+        }
+
+        public ActionResult UpdateMemberLevelState(short state, string ids)
+        {
+            var result = _memberLevelBll.UpdateMemberStateByIds(state, ids);
+            return Content(result.ToJson());
+        }
+        #endregion
+        #region 积分规则
+        IntegralRuleBLL _integralRuelBLL = new IntegralRuleBLL();
+        public ActionResult IntegralRuleIndex()
+        {
+            return View();
+        }
+        public ActionResult FindIntegralRulePageList(short ruleTypeId, string value)
+        {
+            int count = 0;
+            var result = _integralRuelBLL.FindIntegralRuleList(ruleTypeId, value, out count);
+            return ToDataGrid(result, count);
+        }
+        [HttpGet]
+        public ActionResult CreateIntegralRule()
+        {
+            return View();
+        }
+        [HttpPost]
+        public ActionResult CreateIntegralRule(IntegralRule rule)
+        {
+            var result = _integralRuelBLL.CreateIntegralRule(rule);
+            return Content(result.ToJson());
+        }
+        public ActionResult UpdateIntegralRule(string ids, short state = 1)
+        {
+            var result = _integralRuelBLL.UpdateIntegralRule(ids, state);
+            return Content(result.ToJson());
+        }
+
+        #endregion
+        #region 卡片类型
+        CardInfoBLL _cardInfoBLL = new CardInfoBLL();
+        public ActionResult MemberCardTypeIndex()
+        {
+            return View();
+        }
+        /// <summary>
+        /// 查询现有卡类型
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult FindMemberCardTypeList()
+        {
+            int count = 0;
+            var cardinfos = _cardInfoBLL.FindMemberCardTypeList(out count);
+            return ToDataGrid(cardinfos, count);
+        }
+        [HttpGet]
+        public ActionResult CreateMemberCardType()
+        {
+            return View();
+        }
+        /// <summary>
+        /// 新建卡类型
+        /// </summary>
+        /// <param name="cardinfo"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult CreateMemberCardType(CardInfo cardinfo)
+        {
+            var result = _cardInfoBLL.CreateMemberCardType(cardinfo);
+            return Content(result.ToJson());
+        }
+        /// <summary>
+        /// 更改状态
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        public ActionResult UpdateCardInfoState(short state, string ids)
+        {
+            var result = _cardInfoBLL.UpdateCardState(state, ids);
+            return Content(result.ToJson());
+        }
+        #endregion
+    }
+}

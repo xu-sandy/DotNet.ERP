@@ -1,0 +1,49 @@
+﻿using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale
+{
+    /// <summary>
+    /// 购物车工厂
+    /// </summary>
+    public static class ShoppingCartFactory
+    {
+      internal  static Dictionary<string, ShoppingCart> shoppingCartCache = new Dictionary<string, ShoppingCart>();
+
+        private static Dictionary<string, ShoppingCart> ShoppingCartCache
+        {
+            get { return shoppingCartCache; }
+        }
+        public static ShoppingCart Factory(string storeId, string machineId, int token, bool isNew = false)
+        {
+            string key = string.Format("{0}*-*{1}*-*{2}", storeId, machineId, token);
+
+            if (ShoppingCartCache.ContainsKey(key) && !isNew)
+            {
+                var shoppingCart = ShoppingCartCache[key];
+                if (shoppingCart == null || shoppingCart.MachineInformation == null || !shoppingCart.MachineInformation.Enable)
+                {
+                    goto TheSaleException;
+                }
+                return shoppingCart;
+            }
+            else if (isNew)
+            {
+                ShoppingCartCache.Remove(key);
+                var shoppingCart = new ShoppingCart();
+                ShoppingCartCache.Add(key, shoppingCart);
+                return shoppingCart;
+            }
+            else
+            {
+                goto TheSaleException;
+            }
+        TheSaleException:
+            throw new SaleException("400", "未登录或者未授权，不允许操作！");
+        }
+    }
+}

@@ -1,0 +1,135 @@
+﻿using Pharos.Logic.BLL.DataSynchronism.Dtos;
+using Pharos.Logic.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+namespace Pharos.Logic.BLL.DataSynchronism.Services
+{
+    public class ProductRecordDataSyncService : BaseDataSyncService<ProductRecord, ProductInfoForLocal>
+    {
+
+        public override IEnumerable<ProductRecord> Download(string storeId, string entityType)
+        {
+
+            var result = CurrentRepository._context.Database.SqlQuery<ProductInfoForLocal>("exec GetStoreInventory @p0", storeId).ToList();
+            return result.Select(o => Pharos.Logic.Entity.BaseEntityExtension.InitEntity<ProductRecord>(o));
+        }
+        public override IEnumerable<dynamic> Export(string storeId, string entityType)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+            {
+                var supplierId = System.Web.HttpContext.Current.Request["supplierId"];//供应商
+                var category = System.Web.HttpContext.Current.Request["parentType"];//选中分类
+                var brandsn = System.Web.HttpContext.Current.Request["brandsn"];
+                var state = System.Web.HttpContext.Current.Request["state"];//状态
+                var searchText = System.Web.HttpContext.Current.Request["searchText"];//查找文本
+                var query = BaseService<VwProduct>.CurrentRepository.QueryEntity;
+                if (!supplierId.IsNullOrEmpty())
+                {
+                    var sp = supplierId.Split(',').ToList();
+                    var bars = BaseService<ProductMultSupplier>.FindList(o => sp.Contains(o.SupplierId)).Select(o => o.Barcode).Distinct().ToList();
+                    query = query.Where(o => (sp.Contains(o.SupplierId) || bars.Contains(o.Barcode)));
+                }
+                if (!category.IsNullOrEmpty())
+                {
+                    var big = int.Parse(category);
+                    var childs = ProductCategoryService.GetChildSNs(new List<int>() { big }, true);
+                    query = query.Where(o => childs.Contains(o.CategorySN));
+                }
+                if (!state.IsNullOrEmpty())
+                {
+                    var ct = short.Parse(state);
+                    query = query.Where(o => o.State == ct);
+                }
+                if (!brandsn.IsNullOrEmpty())
+                {
+                    var sn = int.Parse(brandsn);
+                    query = query.Where(o => o.BrandSN == sn);
+                }
+                if (!searchText.IsNullOrEmpty())
+                    query = query.Where(o => o.ProductCode.Contains(searchText) || o.Barcode.Contains(searchText) || o.Title.Contains(searchText));
+                return query.ToList();
+            }
+            else
+                return base.Export(storeId, entityType);
+        }
+    }
+    public class ProductRecordDataSyncService2 : BaseDataSyncService<ProductRecord, ProductInfoForLocal>
+    {
+
+        public override IEnumerable<ProductRecord> Download(string storeId, string entityType)
+        {
+            var date = DateTime.Now.Date;
+
+            var entity = WarehouseService.Find(o => o.StoreId == storeId && o.CompanyId==CommonService.CompanyId);
+            var Categories = ProductCategoryService.CurrentRepository._context.Database.SqlQuery<int>(
+                @"with my1 as(select * from ProductCategory where ProductCategory.CategoryPSN =0 and CategorySN in (" + entity == null || string.IsNullOrEmpty(entity.CategorySN) ? "''" : entity.CategorySN + @")
+                 union all select ProductCategory.* from my1, ProductCategory where my1.CategorySN = ProductCategory.CategoryPSN)
+                select CategorySN from my1"
+              );
+            var serverRepository = CurrentRepository;
+            var sources = serverRepository.FindList(o => Categories.Contains(o.CategorySN)).OrderBy(o => o.CategorySN).ToList();
+            var query = (from a in BaseService<ProductChangePriceList>.CurrentRepository.Entities
+                         from b in BaseService<ProductChangePrice>.CurrentRepository.Entities
+                         where a.ChangePriceId == b.Id && b.State == 1 && b.CompanyId==CommonService.CompanyId
+                         select new { a, b }).ToList();
+
+            sources.ForEach(o =>
+            {
+                var ranges = query.Where(p => p.a.Barcode == o.Barcode).OrderByDescending(p => p.b.CreateDT);
+                var info = ranges.FirstOrDefault();
+                if (info != null)
+                {
+                    o.SysPrice = info.a.CurSysPrice;
+                }
+            });
+            return sources;
+        }
+        public override IEnumerable<dynamic> Export(string storeId, string entityType)
+        {
+            var date = DateTime.Now.Date;
+
+            var entity = WarehouseService.Find(o => o.StoreId == storeId && o.CompanyId==CommonService.CompanyId);
+            var Categories = ProductCategoryService.CurrentRepository._context.Database.SqlQuery<int>(string.Format(@"with my1 as(select * from ProductCategory where ProductCategory.CategoryPSN =0 and CategorySN in ({0})
+                 union all select ProductCategory.* from my1, ProductCategory where my1.CategorySN = ProductCategory.CategoryPSN)
+                select CategorySN from my1", entity == null || string.IsNullOrEmpty(entity.CategorySN) ? "''" : entity.CategorySN)
+             ).ToList();
+            var cates = System.Web.HttpContext.Current.Request["selectCategorySN"];
+            var selectBarcodes = System.Web.HttpContext.Current.Request["selectBarcodes"];
+            if (!string.IsNullOrWhiteSpace(cates))
+            {
+                var cs = cates.Split(',').Select(i => int.Parse(i)).ToList();
+                cs = ProductCategoryService.GetChildSNs(cs, true);
+                Categories = Categories.Where(o => cs.Contains(o)).ToList();
+            }
+            var selectBars = new List<string>();
+            if (!string.IsNullOrWhiteSpace(selectBarcodes))
+                selectBars = selectBarcodes.Split(',').ToList();
+            var express= Pharos.Utility.Helpers.DynamicallyLinqHelper.True<ProductRecord>()
+                .And(o => Categories.Contains(o.CategorySN), cates.IsNullOrEmpty())
+                .And(o => selectBars.Contains(o.Barcode), selectBarcodes.IsNullOrEmpty())
+                .And(o=>o.ValuationType==2).And(o=>o.CompanyId==CommonService.CompanyId);
+            var serverRepository = CurrentRepository;
+            var sources = serverRepository.FindList(express).OrderBy(o => o.CategorySN).ToList();
+            //var query = (from a in BaseService<ProductChangePriceList>.CurrentRepository.Entities
+            //             from b in BaseService<ProductChangePrice>.CurrentRepository.Entities
+            //             where a.ChangePriceId == b.Id && b.State == 1 
+            //             select new { a, b }).ToList();
+
+            //sources.ForEach(o =>
+            //{
+            //    var ranges = query.Where(p => p.a.Barcode == o.Barcode).OrderByDescending(p => p.b.CreateDT);
+            //    var info = ranges.FirstOrDefault();
+            //    if (info != null)
+            //    {
+            //        o.SysPrice = info.a.CurSysPrice;
+            //    }
+            //});
+            ProductService.SetSysPrice(storeId, sources);
+            return sources;
+        }
+    }
+}

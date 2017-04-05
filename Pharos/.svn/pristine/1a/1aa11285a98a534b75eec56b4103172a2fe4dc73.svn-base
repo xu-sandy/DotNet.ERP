@@ -1,0 +1,29 @@
+﻿using Pharos.SyncService;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Web;
+
+namespace Pharos.SyncService
+{
+    public class SyncTest : IPosServerDbEntity, IPosLocalDbEntity
+    {
+        public int Id { get; set; }
+
+        public string Content { get; set; }
+
+        public Guid SyncServerDbId { get; set; }
+
+        public byte[] SyncServerDbRowVersion { get; set; }
+
+        public SyncTest Init(object obj)
+        {
+            var r = (SyncTest)obj;
+            this.SyncServerDbId = r.SyncServerDbId;
+            this.SyncServerDbRowVersion = r.SyncServerDbRowVersion;
+            this.Content = r.Content;
+            return this;
+        }
+    }
+}

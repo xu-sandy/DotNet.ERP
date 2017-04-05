@@ -1,0 +1,60 @@
+﻿@model PrivilegeCalc
+@using Pharos.Utility.Helpers;
+@{
+
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true, hideSearch: true));
+    var json = Model.Details.ToJson();
+}
+<style type="text/css">
+    .input-toolbar {
+        line-height: 30px;
+    }
+</style>
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>供应商:</label>
+            </td>
+            <td class="input-toolbar">
+                <label>@Html.DisplayFor(o => o.SupplierTitle)</label>
+            </td>
+            <td class="label-toolbar">
+                <label>返利期间:</label>
+            </td>
+            <td class="input-toolbar">
+                <label>@(Model.StartDate.GetValueOrDefault().ToString("yyyy-MM-dd") + "至" + Model.EndDate.GetValueOrDefault().ToString("yyyy-MM-dd"))</label>
+            </td>
+            <td class="label-toolbar">
+                <label>返利（金额/数量）:</label>
+            </td>
+            <td class="input-toolbar">
+                <label>@Html.DisplayTextFor(o => o.PrivilegeNum)</label>
+            </td>
+        </tr>
+    </table>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "";
+    pharos.manager.editurl = "";
+    pharos.manager.delurl = "";
+    pharos.manager.pagination=false;
+    pharos.manager.columns = [[
+        { field: 'IndentOrderId', title: '订单号', width: 150 },
+        { field: 'Barcode', title: '条码', width: 180 },
+        { field: 'CategoryTitle', title: '品类', width: 80 },
+        { field: 'PartName', title: '品名', width: 150 },
+        { field: 'Unit', title: '单位', width: 60 },
+        { field: 'OrderDate', title: '订货/销售<br>日期', width: 120,formatter: function (value, row, index){ return value?new Date(value.replace(/-/g,'/')).format("yyyy-MM-dd"):"";} },
+        { field: 'TakeDate', title: '到货日期', width: 120,formatter: function (value, row, index){ return value?new Date(value.replace(/-/g,'/')).format("yyyy-MM-dd"):"";}  },
+        { field: 'TakeNum', title: '收货量', width: 80 },
+        { field: 'Price', title: '进价', width: 120 },
+        { field: 'SubTotal', title: '小计', width: 120 }
+    ]];
+    pharos.manager.loadSuccess=function(){
+        //pharos.manager.$dg.datagrid("options").pagination=false;
+    };
+    pharos.manager.data=@Html.Raw(json)
+</script>

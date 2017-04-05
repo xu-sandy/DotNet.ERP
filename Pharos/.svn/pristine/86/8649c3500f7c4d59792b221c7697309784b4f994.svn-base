@@ -1,0 +1,65 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.BLL;
+namespace Pharos.Logic.ApiData.Mobile.Services
+{
+    public class ReportService
+    {
+        public static object SaleDayReport(string storeId, string date, string type,short lx)
+        {
+            if (string.IsNullOrWhiteSpace(storeId))
+                throw new PosException("门店号为空!");
+            if (string.IsNullOrWhiteSpace(date))
+                throw new PosException("当前日期为空!");
+            if (string.IsNullOrWhiteSpace(type))
+                throw new PosException("类型为空!");
+            var start=DateTime.Parse(date).Date;
+            var end=lx==1?start.AddDays(1):lx==2?start.AddMonths(1):start.AddYears(1);
+            var query = from a in BaseService<Entity.SaleOrders>.CurrentRepository.Entities
+                        join b in BaseService<Entity.SaleDetail>.CurrentRepository.Entities on a.PaySN equals b.PaySN
+                        join c in BaseService<Entity.VwProduct>.CurrentRepository.Entities on b.Barcode equals c.Barcode into tmp
+                        from d in tmp.DefaultIfEmpty()
+                        where a.CreateDT >= start && a.CreateDT < end && a.StoreId==storeId && d.MidCategoryTitle!=null
+                        group new { d,b } by new { d.BigCategoryTitle, d.MidCategoryTitle, d.SubCategoryTitle } into g
+                        select new
+                        {
+                            g.Key.BigCategoryTitle,
+                            g.Key.MidCategoryTitle,
+                            g.Key.SubCategoryTitle,
+                            SaleTotal=g.Sum(o=>o.b.ActualPrice*o.b.PurchaseNumber),
+                            BuyTotal=g.Sum(o=>o.b.BuyPrice*o.b.PurchaseNumber),
+                            PurchaseNumber=g.Sum(o=>o.b.PurchaseNumber)
+                        };
+            var list= query.ToList();
+            if (type == "1")
+                return list.Select(o => new
+                {
+                    o.BigCategoryTitle,
+                    o.MidCategoryTitle,
+                    o.SubCategoryTitle,
+                    CommonValue = (o.SaleTotal==0?0:((o.SaleTotal - o.BuyTotal) / o.SaleTotal)).ToString("p")
+                });
+            else if (type == "2")
+                return list.Select(o => new
+                {
+                    o.BigCategoryTitle,
+                    o.MidCategoryTitle,
+                    o.SubCategoryTitle,
+                    CommonValue=o.SaleTotal
+                });
+            else if (type == "3")
+                return list.Select(o => new
+                {
+                    o.BigCategoryTitle,
+                    o.MidCategoryTitle,
+                    o.SubCategoryTitle,
+                    CommonValue=o.PurchaseNumber
+                });
+            else
+                return null;
+        }
+    }
+}

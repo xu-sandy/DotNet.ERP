@@ -1,0 +1,70 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+}
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'north',border:false" style="height:40px;">
+        <form id="frmsearch">
+            <table class="table-toolbar">
+                <tr>
+                    <td class="label-toolbar">
+                        <label>品类：</label>
+                    </td>
+                    <td class="input-toolbar">
+                        <select class="datacontrol easyui-combobox" name="parentType" data-options="data:pharos.dropdown['parenttypes']"></select>
+                    </td>
+                    <td class="input-toolbar">
+                        <select class="datacontrol easyui-combobox" name="childType" data-options="data:pharos.dropdown['childtypes']"></select>
+                    </td>
+                    <td class="label-toolbar">
+                        <label>关键字：</label>
+                    </td>
+                    <td class="input-toolbar">
+                        <input name="searchText" class="datacontrol input-toolbar font-12" placeholder="货号/品名/条码" />
+                    </td>
+                    <td><a href="#" style="margin-left:4px;" id="searchBtn" class="easyui-linkbutton cus4 linkbtn" data-options="iconCls:'icon-search'" onclick="gridReload()">查询</a></td>
+                </tr>
+            </table>
+        </form>
+    </div>
+    <div data-options="region:'center',border:false">
+        <table class="easyui-datagrid" id="gridSel"
+               data-options="url:'@Url.Action("SelectType")',checkOnSelect:false,border:true,rownumbers:true,fit:true,fitColumns:true,pagination:true,onLoadSuccess:loadSuccess">
+            <thead>
+                <tr>
+                    <th data-options="field:'Id',checkbox: true" width="50"></th>
+                    <th data-options="field:'ParentName'" width="150">大类</th>
+                    <th data-options="field:'Name'" width="150">子类</th>
+                    <th data-options="field:'Brand'" width="120">品牌</th>
+                    <th data-options="field:'StockCout'" width="120">库存</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+    <script type="text/javascript">
+        var $dg3 = $("#gridSel");
+        function gridReload() {
+            this.$dg3.datagrid('options').url = "@Url.Action("SelectType")?" + $('#frmsearch').serialize();
+            this.$dg3.datagrid('reload');
+        }
+        function existsSelect(rows, cd) {
+            var result = { exists: false, index: -1 };
+            $.each(rows, function (idx, row) {
+                if (row.Cd == cd) {
+                    result.exists = true;
+                    result.index = idx;
+                    return;
+                }
+            });
+            return result;
+        }
+        function loadSuccess(data) {
+            var cds = "@Request["cds"]".split(",");
+            $.each(cds, function (index, cd) {
+                var result = existsSelect(data.rows, cd);
+                if (result.exists) {
+                    $dg3.datagrid("checkRow", result.index);
+                }
+            });
+        }
+    </script>

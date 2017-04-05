@@ -1,0 +1,46 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.EntityExtend;
+using Pharos.Logic.OMS.Entity.View;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.BLL;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class BusinessUserController : BaseController
+    {
+        //结算账户信息BLL
+        [Ninject.Inject]
+        BankCardInfoService bankCardInfoService { get; set; }
+
+        [Ninject.Inject]
+        TradersService tradersService { get; set; }
+
+        public ActionResult Index()
+        {
+            //指派人
+            ViewBag.user = ListToSelect(tradersService.getUserList().Select(o => new SelectListItem() { Value = o.UserId, Text = o.FullName }), emptyTitle: "全部");
+            return View();
+        }
+
+        public ActionResult Save(int? id)
+        {
+            var obj = new BankCardInfo
+            {
+
+            };
+            if (id.HasValue)
+            {
+                obj = bankCardInfoService.GetOneById(id.Value);
+            }
+            return View(obj.IsNullThrow());
+        }
+
+    }
+}

@@ -1,0 +1,60 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using SuperSocket.ClientEngine;
+using System.Net;
+using SuperSocket.ClientEngine.Protocol;
+using System.Threading;
+using Pharos.Logic.ApiData.Pos.DataSynchronism.Protocol;
+using Pharos.Logic.ApiData.Pos.DataSynchronism.Commands;
+
+
+
+namespace Pharos.Logic.ApiData.Pos.DataSynchronism
+{
+    public class SocketClient : EasyClient<ResponseInfo>
+    {
+        internal protected static readonly Encoding defaultEncoding = Encoding.UTF8;
+
+        public SocketClient()
+        {
+            ClientCommandReader.Register(new DataSyncPackageCommand());
+            ClientCommandReader.Register(new MessageCommand());
+            this.NewPackageReceived += SocketClient_NewPackageReceived;
+            CommandRuleProvider = new CommandRuleProvider();
+            this.Initialize(new SocketReceiveFilter(CommandRuleProvider));
+        }
+
+
+
+        public ICommandRuleProvider CommandRuleProvider { get; set; }
+
+        public bool Connect(string ip = "127.0.0.1", int port = 2020)
+        {
+            var task = this.ConnectAsync(new IPEndPoint(IPAddress.Parse(ip), port));
+            task.Wait();
+            return task.Result;
+        }
+
+        void SocketClient_NewPackageReceived(object sender, PackageEventArgs<ResponseInfo> e)
+        {
+            var cmdReader = new ClientCommandReader<BaseCommand>();
+            var cmd = cmdReader.GetCommandInfo(e.Package.Response);
+            if (cmd != null)
+            {
+                cmd.ExecuteCommand(this, e.Package.Response);
+            }
+        }
+        public byte[] Format(byte[] body)
+        {
+            var begin = SocketReceiveFilter.BeginMark;
+            var end = SocketReceiveFilter.EndMark;
+            var rawMsg = new byte[begin.Length + body.Length + end.Length];
+            Array.Copy(begin, 0, rawMsg, 0, begin.Length);
+            Array.Copy(body, 0, rawMsg, begin.Length, body.Length);
+            Array.Copy(end, 0, rawMsg, begin.Length + body.Length, end.Length);
+            return rawMsg;
+        }
+    }
+}

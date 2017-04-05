@@ -1,0 +1,22 @@
+﻿using Pharos.SyncService;
+using System;
+
+namespace Pharos.SyncService.TestClient
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string key = "1";
+            while (key == "1")
+            {
+                SyncController controller = new SyncController();
+                var localProvider = new PosDbSyncProvider(1, "16", new LocalSyncContext());
+                var remoteProvider = new RemoteProviderProxy(1, "16", "WSHttpBinding_PosServerDbSyncService");
+                controller.DoSynchronize(localProvider, remoteProvider);
+                Console.WriteLine("请输入‘1’继续，否则输入任何字符退出！");
+                key = Console.ReadLine();
+            }
+        }
+    }
+}

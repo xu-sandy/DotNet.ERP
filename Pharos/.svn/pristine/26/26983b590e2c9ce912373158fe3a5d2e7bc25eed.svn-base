@@ -1,0 +1,73 @@
+﻿using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.BLL;
+using Pharos.Logic.OMS.Models;
+using QCT.Api.Pay.Utils;
+using QCT.Pay.Common;
+using QCT.Pay.Common.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+
+namespace QCT.Api.Pay.Controllers
+{
+    public class QRPayController : Controller
+    {
+        //
+        // GET: /QRPay/
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult QROrder(int mch_id, int store_id)
+        {
+            var paySvc = new PayService();
+            var smodel = paySvc.GetMerchStore(mch_id, store_id);
+            return View(smodel);
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public object SubmitQROrder(PayBuyerScanStaticModel model)
+        {
+            //取得商户当前系统时间
+            var orderDate = DateTime.Now;
+            //商户订单号
+            String orderId = OrderHelper.GetMaxOutOrderNo();
+            //商户订单日期
+
+            var reqObj = new PayBuyerScanDynaRequest();
+            reqObj.CID = model.mch_id;
+            reqObj.SID = model.store_id;
+            reqObj.DeviceId = 1;
+            reqObj.Method = PayConst.QCTTRADE_PAY_QRCODEORDER;
+            reqObj.Charset = PayConst.DEF_CHARSET;
+            reqObj.SignType = PayConst.DEF_SIGNTYPE;
+            reqObj.Version = PayConst.DEF_VERSION;
+            reqObj.OutTradeNo = orderId;
+            reqObj.OrderType3 = "1";
+            reqObj.CreateDate = orderDate;
+            reqObj.TotalAmount = model.total_amount;
+            reqObj.PayNotifyUrl = "";
+            reqObj.BuyerMobile = "";
+            reqObj.GoodsName = "消费";
+            reqObj.GoodsDesc = model.goods_desc;
+            reqObj.Sign = "nosignrequest";
+
+            OrderBuilder<PayBuyerScanDynaRequest, PayBuyerScanDynaResponse> buyerOrder = new OrderBuilderForBuyerScanDyna();
+            var result = buyerOrder.Build(reqObj);
+            if (!result.Successed)
+                return Json(result);
+            else
+            {
+                return Json(buyerOrder.RspModel.PayToken);
+                //Response.Redirect(buyerOrder.RspModel.PayToken);
+                //return View();
+            }
+        }
+    }
+}

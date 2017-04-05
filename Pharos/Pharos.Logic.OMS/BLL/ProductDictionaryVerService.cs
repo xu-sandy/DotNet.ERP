@@ -1,0 +1,348 @@
+﻿using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Data.Entity;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    public class ProductDictionaryVerService : BaseService<Entity.ProductDictionaryVer>
+    {
+        [Ninject.Inject]
+        IBaseRepository<Entity.ProductDictionaryVer> ProductDictionaryVerRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.ProductVer> ProductVerRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.ProductDictionaryData> ProductDictionaryDataRepository { get; set; }
+        [Ninject.Inject]
+        IBaseRepository<Entity.SysUser> UserRepository { get; set; }
+        
+        public IEnumerable<dynamic> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            var query = ProductDictionaryVerRepository.GetQuery();
+            var queryProduct = ProductVerRepository.GetQuery();
+            var queryUser = UserRepository.GetQuery();
+            var productId = nvl["productId"].ToType<int?>();
+            var state = nvl["state"];
+            var verstate = nvl["verstate"];
+            var q = from x in query
+                    join y in queryProduct on x.ProductId equals y.ProductId
+                    select new
+                    {
+                        x.Id,
+                        x.CreateDT,
+                        x.ProductId,
+                        x.Status,
+                        x.VerStatus,
+                        x,
+                        ParenCount = x.ProductDictionaryDatas.Count(o=>o.DicPSN<=0),
+                        ChildCount = x.ProductDictionaryDatas.Count(o => o.DicPSN>0),
+                        y.SysName,
+                        Updater = queryUser.Where(o => o.UserId == x.UpdateUID).Select(o => o.FullName).FirstOrDefault(),
+                        Publisher = queryUser.Where(o => o.UserId == x.PublishUID).Select(o => o.FullName).FirstOrDefault()
+                    };
+            if (productId.HasValue)
+                q = q.Where(o => o.ProductId == productId);
+            if (!state.IsNullOrEmpty())
+            {
+                var st= state.Split(',').Select(o => short.Parse(o)).ToList();
+                q = q.Where(o => st.Contains(o.Status));
+            }
+            if (!verstate.IsNullOrEmpty())
+            {
+                var st = verstate.Split(',').Select(o => short.Parse(o)).ToList();
+                q = q.Where(o => st.Contains(o.VerStatus));
+            }
+            recordCount = q.Count();
+            return q.ToPageList().Select(x=>new{
+                x.Id,
+                x.x.DictId,
+                x.ProductId,
+                x.SysName,
+                x.x.VerCode,
+                x.CreateDT,
+                x.x.CreateUID,
+                x.Status,
+                x.VerStatus,
+                x.x.UpdateDT,
+                x.x.PublishDT,
+                x.x.StatusTitle,
+                x.x.VerStatusTitle,
+                x.ParenCount,
+                x.ChildCount,
+                x.Updater,
+                x.Publisher
+            });
+        }
+        public OpResult SaveOrUpdate(Entity.ProductDictionaryVer obj)
+        {
+            if(obj.Id==0)
+            {
+                obj.DictId =CommonService.GUID;
+                obj.CreateDT = DateTime.Now;
+                obj.UpdateDT = obj.CreateDT;
+                obj.UpdateUID = CurrentUser.UID;
+                obj.CreateUID = obj.UpdateUID;
+                ProductDictionaryVerRepository.Add(obj, false);
+            }
+            else
+            {
+                var product = ProductDictionaryVerRepository.Find(o => o.Id == obj.Id);
+                product.UpdateUID = CurrentUser.UID;
+                product.UpdateDT = DateTime.Now;
+            }
+            ProductDictionaryVerRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        public OpResult Copy(string verId)
+        {
+            var pro = Get(verId);
+            if (pro!=null && pro.Status != 0)
+            {
+                //if (ProductVerRepository.IsExists(o => o.ProductCode == pro.ProductCode && o.VerCode > pro.VerCode && o.Status == 0))
+                    //return OpResult.Fail("已存在未发布的版本！");
+                var obj = new Entity.ProductDictionaryVer();
+                pro.ToCopyProperty(obj);
+                obj.Id = 0;
+                obj.Status = 0;
+                obj.VerStatus = 0;
+                obj.VerCode=0;
+                obj.PublishDT = null;
+                obj.PublishUID = "";
+                obj.ProductDictionaryDatas = pro.ProductDictionaryDatas.ToClone();
+                return SaveOrUpdate(obj);
+            }
+            return OpResult.Fail();
+        }
+        public OpResult SaveData(Entity.ProductDictionaryData obj,int productId)
+        {
+            if(obj.Id==0)
+            {
+                if (ProductDictionaryVerRepository.IsExists(o => o.ProductId == productId && o.Status == 0 && o.DictId!=obj.DictId))
+                    return OpResult.Fail("已存在未发布的版本");
+                obj.DictId = obj.DictId ?? CommonService.GUID;
+                obj.DicSN = ProductDictionaryDataRepository.GetMaxInt(o => (int?)o.DicSN, whereLambda: o => o.DictId == obj.DictId);
+                if(obj.DicPSN>0)
+                {
+                    var parent = ProductDictionaryDataRepository.Find(o => o.DictId == obj.DictId && o.DicSN == obj.DicPSN);
+                    if (parent != null) parent.HasChild = true;
+                }
+                obj.CreateDT = DateTime.Now;
+                obj.CreateUID = CurrentUser.UID;
+                obj.SortOrder = ProductDictionaryDataRepository.GetMaxInt(o => (int?)o.SortOrder, whereLambda: o => o.DictId == obj.DictId);
+                ProductDictionaryDataRepository.Add(obj, false);
+            }
+            else
+            {
+                var menu = ProductDictionaryDataRepository.Get(obj.Id);
+                if (ProductDictionaryDataRepository.IsExists(o => o.Title == obj.Title && o.DictId == menu.DictId && o.DicPSN == menu.DicPSN && o.Id != obj.Id))
+                    return OpResult.Fail("该分类名称已存在");
+                if (menu.HasChild != obj.HasChild && ProductDictionaryDataRepository.IsExists(o => o.DictId == menu.DictId && o.DicPSN == menu.DicSN))
+                    return OpResult.Fail("存在下级不允许修改！"); 
+                    //obj.ToCopyProperty(menu, new List<string>() { "CreateDT", "CreateUID", "MenuId", "SortOrder" });
+                menu.Title = obj.Title;
+                menu.HasChild = obj.HasChild;
+                obj.DictId = menu.DictId;
+            }
+            var model = ProductDictionaryVerRepository.Find(o => o.DictId == obj.DictId);
+            if (model != null)
+            {
+                model.UpdateDT = DateTime.Now;
+                model.UpdateUID = CurrentUser.UID;
+            }
+            else
+            {
+                ProductDictionaryVerRepository.Add(new Entity.ProductDictionaryVer()
+                {
+                    DictId = obj.DictId,
+                    ProductId = productId,
+                    CreateDT = obj.CreateDT,
+                    UpdateDT = obj.CreateDT,
+                    UpdateUID = obj.CreateUID,
+                    CreateUID = obj.CreateUID,
+                }, false);
+            }
+            ProductDictionaryDataRepository.SaveChanges();
+            return OpResult.Success();
+        }
+        public void RemoveData(int sn, string verId)
+        {
+            var obj= ProductDictionaryDataRepository.Find(o => o.DictId == verId && o.DicSN == sn);
+            ProductDictionaryDataRepository.Remove(obj);
+        }
+        public void SetState(int sn,short state, string verId)
+        {
+            var obj = ProductDictionaryDataRepository.Find(o => o.DictId == verId && o.DicSN == sn);
+            obj.Status = state;
+            ProductDictionaryDataRepository.SaveChanges();
+        }
+        public OpResult Deletes(int[] ids)
+        {
+            var list= ProductDictionaryVerRepository.GetQuery(o => ids.Contains(o.Id)).Include(o=>o.ProductDictionaryDatas).ToList();
+            if (list.Any(o => o.VerStatus > 0))
+                return OpResult.Fail("该状态不允许删除！");
+            ProductDictionaryDataRepository.RemoveRange(list.SelectMany(o => o.ProductDictionaryDatas).ToList(), false);
+            ProductDictionaryVerRepository.RemoveRange(list);
+            return OpResult.Success();
+        }
+        public Entity.ProductDictionaryVer Get(string verId)
+        {
+            return ProductDictionaryVerRepository.GetQuery(o => o.DictId == verId).Include(o => o.ProductDictionaryDatas).FirstOrDefault();
+        }
+        public Entity.ProductDictionaryData GetData(string verId,int sn)
+        {
+            return ProductDictionaryDataRepository.GetQuery(o => o.DictId == verId && o.DicSN == sn).FirstOrDefault();
+        }
+        public List<Models.DictionaryModel> DataList(string verId, int? psn)
+        {
+            var queryMenu = ProductDictionaryDataRepository.GetQuery(o => o.DictId == verId);
+            var q = from x in queryMenu
+                    //where x.HasChild || x.DicPSN<=0
+                    //orderby x.SortOrder
+                    select x;
+
+            var childs = new List<Entity.ProductDictionaryData>();
+            if (psn.HasValue)
+            {
+                q = q.Where(o => o.DicPSN == psn.Value);
+            }
+            else
+            {
+                q = q.Where(o => o.HasChild || o.DicPSN <= 0);
+                childs = queryMenu.Where(o => !(o.HasChild || o.DicPSN <= 0)).ToList();
+            }
+            var ms = q.OrderBy(o=>o.SortOrder).ToList();
+            var menus = new List<Models.DictionaryModel>();
+            int i = 0;
+            foreach(var m in ms)
+            {
+                var pm = new Models.DictionaryModel();
+                m.ToCopyProperty(pm);
+                pm.ChildTitle = string.Join("、", childs.Where(o => o.DicPSN == m.DicSN).OrderBy(o=>o.SortOrder).Select(o => o.Title));
+                pm.Index=i;
+                i++;
+                pm.Count = ms.Count;
+                menus.Add(pm);
+            }
+            if (psn.HasValue) return menus;
+            var list = new List<Models.DictionaryModel>();
+            foreach (var menu in menus.Where(o => o.DicPSN <= 0))
+            {
+                SetChilds(menu, menus);
+                menu.Index = list.Count;
+                list.Add(menu);
+            }
+            return list;
+        }
+        public void MoveItem(short mode, int sn, string verId)
+        {
+            var obj = ProductDictionaryDataRepository.Find(o => o.DictId == verId && o.DicSN == sn);
+            var list = ProductDictionaryDataRepository.GetQuery(o => o.DictId == verId && o.DicPSN == obj.DicPSN).OrderBy(o => o.SortOrder).ToList();
+            switch (mode)
+            {
+                case 2://下移
+                    var obj1 = list.LastOrDefault();
+                    if (obj.Id != obj1.Id)
+                    {
+                        Entity.ProductDictionaryData next = null;
+                        for (var i = 0; i < list.Count; i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                next = list[i + 1]; break;
+                            }
+                        }
+                        if (next != null)
+                        {
+                            var sort = obj.SortOrder;
+                            obj.SortOrder = next.SortOrder;
+                            next.SortOrder = sort;
+                            ProductDictionaryDataRepository.SaveChanges();
+                        }
+                    }
+                    break;
+                default://上移
+                     var obj2 = list.FirstOrDefault();
+                    if (obj.Id != obj2.Id)
+                    {
+                        Entity.ProductDictionaryData prev = null;
+                        for (var i=0;i<list.Count;i++)
+                        {
+                            if (obj.Id == list[i].Id)
+                            {
+                                prev = list[i - 1]; break;
+                            }
+                        }
+                        if (prev != null)
+                        {
+                            var sort = obj.SortOrder;
+                            obj.SortOrder = prev.SortOrder;
+                            prev.SortOrder = sort;
+                            ProductDictionaryDataRepository.SaveChanges();
+                        }
+                    }
+                    break;
+            }
+        }
+        
+        void SetChilds(Models.DictionaryModel menu, List<Models.DictionaryModel> alls)
+        {
+            menu.Childrens = alls.Where(o => o.DicPSN == menu.DicSN).ToList();
+            int i = 0;
+            foreach (var child in menu.Childrens)
+            {
+                child.Index = i++;
+                child.ParentId = menu.Id;
+                SetChilds(child, alls);
+            }
+        }
+
+        public OpResult Publish(string verId, short state)
+        {
+            var obj = Get(verId);
+            if (obj != null)
+            {
+                if (!obj.ProductDictionaryDatas.Any())
+                    return OpResult.Fail("请先配置字典！");
+                obj.VerStatus = state;
+                var list = ProductDictionaryVerRepository.GetQuery(o => o.ProductId == obj.ProductId && o.DictId != obj.DictId).ToList();
+                list.Where(o => o.VerStatus == obj.VerStatus).Each(o => o.Status = 2);
+                if (state == 1)//测试
+                {
+                    obj.PublishDT = DateTime.Now;
+                    obj.PublishUID = CurrentUser.UID;
+                    obj.Status = 1;
+                    var source = list.OrderByDescending(o => o.VerCode).FirstOrDefault(o => o.VerCode > 0);
+                    if (source == null)
+                        obj.VerCode = 1;
+                    else
+                        obj.VerCode = source.VerCode + 0.1m;
+                }
+                ProductDictionaryDataRepository.SaveChanges();
+                return OpResult.Success();
+            }
+            return OpResult.Fail();
+        }
+        public List<Entity.ProductVer> GetProductVers()
+        {
+            var queryProduct = ProductVerRepository.GetQuery();
+            var queryModel = ProductDictionaryVerRepository.GetQuery();
+            var query = from x in queryProduct
+                        where !queryModel.Any(o => o.ProductId == x.ProductId)
+                            && x.Status == 1
+                        select x;
+            return query.ToList();
+        }
+        void SetChilds(Models.LimitModels menu, List<Models.LimitModels> alls)
+        {
+            menu.Childrens = alls.Where(o => o.ParentId == menu.MenuId).ToList();
+            foreach (var child in menu.Childrens)
+            {
+                SetChilds(child, alls);
+            }
+        }
+    }
+}

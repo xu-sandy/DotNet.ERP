@@ -1,0 +1,35 @@
+﻿using Pharos.POS.Retailing.Extensions;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ViewModels;
+using Pharos.Wpf.Controls;
+using Pharos.Wpf.Extensions;
+using System;
+using System.Threading.Tasks;
+
+namespace Pharos.POS.Retailing.ChildWin
+{
+    /// <summary>
+    /// XianJinZhifu.xaml 的交互逻辑
+    /// </summary>
+    public partial class XianJinZhiFu : DialogWindow02
+    {
+        public XianJinZhiFu(decimal amount, PayAction mode,int reason =0)
+        {
+            InitializeComponent();
+            Task.Factory.StartNew(() =>
+            {
+                var model = new CashPayViewModel(amount, mode, reason);
+                this.Dispatcher.Invoke(new Action(() =>
+                {
+                    this.ApplyBindings(this, model);
+                }));
+            });
+            this.InitDefualtSettings();
+        }
+
+        void XianJinZhiFu_Activated(object sender, EventArgs e)
+        {
+            this.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.First));
+        }
+    }
+}

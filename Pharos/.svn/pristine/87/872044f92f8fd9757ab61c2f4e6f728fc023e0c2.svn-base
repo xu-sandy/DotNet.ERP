@@ -1,0 +1,198 @@
+﻿@{
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "创建发布", delText: "移除所选版本", editText: "修改发布",hideAdd:!CurrentUser.HasPermiss(197),hideEdit:!CurrentUser.HasPermiss(197),hideDel:!CurrentUser.HasPermiss(198)));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>所属系统：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("productId", ViewBag.products as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false,width:180" })
+            </td>
+            <td width="20px"></td>
+            <td class="label-toolbar">
+                <label>版本状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "未发布", Value = "0", Selected = true }, new SelectListItem() { Text = "测试版", Value = "1", Selected = true }, new SelectListItem() { Text = "正式版", Value = "2", Selected = true } }, "verstate")
+            </td>
+            <td width="20px"></td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.CheckBoxList(new List<SelectListItem>() { new SelectListItem() { Text = "未生效", Value = "0", Selected = true }, new SelectListItem() { Text = "已生效", Value = "1", Selected = true }, new SelectListItem() { Text = "已失效", Value = "2", Selected = true } }, "state")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    @if(CurrentUser.HasPermiss(199))
+    { 
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-add'" onclick="copyVer()" id="copy">复制新版本</a>
+    }
+    <a href="#" class="easyui-menubutton" data-options="menu:'#mm3',iconCls:'icon-edit'">发布版本</a>
+    <div id="mm3" style="width:220px;">
+        @if(CurrentUser.HasPermiss(200))
+        { 
+        <div data-options="iconCls:'icon-order-yes'" onclick="setPublish(1,true)">发布为测试版,强制用户升级</div>
+        <div data-options="iconCls:'icon-order-yes'" onclick="setPublish(1,false)">发布为测试版,不强制用户升级</div>
+        }
+        @if (CurrentUser.HasPermiss(201))
+        {
+        <div data-options="iconCls:'icon-order-yes'" onclick="setPublish(2)">发布为正式版</div>
+        }
+    </div>
+}
+<script type="text/javascript">
+    $(function () {
+        //$("#copy").insertBefore($("#copy").prev());
+    });
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status == 2) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+    pharos.manager.editurl = "@Url.Action("Save")";
+    pharos.manager.singleSelect = true;
+    pharos.manager.pagination = false;
+    pharos.manager.columns = [[
+        { field: 'VerCode', title: '版本号', width: 60, formatter: function (value, row, index) { return value == 0 ? "--" : "v" + value.toFixed(1); } },
+        { field: 'Forced', title: '强制升级', width: 70, formatter: function (value, row, index) { return value == 0 ? "--" : "√"; } },
+        { field: 'ModuleVer', title: '功能升级', width: 70, formatter: function (value, row, index) { return value == 0 ? "--" : "√"; } },
+        { field: 'ModuleVer2', title: '功能版本号', width: 70, formatter: function (value, row, index) { return row.ModuleVer == 0 ? "--" : "v" + row.ModuleVer.toFixed(1); } },
+        { field: 'RoleVer', title: '角色升级', width: 70, formatter: function (value, row, index) { return value == 0 ? "--" : "√"; } },
+        { field: 'RoleVer2', title: '角色版本号', width: 70, formatter: function (value, row, index) { return row.RoleVer == 0 ? "--" : "v" + row.RoleVer.toFixed(1); } },
+        { field: 'DictVer', title: '字典升级', width: 70, formatter: function (value, row, index) { return value == 0 ? "--" : "√"; } },
+        { field: 'DictVer2', title: '字典版本号', width: 70, formatter: function (value, row, index) { return row.DictVer == 0 ? "--" : "v" + row.DictVer.toFixed(1); } },
+        { field: 'DataVer', title: '初始数据升级', width: 90, formatter: function (value, row, index) { return value == 0 ? "--" : "√"; } },
+        { field: 'DataVer2', title: '初始数据版本号', width: 100, formatter: function (value, row, index) { return row.DataVer == 0 ? "--" : "v" + row.DataVer.toFixed(1); } },
+        { field: 'IsRunSql', title: '历史数据处理', width: 80, formatter: function (value, row, index) { return value == 0 ? "--" : "<a href='javascript:seeData(\"" + row.PublishId + "\",\"" + row.VerStatus + "\",\"" + row.Status + "\")'>[详情]</a>"; } },
+        { field: 'CompanyCount', title: '影响客户数', width: 80 },
+        { field: 'UpdateCount', title: '已升级客户数', width: 80 },
+        { field: 'UpdateDT', title: '编辑时间', width: 150 },
+        { field: 'Updater', title: '编辑人', width: 100 },
+        { field: 'PublishDT', title: '发布时间', width: 150 },
+        { field: 'Publisher', title: '发布人', width: 100 },
+    ]];
+    pharos.manager.frozenColumns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'StatusTitle', title: '版本状态', width: 100, formatter: function (value, row) { return row.VerStatusTitle + "，" + row.StatusTitle; } },
+        { field: 'ProductId', title: '系统编号', width: 60 },
+        { field: 'SysName', title: '管理系统名称', width: 150 },
+    ]]
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog800(this.addText, this.editurlNocache() + "&isadd=1");
+    }
+    pharos.manager.editItem = function (id,row) {
+        this.Id = id;
+        openDialog800(this.editText, this.editurlNocache() + "&verId=" + row.PublishId + (row.VerStatus > 0 ? "&detail=1" : ""), false, row.Status == 2 || row.Status == 1 && row.VerStatus == 2);
+    }
+    function seeData(verId,verStatus,status) {
+        openDialog800("处理历史数据", "@Url.Action("SaveSql")?verId=" + verId + (status == 2 || status == 1 && verStatus == 2 ? "&detail=1" : ""),false,true);
+    }
+    function editBefore(row, field, index, value) {
+        if (field == "IsRunSql") {
+            return false;
+        }
+        return true;
+    }
+    function setPublish(state,forced) {
+        isCopy = false;
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        if (state == 1 && rows[0].VerStatus != 0) {
+            $.messager.alert("提示", "请选择未发布！", "error");
+            return;
+        }
+        if (state != 1 && rows[0].VerStatus != 1) {//正式
+            $.messager.alert("提示", "请先发布测试版！", "error");
+            return;
+        }
+        $.messager.confirm("提示", "是否确定发布该功能?", function (r) {
+            if (!r) return;
+            var ids = $.map(rows, function (item) {
+                return item.PublishId;
+            }).join();
+            $.post("@Url.Action("Publish")", { verId: ids, t: Math.random(), state: state, forced: forced }, function (d) {
+                if (d.successed) {
+                    $.messager.alert("提示", "发布成功！", "info");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "发布失败！" + d.message, "error");
+                }
+            }, "json");
+        })
+    }
+    function selectBefore(rows) {
+        var result = true;
+        $.each(rows, function (i, r) {
+            if (isCopy) {
+                if (r.VerStatus == 0) {
+                    $.messager.alert("提示", "未发布不能进行复制！", "error");
+                    result = false;
+                    return false;
+                }
+            } else {
+                if (r.MenuCount <=0) {
+                    $.messager.alert("提示", "请先配置菜单", "error");
+                    result = false;
+                    return false;
+                }
+                else if (r.LimitCount <=0) {
+                    $.messager.alert("提示", "请先配置权限", "error");
+                    result = false;
+                    return false;
+                }
+            }
+        })
+        return result;
+    }
+    function removeBefore(row) {
+        if (row.VerStatus > 0) {
+            $.messager.alert("提示", "该状态不允许删除！", "error");
+            return false;
+        }
+        return true;
+    }
+    //function editBefore(row, field) {
+    //    if (field == "Editor" || row.Status == 2) return false;
+    //    return true;
+    //}
+    var isCopy = false;
+    function copyVer() {
+        isCopy = true;
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var data = pharos.manager.$dg.datagrid("getRows");
+        $.each(data, function (i, r) {
+            if (rows[0].ProductId == r.ProductId && r.Status == 0) {
+                $.messager.alert("提示", "已存在未发布的版本!", "error");
+                rows = null;
+                return false;
+            }
+        });
+        if (!rows) return;
+        $.messager.confirm("提示", "是否确定复制该版本?", function (r) {
+            if (!r) return;
+            var ids = $.map(rows, function (item) {
+                return item.PublishId;
+            }).join();
+            $.post("@Url.Action("Copy")", { verId: ids, t: Math.random() }, function (d) {
+                if (d.successed) {
+                    $.messager.alert("提示", "复制成功！", "info");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "复制失败！" + d.message, "error");
+                }
+            }, "json");
+        })
+    }
+    function closeDialog() {
+        pharos.manager.gridReload();
+    }
+</script>

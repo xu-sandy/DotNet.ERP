@@ -1,0 +1,73 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增单据", delText: "删除单据", hideEdit: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>类别：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("CategoryId", ViewBag.types as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "" })
+            </td>
+            @*<td class="label-toolbar">
+                <label>交单人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("CreateId", ViewBag.users as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "" })
+            </td>*@
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("State", ViewBag.states as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "" })
+            </td>
+        </tr>
+    </table>
+}
+<script>
+    pharos.manager.geturl = "@Url.Action("FindPageList")";
+    pharos.manager.editurl = "@Url.Action("InvoiceSave")";
+
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true, width: 30 },
+        { field: 'CategoryTitle', title: '类别', width: 120, align: 'center' },
+        { field: 'CreateDT', title: '交单日期', width: 150, align: 'center' },
+        { field: 'Pages', title: '张数', width: 80, align: 'center' },
+        { field: 'Number', title: '单据编号', width: 120, align: 'center' },
+        { field: 'Amount', title: '单据金额', width: 120, align: 'center' },
+        { field: 'Title', title: '抬头', width: 180, align: 'center' },
+        { field: 'Memo', title: '备注', width: 180, align: 'center' },
+        { field: 'CreateTitle', title: '交单人', width: 85, align: 'center' },
+        { field: 'StateTitle', title: '状态', width: 84, align: 'center' }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialog(this.addText, this.editurlNocache(), 680, 400);
+    }
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        openDialog(this.editText, this.editurlNocache(), 680, 400);
+    }
+
+    function removeBefore(row) {
+        if (row.StateTitle == "已审核") {
+            $.messager.alert("提示", "已审核不能删除!", "warning");
+            return false;
+        }
+        return true;
+    }
+
+    function editBefore(row) {
+        if (row.StateTitle == "已审核") {
+            //$.messager.alert("提示", "已审核不能修改!", "warning");
+            openDialog("查看详情", "@Url.Action("InvoiceDetail")?id=" + row.Id + "&t=" + Math.random(), 600, 350, true);
+            return false;
+        }
+        return true;
+    }
+</script>

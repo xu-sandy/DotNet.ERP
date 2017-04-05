@@ -1,0 +1,133 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "申请支付通道", hideDel: true, searchHeight: 87));
+}
+
+<style type="text/css">
+    .table-toolbar .s_tr td {
+        padding-top: 9px;
+    }
+</style>
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+
+            <td class="label-toolbar">
+                <label>指派人：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("AssignerUID", ViewBag.user as List<SelectListItem>, dataOptions: "editable:false,panelMaxHeight:200")
+            </td>
+            <td class="label-toolbar">
+                <label>创建日期：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_begin" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+            <td class="label-toolbar">
+                <label style="width:10px;margin-right:3px;position:relative;top:-4px;">-</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="CreateDT_end" id="" class="Wdate datacontrol" style="width: 100px;" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" />
+            </td>
+
+
+
+        </tr>
+
+        <tr class="s_tr">
+            <td class="label-toolbar">
+                <label>排序方式：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("Sort", new List<SelectListItem>() { new SelectListItem() { Text = "请选择", Value = "0" }, new SelectListItem() { Text = "按申请时间", Value = "1" }, new SelectListItem() { Text = "按审核时间", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar" style="padding-right:10px;">
+                @Html.DropDownList("keywordType", new List<SelectListItem>() { new SelectListItem() { Text = "按商户号", Value = "1" }, new SelectListItem() { Text = "按客户名称", Value = "2" } }, new { @class = "easyui-combobox datacontrol", data_options = "novalidate:true, editable: false,width:120" })
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol easyui-textbox font-12" placeholder="" data-options="prompt:'关键字',width:231" />
+            </td>
+        </tr>
+</table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(1)">设为可用账号</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(2)">暂停账号</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(3)">注销账号</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="upStatus(4)">无效账号</a>
+}
+<script type="text/javascript">
+
+    pharos.manager.$dg.datagrid({
+        rowStyler: function (index, row) {
+            if (row.Status == 0) return 'background-color:#ede9e9;color:#9d9c9c';
+        }
+    })
+
+    pharos.manager.frozenColumns = [[
+
+    ]];
+
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'Title56', title: '指派人', editor: { type: 'text', required: true }, width: 100 },
+        {
+            field: 'AgentType', title: '通道状态', editor: { type: 'text', required: true }, width: 100, formatter: function (value, row, index) {
+                return "";
+            }
+        },
+        { field: 'FullName9089', title: '系统商户号', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'AgentsId63232456', title: '客户名称', editor: { type: 'text', required: true }, width: 170 },
+        { field: 'FullName232', title: '支付安全Key', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'FullName232', title: '第三方支付商户号', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'AgentsId6456', title: '第三方支付Key', editor: { type: 'text', required: true }, width: 150 },
+        { field: 'AgentsId87', title: '支付通道', editor: { type: 'text', required: true }, width: 100 },
+        { field: 'FullName3535', title: '支付方式', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo90', title: '支付结果通知URL', editor: { type: 'text', required: true }, width: 200 },
+        { field: 'Memo35', title: '退款结果通知URL', editor: { type: 'text', required: true }, width: 200 },
+        { field: 'Memo785', title: '创建时间', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo234', title: '申请人', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo656', title: '审核时间', editor: { type: 'text', required: true }, width: 120 },
+        { field: 'Memo767', title: '审核人', editor: { type: 'text', required: true }, width: 120 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openWin({ 'title': this.addText, 'width': 1000, 'height': 560, hideSave: false, 'url': this.editurlNocache() });
+    }
+
+    pharos.manager.editItem = function (id, row) {
+        this.Id = id;
+        openWin({ 'title': this.editText, 'width': 1000, 'height': 560, hideSave: false, 'url': this.editurlNocache() });
+    }
+
+    //将所选项设为
+    function upStatus(s) {
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        var ids = $.map(rows, function (item) {
+            return item.Id;
+        }).join();
+        $.post("@Url.Action("upStatus")", { ids: ids, Status: s, t: Math.random() }, function (d) {
+            if (d.successed) {
+                $.messager.alert("提示", "设置成功！", "info");
+                pharos.manager.gridReload();
+            } else {
+                $.messager.alert("提示", "设置失败！" + d.message, "error");
+            }
+        }, "json");
+    }
+
+
+    $(function () {
+
+    });
+</script>

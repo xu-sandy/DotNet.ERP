@@ -1,0 +1,53 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.Entity
+{
+    public class ScaleHistory
+    {
+        /// <summary>
+        /// Id
+        /// </summary>
+        public int Id { get; set; }
+        /// <summary>
+        /// CompanyId
+        /// </summary>
+        public int CompanyId { get; set; }
+        /// <summary>
+        /// Store
+        /// </summary>
+        public string Store { get; set; }
+        /// <summary>
+        /// BatchSN
+        /// </summary>
+        public string BatchSN { get; set; }
+        /// <summary>
+        /// ProductCode
+        /// </summary>
+        public string Barcode { get; set; }
+        /// <summary>
+        /// 品名
+        /// </summary>
+        public string Title { get; set; }
+        /// <summary>
+        /// 系统售价
+        /// </summary>
+        public decimal SysPrice { get; set; }
+        /// <summary>
+        /// 计量小单位ID（来自数据字典表）
+        /// </summary>
+        public int SubUnitId { get; set; }
+        /// <summary>
+        /// CreateDt
+        /// </summary>
+        public DateTime CreateDt { get; set; }
+        /// <summary>
+        /// CreateUID
+        /// </summary>
+        public string CreateUID { get; set; }
+
+
+    }
+}

@@ -1,0 +1,22 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+
+namespace Pharos.Logic.BLL
+{
+    public class ReturnRulesService : BaseService<ReturnRules>
+    {
+        public static IEnumerable<int> GetIntegralRuleProviderIds(int companyId)
+        {
+            return CurrentRepository.Entities.Where(o => o.CompanyId == companyId).Select(o => o.Mode).Distinct().ToList();
+        }
+
+        public static IEnumerable<ReturnRules> GetProviderRules(int companyId, int providerId)
+        {
+            return CurrentRepository.Entities.Where(o => o.CompanyId == companyId && o.Adapters == providerId).ToList();
+
+        }
+    }
+}

@@ -1,0 +1,236 @@
+﻿using Pharos.Logic.BLL.LocalServices;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Pharos.POS.Retailing.Models.SalesPromotionRules.Discount
+{
+    /// <summary>
+    /// 优惠折扣基类
+    /// </summary>
+    public abstract class BaseDiscount
+    {
+        public int OrderIndex { get; set; }
+        public static List<BaseDiscount> RegisterActivities { get; set; }
+
+        public static BaseDiscount Current { get; private set; }
+
+        static List<dynamic> pendingCoupon = new List<dynamic>();
+
+        /// <summary>
+        /// 待处理优惠券//功能暂时不需要开发
+        /// </summary>
+        public static List<dynamic> PendingCoupon
+        {
+            get { return pendingCoupon; }
+            set
+            {
+                pendingCoupon = value;
+                if (pendingCoupon.Count > 0)
+                {
+                    PosMachine.Current.BillList.ShowGiftIcon = System.Windows.Visibility.Visible;
+                }
+            }
+        }
+        /// <summary>
+        /// 待处理赠送清单
+        /// </summary>
+        static List<Gift> pendingGift = new List<Gift>();
+        public static List<Gift> PendingGift
+        {
+            get { return pendingGift; }
+            set
+            {
+                pendingGift = value;
+                if (pendingGift.Count > 0)
+                {
+                    PosMachine.Current.BillList.ShowGiftIcon = System.Windows.Visibility.Visible;
+                }
+            }
+        }
+
+
+        public bool RunInSettlement { get; protected set; }
+
+        /// <summary>
+        /// 设置单例实例
+        /// </summary>
+        public void Instance()
+        {
+            Current = this;
+        }
+
+        /// <summary>
+        /// 注册实例(注意：必须调用base.Register()),以便工厂调用
+        /// </summary>
+        /// <returns></returns>
+        public void Register()
+        {
+            if (RegisterActivities == null)
+            {
+                RegisterActivities = new List<BaseDiscount>();
+            }
+            if (!RegisterActivities.Exists(o => o == this))
+            {
+                RegisterActivities.Add(this);
+            }
+        }
+
+        /// <summary>
+        /// 优惠折扣父表规则处理
+        /// </summary>
+        /// <param name="product"></param>
+        /// <param name="info"></param>
+        /// <returns></returns>
+        public virtual bool DiscountCommon(string barcode, decimal num, ref decimal sale, dynamic info)
+        {
+            //适用客户群（ 0:不限、 1:内部、2:VIP）
+            if (info.CustomerObj != 0)
+            {
+                var member = MembersLocalService.Find(o => o.MemberCardNum == PosMachine.Current.MembershipCard.Id);
+                if (member == null)
+                {
+                    return false;
+                }
+                //排除非内部员工
+                if (info.CustomerObj == 1 && string.IsNullOrEmpty(member.InsiderUID))
+                {
+                    return false;
+                }
+
+                //TODO:排除非VIP 【未实现】
+            }
+
+            //时效验证
+            if (info.Timeliness == 1)
+            {
+                TimeSpan start1;
+                TimeSpan.TryParse(info.StartAging1, out start1);
+                TimeSpan start2;
+                TimeSpan.TryParse(info.StartAging2, out start2);
+                TimeSpan start3;
+                TimeSpan.TryParse(info.StartAging3, out start3);
+                TimeSpan end1;
+                TimeSpan.TryParse(info.EndAging1, out end1);
+                TimeSpan end2;
+                TimeSpan.TryParse(info.EndAging2, out end2);
+                TimeSpan end3;
+                TimeSpan.TryParse(info.EndAging3, out end3);
+
+                if (!((DateTime.Now.TimeOfDay > start1 && DateTime.Now.TimeOfDay < end1) || (DateTime.Now.TimeOfDay > start2 && DateTime.Now.TimeOfDay < end2) || (DateTime.Now.TimeOfDay > start3 && DateTime.Now.TimeOfDay < end3)))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        /// <summary>
+        /// 处理优惠折扣，给商品促销使用
+        /// </summary>
+        /// <param name="barcode">条码</param>
+        /// <param name="num">数量</param>
+        /// <param name="sale">折扣售价</param>
+        public virtual void Discount(string barcode, decimal num, decimal sysPrice, ref decimal sale, ref string giftId, ref List<string> promotionIds, ref decimal tempTotal)
+        {
+        }
+        /// <summary>
+        /// 处理优惠折扣,给结算时的促销活动使用
+        /// </summary>
+        public virtual void Discount()
+        {
+        }
+
+
+        /// <summary>
+        /// 用于启动时，缓存折扣活动
+        /// </summary>
+        public abstract void CacheActivity();
+
+
+        public abstract bool HasDiscount(string barcode);
+        public void ResetGiftStatus(string giftId, string barcode, decimal num = 1)
+        {
+            var gift = pendingGift.FirstOrDefault(o => o.Id == giftId && o.Barcode == barcode);
+            if (gift != null)
+            {
+                gift.ProductToGiftNum = gift.ProductToGiftNum - num;
+            }
+        }
+
+
+
+        internal void RemoveDiscount(List<string> PromotionIds, string GiftId = "")
+        {
+            pendingGift.RemoveAll(o => o.Id == GiftId || PromotionIds.Contains(o.Id));
+
+            var arr = PosMachine.Current.BillList.Where(o => (o.Status == ProductStatus.Gift || o.Status == ProductStatus.AddMoneyGift) && (o.GiftPromotionIdOrGiftId == GiftId || PromotionIds.Contains(o.GiftPromotionIdOrGiftId))).ToArray();
+            foreach (var item in arr)
+            {
+                PosMachine.Current.BillList.Remove(item);
+            }
+            foreach (var item in PromotionIds)
+            {
+                if (PosMachine.Current.BillList.DiscountPreferential.Keys.Contains(item))
+                {
+                    PosMachine.Current.BillList.DiscountPreferential.Remove(item);
+                }
+            }
+
+            if (pendingGift.Count == 0)
+            {
+                PosMachine.Current.BillList.ShowGiftIcon = System.Windows.Visibility.Hidden;
+            }
+
+        }
+    }
+
+    /// <summary>
+    /// 优惠折扣泛型基类,实现缓存加载、是否有优惠折扣的默认处理
+    /// </summary>
+    public abstract class BaseDiscount<TSerivce, TDAO> : BaseDiscount where TSerivce : IDiscountService<TDAO>, new()
+    {
+        public IEnumerable<TDAO> CachePool { get; protected set; }
+
+        /// <summary>
+        /// 处理默认缓存加载
+        /// </summary>
+        public override void CacheActivity()
+        {
+            TSerivce service = new TSerivce();
+            CachePool = service.LoadDiscount();
+            SetRestrictionBuyNum();
+        }
+
+
+        /// <summary>
+        /// 判断是否有折扣
+        /// </summary>
+        /// <param name="barcode">条码</param>
+        /// <param name="Discount">输出折扣信息</param>
+        /// <returns></returns>
+
+        public virtual bool HasDiscount(string barcode, out IEnumerable<TDAO> Discount)
+        {
+            Discount = null;
+            return true;
+        }
+        /// <summary>
+        /// 判断是否有折扣
+        /// </summary>
+        /// <param name="barcode">条码</param>
+        /// <returns></returns>
+        public override bool HasDiscount(string barcode)
+        {
+            IEnumerable<TDAO> info;
+            return HasDiscount(barcode, out info);
+        }
+
+        public virtual void SetRestrictionBuyNum()
+        {
+
+        }
+
+
+    }
+
+}

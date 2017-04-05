@@ -1,0 +1,273 @@
+﻿using Pharos.Wpf.ViewModelHelpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.POS.Retailing.Models.PosModels;
+using Pharos.POS.Retailing.Models.ApiReturnResults;
+using Pharos.POS.Retailing.Models.ApiParams;
+using System.Threading.Tasks;
+using Pharos.POS.Retailing.ChildWin;
+using System.Windows.Documents;
+
+namespace Pharos.POS.Retailing.Models.ViewModels
+{
+    public class RefundOrChanging : BaseViewModel
+    {
+        MachineInformations _machinesInfo = Global.MachineSettings.MachineInformations;
+        public RefundOrChanging(ChangeStatus changeStatus)
+        {
+            this.Status = changeStatus;
+
+            Task.Factory.StartNew(() =>
+            {
+                //取退换货理由
+                ReasonParams _params = new ReasonParams()
+                {
+                    StoreId = _machinesInfo.StoreId,
+                    MachineSn = _machinesInfo.MachineSn,
+                    CompanyToken = _machinesInfo.CompanyToken,
+                    Type = (int)Status
+                };
+                var result = ApiManager.Post<ReasonParams, ApiRetrunResult<IEnumerable<ApiReasonResult>>>(@"api/GetReason", _params);
+                if (result.Code == "200")
+                {
+                    CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                    {
+                        ReasonItem = result.Result;
+                    }));
+                }
+                else
+                {
+                    Toast.ShowMessage(result.Message, CurrentWindow);
+                }
+            });
+        }
+
+        /// <summary>
+        /// 条码
+        /// </summary>
+        private string barcode;
+
+        public string Barcode
+        {
+            get { return barcode; }
+            set
+            {
+                barcode = value;
+                this.OnPropertyChanged(o => o.Barcode);
+                //条码变动时加载数据
+
+                if (!string.IsNullOrEmpty(Barcode))
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+
+                        ChangingParams _params = new ChangingParams()
+                        {
+                            StoreId = _machinesInfo.StoreId,
+                            MachineSn = _machinesInfo.MachineSn,
+                            CompanyToken = _machinesInfo.CompanyToken,
+                            Barcode = Barcode,
+                            Status = (int)Mode,
+                            Mode = (int)Status
+                        };
+                        var result = ApiManager.Post<ChangingParams, ApiRetrunResult<ChangingResult>>(@"api/AddRefundOrChangeInfo", _params);
+                        if (result.Code == "200")
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                ChangeList = result.Result.ChangingList;
+                                Difference = result.Result.Difference;
+                                PaySn = result.Result.PaySn;
+                            }));
+                        }
+                        else
+                        {
+                            CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                            {
+                                Toast.ShowMessage(result.Message, CurrentWindow);
+                            }));
+                        }
+                    });
+                }
+            }
+        }
+        /// <summary>
+        /// 旧条码、新条码
+        /// </summary>
+        private ChangeInputMode mode;
+
+        public ChangeInputMode Mode
+        {
+            get { return mode; }
+            set
+            {
+                mode = value;
+                this.OnPropertyChanged(o => o.Mode);
+            }
+        }
+        /// <summary>
+        /// 支付流水号
+        /// </summary>
+        public string PaySn { get; set; }
+
+        /// <summary>
+        /// 退换货状态
+        /// </summary>
+        private ChangeStatus status;
+
+        public ChangeStatus Status
+        {
+            get { return status; }
+            set
+            {
+                status = value;
+                this.OnPropertyChanged(o => o.Status);
+            }
+        }
+        /// <summary>
+        /// 变更列表
+        /// </summary>
+        private IEnumerable<ChangingList> changeList;
+
+        public IEnumerable<ChangingList> ChangeList
+        {
+            get { return changeList; }
+            set
+            {
+                changeList = value;
+                foreach (var item in changeList)
+                {
+                    item.CurrentWindow = CurrentWindow;
+                    item.ChangeStatus = Status;
+                }
+                this.OnPropertyChanged(o => o.ChangeList);
+            }
+        }
+        /// <summary>
+        /// 理由列表
+        /// </summary>
+        private IEnumerable<ApiReasonResult> reasonItem;
+
+        public IEnumerable<ApiReasonResult> ReasonItem
+        {
+            get { return reasonItem; }
+            set { reasonItem = value; this.OnPropertyChanged(o => o.ReasonItem); }
+        }
+        /// <summary>
+        /// 选中的退换货理由
+        /// </summary>
+        public int Reason { get; set; }
+
+        /// <summary>
+        /// 差价
+        /// </summary>
+        private decimal difference;
+
+        public decimal Difference
+        {
+            get { return difference; }
+            set { difference = value; this.OnPropertyChanged(o => o.Difference); }
+        }
+        /// <summary>
+        /// 确认事件
+        /// </summary>
+        public GeneralCommand<object> ConfirmCommand
+        {
+            get
+            {
+                return new GeneralCommand<object>((o1, o2) =>
+                {
+                    //调确认的接口
+                    if (ChangeList.Count() > 0)
+                    {
+                        Task.Factory.StartNew(() =>
+                        {
+                            //客户补差价》0时调支付接口
+                            if (Difference > 0)
+                            {
+                                CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                {
+                                    //打开支付界面
+                                    ZhiFuFangShi page = new ZhiFuFangShi(new PayWayViewModel(Difference, PosModels.PayAction.Change));
+                                    page.Owner = CurrentWindow;
+                                    CurrentWindow.Hide();
+                                    page.ShowDialog();
+                                    CurrentWindow.Close();
+                                }));
+                            }
+                            else
+                            {
+                                //调退换货完成接口
+                                List<ChangeRefundItem> items = new List<ChangeRefundItem>();
+                                foreach (var item in ChangeList)
+                                {
+                                    ChangeRefundItem crfi = new ChangeRefundItem()
+                                    {
+                                        Number = item.ChangeNumber,
+                                        Barcode = item.Barcode
+                                    };
+                                    items.Add(crfi);
+                                }
+                                NoNeedPaySaveParams _params = new NoNeedPaySaveParams()
+                                {
+                                    ChangeRefundItem = items,
+                                    Amount = Difference,
+                                    PaySn = PaySn,
+                                    Reason = Reason,
+                                    StoreId = _machinesInfo.StoreId,
+                                    MachineSn = _machinesInfo.MachineSn,
+                                    CompanyToken = _machinesInfo.CompanyToken
+                                };
+                                var result = ApiManager.Post<NoNeedPaySaveParams, ApiRetrunResult<object>>(@"api/NoNeedPaySave", _params);
+                                if (result.Code == "200")
+                                {
+                                    CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                    {
+                                        Toast.ShowMessage("操作成功！", CurrentWindow);
+                                        //清除当前所有项
+                                        ChangeList = new List<ChangingList>();
+                                        Difference = 0m;
+                                        Clear();
+                                    }));
+                                }
+                                else
+                                {
+                                    CurrentWindow.Dispatcher.Invoke(new Action(() =>
+                                    {
+                                        Toast.ShowMessage(result.Message, CurrentWindow);
+                                    }));
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
+        /// <summary>
+        /// 清除数据
+        /// </summary>
+        public void Clear()
+        {
+            //调用服务器清除接口
+            // MachineInformations _machinesInfo = Global.MachineSettings.MachineInformations;
+
+            ChangingParams _baseParams = new ChangingParams()
+            {
+                StoreId = _machinesInfo.StoreId,
+                MachineSn = _machinesInfo.MachineSn,
+                CompanyToken = _machinesInfo.CompanyToken,
+                Mode = (int)Status
+            };
+            ApiManager.Post<ChangingParams, ApiRetrunResult<object>>(@"api/ClearRefundOrChangeInfo", _baseParams);
+            ChangeList = new List<ChangingList>();
+            Difference = 0m;
+        }
+
+
+
+
+    }
+}

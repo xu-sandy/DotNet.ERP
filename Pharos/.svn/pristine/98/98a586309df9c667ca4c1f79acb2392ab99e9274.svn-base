@@ -1,0 +1,150 @@
+﻿using System;
+using System.Web;
+using System.Collections.Generic;
+using Pharos.Utility;
+using Pharos.Logic.OMS.Entity;
+
+namespace Pharos.Logic.OMS
+{
+    /// <summary>
+    /// 当前登录用户信息
+    /// </summary>
+    public class CurrentUser
+    {
+        /// <summary>
+        /// 是否已登录
+        /// </summary>
+        public static bool IsLogin
+        {
+            get
+            {
+                return !string.IsNullOrEmpty(UID);
+            }
+        }
+
+        /// <summary>
+        /// 统一登录写入cookie
+        /// </summary>
+        /// <param name="user">Entity.SysUserInfo 用户信息类</param>
+        /// <param name="remember">记住用户和密码，默认false</param>
+        public void Login(SysUserInfo user, bool remember = false)
+        {
+            Dictionary<string, string> kv = new Dictionary<string, string>();
+
+            kv.Add(key_uid, user.UserId);
+            kv.Add(key_id, user.Id.ToString());
+            kv.Add(key_uname, user.LoginName);
+            kv.Add(key_fname, HttpUtility.UrlEncode(user.FullName));
+
+
+            kv.Add(key_limits, user.Limits);
+
+            Cookies.Remove("remuc");
+            if (remember)
+            {
+                Cookies.Set("remuc", kv, 30, true);//防止退出删除
+            }
+            Cookies.Set(uc, kv);
+        }
+
+        private const string uc = "uc";
+        private const string key_pwd = "_pwd";
+
+        /// <summary>
+        /// 安全退出
+        /// </summary>
+        public static void Exit()
+        {
+            if (IsLogin)
+            {
+                HttpCookie hc = new HttpCookie(uc);
+                hc.Expires = DateTime.Now.AddDays(-1);
+                HttpContext.Current.Response.Cookies.Add(hc);
+            }
+        }
+
+        public static string PWD
+        {
+            get
+            {
+                return Cookies.Get(uc, key_pwd);
+            }
+        }
+
+        /// <summary>
+        /// 用户UID
+        /// </summary>
+        public static string UID
+        {
+            get
+            {
+                return Cookies.Get(uc, key_uid);
+            }
+        }
+        private const string key_uid = "_u";
+
+        /// <summary>
+        /// 用户UID
+        /// </summary>
+        public static int ID
+        {
+            get
+            {
+                var id= Cookies.Get(uc, key_id);
+                if (string.IsNullOrWhiteSpace(id)) return 0;
+                var i=0;
+                int.TryParse(id, out i);
+                return i;
+            }
+        }
+        private const string key_id = "_id";
+
+        /// <summary>
+        /// 登录名称
+        /// </summary>
+        public static string UserName
+        {
+            get
+            {
+                return HttpUtility.UrlDecode(Cookies.Get(uc, key_uname));
+            }
+        }
+        private const string key_uname = "_uname";
+
+        /// <summary>
+        /// 用户姓名
+        /// </summary>
+        public static string FullName
+        {
+            get
+            {
+                return HttpUtility.UrlDecode(Cookies.Get(uc, key_fname));
+            }
+        }
+        private const string key_fname = "_fname";
+        /// <summary>
+        /// 权限模块
+        /// </summary>
+        public static string Limits
+        {
+            get
+            {
+                return Cookies.Get(uc, key_limits);
+            }
+        }
+        private const string key_limits = "_limits";
+
+        
+        /// <summary>
+        /// 判断用户是否有对应的访问权限
+        /// </summary>
+        /// <param name="limitId"></param>
+        /// <returns></returns>
+        public static bool HasPermiss(int limitId)
+        {
+            var result = false;
+            return result;
+        }
+        
+    }
+}

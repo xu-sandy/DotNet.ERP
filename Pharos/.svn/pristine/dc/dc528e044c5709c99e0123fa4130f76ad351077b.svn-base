@@ -1,0 +1,209 @@
+﻿@model PromotBlend
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">
+    
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o=>o.SellWay)
+        @Html.HiddenFor(o=>o.PromotionType2)
+    <div class="content">
+        <div class="formbox">
+            <table class="table-form" height="117px">
+                <tr>
+                    <td class="name">活动有效期：</td>
+                    <td class="input">
+                        <table>
+                            <tr>
+                                <td>@Html.DisplayTextFor(o => o.StartDate, "{0:yyyy-MM-dd}")</td>
+                                <td style="padding-left:5px;padding-right:5px;line-height:28px;">至</td>
+                                <td>@Html.DisplayTextFor(o => o.EndDate, "{0:yyyy-MM-dd}")</td>
+                                <td style="padding-left:10px;">适用客户：</td>
+                                <td>@Html.RadioButtonListFor(o => o.CustomerObj, ViewBag.customers as List<SelectListItem>)</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">活动时效：</td>
+                    <td class="input times">
+                        <table>
+                            <tr>
+                                <td>@Html.RadioButtonListFor(o => o.Timeliness, new List<SelectListItem>() { new SelectListItem() { Text = "不限", Value = "0", Selected = true }, new SelectListItem() { Text = "指定每天时效", Value = "1" } })</td>
+                                <td id="tdtimes">@Html.TimeBoxList((List<string>)ViewBag.times, "Times")</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">适用门店：</td>
+                    <td class="input choose">@Html.CheckBoxListFor(o => o.StoreId, ViewBag.shops as List<SelectListItem>, new { data_options = "", @class = "easyui-validatebox", id = "store" })</td>
+                </tr>
+            </table>
+        </div>
+        <table height="80px" style="margin:5px 0px;">
+            @if(Model.SellWay==1)
+            { 
+            <tr>
+                <td>
+                    <label for="SellWay_1">任意组合满</label>
+                    @Html.DisplayTextFor(o => o.FullNumber, "{0:f0}")
+                    件，减
+                    @Html.DisplayTextFor(o => o.DiscountOrPrice, "{0:f1}")
+                    元，<span style="display:none">
+                    (
+                    @if (Model.PromotionType2 == 1)
+                    {
+                        <label>现金返回</label>
+                    }
+                    else if (Model.PromotionType2 == 2)
+                    {
+                        <label>代金券</label>
+                    }
+                    )</span>
+</td>
+            </tr>
+            }
+            else if(Model.SellWay==2)
+            { 
+            <tr>
+                <td>
+                    <label for="SellWay_2">任意组合满</label>
+                    @Html.DisplayTextFor(o => o.FullNumber, "{0:f0}")
+                    <label>件，打</label>
+                    @Html.DisplayTextFor(o => o.DiscountOrPrice, "{0:f1}")
+                    折
+                </td>
+            </tr>
+            }
+            else
+            { 
+            <tr>
+                <td>
+                    <label for="SellWay_3">任意组合满</label>
+                    @Html.DisplayTextFor(o => o.FullNumber, "{0:f0}")
+                    件，加
+                    @Html.DisplayTextFor(o => o.DiscountOrPrice, "{0:f1}")
+                    元，送以下随机赠品1件(
+                        @if(Model.PromotionType2==4)
+                        {
+                            <label>指定具体商品</label>
+                        }else if(Model.PromotionType2==5)
+                        {
+                            <label>按单价范围赠送</label> @Html.DisplayTextFor(o => o.PriceRange, "{0:f2}") <label>元以下商品</label>
+                        }
+                    )
+                </td>
+            </tr>
+            }
+            <tr>
+                <td>@Html.CheckBox("AllowedAccumulate", Model.AllowedAccumulate == 1, new { value = "1" }) <label for="FullAdd">允许满件数累加赠送</label></td>
+            </tr>
+        </table>
+        <div style="margin:10px 0px;">
+            每天限购次数：@Html.DisplayTextFor(o => o.RestrictionBuyNum)
+        </div>
+        <div id="tt1" class="easyui-tabs" data-options="" style="height:auto;">
+            <div title="组合单品" style="padding:10px;">
+                <table class="easyui-datagrid" id="grid2"
+                       data-options="url:'@Url.Action("LoadDetailList")',queryParams:{zhekouId:'@Model.Id',type:1},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onLoadError:loadError">
+                    <thead>
+                        <tr>
+                            <th data-options="field:'ProductCode'" width="120">货号</th>
+                            <th data-options="field:'Barcode'" width="150">条码</th>
+                            <th data-options="field:'Title'" width="150">品名</th>
+                            <th data-options="field:'CategoryTitle'" width="80">品类</th>
+                            <th data-options="field:'SubUnit'" width="60">单位</th>
+                            <th data-options="field:'SysPrice'" width="80">系统售价</th>
+                            <th data-options="field:'StockNums'" width="60">库存量</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div title="组合系列" style="padding:10px;">
+                <table class="easyui-datagrid" id="grid3"
+                       data-options="url:'@Url.Action("LoadTypeDetailList")',queryParams:{zhekouId:'@Model.Id',type:2},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onLoadSuccess:function(){},onLoadError:loadError">
+                    <thead>
+                        <tr>
+                            <th data-options="field:'Id',hidden:true,editor:{type:'textbox'}" width="120">ID</th>
+                            <th data-options="field:'SubCategorySN',hidden:true,editor:{type:'textbox'}" width="120">子类</th>
+                            <th data-options="field:'BigCategorySN',hidden:true,editor:{type:'textbox'}" width="120">父ID</th>
+                            <th data-options="field:'BrandSN',hidden:true,editor:{type:'textbox'}" width="120">品牌ID</th>
+                            <th data-options="field:'BigCategoryTitle'" width="150">大类</th>
+                            <th data-options="field:'MidCategoryTitle'" width="150">中类</th>
+                            <th data-options="field:'SubCategoryTitle'" width="150">子类</th>
+                            <th data-options="field:'BrandTitle'" width="120">品牌</th>
+                            <th data-options="field:'StockNums'" width="120">库存</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+        <div id="selPro" style="position:relative">
+            <div id="tt2" class="easyui-tabs" data-options="" style="height:auto;margin-top:10px;">
+                <div title="赠送单品" style="padding:10px;">
+                    <table class="easyui-datagrid" id="grid4"
+                           data-options="url:'@Url.Action("LoadDetailList")',queryParams:{zhekouId:'@Model.Id',type:3},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onLoadError:loadError">
+                        <thead>
+                            <tr>
+                                <th data-options="field:'ProductCode'" width="120">货号</th>
+                                <th data-options="field:'Barcode'" width="150">条码</th>
+                                <th data-options="field:'Title'" width="150">品名</th>
+                                <th data-options="field:'CategoryTitle'" width="80">品类</th>
+                                <th data-options="field:'SubUnit'" width="60">单位</th>
+                                <th data-options="field:'SysPrice'" width="80">系统售价</th>
+                                <th data-options="field:'StockNums'" width="60">库存量</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div title="赠送系列" style="padding:10px;">
+                    <table class="easyui-datagrid" id="grid5"
+                           data-options="url:'@Url.Action("LoadTypeDetailList")',queryParams:{zhekouId:'@Model.Id',type:4},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect: true,onLoadSuccess:function(){},onLoadError:loadError">
+                        <thead>
+                            <tr>
+                                <th data-options="field:'Id',hidden:true,editor:{type:'textbox'}" width="120">ID</th>
+                                <th data-options="field:'SubCategorySN',hidden:true,editor:{type:'textbox'}" width="120">子类</th>
+                                <th data-options="field:'BigCategorySN',hidden:true,editor:{type:'textbox'}" width="120">父ID</th>
+                                <th data-options="field:'BrandSN',hidden:true,editor:{type:'textbox'}" width="120">品牌ID</th>
+                                <th data-options="field:'BigCategoryTitle'" width="150">大类</th>
+                                <th data-options="field:'MidCategoryTitle'" width="150">中类</th>
+                                <th data-options="field:'SubCategoryTitle'" width="150">子类</th>
+                                <th data-options="field:'BrandTitle'" width="120">品牌</th>
+                                <th data-options="field:'StockNums'" width="120">库存</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+            <div id="load" style="position:absolute;bottom:0px;width:100%;height:100%;background:#fff;"><img src="@Url.Content("~/Content/themes/default/images/loading.gif")" /></div>
+        </div>
+        <p style="margin-top:30px;">
+            说明：<br />
+            1）录入货号或条码后自动填充相关商品信息；<br />
+            2）限购次数为0，则表示无限制，直至商品售完或活动到期为止；<br />
+            3）限购次数大于0，则表示每天限多少个购买订单。<br />
+        </p>
+            
+    </div>
+    }
+</div>
+
+
+<script type="text/javascript">
+    $(function () {
+        if ($("[name='Timeliness']").html() == "不限") {
+            $("#tdtimes").hide();
+        }
+        setTimeout(function () {
+            if ($("[name='SellWay']").val() != "3" || $("[name='PromotionType2']").val() != "4") {
+                $("#selPro").hide();
+            }
+        }, 1000);
+        setTimeout(function () { $("#load").hide() }, 2000);
+    });
+</script>

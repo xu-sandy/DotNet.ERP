@@ -1,0 +1,193 @@
+﻿using Pharos.Logic.BLL;
+using Pharos.Logic.MemberDomain.Exceptions;
+using Pharos.Logic.MemberDomain.Interfaces;
+using Pharos.Logic.MemberDomain.QuanChengTaoProviders.Scenes;
+using Pharos.Logic.MemberDomain.QuanChengTaoProviders.Extensions;
+using Pharos.ObjectModels.Events;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+
+namespace Pharos.Logic.MemberDomain.QuanChengTaoProviders.IntegralProviders
+{
+    /// <summary>
+    /// 条码积分规则提供程序
+    /// </summary>
+    public class BarcodeIntegralProvider : BaseIntegralRuleProvider<BarcodeScene>
+    {
+        /// <summary>
+        /// 获取规则数据
+        /// </summary>
+        /// <param name="info">输入性参数，这里是companyId</param>
+        /// <returns>积分规则</returns>
+        public override IEnumerable<IIntegralRule> GetRuleDatas(object info = null)
+        {
+            return Pharos.Logic.BLL.ReturnRulesService.GetProviderRules((int)info, ProviderId).Select(o => new CommonIntegralRule<BarcodeScene>()
+            {
+                Id = o.Id.ToString(),
+                MeteringMode = o.Mode,
+                LimitItems = o.LimitItems,
+                IntegralExpression = GetIntegralExpression(o),
+                VerifyExpression = GetVerifyExpression(o)
+            }).Where(o => o.VerifyExpression != null).ToList();
+        }
+        /// <summary>
+        /// 获取验证是否满足积分规则条件的表达式
+        /// </summary>
+        /// <param name="entity">数据源</param>
+        /// <returns>积分规则条件表达式</returns>
+        private Expression<Func<BarcodeScene, bool>> GetVerifyExpression(Pharos.Logic.Entity.ReturnRules entity)//注：此处Pharos.Logic.Entity.ReturnRules引用在下次底层数据访问重构时候，新建Dao进行解耦
+        {
+            var datetimeNow = DateTime.Now;
+            switch (entity.AgingType)//时效匹配
+            {
+                case 1:
+                    var dayOfWeeks = new int[] { 
+                        string.IsNullOrEmpty(entity.StartTime1)? Convert.ToInt32(entity.StartTime1):-1,
+                        string.IsNullOrEmpty(entity.StartTime2)? Convert.ToInt32(entity.StartTime2):-1,
+                        string.IsNullOrEmpty(entity.StartTime3)? Convert.ToInt32(entity.StartTime3):-1,
+                        string.IsNullOrEmpty(entity.EndTime1)? Convert.ToInt32(entity.EndTime1):-1,
+                        string.IsNullOrEmpty(entity.EndTime2)? Convert.ToInt32(entity.EndTime2):-1,
+                        string.IsNullOrEmpty(entity.EndTime3)? Convert.ToInt32(entity.EndTime3):-1,
+                    };
+                    if (!dayOfWeeks.Where(o => o != -1).Contains((int)datetimeNow.DayOfWeek))
+                    {
+                        return null;
+                    }
+                    break;
+                case 2:
+
+                    var dayRanges = new KeyValuePair<DateTime, DateTime>[] { 
+                        string.IsNullOrEmpty(entity.StartTime1)||string.IsNullOrEmpty(entity.EndTime1)?
+                        default(KeyValuePair<DateTime, DateTime>):
+                     new KeyValuePair<DateTime, DateTime>(  
+                         Convert.ToDateTime(datetimeNow.ToString("yyyy-MM-dd")+" "+entity.StartTime1),
+                         Convert.ToDateTime(datetimeNow.ToString("yyyy-MM-dd")+" "+entity.EndTime1)
+                         ),
+                        string.IsNullOrEmpty(entity.StartTime2)||string.IsNullOrEmpty(entity.EndTime2)?
+                        default(KeyValuePair<DateTime, DateTime>):
+                     new KeyValuePair<DateTime, DateTime>(  
+                         Convert.ToDateTime(datetimeNow.ToString("yyyy-MM-dd")+" "+entity.StartTime2),
+                         Convert.ToDateTime(datetimeNow.ToString("yyyy-MM-dd")+" "+entity.EndTime2)
+                         ),
+                        string.IsNullOrEmpty(entity.StartTime3)||string.IsNullOrEmpty(entity.EndTime3)?
+                        default(KeyValuePair<DateTime, DateTime>):
+                    new KeyValuePair<DateTime, DateTime>(  
+                         Convert.ToDateTime(datetimeNow.ToString("yyyy-MM-dd")+" "+entity.StartTime3),
+                         Convert.ToDateTime(datetimeNow.ToString("yyyy-MM-dd")+" "+entity.EndTime3)
+                         ),
+                    };
+
+                    if (!dayRanges.Any(o => o.Key <= datetimeNow && o.Value >= datetimeNow))
+                    {
+                        return null;
+                    }
+                    break;
+            }
+            var p = Expression.Parameter(typeof(BarcodeScene), "p");
+            MemberExpression propertyName = null;
+            Expression body = null;
+            switch (entity.Mode)// 计量模式（eg:金额，次数。。）
+            {
+                case (int)MeteringMode.AmountCounter:
+                    propertyName = Expression.Property(p, "Amount");
+
+                    break;
+                case (int)MeteringMode.CountCounter:
+                    propertyName = Expression.Property(p, "Count");
+                    break;
+                default:
+                    throw new IntegralRuleProviderLoadException("未知计量模式!");
+            }
+
+            //计量范围
+            Expression expression1 = this.GetLogicalOperationExpression(entity.LeftSign, entity.Number1, propertyName);
+            if (entity.RightSign.HasValue && entity.Number2.HasValue)
+            {
+                var expression2 = this.GetLogicalOperationExpression(entity.RightSign.Value, entity.Number2.Value, propertyName);
+                body = Expression.And(expression1, expression2);
+            }
+            else
+            {
+                body = expression1;
+            }
+
+            //限制规则提供程序
+            var limitProvider = Expression.Constant(entity.Adapters);
+            var currentProvider = Expression.Constant(ProviderId);
+            var ifEqualProvider = Expression.Equal(limitProvider, currentProvider);
+            body = Expression.Add(ifEqualProvider, body);
+            //会员限定
+            var level = Expression.Property(Expression.Property(p, "Member"), "MemberLevelId");
+            body = Expression.Add(body, Expression.Equal(Expression.Constant(entity.MemberLevelId), level));
+            return Expression.Lambda<Func<BarcodeScene, bool>>(body, p);
+        }
+
+        /// <summary>
+        /// 获取积分表达式
+        /// </summary>
+        /// <param name="entity">数据源</param>
+        /// <returns>积分表达式</returns>
+        private Expression<Func<BarcodeScene, decimal>> GetIntegralExpression(Pharos.Logic.Entity.ReturnRules entity)//注：此处Pharos.Logic.Entity.ReturnRules引用在下次底层数据访问重构时候，新建Dao进行解耦
+        {
+            var p = Expression.Parameter(typeof(BarcodeScene), "p");
+            MemberExpression propertyName = null;
+            Expression body = null;
+            var cases = new List<SwitchCase>();
+            switch (entity.Mode)// 计量模式（eg:金额，次数。。）
+            {
+                case (int)MeteringMode.AmountCounter:
+                    propertyName = Expression.Property(p, "Amount");
+                    break;
+                case (int)MeteringMode.CountCounter:
+                    propertyName = Expression.Property(p, "Count");
+                    break;
+            }
+            switch (entity.OperationType) //返赠运算方式(0：按固定值；1：按固定比例；2：动态配置)
+            {
+                case 0:
+                    body = Expression.Constant(Convert.ToDecimal(entity.Expression));
+                    break;
+                case 1:
+                    var rateConstant = Expression.Constant(Convert.ToDecimal(entity.Expression));
+                    body = Expression.Multiply(rateConstant, propertyName);
+                    break;
+                case 2://TODO Call Dynamic Expression
+                    break;
+            }
+            return Expression.Lambda<Func<BarcodeScene, decimal>>(body, p);
+        }
+        /// <summary>
+        /// 获取积分规则提供程序ID
+        /// </summary>
+        /// <returns>积分规则提供程序ID</returns>
+        public override int GetProviderId()
+        {
+            return (int)IntegralProviderType.BarcodeIntegralProvider;
+        }
+        /// <summary>
+        /// 生成场景数据并过滤
+        /// </summary>
+        /// <param name="channelMessage"></param>
+        /// <param name="meteringModes"></param>
+        /// <param name="rule"></param>
+        /// <returns></returns>
+        public override BarcodeScene GetTScene(object channelMessage, IIntegralRule rule)
+        {
+            if (!(channelMessage is OrderCompletedEvent))
+                return null;
+            var channelDatas = (OrderCompletedEvent)channelMessage;
+            var limitItems = "," + ((CommonIntegralRule<BarcodeScene>)rule).LimitItems + ",";
+            var member = MembersService.GetMember(channelDatas.MemberId, channelDatas.CompanyId);
+            var efficientProducts = channelDatas.OrderDetails.Where(o => limitItems.Contains("," + o.Barcode + ","));
+            return new BarcodeScene()
+                 {
+                     Amount = efficientProducts.Sum(o => o.AveragePrice * o.PurchaseNumber),
+                     Barcodes = string.Join(",", efficientProducts.Select(o => o.Barcode)),
+                     Count = efficientProducts.Sum(o => o.PurchaseNumber),
+                     Member = member
+                 };
+        }
+    }
+}

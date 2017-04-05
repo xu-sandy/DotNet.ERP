@@ -1,0 +1,68 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.Hidden("ReceiveNum")
+        @Html.Hidden("Barcode")
+        @Html.Hidden("DistributionBatch")
+        @Html.Hidden("IndentOrderId")
+        @Html.Hidden("DistributionId")
+        <input type="hidden" name="Id" id="Id" value="@ViewData.Eval("Id")" />
+        <div class="content">
+            <table class="table-form" width="100%" height="200px">
+                <tr>
+                    <td class="name">条 码：</td>
+                    <td class="input">@Html.DisplayText("Barcode")</td>
+                    <td class="name">品 名：</td>
+                    <td class="input">@Html.DisplayText("Title")</td>
+                </tr>
+                <tr>
+                    <td class="name">配送批次：</td>
+                    <td class="input">@Html.DisplayText("DistributionBatch")</td>
+                    <td class="name">订货单号：</td>
+                    <td class="input">@Html.DisplayText("IndentOrderId")</td>
+                </tr>
+                <tr>
+                    <td class="name">累积收货：</td>
+                    <td class="input">@Html.DisplayText("ReceivedNums")</td>
+                    <td class="name">订货数量：</td>
+                    <td class="input">@Html.DisplayText("IndentNum")</td>
+                </tr>
+                <tr>
+                    <td class="name">本次收货：</td>
+                    <td class="input">@Html.DisplayText("ReceivedNum")</td>
+                    <td class="name">收货日期：</td>
+                    <td class="input">@Html.DisplayText("ReceivedDT", "{0:yyyy-MM-dd}")</td>
+                </tr>
+                <tr>
+                    <td class="name">退换方式：</td>
+                    <td class="input">
+                        @Html.RadioButtonList(new List<SelectListItem>() { new SelectListItem() { Text = "换货", Value = "1", Selected = true }, new SelectListItem() { Text = "退货", Value = "0" } }, "ReturnType")
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">退换理由：</td>
+                    <td class="input">@Html.DropDownList("ReasonId", ViewBag.reasons as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "editable:false" })</td>
+                    <td class="name">退换数量：</td>
+                    <td class="input">@Html.TextBox("ReturnNum", ViewData["ReturnNum"], new { @class = "easyui-numberspinner", data_options = (ViewData.Eval("ValuationType").ToString() == "1" ? "min:1" : "min:0.1") + ",width:100,required:true" })</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    function SaveBefore() {
+        var delNum = $("#ReceiveNum").val();
+        var receNum = $("#ReturnNum").numberbox("getValue");
+        if (receNum > parseFloat(delNum)) {
+            $.messager.alert("提示", "退换数量不能大于本次收货数量!"); return false;
+        }
+        //if ($("#Id").val().length > 10)
+            $("#Id").val("");
+        return true;
+    }
+</script>

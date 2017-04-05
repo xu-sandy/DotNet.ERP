@@ -1,0 +1,126 @@
+﻿using Pharos.Sys.Extensions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Pharos.Logic.Entity
+{
+    /// <summary>
+    /// 产品变价
+    /// </summary>
+    public class ProductChangePrice:BaseEntity
+    {
+        [OperationLog("ID", false)]
+        public string Id { get; set; }
+        /// <summary>
+        /// 供应商
+        /// </summary>
+        [OperationLog("供应商", false)]
+        public string SupplierId { get; set; }
+        /// <summary>
+        /// 调价门店，多个以逗号隔开
+        /// </summary>
+        [OperationLog("调价门店", false)]
+        public string StoreId { get; set; }
+        /// <summary>
+        /// 录入人
+        /// </summary>
+        [OperationLog("录入人", false)]
+        public string CreateUID { get; set; }
+        /// <summary>
+        /// 审批人
+        /// </summary>
+        [OperationLog("顺序", false)]
+        public string AuditorUID { get; set; }
+        /// <summary>
+        /// 创建时间
+        /// </summary>
+        [OperationLog("创建时间", false)]
+        public DateTime CreateDT { get; set; }
+        /// <summary>
+        /// 状态 0-未审批1-已审批2-已失效
+        /// </summary>
+        [OperationLog("状态", "0:未审批", "1:已审批", "2:已失效")]
+        public short State { get; set; }
+        /// <summary>
+        /// 审批时间
+        /// </summary>
+        [OperationLog("审批时间", false)]
+        public DateTime? AuditorDT { get; set; }
+        [OperationLog("变更列表", false)]
+        public List<ProductChangePriceList> ChangePriceList { get; set; }
+        [Pharos.Utility.Exclude]
+        public byte[] SyncItemVersion { get; set; }
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Pharos.Utility.Exclude]
+        public Guid SyncItemId { get; set; }
+    }
+    /// <summary>
+    /// 变价子表
+    /// </summary>
+    public class ProductChangePriceList
+    {
+        [OperationLog("Id", false)]
+        public int Id { get; set; }
+        [OperationLog("更改id", false)]
+        public string ChangePriceId { get; set; }
+        [OperationLog("条码", false)]
+        public string Barcode { get; set; }
+        /// <summary>
+        /// 原进价
+        /// </summary>
+        [OperationLog("原进价", false)]
+        public decimal OldBuyPrice { get; set; }
+        /// <summary>
+        /// 现进价
+        /// </summary>
+        [OperationLog("现进价", false)]
+        public decimal CurBuyPrice { get; set; }
+        /// <summary>
+        /// 原售价
+        /// </summary>
+        [OperationLog("原售价", false)]
+        public decimal OldSysPrice { get; set; }
+        /// <summary>
+        /// 现售价
+        /// </summary>
+        [OperationLog("现售价", false)]
+        public decimal CurSysPrice { get; set; }
+        /// <summary>
+        ///原毛利率（%）
+        /// </summary>
+        [OperationLog("原毛利率", false)]
+        public decimal OldGrossprofitRate { get; set; }
+        /// <summary>
+        /// 现毛利率（%）
+        /// </summary>
+        [OperationLog("现毛利率", false)]
+        public decimal CurGrossprofitRate { get; set; }
+        /// <summary>
+        /// 开始时间
+        /// </summary>
+        [OperationLog("开始时间", false)]
+        public string StartDate { get; set; }
+        /// <summary>
+        /// 结束时间 NULL-不限
+        /// </summary>
+        [OperationLog("结束时间", false)]
+        public string EndDate { get; set; }
+        [OperationLog("备注", false)]
+        public string Memo { get; set; }
+        /// <summary>
+        /// 状态（ 0:无效、 1:有效）
+        /// </summary>
+        [OperationLog("状态", "0:无效", "1:有效")]
+        public short State { get; set; }
+
+        [Pharos.Utility.Exclude]
+        public byte[] SyncItemVersion { get; set; }
+        [Pharos.Utility.Exclude]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Pharos.Utility.Exclude]
+        public Guid SyncItemId { get; set; }
+    }
+}

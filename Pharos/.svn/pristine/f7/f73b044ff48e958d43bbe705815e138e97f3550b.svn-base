@@ -1,0 +1,54 @@
+﻿using Pharos.Logic.ApiData.Pos.Cache;
+using Pharos.Logic.ApiData.Pos.Common;
+using Pharos.Logic.ApiData.Pos.Exceptions;
+using Pharos.Logic.ApiData.Pos.User;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale
+{
+    /// <summary>
+    /// 购物车工厂
+    /// </summary>
+    public static class ShoppingCartFactory
+    {
+        internal static ShoppingCartCache shoppingCartCache = new ShoppingCartCache();
+
+        public static ShoppingCart Factory(string storeId, string machineId, int token, string deviceSn, bool isNew = false)
+        {
+            string key = KeyFactory.MachineKeyFactory(token, storeId, machineId, deviceSn);
+
+            if (shoppingCartCache.ContainsKey(key) && !isNew)
+            {
+                var shoppingCart = shoppingCartCache.Get(key);
+                if (shoppingCart == null || shoppingCart.MachineInformation == null || !shoppingCart.MachineInformation.Enable)
+                {
+                    goto TheSaleException;
+                }
+                return shoppingCart;
+            }
+            else
+            {
+                shoppingCartCache.Remove(key);
+                var machineInfo = Salesclerk.OnlineCache.Get(key);
+                if (machineInfo != null)
+                {
+                    var shoppingCart = new ShoppingCart();
+                    shoppingCart.MachineInformation = machineInfo;
+                    shoppingCartCache.Set(key, shoppingCart);
+                    return shoppingCart;
+                }
+                else
+                {
+                    goto TheSaleException;
+                }
+            }
+
+        TheSaleException:
+            throw new SaleException("400", "未登录或者未授权，不允许操作！");
+        }
+    }
+}

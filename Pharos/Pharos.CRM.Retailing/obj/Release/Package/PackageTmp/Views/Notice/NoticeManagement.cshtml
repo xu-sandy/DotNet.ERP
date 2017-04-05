@@ -1,0 +1,115 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增公告", editText: "移除公告"));
+    var shops = ViewBag.shops as List<SelectListItem>;
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>关键字：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="keyword" class="datacontrol font-12" placeholder="名称" />
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-released'" onclick="changeState(1)">设为已发布</a>
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-loading'" onclick="changeState(0)">设为未发布</a>
+
+}
+
+
+<script>
+    var gridHelper = pharos.gridHelper;
+    pharos.dropdown['Shpos'] = @Html.Raw(Pharos.Utility.Helpers.JsonHelper.ToJson(shops) + ";")
+    pharos.manager.columns = [[
+                { field: 'Id', checkbox: true, width: 30 },
+                { field: 'Theme', title: '主题', width: 589 },
+                {
+                    field: 'Type', title: '类型', width: 100, formatter: function (value) {
+                        switch (value) {
+                            case 1: return "公告";
+                            case 2: return "活动";
+                        }
+                    }
+                },
+                { field: 'BeginDateStr', title: '开始时间', width: 100 },
+                { field: 'ExpirationDateStr', title: '截至时间', width: 100 },
+
+                {
+                    field: 'StoreId', title: '公告范围', width: 200, formatter: function (value, row) {
+                        var storeIds = row.StoreId;
+                        if (String.isNE(storeIds)) return "无";
+                        var arr = storeIds.split(",");
+                        if (arr[0] == "") return "全部门店";
+                        var str = "";
+                        for (i = 0; i < arr.length; i++) {
+                            str += gridHelper.formatColumn(arr[i], pharos.dropdown['Shpos']);
+                            if (i < arr.length - 1) str += ",";
+                        }
+                        return str;
+                    }
+                },
+                {
+                    field: 'State', title: '状态', width: 100, formatter: function (value, row) {
+                        switch (value) {
+                            case 1: return "已发布";
+                            case 0: return "未发布";
+                        }
+                    }
+                }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = '';
+        openWin({ 'title': '新增', 'width': 640, 'height': 480, 'url': this.editurlNocache() });
+    }
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        openWin({ 'title': '修改', 'width': 640, 'height': 480, 'url': this.editurlNocache() });
+    }
+
+    function changeState (type) {
+        var rows = $("#grid").datagrid('getChecked');
+        if (!rows || rows.length == 0) {
+            $.messager.alert('提示', '请选择要修改状态的项');
+            return;
+        }
+        var ids = [];
+        $.each(rows, function (i, r) {
+            ids.push(r.Id);
+        });
+        $.messager.confirm('提示', "是否确定修改选择项状态?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $.ajax({
+                url: '@Url.Action("ChangeState", "Notice")',
+                data: { Ids: ids, type:type, t: Math.random() },
+                type: "POST",
+                traditional: true, //使用数组
+                dataType: "json",
+                success: function (d) {
+                    if (d.successed) {
+                        $.messager.alert("提示", "修改成功！", "info");
+                        pharos.manager.gridReload();
+                    } else {
+                        $.messager.alert("提示", "修改失败！" + d.message, "error");
+                    }
+                },
+                error: function () {
+                    $.messager.alert("错误", "修改失败！", "error");
+                }
+            });
+        });
+    }
+
+
+</script>
+
+

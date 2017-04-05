@@ -1,0 +1,159 @@
+﻿@model Supplier
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style type="text/css">.formbox { margin-bottom:10px;}
+    .datagrid .panel-header {
+        text-align: center;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        @Html.HiddenFor(o => o.Id)
+        @Html.HiddenFor(o => o.CreateDT)
+        @Html.HiddenFor(o=>o.BusinessType)
+        @Html.HiddenFor(o => o.Handsign)
+        <div class="content">
+            <div class="formbox">
+                <table class="table-form" width="100%" height="180px">
+                    <tr>
+                        <td rowspan="5">
+                            <img src="~/Content/image/user.png" />
+                        </td>
+                        <td class="name">分类：</td>
+                        <td class="input">@Html.DropDownListFor(o => o.ClassifyId, ViewBag.types as List<SelectListItem>, new { @class = "easyui-combobox datacontrol", data_options = "validType:'requiredForCombo',novalidate:true,editable:false" })</td>
+                        <td class="name">指派人：</td>
+                        <td class="input">@Form.UserCombobox("Designee", ViewData.Eval("Designee"), empty: "请选择", dataOptions: "required:true,editable:false,validType:'requiredForCombo'")</td>
+                        <td class="name">登记时间：</td>
+                        <td>@Html.Value("CreateDT", "{0:yyyy-MM-dd HH:mm:ss}")</td>
+                    </tr>
+                    <tr>
+
+                        <td class="name">供应商简称：</td>
+                        <td>@Html.TextBoxFor(o => o.Title, new { @class = "easyui-validatebox", data_options = "required:true,novalidate:true" })</td>
+
+                        <td class="name">供应商全称：</td>
+                        <td colspan="3">@Html.TextBoxFor(o => o.FullTitle, new { @class = "easyui-validatebox long-input", style = "width:97.5%", data_options = "required:true,novalidate:true" })</td>
+                    </tr>
+                    <tr>
+                        <td class="name">联系人：</td>
+                        <td>@Html.TextBoxFor(o => o.Linkman, new { @class = "easyui-validatebox datacontrol", data_options = "required:true,novalidate:true" })</td>
+                        <td class="name">手机：</td>
+                        <td>@Html.TextBoxFor(o => o.MobilePhone, new { @class = "easyui-validatebox datacontrol", data_options = "validType:'mobile'" })</td>
+                        <td class="name">电话：</td>
+                        <td>@Html.TextBoxFor(o => o.Tel, new { @class = "easyui-validatebox", data_options = "validType:'phone'" })</td>
+                    </tr>
+                    <tr>
+                        <td class="name">电子邮箱：</td>
+                        <td>@Html.TextBoxFor(o => o.Email, new { @class = "easyui-validatebox", data_options = "validType:'email'" })</td>
+                        <td class="name">联系地址：</td>
+                        <td colspan="3">@Html.TextBoxFor(o => o.Address, new { @class = "easyui-validatebox long-input", style = "width:97.5%" })</td>
+                    </tr>
+                    <tr style="display:none">
+                        <td class="name">供应商帐号：</td>
+                        <td>@Html.TextBoxFor(o => o.MasterAccount, new { @class = "easyui-validatebox", data_options = "required:true,validType:['account[\"" + Url.Action("IsExist") + "?id=" + Model.Id + "\",\"account\"]'],delay:500,onBeforeValidate:accountBefValidate" })</td>
+                        <td class="name">密码：</td>
+                        <td>@Html.PasswordFor(o => o.MasterPwd, new { @class = "easyui-validatebox easyui-tooltip", edit = Model.Id, title = string.IsNullOrEmpty(Model.Id) ? "" : "为空则不修改", data_options = "required:true,validType:'length[4,20]'" })</td>
+                        <td class="name">帐号状态：</td>
+                        <td><input type="checkbox" class="label-input" name="MasterState" value="1" @(Model.MasterState == 1 ? "checked='checked'" : "") /><label>可用</label></td>
+                    </tr>
+                </table>
+            </div>
+            @if (Request["id"] != null)
+            {
+                <div class="formbox">
+                    <table class="easyui-datagrid" id="grid1"
+                           data-options="url:'@Url.Action("LoadProductList")',title:'商品信息',queryParams:{sId:'@Model.Id'},border:true,rownumbers:true,fit:false,fitColumns:true,pagination:true">
+                        <thead>
+                            <tr>
+                                <th data-options="field:'ProductCode'" width="60">货号</th>
+                                <th data-options="field:'Barcode'" width="100">条码</th>
+                                <th data-options="field:'CategoryTitle'" width="100">品类</th>
+                                <th data-options="field:'Title'" width="120">品名</th>
+                                <th data-options="field:'BrandTitle'" width="50">品牌</th>
+                                <th data-options="field:'Size'" width="60">箱规</th>
+                                <th data-options="field:'SubUnit'" width="50">小单位</th>
+                                <th data-options="field:'BuyPrice'" width="50">进价</th>
+                                <th data-options="field:'SysPrice'" width="50">系统售价</th>
+                                <th data-options="field:'AcceptNum'" width="50">累计供应</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div class="formbox">
+                    <table class="easyui-datagrid" id="grid2"
+                           data-options="url:'@Url.Action("LoadContractList")',title:'合同信息',queryParams:{sId:'@Model.Id'},rownumbers:true,fit:false,fitColumns:true,pagination:false">
+                        <thead>
+                            <tr>
+                                <th data-options="field:'ContractSN'" width="150">合同编号</th>
+                                <th data-options="field:'State'" width="60">状态</th>
+                                <th data-options="field:'Title'" width="150">合同名称</th>
+                                <th data-options="field:'Attachs'" width="50">附件</th>
+                                <th data-options="field:'Version'" width="50">版本</th>
+                                <th data-options="field:'ClassTitle'" width="120">分类</th>
+                                <th data-options="field:'StartDate'" width="150">生效日期</th>
+                                <th data-options="field:'EndDate'" width="150">结束日期</th>
+                                <th data-options="field:'CreateDT'" width="150">创建时间</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</div>
+<script type="text/javascript">
+    $(function () {
+        $(".pagination-info").css("margin-right", "20px");
+        $("[name='MasterState']").click(function () {
+            if (this.checked) {
+                $("#MasterAccount").validatebox("enableValidation");
+                if (!$("#MasterPwd").attr("edit"))
+                    $("#MasterPwd").validatebox("enableValidation");
+            } else {
+                $("#MasterAccount").validatebox("disableValidation");
+                $("#MasterPwd").validatebox("disableValidation");
+            }
+        });
+        if ($("#Id").val() != "") {
+            $("#MasterPwd").validatebox("disableValidation");
+            $("#MasterAccount").validatebox("disableValidation").attr("readonly", true);
+            $("#Title").attr("readonly", true);
+            $("#FullTitle").attr("readonly", true);
+        } else {
+            $("[name='MasterState']").click();
+        }
+    })
+    var accountPass = "",account="";
+    function accountChange(obj) {
+        $.post("@Url.Action("IsExist")", { account: obj.value, id: $("#Id").val() }, function (content) {
+            accountPass = content;
+            if (content) $(obj).tooltip("update", content).tooltip("show");
+        });
+    }
+    function accountBefValidate() {
+        var newaccount = $(this).val();
+        if (account == ""){
+            account = newaccount;
+            return true;
+        } 
+        else if (account != newaccount) {
+            account = newaccount;
+            return true;
+        }
+        return false;
+    }
+    function SaveBefore() {
+        if ($("#MasterPwd").val()) {
+            $("#MasterPwd").validatebox("enableValidation");
+        }
+        if (accountPass) return false;
+        if ($("#MobilePhone").val() == "" && $("#Tel").val() == "") {
+            $.messager.alert("提示", "手机和电话必填一项!","info"); return false;
+        }
+        $("#MasterAccount").val("");
+        return true;
+    }
+</script>

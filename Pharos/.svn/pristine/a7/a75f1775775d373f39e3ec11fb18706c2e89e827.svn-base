@@ -1,0 +1,840 @@
+﻿@model ProductRecord
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var suppliers = ViewBag.suppliers as List<SelectListItem>;
+    var suppls = suppliers.ToClone();
+    suppls.RemoveAt(0);
+}
+
+<script src="~/Scripts/easyui-validatebox-ext.js"></script>
+
+<style type="text/css">
+    .combo { min-width: 0px; }
+    .suppliers tr { height: 32px; }
+    .pagination-page-list { width: auto !important; }
+</style>
+<div class="easyui-layout" data-options="fit:true">
+    <div data-options="region:'west',width:200">
+        <ul id="tree" class="easyui-tree" data-options="url:'@Url.Action("FindTreeList")',method:'post',onSelect:treeSelect,onBeforeSelect:treeBeforeSelect,onLoadSuccess:treeSuccess"></ul>
+    </div>
+    <div data-options="region:'center'">
+        <div class="default-form">
+            @using (Html.BeginForm("Save", "Product"))
+            {
+                @Html.HiddenFor(o => o.Id)
+                @Html.Hidden("BigCategorySN")
+                @Html.Hidden("MidCategorySN")
+                @Html.HiddenFor(o => o.CategorySN)
+                @Html.HiddenFor(o => o.PriceInserted)
+                @Html.HiddenFor(o => o.PriceDeleteed)
+                @Html.HiddenFor(o => o.PriceUpdateed)
+                @Html.HiddenFor(o => o.SuppInserted)
+                @Html.HiddenFor(o => o.SuppUpdateed)
+                @Html.HiddenFor(o => o.SuppDeleteed)
+                @Html.HiddenFor(o => o.Nature)
+                @Html.HiddenFor(o => o.OldBarcode)
+                @Html.HiddenFor(o => o.SaleNum)
+                @Html.HiddenFor(o => o.IsRelationship)
+                <div id="city">
+                    <div style="color:#99BBE8;background:#fafafa;padding:5px;">请选择产地</div>
+                    <div style="padding:5px">
+                        <table>
+                            <tr>
+                                <td>省份:@Html.DropDownList("province", ViewBag.provinces as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "onSelect:provinceSelect" })</td>
+                                <td>城市:<select class="easyui-combobox" id="citys" data-options="width:80,onSelect:citySelect,onLoadSuccess:citySuccess"><option value="">请选择</option></select></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="content">
+                    <div id="tt1" class="easyui-tabs" data-options="onSelect:function(title,index){if(index==1){appendItemPrice();loadStore();}else if(index==2){appendItemSupp();}}" style="height:auto;">
+                        <div title=" 基本信息">
+                            <table class="table-form" width="100%" height="415px">
+                                <tr>
+                                    <td class="name">商品编码：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.ProductCode, new { @class = "easyui-textbox", data_options = "prompt:'系统自动生成',readonly:true" })</td>
+                                    <td class="name">主条码：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.Barcode, new { @class = "easyui-validatebox", id = "Barcode", data_options = "validType:'barcode'", placeholder = "请输入条码或自动生成" })</td>
+                                </tr>
+                                <tr>
+                                    <td class="name">一品多码：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.Barcodes, new { @class = "easyui-textbox", data_options = "buttonText:'...',onClickButton:oneToMultBar" })</td>
+                                    <td class="name">多条码串：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.BarcodeMult, new { @class = "easyui-textbox", data_options = "buttonText:'...',onClickButton:toMultBar" })</td>
+                                </tr>
+                                <tr>
+                                    <td class="name">商品全称：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,novalidate:true,validType:'length[1,50]'" })</td>
+                                    <td class="name">箱 规：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.BoxBoard, new { @class = "easyui-textbox" })</td>
+                                </tr>
+                                <tr>
+                                    <td class="name">规 格：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.Size, new { @class = "easyui-textbox", data_options = "" })</td>
+                                    <td class="name">原产地：</td>
+                                    <td class="input">@Html.DropDownListFor(o => o.CityId, ViewBag.city as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "panelHeight:100,panelWidth:250,editable:false" })</td>
+                                </tr>
+                                <tr>
+                                    <td class="name">品 类：</td>
+                                    <td class="input"><input type="text" class="easyui-textbox" id="category" readonly="readonly" data-options="required:true,missingMessage:'请选择类别'" /></td>
+                                    <td class="name">前台优惠：</td>
+                                    <td class="input">@Html.DropDownListFor(o => o.Favorable, new List<SelectListItem>() { new SelectListItem() { Value = "1", Text = "允许调价", Selected = true }, new SelectListItem() { Value = "0", Text = "不允许调价" } }, new { @class = "easyui-combobox", data_options = "editable:false,panelHeight:'auto'" })</td>
+                                </tr>
+                                <tr>
+
+                                    <td class="name">品 牌：</td>
+                                    <td class="input">@Html.DropDownListFor(o => o.BrandSN, ViewBag.brands as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "prompt:'请输入品牌..'" })</td>
+                                    <td class="name">主供应商：</td>
+                                    <td class="input">@Form.SupplierCombobox("SupplierId", ViewData.Eval("SupplierId"), controlWidth: 160, emptyTitle: " ", dataOptions: "prompt:'请输入供应商..',required:true,validType:'requiredForCombo'")</td>
+                                </tr>
+                                <tr>
+                                    <td class="name">保质期：</td>
+                                    <td class="input">
+                                        @Html.TextBoxFor(o => o.Expiry, new { @class = "easyui-numberbox", data_options = "width:90,precision:0,required:true" })
+                                        @Html.DropDownListFor(o => o.ExpiryUnit, new List<SelectListItem>() {
+                                                       new SelectListItem() { Value = "1", Text = "天", Selected = true },
+                                                       new SelectListItem() { Value = "2", Text = "月" },
+                                                       new SelectListItem() { Value = "3", Text = "年" } }, new { @class = "easyui-combobox", data_options = "editable:false,panelHeight:'auto'", style = "width:50px" })
+                                    </td>
+                                    <td class="name">生产厂家：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.Factory, new { @class = "easyui-textbox", data_options = "" })</td>
+                                </tr>
+                                <tr>
+                                    <td class="name">计价方式：</td>
+                                    <td class="input">@Html.RadioButtonListFor(o => o.ValuationType, new List<SelectListItem>() { new SelectListItem() { Value = "1", Text = "计件", Selected = true }, new SelectListItem() { Value = "2", Text = "称重" } })</td>
+                                    <td class="name">计量小单位：</td>
+                                    <td class="input">@Html.DropDownListFor(o => o.SubUnitId, ViewBag.subunits as List<SelectListItem>, new { @class = "easyui-combobox", data_options = "prompt:'请输入单位..',required:true,validType:'requiredForCombo'" })</td>
+                                </tr>
+                                <tr>
+                                    <td class="name">进项税率：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.StockRate, new { @class = "easyui-numberbox", data_options = "precision:1,width:140,required:true" }) %</td>
+                                    <td class="name">销售税率：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.SaleRate, new { @class = "easyui-numberbox", data_options = "precision:1,width:140,required:true" }) %</td>
+                                </tr>
+                                <tr>
+                                    <td class="name">批发价：</td>
+                                    <td class="input"><div id="tradePrice">@Html.TextBoxFor(o => o.TradePrice, new { @class = "easyui-numberbox", data_options = "buttonText:'...',precision:2 ,readonly:" + (Model.IsRelationship == true ? "true" : "false") })</div></td>
+                                    <td class="name">进 价：</td>
+                                    <td class="input"><div id="buyPrice">@Html.TextBoxFor(o => o.BuyPrice, new { @class = "easyui-numberbox", data_options = "buttonText:'...',precision:2,readonly:" + (Model.IsRelationship == true ? "true" : "false") })</div></td>
+                                </tr>
+                                <tr>
+                                    <td class="name">加盟价：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.JoinPrice, new { @class = "easyui-numberbox", data_options = "precision:2,readonly:" + (Model.IsRelationship == true ? "true" : "false") })</td>
+                                    <td class="name">系统售价：</td>
+                                    <td class="input"><div id="sysPrice">@Html.TextBoxFor(o => o.SysPrice, new { @class = "easyui-numberbox", data_options = "buttonText:'...',precision:2,validType:'greaterThan[\"#BuyPrice\"]',invalidMessage:'系统售价小于进价',onChange:syspriceChange ,readonly:" + (Model.IsRelationship == true ? "true" : "false") })</div></td>
+                                </tr>
+                                <tr>
+                                    <td class="name">订货标志：</td>
+                                    <td class="input">@Html.RadioButtonListFor(o => o.IsAcceptOrder, new List<SelectListItem>() { new SelectListItem() { Value = "1", Text = "允许", Selected = true }, new SelectListItem() { Value = "0", Text = "不允许" } })</td>
+                                    <td class="name">退货标志：</td>
+                                    <td class="input">@Html.RadioButtonListFor(o => o.IsReturnSale, new List<SelectListItem>() { new SelectListItem() { Value = "1", Text = "允许", Selected = true }, new SelectListItem() { Value = "0", Text = "不允许" } })</td>
+                                </tr>
+                                <tr>
+                                    <td class="name">库存预警：</td>
+                                    <td class="input">
+                                        @Html.TextBoxFor(o => o.InventoryWarningMax, new { @class = "easyui-numberbox", data_options = "width:50,required:true" }) (上限)
+                                        @Html.TextBoxFor(o => o.InventoryWarning, new { @class = "easyui-numberbox", data_options = "width:50,required:true" }) (下限)</td>
+                                    <td class="name">保质期预警：</td>
+                                    <td class="input">@Html.TextBoxFor(o => o.ValidityWarning, new { @class = "easyui-numberbox", data_options = "width:100,required:true" }) (天)</td>
+                                </tr>
+                            </table>
+                        </div>
+                        @if (Model.Nature == 0)
+                        {
+                            <div title="一品多价">
+                                <table class="easyui-datagrid" id="grid"
+                                       data-options="url:'@Url.Action("LoadChildList")',queryParams:{barcode:'@Model.Barcode'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect:true,onLoadError:loadError,onClickCell:clickCell">
+                                    <thead>
+                                        <tr>
+                                            @*<th data-options="field:'Barcode',editor:{type:'textbox',options:{disabled:true}}" width="120">条码</th>*@
+                                            <th data-options="field:'IsRelationship',editor:{type:'textbox',options:{disabled:true}},hidden:true" width="120">是否发生业务关系</th>
+                                            <th data-options="field:'StoreId',editor:{type:'textbox',options:{disabled:true}},hidden:true" width="120">门店</th>
+                                            <th data-options="field:'Title',editor:{type:'combobox',options:{prompt:'请选择门店...',required:true,valueField:'StoreId',textField:'Title',editable:false,onChange:storeChange}}" width="150">门店</th>
+                                            <th data-options="field:'Price',editor:{type:'numberbox',options:{disabled:false,required:true,precision:2}}" width=" 150">售价</th>   @*,formatter:isDisablePrice*@
+                                            <th data-options="field:'SupplierId',editor:{type:'textbox'},hidden:true" width="150">供应商</th>
+                                            <th data-options="field:'SupplierTitle',editor:{type:'combobox',options:{prompt:'请选择',valueField:'Value',textField:'Text',data:suppls,onChange:supplierChange1}}" width="150">供应商</th>
+                                            <th data-options="field:'BuyPrice',editor:{type:'numberbox',options:{disabled:true,precision:2}}" width="150">进价</th>
+                                            <th data-options="field:'Editor',formatter:operationPrice" width="120">操作</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        }
+
+                        @if (Model.Nature == 0)
+                        { 
+                            <div title="一品多商">
+                                <table class="easyui-datagrid" id="gridSup"
+                                       data-options="url:'@Url.Action("LoadSupplierList")',queryParams:{barcode:'@Model.Barcode'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect:true,onLoadError:loadError,onClickCell:clickSuppCell">
+                                    <thead>
+                                        <tr>
+                                            <th data-options="field:'IsRelationship',editor:{type:'textbox',options:{disabled:true}},hidden:true" width="120">是否发生业务关系</th>
+                                            <th data-options="field:'SupplierId',editor:{type:'textbox',options:{disabled:true}},hidden:true" width="120">供应商</th>
+                                            <th data-options="field:'Title',editor:{type:'combobox',options:{prompt:'请输入供应商...',required:true,valueField:'Value',textField:'Text',data:suppls,onChange:supplierChange2}}" width="150">供应商</th>
+                                            <th data-options="field:'BuyPrice',editor:{type:'numberbox',options:{disabled:false,precision:2}}" width="150">进价</th>
+                                            <th data-options="field:'Editor',formatter:operationSupplier" width="120">操作</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        }
+                        @if (Model.Id != 0)
+                        {
+                            <div title="调价记录">
+                                <table class="easyui-datagrid" id="gridlog"
+                                       data-options="url:'@Url.Action("LoadChangLogList")',queryParams:{barcode:'@Model.Barcode'},showFooter:false,pageSize:20,border:true,rownumbers:true,fit:false,nowrap:false,fitColumns:true,pagination:true,singleSelect:true,onLoadError:loadError">
+                                    <thead>
+                                        <tr>
+                                            <th data-options="field:'OperType',hidden:true" width="60">操作类型</th>
+                                            <th data-options="field:'BatchNo'" width="150">批次</th>
+                                            <th data-options="field:'StoreTitle'" width="100">门店</th>
+                                            <th data-options="field:'BusinessType'" width="80">业务类型</th>
+                                            <th data-options="field:'OldPrice'" width="80">原价格</th>
+                                            <th data-options="field:'NewPrice'" width="80">新价格</th>
+                                            <th data-options="field:'CreateDT'" width="150">操作时间</th>
+                                            <th data-options="field:'FullName'" width="80">操作者</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        }
+                        @if (ViewBag.haschild == true)
+                        {
+                            <div title="拆分记录">
+                                <table class="easyui-datagrid" id="gridSplit"
+                                       data-options="url:'@Url.Action("LoadSplitList")',queryParams:{barcode:'@Model.Barcode'},showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect:true,onLoadError:loadError">
+                                    <thead>
+                                        <tr>
+                                            <th data-options="field:'Barcode'" width="120">条码</th>
+                                            <th data-options="field:'Title'" width="150">品名</th>
+                                            <th data-options="field:'Size'" width="150">规格</th>
+                                            <th data-options="field:'SaleNum'" width="100">拆分数量</th>
+                                            <th data-options="field:'SysPrice'" width="150">售价</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        }
+                        @if(!Model.OldBarcode.IsNullOrEmpty())
+                        {
+                            <div title="拆分来源">
+                                        @{
+                            var oldTitle = "";
+                            var oldProc = Pharos.Logic.BLL.ProductService.Find(o => o.Barcode == Model.OldBarcode);
+                            if (oldProc != null)
+                            {
+                                oldTitle = oldProc.Title;
+                            }
+                                        }
+                                <script>var olddatas=[{Barcode:"@Model.OldBarcode",Title:"@oldTitle",SaleNum:@Model.SaleNum}]; </script>
+                                <table class="easyui-datagrid" id="gridOldbar"
+                                       data-options="data:olddatas,showFooter:false,border:true,rownumbers:true,fit:false,fitColumns:true,pagination:false,singleSelect:true,onLoadError:loadError">
+                                    <thead>
+                                        <tr>
+                                            <th data-options="field:'Barcode'" width="120">父条码</th>
+                                            <th data-options="field:'Title'" width="150">父品名</th>
+                                            <th data-options="field:'SaleNum'" width="100">拆分数量</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+        <div id="dlg" class="easyui-dialog" title="条码设置" style="width:400px;height:250px;padding:10px"
+             data-options="buttons:[{text:'确定',handler:function(){var val=$('#multbar').val().replace(/\n/g,',').replace(/，/g,',');if(checkBarcode13(val)){bar.textbox('setValue',val);$('#dlg').dialog('close');}}},{text:'关闭',handler:function(){$('#dlg').dialog('close')}}],tools:[{iconCls:'icon-tip',handler:function(){tip=$(this);tip.tooltip({ content: msg }).tooltip('show')}}],closed:true,onClose:function(){$('#multbar').val('');}">
+            <textarea id="multbar" style="width:360px;height:150px;"></textarea>
+        </div>
+        <div id="dlg2" class="easyui-dialog" title="" style="width:400px;height:250px;padding:10px" data-options="closed:true">
+            <div style="width:360px;height:150px;overflow:hidden;overflow-y:auto;"></div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    var $dgprice = null,$dgsupp=null;
+    var suppls=@Html.Raw(suppls.ToJson()) ;
+    var msg='',tip=undefined,bar=undefined;
+    $(function () {
+        $('#city').appendTo($('#CityId').combobox('panel'));
+        /*var VType = GetRadioValue('ValuationType');
+        if (VType == 1) {
+            $("#Barcode").validatebox("options").validType = 'barcodejj';
+        }
+        else if (VType==2) {
+            $("#Barcode").validatebox("options").validType = 'barcodecz';
+        }*/
+        $("[name='ValuationType']").click(function () {
+            if ($(this).val() == "1") {
+                //$("#Barcode").validatebox("options").validType = 'barcodejj';
+                $("#Barcode").attr("readonly",false);
+                $("#Barcodes").textbox("readonly",false);
+                $("#BarcodeMult").textbox("readonly",false);
+            } else {
+                //$("#Barcode").validatebox("options").validType = 'barcodecz';
+                $("#Barcode").attr("readonly",true);
+                $("#Barcodes").textbox("readonly",true);
+                $("#BarcodeMult").textbox("readonly",true);
+            }
+        });
+        $dgprice = $("#grid");
+        $dgsupp = $("#gridSup");
+        if ($("#Id").val() != "0") {
+            $("#Barcode").attr("readonly", true);
+            $("[name='ValuationType']").attr("disabled", true);
+            var buys="",syss="",trades="";
+            $("#buyPrice").find(".textbox-button-right").removeClass("l-btn-disabled").on("click",function(){
+                var txtprice=$('#dlg2').dialog({
+                    title:"当前进价信息",
+                    buttons:[{text:'关闭',handler:function(){$('#dlg2').dialog('close')}}]
+                }).dialog("open").find("div");
+                if(buys) {
+                    txtprice.html(buys);return;
+                }
+                txtprice.html("");
+                $.post("@Url.Action("GetCurrentPrice")",{barcode:$("#Barcode").val(),type:2,t:Math.random()},function(json){
+                    if(json && json.length>0){
+                        var cbuys= $.map(json,function(r){
+                            return "<tr><td>"+ r.Title+"&nbsp;</td><td>"+ r.Description+"</td></tr>";
+                        }).join("");
+                        buys= allStore(json);
+                        var tit="<span style='font-weight:600;font-size:16px;'>"+json[0].Type+"</span>";
+                        if(buys) buys=tit+"<br/>全部门店："+buys;
+                        else
+                            buys=tit+"<table>"+cbuys+"</table>";
+                        txtprice.html(buys);
+                    }
+                },"json");
+            });
+            $("#sysPrice").find(".textbox-button-right").removeClass("l-btn-disabled").on("click",function(){
+                var txtprice=$('#dlg2').dialog({
+                    title:"当前售价信息",
+                    buttons:[{text:'关闭',handler:function(){$('#dlg2').dialog('close')}}]
+                }).dialog("open").find("div");
+                if(syss) {
+                    txtprice.html(syss);return;
+                }
+                txtprice.html("");
+                $.post("@Url.Action("GetCurrentPrice")",{barcode:$("#Barcode").val(),type:1,t:Math.random()},function(json){
+                    if(json && json.length>0){
+                        var cbuys= $.map(json,function(r){
+                            return "<tr><td>"+ r.Title+"&nbsp;</td><td>"+ r.Description+"</td></tr>";
+                        }).join("");
+                        syss= allStore(json);
+                        var tit="<span style='font-weight:600;font-size:16px;'>"+json[0].Type+"</span>";
+                        if(syss) syss=tit+"<br/>全部门店："+syss;
+                        else
+                            syss=tit+"<table>"+cbuys+"</table>";
+                        txtprice.html(syss);
+                    }
+                },"json");
+            });
+            $("#tradePrice").find(".textbox-button-right").removeClass("l-btn-disabled").on("click",function(){
+                var txtprice=$('#dlg2').dialog({
+                    title:"当前批发价信息",
+                    buttons:[{text:'关闭',handler:function(){$('#dlg2').dialog('close')}}]
+                }).dialog("open").find("div");
+                if(trades) {
+                    txtprice.html(trades);return;
+                }
+                txtprice.html("");
+                $.post("@Url.Action("GetCurrentPrice")",{barcode:$("#Barcode").val(),type:3,t:Math.random()},function(json){
+                    if(json && json.length>0){
+                        var cbuys= $.map(json,function(r){
+                            return "<tr><td>"+ r.Title+"&nbsp;</td><td>"+ r.Description+"</td></tr>";
+                        }).join("");
+                        trades= allStore(json);
+                        if(trades) trades="全部批发商："+trades;
+                        else
+                            trades="<span style='font-weight:600;font-size:16px;'>"+json[0].Type+"</span><table>"+cbuys+"</table>";
+                        txtprice.html(trades);
+                    }
+                },"json");
+            });
+        }
+    });
+    function allStore(json){
+        var val="";
+        for (var i = 0; i < json.length; i++) {
+            if(!json[i].Title || !json[i].StoreId) return "";
+            var des= json[i].Description;
+            val=val|| des;
+            if(json[i].StoreId.split(',').indexOf('-1')==-1){
+                return "";
+            }else if(val!=des){
+                return "";
+            }
+        }
+        return val;
+    }
+    var comboload=function (param, success, error) {
+        var q = param.q || "";
+        //if(q.length <= 0) return false;
+        return false;
+        $.ajax({
+            url:"@Url.Action("GetStoreInput", "Store")",
+            type:"post",
+            data:{
+                //传值，还是JSON数据搜索
+                searchName: q,
+                bigId: $("#BigCategorySN").val()
+            },
+            //重要，如果写jsonp会报转换错误，此处不写都可以
+            dataType:"json",
+            success: function (data) {
+                comboRows = data.rows;
+                //关键步骤，遍历一个MAP对象
+                var items = $.map(data.rows, function(item){
+                    return { storeId: item.StoreId, title: item.Title };
+                });
+                //执行loader的success方法
+                success(items);
+            },    //异常处理
+            error: function (xml, text, msg) {
+                error.apply(this, arguments);
+            }
+        });
+    }
+    function checkBarcode13(val){
+        var result=true;
+        if(val){
+            var vals= val.split(',');
+            for (var i = 0; i < vals.length; i++) {
+                var vl= $.trim(vals[i]);
+                if(vl && (vl.length<=15 && vl.length>=5)){}
+                else if(vals[i]){
+                    $.messager.alert("提示","["+vals[i]+"]条码位数不正确!","info");
+                    result=false;
+                    return false;
+                }
+            }
+        }
+        return result;
+    }
+    function oneToMultBar(){
+        $('#multbar').val($('#Barcodes').textbox('getValue'));
+        $('#dlg').dialog('open');
+        msg="请录入商品的国际条码，条码之间用英文逗号隔开.";
+        if(tip){tip.tooltip('update',msg)}
+        bar= $("#Barcodes");
+    }
+    function toMultBar(){
+        $('#multbar').val($('#BarcodeMult').textbox('getValue'));
+        $('#dlg').dialog('open');
+        msg="1.请录入商品的国际条码，条码之间用英文逗号隔开;<br/>2.请录入相同分类且售价一样的商品条码。";
+        if(tip){tip.tooltip('update',msg)}
+        bar= $("#BarcodeMult");
+    }
+    function isExists(rows, cd) {
+        var result = false;
+        $.each(rows, function (idx, row) {
+            if (row.StoreId == cd) {
+                result = true; return;
+            }
+        });
+        return result;
+    }
+    function syspriceChange(newValue,oldValue){
+        if($("#TradePrice").numberbox("getValue")<=0)
+            $("#TradePrice").numberbox("setValue",newValue);
+        if($("#JoinPrice").numberbox("getValue")<=0)
+            $("#JoinPrice").numberbox("setValue",newValue);
+    }
+    var opaddPrice = false,opaddSup=false, editPriceIndex = undefined,editSuppIndex = undefined, clickIndex=undefined,clickSuppIndex=undefined;
+    function operationPrice(value, row, index) {
+        if(row.IsRelationship)
+        {
+        }
+        else
+        {
+            if (opaddPrice) {
+                opaddPrice = false;
+                return "<a href='javascript:void(0)' onclick='appendItemPrice()'>添加</a>";
+            } else {
+                return "<a href='javascript:void(0)' onclick=\"removeItemPrice('" + row.Id + "')\">删除</a>";
+            }
+        }
+    }
+    function operationSupplier(value, row, index) {
+        if(row.IsRelationship)
+        {
+        }
+        else
+        {
+            if (opaddSup) {
+                opaddSup = false;
+                return "<a href='javascript:void(0)' onclick='appendItemSupp()'>添加</a>";
+            } else {
+                return "<a href='javascript:void(0)' onclick=\"removeItemSupp('" + row.Id + "')\">删除</a>";
+            }
+        }
+    }
+    function endPriceEditing() {
+        if (editPriceIndex == undefined) { return true }
+        if ($dgprice.datagrid('validateRow', editPriceIndex)) {
+            var ed = $dgprice.datagrid('getEditor', { index: editPriceIndex, field: 'StoreId' });
+            var edp = $dgprice.datagrid('getEditor', { index: editPriceIndex, field: 'Title' });
+            if (ed) {
+                var storeId = $(edp.target).combobox('getValue');
+                var storeTitle = $(edp.target).combobox('getText');
+                var rows = $dgprice.datagrid("getRows");
+                if (isExists(rows, storeId)) {
+                    $.messager.alert("提示", "该门店已存在!", "warning", function () {
+                        $(edp.target).combobox('showPanel').next('span').find('input').focus()
+                    });
+                    return false;
+                }
+                $(ed.target).textbox('setValue', storeId);
+                $(edp.target).combobox('setValue', storeTitle);
+                ed = $dgprice.datagrid('getEditor', { index: editPriceIndex, field: 'SupplierId' });
+                edp = $dgprice.datagrid('getEditor', { index: editPriceIndex, field: 'SupplierTitle' });
+                var title = $(edp.target).combobox('getText');
+                var id = $(edp.target).combobox('getValue');
+                $(ed.target).textbox('setValue', id);
+                $(edp.target).combobox('setValue', title);
+            }
+            $dgprice.datagrid('endEdit', editPriceIndex);
+            editPriceIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function endSuppEditing() {
+        if (editSuppIndex == undefined) { return true }
+        if ($dgsupp.datagrid('validateRow', editSuppIndex)) {
+            var ed = $dgsupp.datagrid('getEditor', { index: editSuppIndex, field: 'SupplierId' });
+            var edp = $dgsupp.datagrid('getEditor', { index: editSuppIndex, field: 'Title' });
+            if (ed) {
+                var supplierId = $(edp.target).combobox('getValue');
+                var suppTitle = $(edp.target).combobox('getText');
+                var rows = $dgsupp.datagrid("getRows");
+                var supids=$.map(rows,function(r){
+                    return r.SupplierId;
+                })
+                if (supids.indexOf(supplierId)!=-1) {
+                    $.messager.alert("提示", "该供应商已存在!", "warning", function () {
+                        $(edp.target).combobox('showPanel').next('span').find('input').focus()
+                    });
+                    return false;
+                }
+                $(ed.target).textbox('setValue', supplierId);
+                $(edp.target).combobox('setValue', suppTitle);
+            }
+            $dgsupp.datagrid('endEdit', editSuppIndex);
+            editSuppIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function endClickEditing() {
+        if(!$dgprice[0]) return;
+        if (clickIndex == undefined) { return true }
+        if ($dgprice.datagrid('validateRow', clickIndex)) {
+            $dgprice.datagrid('endEdit', clickIndex);
+            clickIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function endSuppClickEditing() {
+        if(!$dgsupp[0]) return;
+        if (clickSuppIndex == undefined) { return true }
+        if ($dgsupp.datagrid('validateRow', clickSuppIndex)) {
+            $dgsupp.datagrid('endEdit', clickSuppIndex);
+            clickSuppIndex = undefined;
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+    function appendItemPrice() {
+        enabledPriceGrid();
+        if (endPriceEditing()) {
+            opaddPrice = true;
+            $dgprice.datagrid('appendRow', {});
+            editPriceIndex = $dgprice.datagrid('getRows').length - 1;
+            $dgprice.datagrid('selectRow', editPriceIndex)
+                .datagrid('beginEdit', editPriceIndex);
+            changeValue();
+            disabedPriceGrid();
+            loadStore();
+        }
+    }
+    function appendItemSupp() {
+        enabledSuppGrid();
+        if (endSuppEditing()) {
+            opaddSup = true;
+            $dgsupp.datagrid('appendRow', {});
+            editSuppIndex = $dgsupp.datagrid('getRows').length - 1;
+            $dgsupp.datagrid('selectRow', editSuppIndex)
+                .datagrid('beginEdit', editSuppIndex);
+            changeValue();
+            disabedSuppGrid();
+        }
+    }
+    function removeItemPrice(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dgprice.datagrid("selectRecord", id);
+            var row = $dgprice.datagrid("getSelected")
+            var index = $dgprice.datagrid("getRowIndex", row);
+            $dgprice.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+    function removeItemSupp(id) {
+        $.messager.confirm('提示', "是否确定删除该项信息?", function (r) {
+            if (!r) {
+                return r;
+            }
+            $dgsupp.datagrid("selectRecord", id);
+            var row = $dgsupp.datagrid("getSelected")
+            var index = $dgsupp.datagrid("getRowIndex", row);
+            $dgsupp.datagrid('deleteRow', index);
+            changeValue();
+        });
+    }
+    function clickCell(index, field, value) {
+        var row = $dgprice.datagrid('getData').rows[index];
+        var isRec=row.IsRelationship;
+
+        if (endClickEditing() && ( (!isRec && field == "Price") || field == "BuyPrice" )) {
+            $dgprice.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            //if(field == "Title"){
+            //    var edp = $dgprice.datagrid('getEditor', { index: index, field: field });
+            //    if($(edp.target).combobox("getData").length<=0);
+            //        $(edp.target).combobox('loadData', comboStores);
+            //}
+            clickIndex = index;
+        }
+    }
+    function clickSuppCell(index, field) {
+        var row = $dgsupp.datagrid('getData').rows[index]; //here
+        var isRec=row.IsRelationship;
+
+        if (endSuppClickEditing() && ( !isRec && field == "BuyPrice" )) {
+            $dgsupp.datagrid('selectRow', index)
+                    .datagrid('editCell', { index: index, field: field });
+            clickSuppIndex = index;
+        }
+    }
+    function supplierChange1(newValue,oldValue){
+        var rows= $dgsupp.datagrid("getRows");
+        if(!rows || rows.length<=1) return;
+        var edp = $dgprice.datagrid('getEditor', { index: editPriceIndex, field: 'BuyPrice' });
+        if(!edp) return;
+        $.each(rows,function(i,r){
+            if(r.SupplierId==newValue){
+                $(edp.target).textbox('setValue', r.BuyPrice);
+                return false;
+            }
+        });
+    }
+    function supplierChange2(newValue,oldValue){
+        var rows= $dgprice.datagrid("getRows");
+        if(!rows || rows.length<=1) return;
+        var edp = $dgsupp.datagrid('getEditor', { index: editSuppIndex, field: 'BuyPrice' });
+        if(!edp) return;
+        $.each(rows,function(i,r){
+            if(r.SupplierId==newValue){
+                $(edp.target).textbox('setValue', r.BuyPrice);
+                return false;
+            }
+        });
+    }
+    function storeChange(newValue,oldValue){
+
+    }
+    function changeValue() {
+        if(!$dgprice[0]) return;
+        var priceinserted = $dgprice.datagrid('getChanges', "inserted");
+        var pricedeleted = $dgprice.datagrid('getChanges', "deleted");
+        var priceupdated = $dgprice.datagrid('getChanges', "updated");
+        var suppinserted = $dgsupp.datagrid('getChanges', "inserted");
+        var suppedeleted = $dgsupp.datagrid('getChanges', "deleted");
+        var suppupdated = $dgsupp.datagrid('getChanges', "updated");
+        $("#PriceInserted").val(JSON.stringify(priceinserted));
+        $("#PriceDeleteed").val(JSON.stringify(pricedeleted));
+        $("#PriceUpdateed").val(JSON.stringify(priceupdated));
+        $("#SuppInserted").val(JSON.stringify(suppinserted));
+        $("#SuppDeleteed").val(JSON.stringify(suppedeleted));
+        $("#SuppUpdateed").val(JSON.stringify(suppupdated));
+        editPriceIndex = $dgprice.datagrid('getRows').length - 1;
+        if (editPriceIndex < 0) editPriceIndex = undefined;
+        editSuppIndex = $dgsupp.datagrid('getRows').length - 1;
+        if (editSuppIndex < 0) editSuppIndex = undefined;
+    }
+    function disabedPriceGrid() {
+        if(!$dgprice[0]) return;
+        if (editPriceIndex != undefined) {
+            var ed = $dgprice.datagrid('getEditor', { index: editPriceIndex, field: 'Title' });
+            if (ed) {
+                $(ed.target).combobox('disableValidation');
+                ed = $dgprice.datagrid('getEditor', { index: editPriceIndex, field: 'Price' });
+                $(ed.target).numberbox('disableValidation');
+            }
+        }
+    }
+    function disabedSuppGrid() {
+        if(!$dgsupp[0]) return;
+        if (editSuppIndex != undefined) {
+            var ed = $dgsupp.datagrid('getEditor', { index: editSuppIndex, field: 'Title' });
+            if (ed) {
+                $(ed.target).combobox('disableValidation');
+            }
+        }
+    }
+    function enabledPriceGrid() {
+        if (editPriceIndex != undefined) {
+            var ed = $dgprice.datagrid('getEditor', { index: editPriceIndex, field: 'Title' });
+            if (ed) {
+                $(ed.target).combobox('enableValidation');
+                ed = $dgprice.datagrid('getEditor', { index: editPriceIndex, field: 'Price' });
+                $(ed.target).numberbox('enableValidation');
+            }
+        }
+    }
+    function enabledSuppGrid() {
+        if (editSuppIndex != undefined) {
+            var ed = $dgsupp.datagrid('getEditor', { index: editSuppIndex, field: 'Title' });
+            if (ed) {
+                $(ed.target).combobox('enableValidation');
+            }
+        }
+    }
+    //获取RadioButton的值
+    function GetRadioValue(RadioName) {
+        var obj;
+        obj = document.getElementsByName(RadioName);
+        if (obj != null) {
+            var i;
+            for (i = 0; i < obj.length; i++) {
+                if (obj[i].checked) {
+                    return obj[i].value;
+                }
+            }
+        }
+        return null;
+    }
+
+    function treeSuccess(node, data) {
+        var bigsn = $("#BigCategorySN").val();
+        var midsn = $("#MidCategorySN").val();
+        var subsn = $("#CategorySN").val();
+        var node = $("#tree").tree("find", bigsn);
+        if (!isNull(subsn)) {
+            node = $("#tree").tree("find", subsn);
+        } else if (!isNull(midsn)) {
+            node = $("#tree").tree("find", midsn);
+        }
+        $('#tree').tree('select', node.target);
+    }
+    function provinceSelect(record) {
+        $("#citys").combobox("reload", "@Url.Action("GetCity")?pid="+record.value);
+    }
+    function citySuccess() {
+        var val = $("#citys").combobox("getValue");
+        if (!val) return;
+        var text = $("#province").combobox("getText") + "/" + $("#citys").combobox("getText")
+        $("#CityId").combobox("setValue", val).combobox("setText", text);
+    }
+    function citySelect(record) {
+        var text= $("#province").combobox("getText")+"/"+ record.text
+        $("#CityId").combobox("setValue", record.value).combobox("setText", text).combobox("hidePanel");
+    }
+    function treeBeforeSelect(node) {
+        if (!$("#tree").tree("isLeaf", node.target)) return false;
+        var bigId = $("#BigCategorySN").val();
+        var midNode = $("#tree").tree("getParent", node.target);
+        if (midNode.id == "0") {
+            $("#BigCategorySN").val(node.id);
+        } else {
+            var bigNode = $("#tree").tree("getParent", midNode.target);
+            if (bigNode && bigNode.id != "0") {
+                $("#BigCategorySN").val(bigNode.id);
+            } else {
+                $("#BigCategorySN").val(midNode.id);
+            }
+        }
+        if(!$dgprice[0]) return;
+        var rows = $dgprice.datagrid("getRows");
+        if (rows.length > 1 && bigId != $("#BigCategorySN").val()) {
+            if (confirm("修改类别将清除原有一品多价信息,是否继续?")) {
+                for (var i = rows.length - 2; i >= 0; i--) {
+                    $dgprice.datagrid("deleteRow", i);
+                }
+                changeValue();
+            } else {
+                $("#BigCategorySN").val(bigId);
+                return false;
+            }
+        }
+        return true;
+    }
+    function treeSelect(node) {
+        if (!$("#tree").tree("isLeaf", node.target)) return;
+        var bigId = $("#BigCategorySN").val();
+        var midNode = $("#tree").tree("getParent", node.target);
+        if (midNode.id == "0") {
+            $("#category").textbox("setValue", node.text);
+            $("#BigCategorySN").val(node.id);
+            $("#CategorySN").val(node.id);
+        } else {
+            var bigNode = $("#tree").tree("getParent", midNode.target);
+            var text = midNode.text + "/" + node.text;
+            if (bigNode && bigNode.id != "0") {
+                $("#BigCategorySN").val(bigNode.id);
+                $("#CategorySN").val(node.id);
+                text = bigNode.text + "/" + midNode.text + "/" + node.text;
+            } else {
+                $("#BigCategorySN").val(midNode.id);
+                $("#CategorySN").val(node.id);
+            }
+            $("#category").textbox("setValue", text);
+        }
+        loadStore();
+    }
+    var comboStores=[];
+    function loadStore() {
+        if(!$dgprice[0]) return;
+        var ed = $dgprice.datagrid("getEditor", { index: editPriceIndex, field: 'Title' });
+        if (!ed) return;
+        $.post("@Url.Action("GetStoreInput", "Store")", { bigId: $("#BigCategorySN").val() }, function (data) {
+            comboStores=data.rows;
+            $(ed.target).combobox("clear").combobox('loadData', comboStores);
+        }, "json");
+    }
+    function SaveBefore() {
+        try
+        {
+            var bar= $("#Barcode").val();
+            if(bar) $("#Barcode").val(bar.toUpperCase());
+            appendItemPrice();
+            appendItemSupp();
+            endClickEditing();
+            endSuppClickEditing();
+            changeValue();
+            disabedPriceGrid();
+            disabedSuppGrid();
+            $("#SysPrice").numberbox("disableValidation");
+            if(!checkBarcode13($("#Barcodes").textbox("getValue")))
+                return false;
+            if(!checkBarcode13($("#BarcodeMult").textbox("getValue")))
+                return false;
+        }catch(e){}
+        return true;
+    }
+
+</script>

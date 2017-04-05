@@ -1,0 +1,74 @@
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.BLL;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
+using System.Web;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS;
+using QCT.Pay.Common;
+using System.Collections;
+
+namespace QCT.Api.Pay.Utils
+{
+    /// <summary>
+    /// 商户支付帮助类
+    /// </summary>
+    public class PayConfig
+    {
+        private static string _sxfPayUrl = string.Empty;
+        private static string _sxfPayUrlStatic = string.Empty;
+        private static string _sxfNotifyUrl = string.Empty;
+        #region sxf url
+        /// <summary>
+        /// 第三方随心付（SxfPay）接口调用URL
+        /// </summary>
+        public static string SxfPayUrl
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_sxfPayUrl))
+                {
+                    _sxfPayUrl = Config.GetAppSettings("sxfpayurl");
+                }
+                return _sxfPayUrl;
+            }
+        }
+        /// <summary>
+        /// 第三方随心付（SxfPay）静态门店二维码接口调用URL
+        /// </summary>
+        public static string SxfPayUrlStatic
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_sxfPayUrlStatic))
+                {
+                    _sxfPayUrlStatic = Config.GetAppSettings("sxfpayurlstatic");
+                }
+                return _sxfPayUrlStatic;
+            }
+        }
+        /// <summary>
+        /// 第三方随心付支付或退款结果通知URL
+        /// </summary>
+        public static string SxfNotifyUrl
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_sxfNotifyUrl))
+                {
+                    _sxfNotifyUrl = Config.GetAppSettings("sxfnotifyurl");
+                }
+                return _sxfNotifyUrl;
+            }
+        }
+        #endregion
+    }
+}

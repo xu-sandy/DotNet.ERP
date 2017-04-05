@@ -1,0 +1,75 @@
+﻿using Pharos.Logic.OMS;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Logic.OMS.BLL;
+using System.Data;
+
+namespace Pharos.OMS.Retailing.Controllers
+{
+    public class DomainLicenseController : BaseController
+    {
+        [Ninject.Inject]
+        //商户资料
+        TradersService tradersService { get; set; }
+
+        [Ninject.Inject]
+        //BLL商家支付许可档案
+        PayLicenseService payLicenseService { get; set; }
+
+        /// <summary>
+        /// BLL商户域名信息
+        /// </summary>
+        RealmService realmService { get; set; }
+
+        public ActionResult Save(int? id)
+        {
+            var obj = new Realm
+            {
+
+            };
+            if (id.HasValue)
+            {
+
+            }
+            //一级域名
+            ViewBag.Nature = ListToSelect(tradersService.getDataList(600).Select(o => new SelectListItem() { Value = o.DicSN.ToString(), Text = o.Title }), emptyTitle: "请选择");
+            return View(obj.IsNullThrow());
+        }
+
+        [HttpPost]
+        public ActionResult Save(int Id)
+        {
+            Realm realm = new Realm();
+            if (Id == 0)
+            {
+                realm.State = -1;
+                realm.CreateDT = DateTime.Now;
+            }
+            else
+            {
+                realm = realmService.GetEntityById(Id);
+            }
+            TryUpdateModel<Realm>(realm);
+            var op = realmService.Save(realm, Id, Request.Params);
+            return new OpActionResult(op);
+        }
+
+        /// <summary>
+        /// 获取CID
+        /// </summary>
+        /// <param name="keyword"></param>
+        /// <returns></returns>
+        public ActionResult GetCidWhere(string keyword)
+        {
+            var list = payLicenseService.GetCIDWhere(Request.Params);
+            return ToDataGrid(list, 0);
+        }
+    }
+}

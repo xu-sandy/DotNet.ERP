@@ -1,0 +1,93 @@
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Text;
+
+namespace Pharos.POS.Retailing.Models
+{
+    /// <summary>
+    /// 挂起账单集合
+    /// </summary>
+    public class HangBillCollection : ObservableCollection<HangBill>
+    {
+        private const string FILEPATH = "BillCollection.JSON";
+        public void AddBill(HangBill item)
+        {
+            item.Id = this.Count + 1;
+            base.Add(item);
+            OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs("Count"));
+            SaveToLocal();
+        }
+        public void RemoveBill(HangBill item)
+        {
+            base.Remove(item);
+            UpdateId();
+            OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs("Count"));
+            SaveToLocal();
+        }
+
+        public new void Clear() 
+        {
+            base.Clear();
+            UpdateId();
+            OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs("Count"));
+            SaveToLocal();
+        }
+
+        public void UpdateId(int index = 0)
+        {
+            for (; index < this.Count; index++)
+            {
+                this[index].Id = index + 1;
+            }
+        }
+        public new int Count
+        {
+            get { return base.Count; }
+            set
+            {
+                OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs("Count"));
+            }
+        }
+        public void ReadFormLocal()
+        {
+            try
+            {
+                base.Clear();
+                if (!File.Exists(FILEPATH))
+                {
+                    var stream = File.Create(FILEPATH);
+                    stream.Close();
+                }
+                string content = File.ReadAllText(FILEPATH, Encoding.UTF8);
+                var billCollection = JsonConvert.DeserializeObject<HangBillCollection>(content);
+                if (billCollection != null)
+                {
+                    foreach (var item in billCollection)
+                    {
+                        base.Add(item);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+
+        public void SaveToLocal()
+        {
+            try
+            {
+                string content = JsonConvert.SerializeObject(this);
+                File.WriteAllText(FILEPATH, content, Encoding.UTF8);
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+
+    }
+}

@@ -1,0 +1,176 @@
+﻿@model Pharos.Logic.OMS.Entity.PayApi
+@{
+    ViewBag.Title = "支付接口";
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增支付接口", hideAdd: !CurrentUser.HasPermiss(150),
+        delText: "移除所选项", hideDel: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>收单渠道：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="ChannelNo" name="ChannelNo" class="easyui-combobox datacontrol" data-options="valueField: 'value', textField: 'text', data:window.drpdata['PayChannelJson'], panelHeight: 'auto', editable: false,width:120" />
+            </td>
+            <td class="label-toolbar">
+                <label>状态：</label>
+            </td>
+            <td class="input-toolbar">
+                @Html.CheckBoxListFor(o => o.State, ViewBag.CkbStateList as List<SelectListItem>)
+            </td>
+        </tr>
+    </table>
+}
+
+@section toolbar
+{
+    @if (CurrentUser.HasPermiss(151))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(1)">设为已发布</a>
+    }
+    @if (CurrentUser.HasPermiss(152))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="setState(2)">设为已失效</a>
+    }
+    @if (CurrentUser.HasPermiss(153))
+    {
+        <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-stale'" onclick="removeItem()">删除接口</a>
+    }
+}
+<link href="~/Content/iconfont/iconfont.css" rel="stylesheet" />
+<script type="text/javascript">
+    window.drpdata = window.drpdata || {};
+    window.drpdata['ChannelPayModeJson'] = @Html.Raw(ViewBag.ChannelPayModeJson);
+    window.drpdata['PayChannelJson'] = @Html.Raw(ViewBag.PayChannelJson);
+    window.drpdata['StateJson'] = @Html.Raw(ViewBag.StateJson);
+    window.drpdata['TradeModeJson'] = @Html.Raw(ViewBag.TradeModeJson);
+    window.drpdata['OptTypeJson'] = @Html.Raw(ViewBag.OptTypeJson);
+    window.btns = window.btns || {};
+    window.btns["hasAdd"] = '@((CurrentUser.HasPermiss(142)).ToType<int>())';
+
+    pharos.manager.geturl = "@Url.Action("GetPayApiPaging")";
+    pharos.manager.editurl = "@Url.Action("PayApiForm")";
+    pharos.manager.delurl = "@Url.Action("RemovePayApi")";
+    pharos.manager.sortName = "CreateDT";
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = false;
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true, rowspan: 2 },
+        { field: 'State', title: '状态', width: 60, rowspan: 2, align:'center' , formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['StateJson']);
+        }},
+        { field: 'ChannelCode', title: '收单渠道', width: 90, rowspan: 2 },
+        { field: 'ChannelNo', title: '渠道<br/>编号', width: 40, align:'center', rowspan: 2 },
+        { field: 'Method', title: '接口参数名', width: 160, rowspan: 2  },
+        { field: 'Title', title: '接口别名', width: 100, rowspan: 2 },
+        { field: 'Version', title: '版本号', width: 60, align:'center', rowspan: 2, formatter: function (value, row) {
+            return value.toPrecision(2);
+        }},
+        { field: 'TradeMode', title: '交易方式', width: 100, rowspan: 2 , formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['TradeModeJson']);
+        }},
+        { field: 'OptType', title: '操作类型', width: 80, align:'center', rowspan: 2 , formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['OptTypeJson']);
+        }},
+        { field: 'ApiUrl', title: '接口URL', width: 200, rowspan: 2 },
+        { field: 'ChannelPayMode', title: '支付方式', width: 60, align:'center', rowspan: 2 , formatter: function (value, row) {
+            return formatColumn(value, window.drpdata['ChannelPayModeJson']);
+        }},
+        { field: 'MonthFreeTradeAmount', title: '单月免费<br/>交易额(元)', width: 80 , align:'center', rowspan: 2 },
+        { field: 'OverServiceRate', title: '超出金额<br/>服务费率(%)', width: 80, align:'center', rowspan: 2 },
+        { field: 'SingleServFee', title: '单笔服务费(元)', width: 80, align:'center', rowspan: 1, colspan:2 },
+        { field: 'Memo', title: '备注', width: 200, rowspan: 2 },
+        { field: 'CreateDT', title: '创建时间', width: 80, align:'center', rowspan: 2, formatter: function (value, row, index) { return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd") } },
+        { field: 'Creater', title: '创建人', width: 70, align:'center', rowspan: 2 },
+        { field: 'ReleasedDT', title: '发布时间', width: 80, align:'center', rowspan: 2, formatter: function (value, row, index) { return new Date(value.replace(/-/g, '/')).format("yyyy-MM-dd") } },
+        { field: 'Releaseder', title: '发布人', width: 70, align:'center', rowspan: 2 }
+    ], [
+        { field: 'SingleServFeeUpLimit', title: '上限', width: 60, align:'center', rowspan: 1, colspan:1 },
+        { field: 'SingleServFeeLowLimit', title: '下限', width: 60, align:'center', rowspan: 1, colspan:1 }
+    ]];
+
+    pharos.manager.addItem = function () {
+        this.Id = "";
+        openDialogNew(this.addText, this.editurlNocache(), 600, 400, false, true);
+    };
+    pharos.manager.editItem = function (id, row) {
+        var hideAdd = true;
+        if(window.btns["hasAdd"]=="1")
+            hideAdd = false;
+        this.Id = id;
+        openDialogNew(this.editText, this.editurlNocache(), 600, 400, hideAdd, true);
+    }
+
+    function removeBefore(row) {
+        var uid = '@Pharos.Logic.OMS.CurrentUser.UID';
+        if (row.State != "1") {
+            $.messager.alert("提示", window.drpdata['StateJson'][row.state].text + "状态不能移除!");
+            return false;
+        }
+        return true;
+    }
+    function removeItem(){
+        var rows = pharos.manager.selectItems();
+        if (!rows) return;
+        if (rows.length > 1) {
+            $.messager.alert("提示", "只能选择一项数据进行操作", "error");
+            return false;
+        }
+        if (rows[0].State != 0) {
+            $.messager.alert("提示", "只能删除未发布的接口数据", "error");
+            return false;
+        }
+
+        $.messager.confirm("提示", "是否确定删除", function (r) {
+            if (!r) return;
+            $.post("@Url.Action("RemovePayApi")", { id: rows[0].Id }, function (r) {
+                if (r.successed) {
+                    $.messager.alert("提示", "删除成功！", "info");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "删除失败！" + r.message, "error");
+                }
+            }, "json");
+        });
+    }
+    //设置发布或失效
+    function setState(state) {
+        var rows = pharos.manager.selectItems();
+        var stateJson = window.drpdata['StateJson'];
+        if (!rows) return;
+        if (rows.length > 1) {
+            $.messager.alert("提示", "只能选择一项数据进行操作", "error");
+            return false;
+        }
+        if (rows[0].State == state) {
+            $.messager.alert("提示", "选中项已经是" + stateJson[state].text + "状态", "error");
+            return false;
+        }
+
+        $.messager.confirm("提示", "是否确定更改状态", function (r) {
+            if (!r) return;
+            $.post("@Url.Action("SetPayApiState")", { id: rows[0].Id, state: state }, function (r) {
+                if (r.successed) {
+                    $.messager.alert("提示", "操作执行成功！", "info");
+                    pharos.manager.gridReload();
+                } else {
+                    $.messager.alert("提示", "操作执行失败！" + r.message, "error");
+                }
+            }, "json");
+        });
+        //fishtodo: 1 按钮图标设置
+    }
+
+    //取枚举对应值
+    function formatColumn(value, list) {
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].value == value) {
+                if (list[i].value != "")
+                    return list[i].text;
+            }
+        }
+        return value;
+    }
+</script>

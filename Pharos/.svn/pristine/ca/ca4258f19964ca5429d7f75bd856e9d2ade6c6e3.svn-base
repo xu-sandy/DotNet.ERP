@@ -1,0 +1,59 @@
+﻿using Microsoft.Synchronization.SimpleProviders;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Pharos.SyncService
+{
+    public interface IPosLocalDbStore
+    {
+        void Init(PosSyncDbContext db);
+
+        IEnumerable<Guid> Ids();
+        IEnumerable<IPosLocalDbEntity> Entities();
+
+
+        IPosLocalDbEntity Get(Guid id);
+
+        void CreateItem(IPosLocalDbEntity data, Guid guid);
+
+        byte[] UpdateItem(Guid guid, IPosLocalDbEntity data);
+
+        void DeleteItem(Guid guid);
+
+        IPosLocalDbEntity Merge(IPosLocalDbEntity currentDbEntity, IPosLocalDbEntity changeDbEntity);
+    }
+
+    public class PosLocalSyncContext : IDisposable
+    {
+        private PosSyncLocalDbContext dbContext = null;
+        private Dictionary<string, IPosLocalDbStore> stores = new Dictionary<string, IPosLocalDbStore>();
+        public IDictionary<string, IPosLocalDbStore> Context { get { return stores; } }
+        public static PosLocalSyncContext Current { get; private set; }
+        static PosLocalSyncContext()
+        {
+            if (Current == null)
+                Init();
+        }
+
+        internal static void Init()
+        {
+            PosLocalSyncContext syncContext = new PosLocalSyncContext();
+            syncContext.dbContext = new PosSyncLocalDbContext();
+            /* 注册每个表的service
+             * var store =new Pharos.SyncService.Stores.TestStore();
+             * store.Init(dbContext);
+             * syncContext.stores.Add("Pharos.SyncService.Entity.Test",store))
+             */
+            Current = syncContext;
+
+        }
+
+        public void Dispose()
+        {
+            dbContext.Dispose();
+        }
+    }
+}

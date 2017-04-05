@@ -1,0 +1,169 @@
+﻿@model Pharos.Sys.Entity.SysWebSetting
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+
+<style>
+    body { text-align: center; }
+</style>
+<div class="default-form">
+@using (Html.BeginForm())
+{
+    <div class="WebSettingBox">
+        @Html.HiddenFor(o=>o.Id)
+        <table class="table">
+            <tr>
+                <td class="leftTd title">
+                    基本信息 :
+                </td>
+                <td class="rightTd"></td>
+                <td class="leftTd"></td>
+                <td class="rightTd"></td>
+            </tr>
+            <tr>
+                <td class="leftTd">顶部Logo : </td>
+                <td class="rightTd">
+                    @*@Html.LabelFor(o => o.TopLogo, Model.TopLogo, new { @class = "label", name="TopLogo", id = "TopLogo" })*@
+                    @Html.TextBoxFor(o => o.TopLogo, new { @class = "imgInput", id = "topLogo", data_options = "required:true,novalidate:true", onclick = "getTopLogo()" })
+                    @*<input id="hidTopLogo" type="file" style="display:none;" />*@
+                    @Html.TextBoxFor(o => o.TopLogo, new { @class = "imgInput", id = "hidTopLogo", data_options = "required:true,novalidate:true", type = "file",style="display:none;" })                 
+                </td>
+                <td class="leftTd">底部Logo : </td>
+                <td class="rightTd">
+                    @*@Html.LabelFor(o => o.BottomLogo, Model.BottomLogo, new { @class = "label",name="BottomLogo", id = "BottomLogo" })*@
+                    @Html.TextBoxFor(o => o.BottomLogo, new { @class = "imgInput", data_options = "required:true,novalidate:true" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">系统Icon : </td>
+                <td class="rightTd">
+                    @*@Html.LabelFor(o => o.SysIcon, Model.SysIcon, new { @class = "label", name = "SysIcon", id = "SysIcon" })*@
+                    @Html.TextBoxFor(o => o.SysIcon, new { @class = "imgInput", data_options = "required:true,novalidate:true" })
+                </td>
+                <td class="leftTd">官网地址 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.WebsiteUrl, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype="url", invalidmessage="网址格式不正确,正确示例： http://www.example.com"})
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">公司简称 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.CompanyTitle, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true",validtype="length[1,50]" })
+                </td>
+                <td class="leftTd">公司电话 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.Tel, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true",validtype="phone" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">页面Title : </td>
+                <td class="rightTd" colspan="3">
+                    @Html.TextBoxFor(o => o.PageTitle, new { @class = "easyui-textbox datacontrol inputFull", data_options = "required:true,novalidate:true", validtype = "length[1,50]" })
+                </td>                
+            </tr>
+            <tr>
+                <td class="leftTd title" colspan="4">
+                    SMTP :
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">服务器 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPServer, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,100]" })
+                </td>
+                <td class="leftTd">端口号 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPPort, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "integer" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">显示名称 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPShowName, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd">SSL端口 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPSSLPort, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "integer" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">账号 : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.SMTPAccount, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "email length[1,100]" })
+                </td>
+                <td class="leftTd">密码 : </td>
+                <td class="rightTd">
+                    @*@Html.TextBoxFor(o => o.SMTPPwd, new { @class = "easyui-textbox datacontrol", validtype = "length[1,50]",title="为空则不修改密码", type="password" })*@
+                    @*<input class="easyui-validatebox datacontrol" name="SMTPPwd" id="SMTPPwd" title="为空则不修改密码" type="password" data_options="required:true" validtype="length[4,20]" />*@
+                    @Html.PasswordFor(o => o.SMTPPwd, new { @class = "easyui-validatebox datacontrol easyui-tooltip", edit = Model.Id, title = "为空则不修改密码", data_options = "required:true,validType:'length[4,20]'" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd title" colspan="4">
+                    环信IM :
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">Url : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMReqUrlBase, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd">Id : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppId, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">Secret : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppSecret, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd">org_name : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppOrg, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+            </tr>
+            <tr>
+                <td class="leftTd">app_name : </td>
+                <td class="rightTd">
+                    @Html.TextBoxFor(o => o.EMAppName, new { @class = "easyui-textbox datacontrol", data_options = "required:true,novalidate:true", validtype = "length[1,200]" })
+                </td>
+                <td class="leftTd"></td>
+                <td class="rightTd"></td>
+            </tr>      
+        </table>
+
+        <div class="buttonBox">
+            <a class="easyui-linkbutton cus4 linkbtn btn" onclick="$('form').submit();">保存</a>
+            <a class="easyui-linkbutton cus4 linkbtn btn" onclick="window.location.reload();" style="float:right;">重置</a>
+        </div>
+
+    </div>   
+}
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        if ($("#Id").val() != "") {
+            $("#SMTPPwd").validatebox("disableValidation");
+        }
+    })
+
+    function SaveBefore() {
+        if ($("#SMTPPwd").val()) {
+            $("#SMTPPwd").validatebox("enableValidation");
+        }
+        return true;
+    }
+
+    function getTopLogo() {  debugger
+        //var topLogo = $("#TopLogo").val();
+        //var hidTopLogo = $("#hidTopLogo").val();
+
+        var $topLogo = $("#topLogo");
+        var $hidTopLogo = $("#hidTopLogo");
+        $hidTopLogo.click();
+    }
+
+</script>

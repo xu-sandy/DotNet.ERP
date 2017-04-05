@@ -1,0 +1,28 @@
+﻿using System;
+using System.Data.Entity;
+
+namespace Pharos.SyncService
+{
+    public class PosSyncLocalDbContext : DbContext
+    {
+        static PosSyncLocalDbContext()
+        {
+            Database.SetInitializer<PosSyncDbContext>(null);
+        }
+        public DbSet<SyncTest> Tests { get; set; }
+
+    }
+    public class PosSyncLocalDbContextInitializer : DropCreateDatabaseAlways<PosSyncLocalDbContext>
+    {
+
+        protected override void Seed(PosSyncLocalDbContext context)
+        {
+            context.Tests.Add(new SyncTest { Content = "John", SyncServerDbId = Guid.NewGuid() });
+            context.Tests.Add(new SyncTest { Content = "Natasha", SyncServerDbId = Guid.NewGuid() });
+            context.Tests.Add(new SyncTest { Content = "Lin", SyncServerDbId = Guid.NewGuid() });
+            context.Tests.Add(new SyncTest { Content = "Josh", SyncServerDbId = Guid.NewGuid() });
+            context.Tests.Add(new SyncTest { Content = "Maria", SyncServerDbId = Guid.NewGuid() });
+            context.SaveChanges();
+        }
+    }
+}

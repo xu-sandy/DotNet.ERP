@@ -1,0 +1,81 @@
+﻿using Newtonsoft.Json.Linq;
+using Pharos.Logic.OMS.Models;
+using QCT.Api.Pay.Utils;
+using QCT.Pay.Common;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+
+namespace QCT.Api.Pay.Controllers
+{
+    public class QRPayController : Controller
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        [Ninject.Inject]
+        SxfPayManager SxfPayMG { get; set; }
+        //
+        // GET: /QRPay/
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public ActionResult Pay(PayStaticModel model)
+        {
+            return View(model);
+        }
+        //[HttpPost]
+        //public object SubmitPay()
+        //{
+        //    var ss = "";
+        //    Response.Redirect("http://www.baidu.com");
+        //    return View();
+        //}
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public object SubmitPay(PayBuyerScanStaticModel model)
+        {
+            //取得商户当前系统时间
+            var orderDate = DateTime.Now;
+            //商户订单号
+            String orderId = orderDate.ToString("yyyyMMddHHmmss") + "0001";
+            //商户订单日期
+
+            var reqObj = new PayBuyerScanDynaRequest();
+            reqObj.CID = model.mch_id;
+            reqObj.SID = model.store_id;
+            reqObj.DeviceId = 1;
+            reqObj.Method = PayConst.QCTTRADE_PAY_BUYERSCAN_DYNA;
+            reqObj.Charset = PayConst.DEF_CHARSET;
+            reqObj.SignType = PayConst.DEF_SIGNTYPE;
+            reqObj.Version = PayConst.DEF_VERSION;
+            reqObj.OutTradeNo = orderId;
+            reqObj.OrderType3 = "1";
+            reqObj.CreateDate = orderDate;
+            reqObj.TotalAmount = model.total_amount;
+            reqObj.PayNotifyUrl = "http://192.168.10.122:8018/pay/TradeNotify";
+            reqObj.BuyerMobile = "";
+            reqObj.GoodsName = "测试超时购物";
+            reqObj.GoodsDesc = model.goods_desc;
+            reqObj.Sign = "nonono";
+
+            var result = SxfPayMG.QRPay(reqObj);
+            if (result.Successed)
+            {
+                Response.Redirect(result.Data.ToString());
+                return View();
+            }
+            else
+            {
+                return result;
+            }
+        }
+    }
+}

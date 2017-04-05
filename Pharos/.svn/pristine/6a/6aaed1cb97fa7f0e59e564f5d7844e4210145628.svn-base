@@ -1,0 +1,140 @@
+﻿@model Pharos.Sys.Entity.SysUserInfo
+@using Newtonsoft.Json;
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    var lmtStroeRole = true;
+    var lmtAdd = true;
+
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增用户", editText: "修改用户", hideAdd: !lmtAdd, hideDel: true));
+}
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <span>在职状态：</span>
+            </td>
+            <td class="input-toolbar">
+                <select name="Status" class="easyui-combobox datacontrol" data-options="valueField: 'Value', textField: 'Text', panelHeight: 'auto', editable: false,width:80,height:30">
+                    <option value="" selected>全部</option>
+                    <option value="1">正常</option>
+                    <option value="2">锁定</option>
+                    <option value="3">注销</option>
+                </select>
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="keyword" name="keyword" class="datacontrol easyui-textbox" placeholder="姓名/帐号/工号" data-options="prompt:'姓名/帐号/工号'" />
+            </td>
+        </tr>
+    </table>
+}
+
+<script type="text/javascript">
+    var lmtAdd = '@(lmtAdd ? "1" : "0")';
+    var lmtStroeRole = '@(lmtStroeRole ? "1" : "0")';
+    var hideSave = (lmtAdd == "1" ? false : true);
+
+    var fmthtml = "<a href='javascript:return false;' onclick='javascript:SettingStoreRole(\"{0}\", \"{1}\")'>[门店角色设置]</a>";
+
+    pharos.manager.geturl = "@Url.Action("GetUsers")";
+    pharos.manager.editurl = "@Url.Action("UserSave")";
+    pharos.manager.columns = [[
+        { field: 'FullName', title: '员工姓名', width: 80 },
+        { field: 'UserCode', title: '员工编号', width: 80 },
+        {
+            field: 'OperateAuth', title: '本店角色', width: 150
+        },
+        {
+            field: 'Stroes', title: '隶属门店', width: 150
+        },
+        {
+            field: 'Status', title: '在职状态', width: 80, formatter: function (value, row) {
+                var result = "<span>";
+                switch (value) {
+                    case 1:
+                        result += "正常";
+                        break;
+                    case 2:
+                        result += "锁定";
+                        break;
+                    case 3:
+                        result += "注销";
+                        break;
+                }
+                result += "</span>";
+                return result;
+
+            }
+        },
+        { field: 'LoginDT', title: '最近登录时间', width: 140 },
+        { field: 'CreateDT', title: '创建时间', width: 140 },
+        {
+            field: 'Operat', title: '操作', width: 140, formatter: function (value, row) {
+                var html = "";
+                if (lmtStroeRole == "1") {
+                    html += String.format(fmthtml, [row.Id, row.UID]);
+                }
+                return html;
+            }
+        }
+    ]];
+    pharos.manager.addItem = function () {
+        openWin({ 'title': this.addText, 'width': 600, 'height': 400, hideSave: hideSave, 'url': this.editurl });
+    }
+    pharos.manager.editItem = function (Id) {
+        this.Id = Id;
+        openWin({ 'title': this.editText, 'width': 600, 'height': 400, hideSave: hideSave, 'url': this.editurlNocache() });
+    }
+    function SettingStoreRole(id, uid) {
+        openWin({ 'title': "用户门店角色设置", 'width': 800, 'height': 600, hideSave: hideSave, 'url': '@Url.Action("UserSettingStoreRole")?id=' + id + "&uid=" + uid });
+    }
+    function editBefore(rowData, field, index, value) {
+        if (field == "Operat") {
+            return false;
+        }
+        return true;
+    }
+</script>
+<script src="~/Scripts/Cascade.js"></script>
+<script>
+    cascade.callback = function (key, data) {
+        switch (key) {
+            case "Department":
+                $("#departmentId option").remove();
+                for (var i in data) {
+                    var node = $("<option></option>").val(data[i]["Value"]).text(data[i]["Text"]);
+                    $("#departmentId").append(node);
+
+                }
+                break;
+        }
+        resetSelect();
+    }
+    if ($("#departmentId option").length <= 0) {
+        $("[cascade]").change();
+    }
+    function resetSelect() {
+        $("select").each(function (index, node) {
+            $(node).find("option[value='" + $(node).attr("current") + "']").attr("selected", true);
+        })
+    }
+    resetSelect();
+</script>
+<script type="text/javascript">
+    function orgSelect() {
+        $("#departmentId").combobox("setValue", '');
+        $("#departmentId").combobox("loadData", []);
+        var pDepId = $('#organizationId').combobox('getValue');
+        $.ajax({
+            type: 'post',
+            url: '@Url.Action("GetDepsEasyuiDropdown", "Common")?selecttype=1',
+            data: { pDepId: pDepId },
+            success: function (data) {
+                $("#departmentId").combobox("loadData", data);
+            }
+        })
+    }
+</script>

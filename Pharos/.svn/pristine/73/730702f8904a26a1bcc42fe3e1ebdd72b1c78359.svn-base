@@ -1,0 +1,309 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using System.Collections.Specialized;
+using Pharos.Utility.Helpers;
+using Pharos.Utility;
+using Pharos.Sys.Entity;
+
+namespace Pharos.Logic.BLL
+{
+    public class BreakageGoodsBLL : BaseService<BreakageGoods>
+    {
+        /// <summary>
+        /// 获取报损单信息
+        /// </summary>
+        /// <param name="nvl">传递条件</param>
+        /// <param name="recordCount">返回总行数</param>
+        /// <returns>list</returns>
+        public static object FindBreakageGoodsList(NameValueCollection nvl, out int recordCount)
+        {
+            var queryBreakageGoods = BaseService<BreakageGoods>.CurrentRepository.QueryEntity;
+            var queryBreakageList = BaseService<BreakageList>.CurrentRepository.QueryEntity;
+            var queryWarehouse = BaseService<Warehouse>.CurrentRepository.QueryEntity;
+            var queryUser = UserInfoService.CurrentRepository.QueryEntity;
+            var querySupplier = BaseService<Supplier>.CurrentRepository.QueryEntity.Where(o => o.BusinessType == 2);
+
+            var groupbyBreakageList = from a in queryBreakageList
+                                      group a by a.BreakageGoodsId into g
+                                      select new
+                                      {
+                                          g.Key,
+                                          BreakagePrice = g.Sum(a => a.BreakagePrice * a.BreakageNumber),
+                                          BreakageNumber = g.Sum(a => a.BreakageNumber)
+                                      };
+
+            var query = from x in queryBreakageGoods
+                        join y in groupbyBreakageList on x.BreakageGoodsId equals y.Key
+                        join s in queryWarehouse on x.StoreId equals s.StoreId into temp1
+                        from z in temp1.DefaultIfEmpty()
+                        join l in queryUser on x.OperatorUID equals l.UID into temp2
+                        from m in temp2.DefaultIfEmpty()
+
+                        select new
+                        {
+                            x.Id,
+                            x.BreakageGoodsId,
+                            x.StoreId,
+                            StoreTitle = z.Title,
+                            y.BreakagePrice,
+                            y.BreakageNumber,
+                            x.CreateDT,
+                            x.OperatorUID,
+                            Operator = m.FullName,
+                            x.State,
+                            x.BreakageType
+                        };
+
+            var Store = nvl["Store"];
+            var State = nvl["State"];
+            var StartDate = nvl["StartDate"];
+            var EndDate = nvl["EndDate"];
+
+            if (!Store.IsNullOrEmpty())
+            {
+                query = query.Where(o => o.StoreId == Store);
+            }
+            if (!State.IsNullOrEmpty())
+            {
+                var breakageStateValue = short.Parse(State);
+                query = query.Where(o => o.State == breakageStateValue);
+            }
+            if (!StartDate.IsNullOrEmpty())
+            {
+                var st1 = DateTime.Parse(StartDate);
+                query = query.Where(o => o.CreateDT >= st1);
+            }
+            if (!EndDate.IsNullOrEmpty())
+            {
+                var st2 = DateTime.Parse(EndDate).AddDays(1);
+                query = query.Where(o => o.CreateDT < st2);
+            }
+            recordCount = query.Count();
+            return query.ToPageList(nvl).Select(o => new
+            {
+                o.Id,
+                o.StoreId,
+                o.StoreTitle,
+                BreakagePrice = o.BreakagePrice.ToString("f2"),
+                o.BreakageNumber,
+                o.CreateDT,
+                o.BreakageGoodsId,
+                CreateDTStr = o.CreateDT.ToString("yyyy-MM-dd"),
+                o.OperatorUID,
+                o.Operator,
+                o.State,
+                StateTitle = Enum.GetName(typeof(BreakageState), o.State),
+                o.BreakageType,
+                BreakageTypeTitle = Enum.GetName(typeof(BreakageType),o.BreakageType)
+            });
+        }
+
+        /// <summary>
+        /// 级联删除报损单记录
+        /// </summary>
+        /// <param name="Ids">BreakageGoods主键ID</param>
+        /// <returns>执行结果</returns>
+        public static OpResult DeleteBreakageGoodById(string[] ids)
+        {
+            var op = new OpResult();
+            try
+            {
+                var queryBreakageGoods = BaseService<BreakageGoods>.CurrentRepository;
+                var queryBreakageList = BaseService<BreakageList>.CurrentRepository;
+                var breakageGoods = queryBreakageGoods.FindList(o => ids.Contains(o.Id.ToString())).ToList();
+                if (breakageGoods.Any(o => o.State == 1))
+                {
+                    var goods = breakageGoods.Where(o => o.State == 1).FirstOrDefault();
+                    op.Message = string.Format("报损单：{0}为已审状态，无法删除", goods.BreakageGoodsId);
+                    return op;
+                }
+                var breakageGoodIds = breakageGoods.Select(o => o.BreakageGoodsId).ToList();
+                var breakageGoodLists = new List<BreakageList>();
+                foreach (var breakageGoodsId in breakageGoodIds)
+                {
+                    var breakageGoodList = queryBreakageList.FindList(o => o.BreakageGoodsId == breakageGoodsId);
+                    if (breakageGoodList.Count() > 0)
+                        breakageGoodLists.AddRange(breakageGoodList);
+                }
+                queryBreakageList.RemoveRange(breakageGoodLists, false);
+                queryBreakageGoods.RemoveRange(breakageGoods, true);
+
+                op.Successed = true;
+            }
+            catch (Exception ex)
+            {
+                op.Message = ex.Message;
+                Log.WriteError("删除失败", ex);
+            }
+            return op;
+        }
+
+        /// <summary>
+        /// 保存报损清单
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static OpResult SaveOrUpdate(BreakageGoods obj)
+        {
+            var re = new OpResult();
+            try
+            {
+                var details = new List<BreakageList>();
+                var breakageGoodsId = Logic.CommonRules.BreakageSN;
+                if (!string.IsNullOrWhiteSpace(obj.Rows))
+                {
+                    var adds = obj.Rows.ToObject<List<BreakageList>>();
+                    if (adds.Any())
+                        details.AddRange(adds.Where(o => !string.IsNullOrWhiteSpace(o.Barcode)));
+                }
+                //判断出库的商品是否有库存记录
+                //var stockNums = CommodityService.GetStockNumsByStoreId(obj.StoreId);
+                //foreach (var d in details)
+                //{
+                //    var stockNum = stockNums.FirstOrDefault(o => o.Key == d.Barcode);
+                //    if (stockNum.Value == 0 && string.IsNullOrEmpty(stockNum.Key))
+                //    {
+                //        re.Message = string.Format("条码：{0} 不存在库存记录，无法报损", d.Barcode);
+                //        return re;
+                //    }
+                //}
+                if (obj.Id == 0)
+                {//新增
+                    obj.BreakageGoodsId = breakageGoodsId;
+                    obj.State = 0;
+                    foreach (var d in details)
+                    {
+                        d.BreakageGoodsId = breakageGoodsId;
+                    }
+                    BaseService<BreakageList>.CurrentRepository.AddRange(details, false);
+                    re = Add(obj, true);
+                }
+                else
+                {//编辑
+                    var breakage = FindById(obj.Id);
+                    breakage.StoreId = obj.StoreId;
+                    breakage.OperatorUID = obj.OperatorUID;
+                    breakage.CreateDT = obj.CreateDT;
+                    breakage.Memo = obj.Memo;
+                    foreach (var d in details)
+                    {
+                        d.BreakageGoodsId = breakage.BreakageGoodsId;
+                    }
+                    var oldBreakageList = BaseService<BreakageList>.CurrentRepository.FindList(o => o.BreakageGoodsId == breakage.BreakageGoodsId).ToList();
+                    BaseService<BreakageList>.CurrentRepository.RemoveRange(oldBreakageList, false);
+                    BaseService<BreakageList>.CurrentRepository.AddRange(details, false);
+                    re = Update(breakage, true);
+
+
+                }
+            }
+            catch (Exception ex)
+            {
+                re.Message = ex.Message;
+            }
+            return re;
+        }
+        /// <summary>
+        /// 设置报损单为已审状态
+        /// </summary>
+        /// <param name="Ids"></param>
+        /// <returns></returns>
+        public static OpResult SetBreakageGoodsStateToChecked(string Ids)
+        {
+            var re = new OpResult();
+            try
+            {
+                var ids = Ids.Split(',').Select(o => o.ToString());
+                var goods = BaseService<BreakageGoods>.FindList(o => ids.Contains(o.Id.ToString()));
+                var breakageGoodsIds = goods.Select(o => o.BreakageGoodsId).ToList();
+                var list = BaseService<BreakageList>.FindList(o => breakageGoodsIds.Contains(o.BreakageGoodsId));
+                if (goods.Any(o => o.State == 1))
+                {
+                    var goodsChecked = goods.Where(o => o.State == 1).FirstOrDefault();
+                    re.Message = string.Format("报损单：{0} 已为已审状态", goodsChecked.BreakageGoodsId);
+                    return re;
+                }
+                #region 从商品库中扣除相应库存
+                var storeIds = goods.GroupBy(o => o.StoreId).Select(o => o.Key).ToList();
+                var invents = new List<InventoryRecord>();
+                foreach (var storeId in storeIds)
+                {
+                    var breakageGoodsGroupbyStore = goods.Where(o => o.StoreId == storeId).ToList();
+                    var breakageGoodIdsGroupbyStore = breakageGoodsGroupbyStore.Select(o => o.BreakageGoodsId).ToList();
+                    var breakageListGroupbyStore = list.Where(o => breakageGoodIdsGroupbyStore.Contains(o.BreakageGoodsId)).ToList();
+                    var datas = (from a in breakageListGroupbyStore
+                                 group a by a.Barcode into g
+                                 select new
+                                 {
+                                     g.Key,
+                                     BreakageNumber = g.Sum(o => o.BreakageNumber)
+                                 }).ToDictionary(o => o.Key, o => o.BreakageNumber);
+                    //判断出库的商品是否有库存记录
+                    //var stockNums = CommodityService.GetStockNumsByStoreId(storeId);
+                    //foreach (var d in datas)
+                    //{
+                    //    var stockNum = stockNums.FirstOrDefault(o => o.Key == d.Key);
+                    //    if (stockNum.Value == 0 && string.IsNullOrEmpty(stockNum.Key))
+                    //    {
+                    //        re.Message = string.Format("条码：{0} 不存在库存记录，无法报损", d.Key);
+                    //        return re;
+                    //    }
+                    //}
+                    //扣除库存
+                    //var updateReusult = CommodityService.OutBoundReduceStock(datas, storeId);
+                    //更新状态
+
+                    foreach(var d in datas)
+                    {
+                        invents.Add(new InventoryRecord() { Barcode = d.Key, StoreId = storeId, Number = d.Value, Source = 16 });
+                    }
+                    breakageGoodsGroupbyStore.ForEach(o => { o.State = 1; });
+                    breakageListGroupbyStore.ForEach(o => { o.State = 1; });
+                }
+                InventoryRecordService.SaveLog(invents);
+                re= BaseService<BreakageGoods>.Update(goods);
+                #endregion
+            }
+            catch (Exception ex)
+            {
+                re.Message = ex.Message;
+            }
+            return re;
+        }
+
+        /// <summary>
+        /// 获得报损单单明细
+        /// </summary>
+        /// <param name="inboundGoodsId"></param>
+        /// <returns></returns>
+        public static object GetBreakageListByBreakageGoodId(string breakageGoodsId, out int recordCount)
+        {
+            var queryBreakageListList = BaseService<BreakageList>.CurrentRepository.QueryEntity;
+            var queryProduct = BaseService<VwProduct>.CurrentRepository.QueryEntity;
+            var queryData = BaseService<SysDataDictionary>.CurrentRepository.QueryEntity;
+            var query = from x in queryBreakageListList
+                        from y in queryProduct
+                        where x.BreakageGoodsId == breakageGoodsId && (y.Barcode == x.Barcode || y.Barcodes.Contains(x.Barcode)) 
+                        select new
+                        {
+                            y.ProductCode,
+                            y.Title,
+                            x.Barcode,
+                            y.SubUnitId,
+                            x.BreakagePrice,
+                            Price = y.SysPrice,
+                            x.BreakageNumber,
+                            Subtotal = x.BreakagePrice * x.BreakageNumber,
+                            x.Id,
+                            SubUnit=y.SubUnit
+                        };
+
+            recordCount = query.Count();
+            var sql = query.ToString();
+            return query.ToPageList();
+        }    
+    }
+}

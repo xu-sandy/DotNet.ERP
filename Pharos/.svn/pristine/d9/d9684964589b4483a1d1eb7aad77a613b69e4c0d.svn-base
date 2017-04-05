@@ -1,0 +1,54 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility;
+
+namespace Pharos.Logic.BLL
+{
+    public class MembershipCardBLL
+    {
+        private readonly MembershipCardService _service = new MembershipCardService();
+        public object FindMembershipCardPageList(string type, short? state, int beOverdue, DateTime? dueTimeStart, DateTime? dueTimeEnd, string keyWord, out int count)
+        {
+            return _service.FindMembershipCardPageList(type, state, beOverdue, dueTimeStart, dueTimeEnd, keyWord, out count);
+        }
+
+        public OpResult UpdateMemberCardState(short state, string ids)
+        {
+            return _service.UpdateMemberCardState(state, ids);
+        }
+
+        public object UpdateCardType(string type, string ids)
+        {
+            return _service.UpdateCardType(type, ids);
+        }
+
+        public Entity.MembershipCard FindMembershipCardById(int id)
+        {
+            return MembershipCardService.FindById(id);
+        }
+
+        public OpResult CreateOrUpdateMembershipCard(Entity.MembershipCard _membershipCard)
+        {
+            if (_membershipCard.Id == 0)
+            {
+                return MembershipCardService.Add(_membershipCard);
+            }
+            else
+            {
+                return _service.BindMembershipCard(_membershipCard);
+            }
+        }
+
+        public object GetMembersCardByCardSn(string cardSN)
+        {
+            return _service.GetMembersCardByCardSn(cardSN);
+        }
+
+        public object GetMemberCardByContainsParam(string param)
+        {
+            return _service.GetMemberCardByContainsParam(param);
+        }
+    }
+}

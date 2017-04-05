@@ -1,0 +1,87 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(hideAdd: true, hideDel: true, hideEdit: true));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <label>月份：</label>
+            </td>
+            <td class="input-toolbar">
+                <input name="date" class="datacontrol Wdate" onclick="WdatePicker({dateFmt: 'yyyy-MM', isShowToday: false})" value="@DateTime.Now.ToString("yyyy-MM")" />
+            </td>
+            <td class="label-toolbar">
+                <label>门店：</label>
+            </td>
+            <td class="input-toolbar">
+                @Form.Combobox("store", ViewBag.stores as List<SelectListItem>, dataOptions: (CurrentUser.IsStore ? "readonly:true," : "") + "editable:false,panelHeight:'auto',panelMaxHeight:200")
+            </td>
+        </tr>
+    </table>
+}
+@section toolbar
+{
+    <a href="#" class="easyui-linkbutton cus1 linkbtn" data-options="iconCls:'icon-export'" onclick="Export()">导出Excel</a>
+}
+
+<script type="text/javascript">
+    pharos.manager.geturl = '@Url.Action("QueryBigCategorySummaryPageList")';
+    pharos.manager.pagination = false;
+    pharos.manager.showFooter = true;
+    var firstTrColumns = [];
+    var secondTrColumns = [];
+    firstTrColumns.push(
+            { field: 'CategoryTitle', title: '大类/中类', width: 150, rowspan: 2 },
+            { field: '', title: '销售金额', width: 150, colspan: 2 },
+            { field: 'SaleYOY', title: '同比', width: 50, rowspan: 2 },
+            { field: '', title: '毛利率', width: 150, colspan: 2 },
+            { field: 'JMLLYOY', title: '同比', width: 50, rowspan: 2 },
+            { field: '', title: '毛利额', width: 150, colspan: 2 },
+            { field: 'JMLYOY', title: '同比', width: 50, rowspan: 2 }
+        );
+    secondTrColumns.push(
+                { field: 'SameSaleTotal', title: '', width: 75 },
+                { field: 'SaleTotal', title: '', width: 75 },
+                { field: 'SameJMLL', title: '', width: 75 },
+                { field: 'JMLL', title: '', width: 75 },
+                { field: 'SameJML', title: '', width: 75 },
+                { field: 'JML', title: '', width: 75 }
+        );
+    pharos.manager.columns = [firstTrColumns, secondTrColumns];
+
+    pharos.manager.loadSuccess = function () {
+        var timeTitle = getTimeTitle();
+        var sameTimeTitle = getSameTimeTitle()
+        pharos.manager.$dg.datagrid("setColumnTitle", { field: 'SaleTotal', text: timeTitle });
+        pharos.manager.$dg.datagrid("setColumnTitle", { field: 'JMLL', text: timeTitle });
+        pharos.manager.$dg.datagrid("setColumnTitle", { field: 'JML', text: timeTitle });
+        pharos.manager.$dg.datagrid("setColumnTitle", { field: 'SameSaleTotal', text: sameTimeTitle });
+        pharos.manager.$dg.datagrid("setColumnTitle", { field: 'SameJMLL', text: sameTimeTitle });
+        pharos.manager.$dg.datagrid("setColumnTitle", { field: 'SameJML', text: sameTimeTitle });
+
+        
+    }
+    function Export() {
+        var date = $("[name='date']").val();
+        if (!date) {
+            $.messager.alert("提示", "请先选择日期!"); return;
+        }
+        window.location.href = '@Url.Action("BigCategorySummaryExport")?' + $('#frmsearch').serialize();
+
+    }
+
+    function getTimeTitle() {
+        var date = $("[name='date']").val();
+        var dateArr = date.split('-');
+        return dateArr = dateArr[0] + "年" + dateArr[1] + "月";
+    }
+
+    function getSameTimeTitle() {
+        var date = $("[name='date']").val();
+        var dateArr = date.split('-');
+        return dateArr = (Number(dateArr[0]) - 1) + "年" + dateArr[1] + "月";
+    }
+</script>

@@ -1,0 +1,166 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using Pharos.DBFramework;
+using Pharos.Sys.DAL;
+using Pharos.Sys.Entity;
+using Pharos.Sys.EntityExtend;
+
+namespace Pharos.Sys.DAL
+{
+    /// <summary>
+    /// 权限-数据访问层
+    /// </summary>
+    internal class SysLimitisDAL : BaseSysEntityDAL<SysLimits>
+    {
+        public SysLimitisDAL() : base("SysLimits") { }
+
+        /// <summary>
+        /// 新增权限
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal int Insert(SysLimits model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@title", model.Title),
+                    new SqlParameter("@limitid", model.LimitId),
+                    new SqlParameter("@plimitid", model.PLimitId),
+                    new SqlParameter("@depth", model.Depth),
+                    new SqlParameter("@status", model.Status),
+                    new SqlParameter("@CompanyId",model.CompanyId)
+                                   };
+
+            StringBuilder sql = new StringBuilder();
+            sql.AppendFormat("insert into {0} (title,limitid,plimitid,depth,[status],CompanyId) ", TableName);
+            sql.Append(" select a.title,a.limitid,a.plimitid,isnull(b.depth,0)+1,a.[status],a.CompanyId ");
+            sql.Append(" from (select @title title,@limitid limitid,@plimitid plimitid,@status status,@CompanyId CompanyId) a");
+            sql.Append(" left join (select top 1 depth,limitid from SysLimits where limitid=@plimitid) b  on b.limitid=a.plimitid");
+            sql.Append(";select @@IDENTITY");
+
+            object obj = DbHelper.ExecuteScalarText(sql.ToString(), parms);
+            return (obj == null) ? 0 : Convert.ToInt32(obj);
+        }
+        /// <summary>
+        /// 更新权限
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal bool Update(SysLimits model)
+        {
+            SqlParameter[] parms = {
+                    new SqlParameter("@id", model.Id),
+                    new SqlParameter("@title", model.Title),
+                    new SqlParameter("@plimitid", model.PLimitId),
+                    new SqlParameter("@status", model.Status)};
+             
+            var result = DbHelper.ExecuteScalar("Sys_UpdateSysLimit", parms);
+
+            var obj = (result == null) ? false : Convert.ToInt32(result) > 0;
+            return obj;
+            //return result > 0 ? true : false;
+        }
+        /// <summary>
+        /// 获得权限列表
+        /// </summary>
+        /// <returns></returns>
+        internal List<SysLimitsExt> GetList()
+        {
+            string sql = string.Format("select Id,Title,LimitId,PLimitId,Depth,[Status] from {0} where Status!=0", TableName);
+
+            var result = DbHelper.DataTableText<SysLimitsExt>(sql, null);
+
+            return result;
+        }
+        /// <summary>
+        /// 获得权限列表
+        /// </summary>
+        /// <returns></returns>
+        internal List<SysLimitsExt> GetRoleLimitList()
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@id", "")
+				};
+
+            var result = DbHelper.DataTable<SysLimitsExt>("Sys_AllLimitList", parms);
+
+            return result;
+        }
+        /// <summary>
+        /// 根据Id获得权限列表
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        internal SysLimitsExt GetExtModel(int id)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@id", id)};
+
+            string sql = string.Format("select * from {0} where [id]=@id", TableName);
+
+            var objs = DbHelper.DataTableText<SysLimitsExt>(sql, parms);
+            if (objs != null && objs.Count > 0)
+                return objs[0];
+            else
+                return null;
+        }
+        /// <summary>
+        /// 更新权限状态
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        internal bool UpdateStatus(SysLimits model)
+        {
+            SqlParameter[] parameters = {
+                    new SqlParameter("@id", model.Id),
+                    new SqlParameter("@status", model.Status)};
+
+            string sql = string.Format("update {0} set status=@status where id=@id", TableName);
+
+            int rows = DbHelper.ExecuteNonQueryText(sql, parameters);
+
+            return rows > 0 ? true : false;
+        }
+        /// <summary>
+        /// 判断权限是否存在
+        /// </summary>
+        /// <param name="sn"></param>
+        /// <param name="notId"></param>
+        /// <returns></returns>
+        internal bool Exists(string sn, int notId)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@sn", sn),
+					new SqlParameter("@notId", notId)};
+
+            string sql = string.Format("select count(1) from {0} where [sn]=@sn and [id]<>@notId", TableName);
+
+            var result = DbHelper.ExecuteNonQueryText(sql, parms);
+            return result > 0;
+        }
+        internal bool ExistsTitle(SysLimits model)
+        {
+            SqlParameter[] parms = {
+					new SqlParameter("@LimitId" , model.LimitId),
+					new SqlParameter("@Title" , model.Title),
+                    new SqlParameter("@PLimitId" , model.PLimitId)};
+
+            string sql = string.Format("select count(1) from {0} where LimitId<>@LimitId and Title=@Title and PLimitId=@PLimitId", TableName);
+
+            var obj = DbHelper.ExecuteScalarText(sql, parms);
+
+            return (obj == null) ? false : Convert.ToInt32(obj) > 0;
+        }
+        /// <summary>
+        /// 获得权限下拉树的数据
+        /// </summary>
+        /// <returns></returns>
+        internal List<SysLimits> GetListBranches()
+        {
+            string sql = string.Format("SELECT * FROM {0} WHERE PId=0 OR Id in (SELECT Pid FROM dbo.SysLimits)", TableName);
+            return DbHelper.DataTableText<SysLimits>(sql, null);
+        }
+    }
+}

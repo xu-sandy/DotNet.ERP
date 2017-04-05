@@ -1,0 +1,49 @@
+﻿using Newtonsoft.Json;
+using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.IDAL;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Utility.Helpers;
+using QCT.Pay.Common.Helpers;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// 支付签名Service
+    /// </summary>
+    public class PaySignService
+    {
+        IBaseRepository<TradersPaySecretKey> TPSKRepost { get; set; }
+        /// <summary>
+        /// 验签（支持Qct Sxf）
+        /// </summary>
+        /// <param name="requestString"></param>
+        /// <returns></returns>
+        public bool VerifySign(string requestString)
+        {
+            var signObj = JsonConvert.DeserializeObject<Dictionary<string, object>>(requestString);
+            var secretKey = GetMerchSecretKeyByCID(signObj["mch_id"].ToType<int>());
+            var result = PaySignHelper.VerifySign(signObj, secretKey);
+            return result;
+        }
+
+        /// <summary>
+        /// 根据商户ID获取商户Key
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <returns></returns>
+        public string GetMerchSecretKeyByCID(int cid)
+        {
+            TPSKRepost = new BaseRepository<TradersPaySecretKey>();
+            var query = TPSKRepost.GetQuery(o => o.CID == cid && o.State == (short)TraderPayAccountState.Enabled);
+            var obj = query.FirstOrDefault();
+            if (obj != null)
+                return obj.SecretKey;
+            else
+                return string.Empty;
+        }
+    }
+}

@@ -1,0 +1,37 @@
+﻿@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+    ViewData.OpBtnInfo(new OpBtnInfo(addText: "新增支付接口", editText: "修改支付接口"));
+}
+
+@section search{
+    <table class="table-toolbar">
+        <tr>
+            <td class="label-toolbar">
+                <span>接口类型：</span>
+            </td>
+            <td class="input-toolbar">
+                @Html.DropDownList("ApiType", ViewBag.apiTypes as IList<SelectListItem>, new { @class="easyui-combobox",style="width:150px"})
+            </td>
+            <td class="label-toolbar">
+                <label>关键词：</label>
+            </td>
+            <td class="input-toolbar">
+                <input id="keyword" name="keyword" class="datacontrol easyui-textbox" placeholder="编码/名称" data-options="prompt:'编码/名称'" />
+            </td>
+        </tr>
+    </table>
+}
+<script type="text/javascript">
+    pharos.manager.geturl = "@Url.Action("ApiLibraryPageList")";
+    pharos.manager.editurl = "@Url.Action("ApiLibrarySave")";
+    pharos.manager.columns = [[
+        { field: 'Id', checkbox: true },
+        { field: 'ApiCode', title: '接口编码', width: 120 },
+        { field: 'Title', title: '接口名称', width: 120 },
+        { field: 'ApiTypeTitle', title: '接口类型', width: 120 },
+        { field: 'ApiUrl', title: '接口地址', width: 200 },
+        { field: 'State', title: '状态', width: 120, formatter: function (value, row, index) { return value == 0 ? "禁用" : "启用";}}
+    ]];
+
+</script>

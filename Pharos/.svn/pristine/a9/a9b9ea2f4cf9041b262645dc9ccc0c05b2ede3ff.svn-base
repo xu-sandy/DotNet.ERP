@@ -1,0 +1,114 @@
+﻿using Pharos.Logic.OMS.DAL;
+using Pharos.Logic.OMS.Entity;
+using Pharos.Logic.OMS.Entity.View;
+using Pharos.Logic.OMS.IDAL;
+using Pharos.Utility;
+using Pharos.Utility.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data;
+
+namespace Pharos.Logic.OMS.BLL
+{
+    /// <summary>
+    /// BLL商家门店
+    /// </summary>
+    public class TradersStoreService : BaseService<TradersStore>
+    {
+        // 代理商档案
+        [Ninject.Inject]
+        ITradersStoreRepository tRepository { get; set; }
+
+        public List<ViewTradersStore> GetPageList(System.Collections.Specialized.NameValueCollection nvl, out int recordCount)
+        {
+            ////指派人
+            //var AssignUid = (nvl["AssignUid"] ?? "").Trim();
+            ////代理商类型
+            //var Type = (nvl["Type"] ?? "").Trim();
+            ////创建日期（开始）
+            //var CreateDT_begin = (nvl["CreateDT_begin"] ?? "").Trim();
+            ////创建日期（结束）
+            //var CreateDT_end = (nvl["CreateDT_end"] ?? "").Trim();
+            ////关键字类型
+            //var keywordType = (nvl["keywordType"] ?? "").Trim();
+            ////关键字
+            //var keyword = (nvl["keyword"] ?? "").Trim();
+
+            var pageIndex = 1;
+            var pageSize = 20;
+            if (!nvl["page"].IsNullOrEmpty())
+                pageIndex = int.Parse(nvl["page"]);
+            if (!nvl["rows"].IsNullOrEmpty())
+                pageSize = int.Parse(nvl["rows"]);
+
+            string strw = "";
+
+            //if (!AssignUid.IsNullOrEmpty())
+            //{
+            //    string[] aUID = AssignUid.Split(',');
+            //    string newAUID = "";
+            //    if (aUID.Length > 0)
+            //    {
+            //        for (int i = 0; i < aUID.Length; i++)
+            //        {
+            //            if (newAUID == "")
+            //            {
+            //                newAUID = "'" + aUID[i] + "'";
+            //            }
+            //            else
+            //            {
+            //                newAUID = newAUID + ",'" + aUID[i] + "'";
+            //            }
+            //        }
+            //        strw = strw + " and a.AssignUid in (" + newAUID + ")";
+            //    }
+            //}
+
+            //if (!Type.IsNullOrEmpty())
+            //{
+            //    strw = strw + " and a.Type=" + Type;
+            //}
+
+            //if (!CreateDT_begin.IsNullOrEmpty())
+            //{
+            //    string c = CreateDT_begin + " " + "00:00:00";
+            //    strw = strw + " and a.CreateTime >='" + c + "'";
+            //}
+            //if (!CreateDT_end.IsNullOrEmpty())
+            //{
+            //    var c = CreateDT_end + " " + "23:59:59";
+            //    strw = strw + " and a.CreateTime <='" + c + "'";
+            //}
+
+            //if (!keywordType.IsNullOrEmpty() && !keyword.IsNullOrEmpty())
+            //{
+            //    if (keywordType == "0")
+            //    {
+            //        if (!IsNumber(keyword) || keyword.Length > 6)
+            //        {
+            //            keyword = "0";
+            //        }
+            //        strw = strw + " and a.AgentsId=" + keyword;
+            //    }
+            //    if (keywordType == "1")
+            //    {
+            //        strw = strw + " and a.FullName like '%" + keyword + "%'";
+            //    }
+            //    if (keywordType == "2")
+            //    {
+            //        strw = strw + " and a.CorporateName like '%" + keyword + "%'";
+            //    }
+            //    if (keywordType == "3")
+            //    {
+            //        strw = strw + " and a.LinkMan like '%" + keyword + "%'";
+            //    }
+            //}
+
+            List<ViewTradersStore> list = tRepository.getPageList(pageIndex, pageSize, strw, out recordCount);
+            return list;
+        }
+    }
+}

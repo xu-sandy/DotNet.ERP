@@ -1,0 +1,61 @@
+﻿@model Warehouse
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<style>
+    .left_td {
+        width: 100px;
+        text-align: right;
+    }
+
+    .right_td {
+        width: 200px;
+        text-align: left;
+    }
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <div class="content">
+            <table class ="table-form" width="100%">
+                <tr>
+                    <td class="name">门店名称：</td>
+                    <td class ="input">@Html.TextBoxFor(o => o.Title, new { @class = "easyui-textbox", data_options = "required:true,validType:'[length[0,30]',width:220" })</td>
+                </tr>
+                <tr>
+                    <td class="name">门店地址：</td>
+                    <td class="input">@Html.TextAreaFor(o => o.Address, new { @class = "easyui-validatebox", data_options = "validType:'[length[1,100]'", style = "width:205px;min-height:50px;" })</td>
+                </tr>
+                <tr>
+                    <td class="name">经营品类：</td>
+                    <td class="input choose">
+                        @Html.CheckBoxListFor(o => o.CategorySN, ViewBag.categorys as List<SelectListItem>, new { data_options = "required:true,missingMessage:'必勾选一项'", @class = "easyui-validatebox", id = "category" }, 5)
+                    </td>
+                </tr>
+                <tr>
+                    <td class="name">门店开放：</td>
+                    <td class="input">@Html.RadioButtonListFor(o => o.AdminState, new List<SelectListItem>() { new SelectListItem(){Value="1",Text="开放",Selected=true},new SelectListItem(){Value="0",Text="关闭"}})</td>
+                </tr>
+            </table>
+        </div>
+    }
+</div>
+
+
+
+<script type="text/javascript">
+    $(function () {
+        storeRequired();
+    })
+    function storeRequired() {
+        if ($("[name='CategorySN']:checked").size() <= 0)
+            $("#category").validatebox("enableValidation");
+        else
+            $("#category").validatebox("disableValidation");
+    }
+    function SaveBefore() {
+        storeRequired();
+        return true;
+    }
+</script>

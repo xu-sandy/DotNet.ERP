@@ -1,0 +1,186 @@
+﻿@model Contract
+@{
+    ViewBag.Title = Pharos.Sys.SysConstPool.Page_Title;
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+    var jias = Model.ContractBoths.FirstOrDefault();
+    var yis = Model.ContractBoths.LastOrDefault();
+
+    var colcount = 2;
+    var i = 0;
+}
+
+<div class="default-form" style="min-width:900px; overflow:auto;">
+    @using (Html.BeginForm("ContractDetail", "Contract", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.HiddenFor(o => o.Id)
+        <div class="ContractBox">
+            <div class="ContractListTitle">基本信息：</div>
+            <div class="ContractlistItem">
+                <label>合同名称：</label>
+                @Html.DisplayTextFor(o => o.Title)
+            </div>
+            <div class="ContractlistItem">
+                <label>合同编号：</label>
+                @Html.DisplayTextFor(o => o.ContractSN)
+            </div>
+            <div class="ContractlistItem">
+                <label>合同分类：</label>
+                <div class="input">
+                    @Html.DisplayText("Classify")
+                </div>
+            </div>
+            <div class="ContractlistItem">
+                <label>版本类型：</label>
+                @ViewBag.Version
+            </div>
+            <div class="ContractlistItem">
+                <label>供应商号：</label>
+                @Html.DisplayText("SupplierTitle")
+            </div>
+            <div class="ContractlistItem">
+                <label>签订日期：</label>
+                @Html.DisplayTextFor(o => o.SigningDate)
+            </div>
+            <div class="ContractlistItem">
+                <label>生效日期：</label>
+                @Html.DisplayTextFor(o => o.StartDate)
+            </div>
+            <div class="ContractlistItem">
+                <label>结束日期：</label>
+                @Html.ValueFor(o => o.EndDate, "{0:yyyy-MM-dd}")
+            </div>
+        </div>
+        @Html.Hidden("detailId", jias.Id)
+        <div class="ContractBox">
+            <div class="ContractListTitle">甲方信息：</div>
+            <div class="ContractlistItem">
+                <label>甲方简称：</label>
+                <label style="width:150px; text-align:left; float:left;">@jias.CompanyName</label>
+                <input type="hidden" name="CompanyName" value="@jias.CompanyName" />
+            </div>
+            <div class="ContractlistItem">
+                <label>甲方代表：</label>
+                <label style="width:150px; text-align:left; float:left;">@jias.Representative</label>
+                <input type="hidden" name="Representative" value="@jias.Representative" />
+            </div>
+            <div class="ContractlistItem">
+                <label>电话：</label>
+                <label style="width:150px; text-align:left; float:left;">@jias.Tel</label>
+                <input type="hidden" name="Tel" value="jias.Tel" />
+            </div>
+            <div class="ContractlistItem">
+                <label>传真：</label>
+                <label style="width:150px; text-align:left; float:left;">@jias.Fax</label>
+                <input type="hidden" name="Fax" value="jias.Fax" />
+            </div>
+            <div class="ContractlistItem">
+                <label>税号：</label>
+                <label style="width:150px; text-align:left; float:left;">@jias.TaxNumber</label>
+                <input type="hidden" name="TaxNumber" value="jias.TaxNumber" />
+            </div>
+            <div class="ContractlistItem">
+                <label>网址：</label>
+                <label style="width:150px; text-align:left; float:left;">@jias.Url</label>
+                <input type="hidden" name="Url" value="jias.Url" />
+            </div>
+            <div class="ContractlistItem">
+                <label>地址：</label>
+                <label style="width:150px; text-align:left; float:left;">@jias.Address</label>
+                <input type="hidden" name="Address" value="jias.Address" />
+            </div>
+            <div class="ContractlistItem">
+                <label>邮编：</label>
+                <label style="width:150px; text-align:left; float:left;">@jias.PostCode</label>
+                <input type="hidden" name="PostCode" value="jias.PostCode" />
+            </div>
+            <div class="ContractlistItem_big">
+                <label>开户银行：</label>
+                <label style="width:150px; text-align:left; float:left;">@jias.BankName</label>
+                <input type="hidden" name="BankName" value="jias.BankName" />
+            </div>
+            <div class="ContractlistItem_big">
+                <label>银行账号：</label>
+                <label style="width:150px; text-align:left; float:left;">@jias.BankAccount</label>
+                <input type="hidden" name="BankAccount" value="jias.BankAccount" />
+            </div>
+        </div>
+        @Html.Hidden("detailId", yis.Id)
+        <div class="ContractBox">
+            <div class="ContractListTitle">乙方信息：</div>
+            <div class="ContractlistItem">
+                <label>乙方全称：</label>
+                <label style="width:150px; text-align:left; float:left;">@yis.CompanyName</label>
+                <input type="hidden" name="CompanyName" value="@yis.CompanyName" />
+            </div>
+            <div class="ContractlistItem">
+                <label>乙方代表：</label>
+                <label style="width:150px; text-align:left; float:left;">@yis.Representative</label>
+                <input type="hidden" name="Representative" value="@yis.Representative" />
+            </div>
+            <div class="ContractlistItem">
+                <label>电话：</label>
+                <label style="width:150px; text-align:left; float:left;">@yis.Tel</label>
+                <input type="hidden" name="Tel" value="@yis.Tel" />
+            </div>
+            <div class="ContractlistItem">
+                <label>传真：</label>
+                <label style="width:150px; text-align:left; float:left;">@yis.Fax</label>
+                <input type="hidden" name="Fax" value="@yis.Fax" />
+            </div>
+            <div class="ContractlistItem">
+                <label>支付行号：</label>
+                <label style="width:150px; text-align:left; float:left;">@yis.PayNumber</label>
+                <input type="hidden" name="PayNumber" value="@yis.PayNumber" />
+            </div>
+            <div class="ContractlistItem">
+                <label>网址：</label>
+                <label style="width:150px; text-align:left; float:left;">@yis.Url</label>
+                <input type="hidden" name="Url" value="@yis.Url" />
+            </div>
+            <div class="ContractlistItem">
+                <label>地址：</label>
+                <label style="width:150px; text-align:left; float:left;">@yis.Address</label>
+                <input type="hidden" name="Address" value="@yis.Address" />
+            </div>
+            <div class="ContractlistItem">
+                <label>邮编：</label>
+                <label style="width:150px; text-align:left; float:left;">@yis.PostCode</label>
+                <input type="hidden" name="PostCode" value="@yis.PostCode" />
+            </div>
+            <div class="ContractlistItem_big">
+                <label>开户银行：</label>
+                <label style="width:150px; text-align:left; float:left;">@yis.BankName</label>
+                <input type="hidden" name="BankName" value="@yis.BankName" />
+            </div>
+            <div class="ContractlistItem_big">
+                <label>银行账号：</label>
+                <label style="width:150px; text-align:left; float:left;">@yis.BankAccount</label>
+                <input type="hidden" name="BankAccount" value="@yis.BankAccount" />
+            </div>
+        </div>
+   
+        <div class="ContractBox" style="border-bottom:0; " >
+            <div class="ContractListTitle" >相关附件：</div>
+
+            @if (Model.Attachments != null)
+            {
+            <table class="ListPartial">
+                <tr>
+                    @foreach (var file in Model.Attachments)
+                    {
+                        if (i == colcount)
+                        {
+                            ViewContext.Writer.Write("</tr><tr>");
+                            i = 0;
+                        }
+                        <td><a href="@Url.Action("DownFile", "Attach", new { id=file.Id})">@file.Title</a></td>
+                        i++;
+                    }
+                </tr>
+            </table>
+            }
+        </div>
+
+    }
+</div>
+

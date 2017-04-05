@@ -1,0 +1,106 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Pharos.POS.Retailing.Models;
+using Pharos.POS.Retailing.Models.PosModels;
+
+namespace Pharos.POS.Retailing.Devices.POSDevices
+{
+    /// <summary>
+    /// ME31
+    /// </summary>
+    public class NewLandPOSDevice
+    {
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int OpenComm(int lPComPort, long lPBaudRate, int timeout);
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int CloseComm();
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int SendReq(int nReqInfoLen, string ReqInfo);
+        [DllImport("UnitPad_dll.dll")]
+        public extern static int RecvResp([MarshalAs(UnmanagedType.LPStr)] StringBuilder RecvInfo);
+
+        public bool DoPay(int type, decimal amount, int saleId, int OrderSn, out string msg, ref string cardno, ref string cardName, string old_trace = "", string old_Datetime = "", string old_authCode = "", string old_Refno = "", string remark = "", int timeout = 600)
+        {
+            try
+            {
+                var result = 0;
+                result = OpenComm(Global.MachineSettings.DevicesSettingsConfiguration.POSCOM, Global.MachineSettings.DevicesSettingsConfiguration.POSCOMRate, 5000);
+                var code = string.Empty;
+                var machineSn = Global.MachineSettings.MachineInformations.MachineSn;
+
+                switch (type)
+                {
+                    case 0:
+                        code = "00";
+                        break;
+                    case 1:
+                        code = "20";
+                        break;
+                }
+                if (result < 0)
+                {
+                    msg = "支付失败，未能打开设备！";
+                }
+                var reqInfo = string.Format("{10}{0:000000000000}{1,8}{2:0000}{3:MMddHHmmss}{4:00000000000000000000}{5,6}{6,10}{7,6}{8,12}{9,20}", Math.Round(amount * 100), machineSn, saleId, DateTime.Now, OrderSn, old_trace, old_Datetime, old_authCode, old_Refno, remark, code);
+                result = SendReq(110, reqInfo);
+                if (result < 0)
+                {
+                    msg = "请求支付失败！";
+                }
+                var timeoutCounter = 0;
+                StringBuilder info = new StringBuilder(200);
+                while (true)
+                {
+                    try
+                    {
+                        result = RecvResp(info);
+                        if (result > 0)
+                        {
+                            var returnStr = info.ToString();
+                            var isSuccessCode = returnStr.Substring(2, 2);
+                            if (isSuccessCode == "00")
+                            {
+                                cardno = returnStr.Substring(4, 10);
+                                cardno = cardno.Insert(6, "***");
+                                cardName = returnStr.Substring(14, 10);
+                            }
+                            else
+                            {
+                                msg = "支付失败或者支付取消！";
+                                CloseComm();
+                                return false;
+                            }
+                            break;
+                        }
+                        else if (timeoutCounter >= timeout)
+                        {
+                            msg = "等待支付超时！";
+                            CloseComm();
+                            return false;
+                        }
+                        Thread.Sleep(1000);
+                        timeoutCounter++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Write(ex.Message);
+                    }
+                }
+                CloseComm();
+                msg = string.Format("成功支付{0:N}元！", amount);
+                return false;
+            }
+            catch
+            {
+                CloseComm();
+                msg = " 支付请求失败！";
+                return false;
+            }
+        }
+    }
+}

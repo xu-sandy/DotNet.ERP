@@ -1,0 +1,58 @@
+﻿using Pharos.Logic.BLL;
+using Pharos.Logic.DAL;
+using Pharos.Logic.ApiData.Pos.ValueObject;
+using Pharos.Sys.Entity;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Pharos.Logic.Entity;
+using Pharos.Logic.ApiData.Pos.User;
+
+namespace Pharos.Logic.ApiData.Pos.Services
+{
+    public class SysStoreUserInfoService : BaseGeneralService<SysStoreUserInfo, EFDbContext>
+    {
+
+        public static UserInfo GetStoreUserInfo(string account, string storeId, int token)
+        {
+
+            var query = CurrentRepository.Entities.Where(o => o.UserCode == account && o.CompanyId == token).Select(o => new UserInfo()
+            {
+                FullName = o.FullName,
+                LoginDT = o.LoginDT,
+                LoginPwd = o.LoginPwd,
+                OperateAuth = o.OperateAuth,
+                Sex = o.Sex,
+                UID = o.UID,
+                UserCode = o.UserCode
+            }).ToList();
+            var info = query.FirstOrDefault();
+            if (info != null)
+            {
+                var store = BaseService<Warehouse>.CurrentRepository.Entities.FirstOrDefault(o => o.StoreId == storeId && o.CompanyId == token);
+                if (store != null)
+                    info.StoreName = store.Title;
+                else
+                    info.StoreName = "未知门店";
+            }
+            return info;
+        }
+
+        public static IEnumerable<UserInfo> GetStoreManagers(string storeId, StoreOperateAuth storeOperateAuth)
+        {
+            var auth = ((int)storeOperateAuth).ToString();
+            var query = CurrentRepository.Entities.Where(o => o.OperateAuth.Contains(storeId + "," + auth)).Select(o => new UserInfo()
+             {
+                 FullName = o.FullName,
+                 LoginDT = o.LoginDT,
+                 LoginPwd = o.LoginPwd,
+                 OperateAuth = o.OperateAuth,
+                 Sex = o.Sex,
+                 UID = o.UID,
+                 UserCode = o.UserCode
+             }).ToList();
+            return query;
+        }
+    }
+}

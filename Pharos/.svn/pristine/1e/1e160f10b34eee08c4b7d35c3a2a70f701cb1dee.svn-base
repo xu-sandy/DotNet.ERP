@@ -1,0 +1,97 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Pharos.Logic.ApiData.Pos.Sale.Payment
+{
+    public class PaymentFactory
+    {
+        static PaymentFactory()
+        {
+            Settings();
+        }
+        public static void Settings()
+        {
+            try
+            {
+                // PayDict = new Dictionary<PayMode, dynamic>();
+                Register(new CashPay());
+                Register(new UnionPay());
+                Register(new WeixinPay());
+                Register(new ZhifubaoPay());
+                Register(new MultiplyPay());
+                Register(new CashCouponPay());
+                Register(new StoredValueCardPay());
+                Register(new Weixin2Pay());
+                Register(new Zhifubao2Pay());
+                Register(new WeiXin());
+                Register(new ZhiFuBao());
+                Register(new JiFuBao());
+            }
+            catch (Exception ex)
+            {
+                Console.Write(ex.Message);
+            }
+        }
+
+        static Dictionary<PayMode, dynamic> _PayDict = new Dictionary<PayMode, dynamic>();
+
+        static Dictionary<PayMode, dynamic> PayDict
+        {
+            get
+            {
+                return _PayDict;
+            }
+        }
+
+        public static IPay Factory(PayMode mode, IDictionary<PayMode, PayDetails> details, decimal receivable, Action<IPay> callBack = null)
+        {
+            if (PayDict == null || PayDict.Count == 0)
+                Settings();
+            IPay pay = Instance(PayDict[mode]);
+            if (mode == PayMode.Multiply)
+            {
+                var tempPay = pay as MultiplyPay;
+                tempPay.AllPayDetails = details;
+            }
+            else
+            {
+                pay.PayDetails = details.FirstOrDefault().Value;
+            }
+            if (callBack != null)
+                pay.CallBack = callBack;
+            return pay;
+        }
+        public static void Register<T>(T pay) where T : BasePay, new()
+        {
+            try
+            {
+                PayDict.Add(pay.Mode, pay);
+            }
+            catch { }
+        }
+
+        private static T Instance<T>(T pay) where T : BasePay, new()
+        {
+            return new T();
+        }
+        public static IEnumerable<IPay> GetPaysStatus(string storeId, int token)
+        {
+            if (PayDict.Values.Count == 0)
+            {
+                Settings();
+            }
+            else if (PayDict.Values.Count != 9)
+            {
+                PayDict.Clear();
+                Settings();
+            }
+            foreach (IPay item in PayDict.Values)
+            {
+                item.RefreshStatus(storeId, token);
+            }
+            return PayDict.Values.Where(o => !(o is MultiplyPay) && o.Enable).Select(o => o as IPay);
+        }
+    }
+}

@@ -1,0 +1,85 @@
+﻿@using Pharos.Logic.OMS.Entity.View
+@{
+    ViewBag.Title = "Save";
+    Layout = "~/Views/Shared/_FormLayout.cshtml";
+}
+<link href="~/Content/global.css" rel="stylesheet" />
+
+<style type="text/css">
+         #TraderTypeList ul {
+            width: 98%;
+            overflow: hidden;
+         }
+
+         #TraderTypeList ul li {
+             float: left;
+             width: 26%;
+             height: 20px;
+             line-height:18px;
+             border: 1px solid #d4d4d4;
+             border-radius: 5px;
+             margin-left:2%;
+             margin-right: 2%;
+             margin-bottom:2%;
+             padding-left:6px;
+             padding-right:6px;
+         }
+
+        #TraderTypeList ul li div {
+            float:right;
+            width:12px;
+            height:12px;
+        }
+
+        #TraderTypeList ul li img {
+             border: 0 none;
+             cursor: pointer;
+             vertical-align:middle;
+         }
+
+</style>
+<div class="default-form">
+    @using (Html.BeginForm())
+    {
+        <table class="SupplierType-save">
+            <tr>
+                <td>分类名称：</td>
+                <td><input type="text" name="Title" class="easyui-validatebox" style="height:14px;" data-options="required:true,novalidate:false" /></td>
+                <td><a href="#" class="easyui-linkbutton button-margin" onclick="$('.default-form form').submit()">添加</a></td>
+            </tr>
+        </table>
+    }
+</div>
+<div id="TraderTypeList" style="overflow:hidden;overflow-y:auto;height:210px;">
+    <ul>
+        @foreach (var v in ViewBag.list as List<ViewTraderType>)
+        {
+            <li>
+                @v.Title<span>(@v.Count)</span>
+                <div><img src="/Content/image/close.png" width="12" height="12" onclick="delType('@v.TraderTypeId')" /></div>
+            </li>
+        }
+
+    </ul>
+</div>
+
+<script type="text/javascript">
+    $(function () {
+
+    });
+    function Refresh() {
+        window.location.href = "/TraderType/Index";
+    }
+    function delType(TraderTypeId) {
+        $.messager.confirm('提示', "是否确定删除?", function (r) {
+            if (!r) { return r; }
+            $.post("@Url.Action("Delete")", { TraderTypeId: TraderTypeId, t: Math.random() }, function (json) {
+                if (json.successed) {
+                    Refresh();
+                } else {
+                    $.messager.alert('错误', '删除失败,' + json.message);
+                }
+            }, "json")
+        });
+    }
+</script>

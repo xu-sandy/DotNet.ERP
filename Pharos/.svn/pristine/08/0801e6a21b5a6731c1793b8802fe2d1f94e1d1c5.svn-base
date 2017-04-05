@@ -1,0 +1,44 @@
+﻿<control:ToastWindow  x:Class="Pharos.POS.Retailing.ChildWin.SetWeigh"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:control="clr-namespace:Pharos.Wpf.Controls;assembly=Pharos.Wpf" 
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Height="300" Width="500" WindowStyle="None"  WindowStartupLocation="CenterScreen"
+                     InputMethod.PreferredImeState="Off" InputMethod.IsInputMethodEnabled="False"
+        ResizeMode="NoResize"   WindowState="Normal"  AllowsTransparency="True" Title="散称商品"  Icon="..\Images\message.png">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles\ConfirmStyle.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="100*"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="70"></RowDefinition>
+
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150"></ColumnDefinition>
+            <ColumnDefinition Width="180"></ColumnDefinition>
+            <ColumnDefinition Width="80"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <TextBlock Grid.Row="1" Grid.Column="0" FontSize="20" VerticalAlignment="Center" HorizontalAlignment="Right" Text="商品："></TextBlock>
+        <TextBlock Grid.Row="1" Grid.Column="1" FontSize="20" VerticalAlignment="Center" Grid.ColumnSpan="2" HorizontalAlignment="Left" Text="{Binding Product}">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="TextWrapping" Value="Wrap"/>
+                    <Setter Property="Height" Value="auto"/>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+
+        <TextBlock Grid.Row="2" Grid.Column="0" FontSize="20" VerticalAlignment="Center" HorizontalAlignment="Right" Text="重量："></TextBlock>
+        <control:IconTextBox TabIndex="0" x:Name="txtWeight"  Grid.Row="2"  FontSize="20" Height="40" VerticalContentAlignment="Center" Grid.Column="1" Text="{Binding Weight}"></control:IconTextBox>
+        <TextBlock Grid.Row="2" Grid.Column="2"  FontSize="20" VerticalAlignment="Center" HorizontalAlignment="Left" Text="{Binding Unit}"></TextBlock>
+        <control:PosButton Grid.Row="3" TabIndex="1" HorizontalAlignment="Center" Style="{StaticResource BtnSearchStyle}" Command="{Binding SaveCommand}" Content="确定" Grid.Column="1" Margin="40,15,10,15"/>
+    </Grid>
+</control:ToastWindow>
